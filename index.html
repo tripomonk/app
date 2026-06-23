@@ -35,18 +35,14 @@
   /* max thickness = semibold (600); never bold */
   h1,h2,h3,h4,h5,b,strong{font-weight:600}
   .soon{position:absolute;top:7px;left:7px;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);color:var(--yellow);font-size:9px;font-weight:600;padding:3px 8px;border-radius:8px;letter-spacing:.3px}
-  .phone{position:relative;width:100vw;height:100dvh;background:var(--bg)}
+  /* responsive everywhere: full-width column on phones, centred column on tablet/desktop/iPad */
+  .phone{position:relative;width:100%;max-width:560px;height:100dvh;margin:0 auto;background:var(--bg);overflow:hidden}
   .screen{position:relative;width:100%;height:100%;overflow:hidden;
     background:radial-gradient(120% 60% at 50% -10%, #15314f 0%, transparent 55%), linear-gradient(180deg,#0b1a2c 0%, #0a1626 60%, #091322 100%)}
-  /* tablet / desktop browser: a larger framed app, centered */
-  @media(min-width:520px){
-    body{padding:24px}
-    .phone{width:430px;height:min(920px,94vh);max-height:94vh;border-radius:34px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6)}
-  }
-  /* installed as a PWA (iPad/tablet/desktop): fill the screen, keep a comfortable centred column */
-  @media all and (display-mode:standalone){
-    body{padding:0;background:var(--bg)}
-    .phone{width:100vw;max-width:540px;height:100dvh;max-height:none;border-radius:0;box-shadow:none;margin:0 auto}
+  /* on screens wider than the column, give it a subtle edge so it reads as an app */
+  @media(min-width:560px){
+    body{background:#06101c}
+    .phone{box-shadow:0 0 0 1px rgba(255,255,255,.06),0 24px 70px rgba(0,0,0,.6)}
   }
   .ic{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;flex:none}
   .ic svg{display:block}
