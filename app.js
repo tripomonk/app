@@ -620,9 +620,9 @@ function renderHomeHero(){
 function renderHome(){
   renderHomeHero();
   const list=homeFilter==='All'?treks:treks.filter(t=>t.lvl===homeFilter);
-  const el=document.getElementById('homeList');
-  if(!list.length){el.className='hrow';el.innerHTML='<div class="empty">No treks at this level yet.</div>';return;}
-  makeCoverflow('homeList',list,trekCardCF,(t)=>openDetail(t.idx));
+  const el=document.getElementById('homeList');el.className='hrow';
+  el.innerHTML=list.length?list.map(trekCardH).join(''):'<div class="empty">No treks at this level yet.</div>';
+  hydrate(el);
 }
 
 function renderExplore(){
@@ -631,8 +631,8 @@ function renderExplore(){
   document.getElementById('diffGrid').innerHTML=dd.map(d=>`<div class="diffc" onclick="filterByDiff('${d[0]}')"><b>${d[0]}</b><small>${d[1]}</small></div>`).join('');
   const list=exploreView||treks;
   const head=document.getElementById('topHead'); if(head)head.textContent=exploreLabel||'Top Picks For You';
-  if(list.length)makeCoverflow('exploreList',list,trekCardCF,(t)=>openDetail(t.idx));
-  else{const el=document.getElementById('exploreList');el.className='';el.innerHTML=`<div class="empty"><img src="illustrations/hiker-mountains.svg" alt=""/>No treks in ${esc(exploreLabel||'this filter').replace(' Treks','')} yet — more coming soon.<br><br><button class="btn sm" onclick="filterAll()">Show all treks</button></div>`;}
+  const el=document.getElementById('exploreList');el.className='';
+  el.innerHTML=list.length?list.map(bigCard).join(''):`<div class="empty"><img src="illustrations/hiker-mountains.svg" alt=""/>No treks in ${esc(exploreLabel||'this filter').replace(' Treks','')} yet — more coming soon.<br><br><button class="btn sm" onclick="filterAll()">Show all treks</button></div>`;
   hydrate(document.getElementById('explore'));
 }
 let exploreView=null, exploreLabel='';
@@ -1719,7 +1719,7 @@ function renderGear(){document.getElementById('gearList').innerHTML=gearItems.ma
 function togGear(i){gearSel[i]=!gearSel[i];renderGear();}
 function gearEnquire(){const picked=gearItems.filter((g,i)=>gearSel[i]).map(g=>g[1]);wa(picked.length?('I want to rent: '+picked.join(', ')):'I want to rent trek gear.');}
 function renderPermits(){document.getElementById('permitList').innerHTML=permitTypes.map(p=>`<div class="perm"><b>${p[0]}</b><p>${p[1]}</p><div class="pf"><span class="badge">${ic('clock',12)} ${p[2]} · ${p[3]}</span><button class="pa" onclick="wa('I need the ${p[0]} — please assist.')">Apply</button></div></div>`).join('');hydrate(document.getElementById('permits'));}
-function renderActivities(){makeCoverflow('actList',activitiesData,actCardCF,(a)=>bookActivity(a[1],a[3]));hydrate(document.getElementById('activities'));}
+function renderActivities(){const el=document.getElementById('actList');el.className='';el.innerHTML=activitiesData.map(a=>`<div class="atile"><div class="ai ic">${ic(a[0],22)}</div><b>${a[1]}</b><small>${a[2]}</small><div class="ap">${a[3]}<button class="bk" onclick="bookActivity('${a[1].replace(/'/g,'')}','${a[3]}')">Book</button></div></div>`).join('');hydrate(document.getElementById('activities'));}
 async function bookActivity(name,priceStr){
   const amount=parseInt(String(priceStr).replace(/[^\d]/g,''))||0;
   if(amount<1){note('This activity is not bookable online yet — please contact us.','Unavailable');return;}
