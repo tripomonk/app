@@ -157,12 +157,20 @@
   .bigcard .fav{position:absolute;top:12px;left:12px;z-index:1;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.4);backdrop-filter:blur(6px);cursor:pointer}
   .fav.on{color:#ff5a7a}
 
-  /* bottom nav */
-  .nav{position:absolute;left:0;right:0;bottom:0;z-index:50;display:flex;justify-content:space-around;align-items:center;
-    padding:10px 6px calc(var(--safe-bottom) + 10px);background:rgba(8,17,30,.92);backdrop-filter:blur(18px);border-top:1px solid var(--stroke)}
+  /* bottom nav — floating pill with raised centre button */
+  .nav{position:absolute;left:16px;right:16px;bottom:calc(var(--safe-bottom) + 12px);z-index:50;display:flex;justify-content:space-around;align-items:center;
+    padding:10px 8px;border-radius:24px;background:rgba(12,24,42,.86);backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%);
+    border:1px solid rgba(255,255,255,.12);box-shadow:0 16px 40px -12px rgba(0,0,0,.6)}
   .nav.hide{display:none}
-  .nav button{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--muted);font-size:10px;font-weight:600;padding:4px 10px}
+  .nav button{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--muted);font-size:10px;font-weight:600;padding:6px 10px;border-radius:14px;transition:color .2s,background .2s}
   .nav button.on{color:var(--yellow)}
+  .nav button.on:not(.nav-center){background:rgba(255,206,31,.12)}
+  /* raised centre action */
+  .nav .nav-center{margin-top:-30px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));
+    color:#fff;align-items:center;justify-content:center;padding:0;box-shadow:0 12px 26px -6px rgba(47,107,255,.7);border:3px solid rgba(12,24,42,.86)}
+  .nav .nav-center .ic{margin:0}
+  .nav .nav-center.on{color:#fff;background:linear-gradient(135deg,var(--accent),#6f9cff)}
+  .nav .nav-center .msr{font-size:26px}
 
   /* DETAIL */
   .hero{height:320px;position:relative;background-size:cover;background-position:center}
@@ -531,6 +539,16 @@
   .dcard{box-shadow:0 26px 64px -24px rgba(0,0,0,.85)}
   .post{box-shadow:0 8px 24px -16px rgba(0,0,0,.6)}
 
+  /* — featured hero banner card (home) — */
+  .hhero{position:relative;border-radius:22px;overflow:hidden;margin-bottom:18px;min-height:158px;display:flex;align-items:flex-end;padding:16px;background-size:cover;background-position:center;cursor:pointer;box-shadow:0 16px 36px -16px rgba(0,0,0,.7)}
+  .hhero::after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,rgba(47,107,255,.78) 0%,rgba(10,28,58,.35) 60%,rgba(8,17,30,.65) 100%)}
+  .hhero .hh-c{position:relative;z-index:1;max-width:74%}
+  .hhero .hh-tag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#fff;background:rgba(255,255,255,.22);padding:3px 9px;border-radius:8px;margin-bottom:8px}
+  .hhero h3{margin:0 0 5px;font-size:21px;font-weight:600;line-height:1.15;letter-spacing:-.3px;color:#fff}
+  .hhero p{margin:0 0 12px;font-size:12px;color:rgba(255,255,255,.85);line-height:1.4}
+  .hhero .hh-go{display:inline-flex;align-items:center;gap:6px;background:var(--yellow);color:#1a1206;font-weight:700;font-size:12.5px;padding:8px 14px;border-radius:999px}
+  .hhero .hh-price{position:absolute;top:14px;right:14px;z-index:1;background:rgba(0,0,0,.4);backdrop-filter:blur(6px);color:#fff;font-weight:700;font-size:13px;padding:6px 11px;border-radius:999px}
+
   /* — dynamic 3D coverflow card stack — */
   .coverflow{position:relative;height:418px;margin:0 -18px;overflow:hidden;perspective:1200px;touch-action:pan-y;user-select:none;-webkit-user-select:none}
   .coverflow .fcx{position:absolute;left:50%;top:6px;width:74%;max-width:310px;border-radius:24px;overflow:hidden;cursor:pointer;
@@ -543,6 +561,8 @@
   .cf-dots span{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.3);transition:.25s}
   .cf-dots span.on{background:var(--accent2);width:18px;border-radius:3px}
   .cf-dots .cf-count{font-size:11px;color:var(--muted);font-weight:600}
+  .coverflow .fcx-img.act{height:170px;display:grid;place-items:center}
+  .coverflow .fcx-img.act .act-ic{font-size:64px;color:rgba(255,255,255,.92)}
   .fcx-img{height:200px;background-size:cover;background-position:center;position:relative}
   .fcx-bd{padding:14px 16px 16px}
   .fcx-bd h3{margin:0;font-size:19px;letter-spacing:-.3px}
@@ -679,6 +699,7 @@
     <div class="greet">Hello, Explorer! 👋</div>
     <h2 class="htitle">Where do you want<br>to <span>trek</span> next?</h2>
     <div class="search" onclick="go('search')"><span class="ic" data-i="search"></span><span>Search treks, places or regions</span></div>
+    <div id="homeHero"></div>
     <div class="quick" id="quick"></div>
     <div class="chips" id="homeChips"></div>
     <div class="sec"><h2>Popular Treks</h2><a onclick="go('explore')">View all</a></div>
@@ -1151,7 +1172,7 @@
   <nav class="nav hide" id="nav">
     <button data-t="home" onclick="go('home')"><span class="ic" data-i="home"></span>Home</button>
     <button data-t="explore" onclick="go('explore')"><span class="ic" data-i="treks"></span>Treks</button>
-    <button data-t="community" onclick="go('community')"><span class="ic" data-i="community"></span>Community</button>
+    <button class="nav-center" data-t="community" onclick="go('community')"><span class="ic" data-i="community"></span></button>
     <button data-t="bookings" onclick="go('bookings')"><span class="ic" data-i="bookings"></span>Bookings</button>
     <button data-t="profile" onclick="go('profile')"><span class="ic" data-i="user"></span>Profile</button>
   </nav>

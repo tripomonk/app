@@ -554,9 +554,10 @@ function trekCardH(t){return `<div class="hcard" onclick="openDetail(${t.idx})">
   <div class="hbd"><h3>${t.n}</h3><div class="reg">${ic('pin',12)} ${t.region}</div>
   <div class="rt"><span class="star">★</span> <b>${t.r}</b> <span style="color:var(--muted)">(${t.rev})</span></div>
   <div class="ft"><span class="tag">${ic('clock',12)} ${t.dur}</span><span class="tag">${t.lvl}</span></div></div></div>`;}
-/* ===== Dynamic 3D coverflow card stack (index-based, swipe/drag, infinite, virtualized) ===== */
-let cfList=[],cfIndex=0,_cfEl=null,_cfMoved=false;
-function featureCard(t,i){return `<div class="fcx" data-i="${i}" onclick="cfTap(${i})">
+/* ===== Reusable dynamic 3D coverflow stack (index-based, swipe/drag, infinite, virtualized) ===== */
+let _cfMoved=false;
+/* card builders */
+function trekCardCF(t,i){return `<div class="fcx" data-i="${i}" onclick="cfTapCard(this)">
   <div class="fcx-img" style="background-image:url('${t.img}')">${t.soon?'<span class="soon">Coming Soon</span>':''}</div>
   <div class="fcx-bd">
     <h3>${esc(t.n)}</h3>
@@ -568,55 +569,71 @@ function featureCard(t,i){return `<div class="fcx" data-i="${i}" onclick="cfTap(
       <div><small>Rating</small><b>★ ${t.r}</b></div>
     </div>
     <div class="fcx-foot"><div><small>Total Price</small><div class="fcx-price">₹${Number(t.price).toLocaleString('en-IN')}</div></div>
-      <button class="fcx-go" onclick="event.stopPropagation();openDetail(${t.idx})"><span class="msr">flight</span></button></div>
-  </div>
-</div>`;}
-function layoutCoverflow(frac,animate){
-  if(!_cfEl)return;const n=cfList.length;if(!n)return;
-  _cfEl.classList.toggle('anim',!!animate);
-  _cfEl.querySelectorAll('.fcx').forEach(card=>{
-    const i=+card.dataset.i;
-    let off=i-cfIndex;
-    if(n>7){if(off>n/2)off-=n;else if(off<-n/2)off+=n;} /* wrap for infinite feel */
-    off-=(frac||0);
-    const ao=Math.abs(off);
-    if(ao>3.3){card.style.display='none';return;}   /* virtualize: hide far cards */
+      <button class="fcx-go" onclick="event.stopPropagation();cfOpenCard(this)"><span class="msr">flight</span></button></div>
+  </div></div>`;}
+function actCardCF(a,i){return `<div class="fcx" data-i="${i}" onclick="cfTapCard(this)">
+  <div class="fcx-img act" style="background:linear-gradient(150deg,#0b5cff,#0a3aa0)"><span class="msr act-ic">${IMAP[a[0]]||'sports'}</span></div>
+  <div class="fcx-bd">
+    <h3>${esc(a[1])}</h3>
+    <div class="fcx-loc">${ic('pin',13)} ${esc(a[2])}</div>
+    <div class="fcx-desc">Adventure activity — pay in-app, our team coordinates your slot.</div>
+    <div class="fcx-foot"><div><small>Price</small><div class="fcx-price">${esc(a[3])}</div></div>
+      <button class="fcx-go" onclick="event.stopPropagation();cfOpenCard(this)"><span class="msr">flight</span></button></div>
+  </div></div>`;}
+function layoutCf(el,frac,animate){
+  const st=el&&el._cf;if(!st)return;const n=st.list.length;if(!n)return;
+  el.classList.toggle('anim',!!animate);
+  el.querySelectorAll('.fcx').forEach(card=>{
+    const i=+card.dataset.i;let off=i-st.index;
+    if(n>7){if(off>n/2)off-=n;else if(off<-n/2)off+=n;}
+    off-=(frac||0);const ao=Math.abs(off);
+    if(ao>3.3){card.style.display='none';return;}
     card.style.display='';
-    const scale=Math.max(0.68,1-ao*0.12);
-    const op=Math.max(0.28,1-ao*0.24);
-    const rot=Math.max(-22,Math.min(22,-off*7));
-    card.style.transform=`translateX(-50%) translateX(${off*46}%) translateZ(${(-ao*80)}px) rotateY(${rot}deg) scale(${scale})`;
-    card.style.opacity=String(op);
-    card.style.zIndex=String(200-Math.round(ao*20));
+    const scale=Math.max(0.68,1-ao*0.12),op=Math.max(0.28,1-ao*0.24),rot=Math.max(-22,Math.min(22,-off*7));
+    card.style.transform=`translateX(-50%) translateX(${off*46}%) translateZ(${-ao*80}px) rotateY(${rot}deg) scale(${scale})`;
+    card.style.opacity=String(op);card.style.zIndex=String(200-Math.round(ao*20));
     card.classList.toggle('active',Math.round(off)===0);
   });
-  renderCfDots();
+  const d=el.querySelector('.cf-dots');
+  if(d){if(n<=1)d.innerHTML='';else if(n<=10)d.innerHTML=st.list.map((_,i)=>`<span class="${i===st.index?'on':''}"></span>`).join('');else d.innerHTML=`<span class="cf-count">${st.index+1} / ${n}</span>`;}
 }
-function renderCfDots(){
-  const d=document.getElementById('cfDots');if(!d)return;const n=cfList.length;
-  if(n<=1){d.innerHTML='';return;}
-  if(n<=10){d.innerHTML=cfList.map((_,i)=>`<span class="${i===cfIndex?'on':''}"></span>`).join('');}
-  else{d.innerHTML=`<span class="cf-count">${cfIndex+1} / ${n}</span>`;}
-}
-function cfGo(delta){const n=cfList.length;if(!n)return;cfIndex=((cfIndex+delta)%n+n)%n;layoutCoverflow(0,true);}
-function cfTap(i){if(_cfMoved)return;if(i===cfIndex){openDetail(cfList[i].idx);}else{cfIndex=i;layoutCoverflow(0,true);}}
+function cfGoEl(el,delta){const st=el._cf;const n=st.list.length;if(!n)return;st.index=((st.index+delta)%n+n)%n;layoutCf(el,0,true);}
+function cfTapCard(card){if(_cfMoved)return;const el=card.closest('.coverflow');const st=el._cf;const i=+card.dataset.i;if(i===st.index)st.open(st.list[i],i);else{st.index=i;layoutCf(el,0,true);}}
+function cfOpenCard(btn){const card=btn.closest('.fcx'),el=card.closest('.coverflow'),i=+card.dataset.i;el._cf.open(el._cf.list[i],i);}
 function attachCfDrag(el){
   let startX=0,dragging=false,step=1,moved=false;
   el.onpointerdown=e=>{dragging=true;moved=false;startX=e.clientX;const c=el.querySelector('.fcx');step=(c?c.offsetWidth:el.offsetWidth)*0.46+1;try{el.setPointerCapture(e.pointerId);}catch(_e){}};
-  el.onpointermove=e=>{if(!dragging)return;const dx=e.clientX-startX;if(Math.abs(dx)>6)moved=true;layoutCoverflow(-dx/step,false);};
-  const end=e=>{if(!dragging)return;dragging=false;const dx=(e.clientX||startX)-startX;const frac=-dx/step;const delta=Math.round(frac);if(delta!==0)cfGo(delta);else layoutCoverflow(0,true);_cfMoved=moved;setTimeout(()=>{_cfMoved=false;},60);};
+  el.onpointermove=e=>{if(!dragging)return;const dx=e.clientX-startX;if(Math.abs(dx)>6)moved=true;layoutCf(el,-dx/step,false);};
+  const end=e=>{if(!dragging)return;dragging=false;const dx=(e.clientX||startX)-startX;const delta=Math.round(-dx/step);if(delta!==0)cfGoEl(el,delta);else layoutCf(el,0,true);_cfMoved=moved;setTimeout(()=>{_cfMoved=false;},60);};
   el.onpointerup=end;el.onpointercancel=end;el.onpointerleave=end;
 }
-function renderHome(){
-  cfList=homeFilter==='All'?treks:treks.filter(t=>t.lvl===homeFilter);
-  const el=document.getElementById('homeList');_cfEl=el;
-  if(!cfList.length){el.className='hrow';el.innerHTML='<div class="empty">No treks at this level yet.</div>';return;}
-  if(cfIndex>=cfList.length)cfIndex=Math.floor(cfList.length/2);
+function makeCoverflow(elId,list,cardFn,openFn){
+  const el=document.getElementById(elId);if(!el)return;
+  if(!list.length){el.className='';el.innerHTML='<div class="empty"><p>Nothing here yet.</p></div>';return;}
+  el._cf={list,index:Math.floor(list.length/2),open:openFn};
   el.className='coverflow';
-  el.innerHTML=cfList.map((t,i)=>featureCard(t,i)).join('')+'<div class="cf-dots" id="cfDots"></div>';
-  hydrate(el);
-  attachCfDrag(el);
-  layoutCoverflow(0,false);
+  el.innerHTML=list.map((it,i)=>cardFn(it,i)).join('')+'<div class="cf-dots"></div>';
+  hydrate(el);attachCfDrag(el);layoutCf(el,0,false);
+}
+function renderHomeHero(){
+  const box=document.getElementById('homeHero');if(!box)return;
+  const f=treks.find(t=>!t.soon)||treks[0];if(!f){box.innerHTML='';return;}
+  box.innerHTML=`<div class="hhero" style="background-image:url('${f.img}')" onclick="openDetail(${f.idx})">
+    <span class="hh-price">From ₹${Number(f.price).toLocaleString('en-IN')}</span>
+    <div class="hh-c"><span class="hh-tag">Featured trek</span>
+      <h3>${esc(f.n)}</h3>
+      <p>${esc(f.region)} · ${esc(f.lvl)} · ${esc(f.days+'D')}</p>
+      <span class="hh-go">Explore ${ic('back',14)}</span>
+    </div></div>`;
+  hydrate(box);
+  const go=box.querySelector('.hh-go .msr');if(go)go.style.transform='scaleX(-1)';
+}
+function renderHome(){
+  renderHomeHero();
+  const list=homeFilter==='All'?treks:treks.filter(t=>t.lvl===homeFilter);
+  const el=document.getElementById('homeList');
+  if(!list.length){el.className='hrow';el.innerHTML='<div class="empty">No treks at this level yet.</div>';return;}
+  makeCoverflow('homeList',list,trekCardCF,(t)=>openDetail(t.idx));
 }
 
 function renderExplore(){
@@ -625,7 +642,8 @@ function renderExplore(){
   document.getElementById('diffGrid').innerHTML=dd.map(d=>`<div class="diffc" onclick="filterByDiff('${d[0]}')"><b>${d[0]}</b><small>${d[1]}</small></div>`).join('');
   const list=exploreView||treks;
   const head=document.getElementById('topHead'); if(head)head.textContent=exploreLabel||'Top Picks For You';
-  document.getElementById('exploreList').innerHTML=list.length?list.map(bigCard).join(''):`<div class="empty"><img src="illustrations/hiker-mountains.svg" alt=""/>No treks in ${esc(exploreLabel||'this filter').replace(' Treks','')} yet — more coming soon.<br><br><button class="btn sm" onclick="filterAll()">Show all treks</button></div>`;
+  if(list.length)makeCoverflow('exploreList',list,trekCardCF,(t)=>openDetail(t.idx));
+  else{const el=document.getElementById('exploreList');el.className='';el.innerHTML=`<div class="empty"><img src="illustrations/hiker-mountains.svg" alt=""/>No treks in ${esc(exploreLabel||'this filter').replace(' Treks','')} yet — more coming soon.<br><br><button class="btn sm" onclick="filterAll()">Show all treks</button></div>`;}
   hydrate(document.getElementById('explore'));
 }
 let exploreView=null, exploreLabel='';
@@ -1703,7 +1721,7 @@ function renderGear(){document.getElementById('gearList').innerHTML=gearItems.ma
 function togGear(i){gearSel[i]=!gearSel[i];renderGear();}
 function gearEnquire(){const picked=gearItems.filter((g,i)=>gearSel[i]).map(g=>g[1]);wa(picked.length?('I want to rent: '+picked.join(', ')):'I want to rent trek gear.');}
 function renderPermits(){document.getElementById('permitList').innerHTML=permitTypes.map(p=>`<div class="perm"><b>${p[0]}</b><p>${p[1]}</p><div class="pf"><span class="badge">${ic('clock',12)} ${p[2]} · ${p[3]}</span><button class="pa" onclick="wa('I need the ${p[0]} — please assist.')">Apply</button></div></div>`).join('');hydrate(document.getElementById('permits'));}
-function renderActivities(){document.getElementById('actList').innerHTML=activitiesData.map(a=>`<div class="atile"><div class="ai ic">${ic(a[0],22)}</div><b>${a[1]}</b><small>${a[2]}</small><div class="ap">${a[3]}<button class="bk" onclick="bookActivity('${a[1].replace(/'/g,'')}','${a[3]}')">Book</button></div></div>`).join('');hydrate(document.getElementById('activities'));}
+function renderActivities(){makeCoverflow('actList',activitiesData,actCardCF,(a)=>bookActivity(a[1],a[3]));hydrate(document.getElementById('activities'));}
 async function bookActivity(name,priceStr){
   const amount=parseInt(String(priceStr).replace(/[^\d]/g,''))||0;
   if(amount<1){note('This activity is not bookable online yet — please contact us.','Unavailable');return;}
@@ -1880,7 +1898,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTap,cfGo});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard});
 
 /* init */
 loadSocial();   /* follows, likes, your posts & comments */
