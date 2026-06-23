@@ -525,16 +525,20 @@
   .dcard{box-shadow:0 26px 64px -24px rgba(0,0,0,.85)}
   .post{box-shadow:0 8px 24px -16px rgba(0,0,0,.6)}
 
-  /* — trek news / alerts: minimal list — */
+  /* — trek news / alerts: cards with priority label above — */
   .nsec{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.3px;margin:0 2px 8px}
-  .nrow{display:flex;gap:10px;padding:11px 2px;border-bottom:1px solid var(--stroke);cursor:pointer}
-  .nrow .ndot{flex:none;width:6px}
-  .nrow.alert{border-left:3px solid #ffb24d;padding-left:9px;border-radius:2px}
-  .nrow.alert .ndot{color:#ffb24d;font-size:13px;width:auto}
-  .nrow .nbd{flex:1;min-width:0}
-  .nrow .ntitle{font-size:13px;font-weight:600;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .nrow .nsum{font-size:11.5px;color:var(--muted);line-height:1.4;margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .nrow .nmeta{font-size:10px;color:var(--muted2);margin-top:3px}
+  .news-item{margin-bottom:16px}
+  .npri{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin:0 2px 6px}
+  .npri.high{color:#ff7a4d}
+  .npri.low{color:var(--accent2)}
+  .ncard{background:var(--card);border:1px solid var(--stroke);border-radius:16px;overflow:hidden;cursor:pointer;box-shadow:0 6px 18px -12px rgba(0,0,0,.6)}
+  .ncard:active{transform:translateY(1px) scale(.99)}
+  .ncard.alert{border-color:rgba(255,122,77,.45)}
+  .ncard .nimg{width:100%;height:150px;background-size:cover;background-position:center;background-color:#12243c}
+  .ncard .nbody{padding:13px 14px}
+  .ncard h4{margin:0 0 5px;font-size:14px;font-weight:600;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .ncard p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .ncard .nmeta{font-size:10.5px;color:var(--muted2);margin-top:8px}
   /* serious-alert banner */
   #alertBanner{position:absolute;left:10px;right:10px;top:calc(var(--safe-top) + 10px);z-index:300;display:none;align-items:center;gap:10px;
     background:linear-gradient(135deg,#b8521a,#d9701f);color:#fff;border-radius:14px;padding:11px 12px;box-shadow:0 12px 30px rgba(0,0,0,.5);animation:abIn .35s ease}

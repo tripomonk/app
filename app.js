@@ -160,13 +160,16 @@ async function loadNews(){
   try{const r=await fetch(SB.SUPABASE_URL+'/rest/v1/news?select=*&order=published_at.desc&limit=40',{headers:sbHeaders()});
     if(!r.ok)return[];_newsCache=await r.json();return _newsCache;}catch(e){return[];}
 }
-/* minimal clean row */
-function newsRow(n){
+/* card style with a priority label above each card */
+function newsCard(n){
   const a=isAlert(n);const when=n.published_at?timeAgo(n.published_at):'';
-  return `<div class="nrow ${a?'alert':''}" onclick="openNews('${(n.url||'').replace(/'/g,'')}')">
-    <span class="ndot">${a?'⚠':''}</span>
-    <div class="nbd"><div class="ntitle">${esc(n.title||'')}</div>${n.summary?`<div class="nsum">${esc(n.summary)}</div>`:''}<div class="nmeta">${esc(n.source||'')}${when?' · '+when:''}</div></div>
-  </div>`;
+  const pri=a?`<div class="npri high">${ic('alert',13)} High priority</div>`:`<div class="npri low">${ic('bell',13)} Trek update</div>`;
+  const img=n.image?`<div class="nimg" style="background-image:url('${n.image}')"></div>`:'';
+  return `<div class="news-item">${pri}
+    <div class="ncard ${a?'alert':''}" onclick="openNews('${(n.url||'').replace(/'/g,'')}')">
+      ${img}
+      <div class="nbody"><h4>${esc(n.title||'')}</h4>${n.summary?`<p>${esc(n.summary)}</p>`:''}<div class="nmeta">${esc(n.source||'')}${when?' · '+when:''}</div></div>
+    </div></div>`;
 }
 function openNews(url){if(url)window.open(url,'_blank','noopener');}
 async function renderHomeNews(){
@@ -176,7 +179,7 @@ async function renderHomeNews(){
   const alerts=list.filter(isAlert),news=list.filter(n=>!isAlert(n));
   /* alerts first (priority), then a couple of news */
   const show=[...alerts.slice(0,3),...news.slice(0,2)];
-  box.innerHTML=show.map(newsRow).join('');hydrate(box);
+  box.innerHTML=show.map(newsCard).join('');hydrate(box);
   checkAlerts(list);
 }
 async function renderNews(){
@@ -186,8 +189,8 @@ async function renderNews(){
   if(!list||!list.length){box.innerHTML=`<div class="empty"><p>No trek updates right now. Fresh alerts arrive a few times a day.</p></div>`;return;}
   const alerts=list.filter(isAlert),news=list.filter(n=>!isAlert(n));
   let html='';
-  if(alerts.length)html+=`<div class="nsec">⚠ Alerts</div>`+alerts.map(newsRow).join('');
-  if(news.length)html+=`<div class="nsec" style="margin-top:18px">Trek News</div>`+news.map(newsRow).join('');
+  if(alerts.length)html+=`<div class="nsec">⚠ Alerts</div>`+alerts.map(newsCard).join('');
+  if(news.length)html+=`<div class="nsec" style="margin-top:18px">Trek News</div>`+news.map(newsCard).join('');
   box.innerHTML=html;hydrate(box);
 }
 /* serious-alert notification: banner + chime when a NEW alert appears */
