@@ -879,9 +879,18 @@ function renderBookings(){const bs=getBookings();
 function renderWishlist(){document.getElementById('wishList').innerHTML=treks.slice(2,5).map(trekCard).join('');hydrate(document.getElementById('wishList'));}
 
 /* community + packing + profile */
-let commTab='For You';
-function renderCommTabs(){document.getElementById('commTabs').innerHTML=['For You','Following','Recent'].map(t=>`<div class="chip pill ${t===commTab?'on':''}" onclick="selCommTab('${t}')">${t}</div>`).join('');}
+let commTab='Discover';
+function renderCommTabs(){document.getElementById('commTabs').innerHTML=['Discover','Following'].map(t=>`<div class="ctab ${t===commTab?'on':''}" onclick="selCommTab('${t}')">${t}</div>`).join('');}
 function selCommTab(t){commTab=t;renderFeed();}
+/* Instagram-style stories row: Your Story + trekkers */
+function renderStories(){
+  const box=document.getElementById('storiesRow');if(!box)return;
+  const mine=myName();
+  const ppl=people.filter(p=>p.n!==mine);
+  const yourStory=`<div class="story add" onclick="addPost()"><div class="ring"><div class="plus">${avatar(mine,57)}</div></div><small>Your story</small></div>`;
+  box.innerHTML=yourStory+ppl.map(p=>`<div class="story" onclick="openPerson('${p.n.replace(/'/g,'')}')"><div class="ring">${avatar(p.n,57)}</div><small>${esc(p.n.split(' ')[0])}</small></div>`).join('');
+  hydrate(box);
+}
 function reviewCard(r){return `<div class="panel" style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:7px"><div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#ffd27a,#ff7a59);display:grid;place-items:center;font-weight:600;color:#5a2a00">${r[0][0]}</div><div><b style="font-size:13px">${r[0]}</b><div class="star" style="font-size:11px">${'★'.repeat(r[1])}${'☆'.repeat(5-r[1])} <span style="color:var(--muted2)">· ${r[3]}</span></div></div></div><p style="margin:0;font-size:12.5px;color:var(--muted);line-height:1.55">${r[2]}</p></div>`;}
 /* "Trekkers to follow" strip */
 /* ---- people search ---- */
@@ -1010,7 +1019,7 @@ async function deletePost(id){
   note('Post deleted.');
 }
 async function renderFeed(){
-  renderCommTabs();renderFollowStrip();
+  renderCommTabs();renderStories();
   const box=document.getElementById('feed');
   box.innerHTML=`<div class="skel skel-post"></div><div class="skel skel-post"></div>`;
   /* try remote first; null = error, [] = genuinely empty */
