@@ -531,14 +531,18 @@
   .dcard{box-shadow:0 26px 64px -24px rgba(0,0,0,.85)}
   .post{box-shadow:0 8px 24px -16px rgba(0,0,0,.6)}
 
-  /* — swipeable coverflow trek cards — */
-  .fcrow{display:flex;gap:0;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:0 -18px;padding:30px 0 24px;perspective:1100px}
-  .fcrow::-webkit-scrollbar{display:none}
-  .fcrow::before,.fcrow::after{content:"";flex:0 0 14%}
-  .fcx{flex:0 0 72%;scroll-snap-align:center;background:var(--card2);border:1px solid var(--stroke);border-radius:24px;overflow:hidden;cursor:pointer;
-    transform-origin:center center;transition:transform .2s ease-out,opacity .2s ease-out,box-shadow .2s;will-change:transform,opacity;
-    box-shadow:0 20px 44px -20px rgba(0,0,0,.85)}
-  .fcx.active{box-shadow:0 32px 60px -22px rgba(0,0,0,.95)}
+  /* — dynamic 3D coverflow card stack — */
+  .coverflow{position:relative;height:418px;margin:0 -18px;overflow:hidden;perspective:1200px;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+  .coverflow .fcx{position:absolute;left:50%;top:6px;width:74%;max-width:310px;border-radius:24px;overflow:hidden;cursor:pointer;
+    background:rgba(20,38,62,.7);backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%);
+    border:1px solid rgba(255,255,255,.14);box-shadow:0 22px 48px -20px rgba(0,0,0,.85);
+    transform-origin:center center;backface-visibility:hidden;will-change:transform,opacity;transition:none}
+  .coverflow.anim .fcx{transition:transform .42s cubic-bezier(.2,.85,.25,1),opacity .42s,box-shadow .42s}
+  .coverflow .fcx.active{box-shadow:0 34px 64px -22px rgba(0,0,0,.95),0 0 0 1px rgba(95,139,255,.25)}
+  .cf-dots{position:absolute;left:0;right:0;bottom:2px;display:flex;justify-content:center;align-items:center;gap:5px;z-index:300;pointer-events:none}
+  .cf-dots span{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.3);transition:.25s}
+  .cf-dots span.on{background:var(--accent2);width:18px;border-radius:3px}
+  .cf-dots .cf-count{font-size:11px;color:var(--muted);font-weight:600}
   .fcx-img{height:200px;background-size:cover;background-position:center;position:relative}
   .fcx-bd{padding:14px 16px 16px}
   .fcx-bd h3{margin:0;font-size:19px;letter-spacing:-.3px}

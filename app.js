@@ -554,8 +554,9 @@ function trekCardH(t){return `<div class="hcard" onclick="openDetail(${t.idx})">
   <div class="hbd"><h3>${t.n}</h3><div class="reg">${ic('pin',12)} ${t.region}</div>
   <div class="rt"><span class="star">★</span> <b>${t.r}</b> <span style="color:var(--muted)">(${t.rev})</span></div>
   <div class="ft"><span class="tag">${ic('clock',12)} ${t.dur}</span><span class="tag">${t.lvl}</span></div></div></div>`;}
-/* swipeable coverflow card (centered card scales up, neighbours fade) */
-function featureCard(t){return `<div class="fcx" onclick="openDetail(${t.idx})">
+/* ===== Dynamic 3D coverflow card stack (index-based, swipe/drag, infinite, virtualized) ===== */
+let cfList=[],cfIndex=0,_cfEl=null,_cfMoved=false;
+function featureCard(t,i){return `<div class="fcx" data-i="${i}" onclick="cfTap(${i})">
   <div class="fcx-img" style="background-image:url('${t.img}')">${t.soon?'<span class="soon">Coming Soon</span>':''}</div>
   <div class="fcx-bd">
     <h3>${esc(t.n)}</h3>
@@ -566,35 +567,56 @@ function featureCard(t){return `<div class="fcx" onclick="openDetail(${t.idx})">
       <div><small>Best time</small><b>${esc(t.best||'—')}</b></div>
       <div><small>Rating</small><b>★ ${t.r}</b></div>
     </div>
-    <div class="fcx-foot"><div><small>From</small><div class="fcx-price">₹${Number(t.price).toLocaleString('en-IN')}</div></div>
-      <button class="fcx-go" onclick="event.stopPropagation();openDetail(${t.idx})"><span class="msr">arrow_forward</span></button></div>
+    <div class="fcx-foot"><div><small>Total Price</small><div class="fcx-price">₹${Number(t.price).toLocaleString('en-IN')}</div></div>
+      <button class="fcx-go" onclick="event.stopPropagation();openDetail(${t.idx})"><span class="msr">flight</span></button></div>
   </div>
 </div>`;}
-function featureScroll(row){
-  const rc=row.getBoundingClientRect(),mid=rc.left+rc.width/2;
-  let best=null,bd=1e9;const cards=[...row.querySelectorAll('.fcx')];
-  cards.forEach(card=>{
-    const r=card.getBoundingClientRect(),cm=r.left+r.width/2;
-    const delta=(cm-mid)/r.width;        /* 0 = centred, ±1 = a card away */
-    const ad=Math.min(Math.abs(delta),3);
-    const rotY=Math.max(-42,Math.min(42,-delta*34)); /* tilt toward centre */
-    const scale=Math.max(0.74,1-ad*0.17);
-    const ty=ad*26;                       /* neighbours sit lower */
-    const tx=-delta*26;                   /* pull inward so they overlap */
-    card.style.transform=`translateX(${tx}px) translateY(${ty}px) rotateY(${rotY}deg) scale(${scale})`;
-    card.style.opacity=String(Math.max(0.45,1-ad*0.32));
-    card.style.zIndex=String(100-Math.round(ad*10));
-    const d=Math.abs(cm-mid);if(d<bd){bd=d;best=card;}
+function layoutCoverflow(frac,animate){
+  if(!_cfEl)return;const n=cfList.length;if(!n)return;
+  _cfEl.classList.toggle('anim',!!animate);
+  _cfEl.querySelectorAll('.fcx').forEach(card=>{
+    const i=+card.dataset.i;
+    let off=i-cfIndex;
+    if(n>7){if(off>n/2)off-=n;else if(off<-n/2)off+=n;} /* wrap for infinite feel */
+    off-=(frac||0);
+    const ao=Math.abs(off);
+    if(ao>3.3){card.style.display='none';return;}   /* virtualize: hide far cards */
+    card.style.display='';
+    const scale=Math.max(0.68,1-ao*0.12);
+    const op=Math.max(0.28,1-ao*0.24);
+    const rot=Math.max(-22,Math.min(22,-off*7));
+    card.style.transform=`translateX(-50%) translateX(${off*46}%) translateZ(${(-ao*80)}px) rotateY(${rot}deg) scale(${scale})`;
+    card.style.opacity=String(op);
+    card.style.zIndex=String(200-Math.round(ao*20));
+    card.classList.toggle('active',Math.round(off)===0);
   });
-  cards.forEach(c=>c.classList.toggle('active',c===best));
+  renderCfDots();
 }
-function renderHome(){const list=homeFilter==='All'?treks:treks.filter(t=>t.lvl===homeFilter);
-  const el=document.getElementById('homeList');
-  if(!list.length){el.className='hrow';el.innerHTML='<div class="empty">No treks at this level yet.</div>';return;}
-  el.className='fcrow';el.onscroll=()=>featureScroll(el);
-  el.innerHTML=list.map(featureCard).join('');
+function renderCfDots(){
+  const d=document.getElementById('cfDots');if(!d)return;const n=cfList.length;
+  if(n<=1){d.innerHTML='';return;}
+  if(n<=10){d.innerHTML=cfList.map((_,i)=>`<span class="${i===cfIndex?'on':''}"></span>`).join('');}
+  else{d.innerHTML=`<span class="cf-count">${cfIndex+1} / ${n}</span>`;}
+}
+function cfGo(delta){const n=cfList.length;if(!n)return;cfIndex=((cfIndex+delta)%n+n)%n;layoutCoverflow(0,true);}
+function cfTap(i){if(_cfMoved)return;if(i===cfIndex){openDetail(cfList[i].idx);}else{cfIndex=i;layoutCoverflow(0,true);}}
+function attachCfDrag(el){
+  let startX=0,dragging=false,step=1,moved=false;
+  el.onpointerdown=e=>{dragging=true;moved=false;startX=e.clientX;const c=el.querySelector('.fcx');step=(c?c.offsetWidth:el.offsetWidth)*0.46+1;try{el.setPointerCapture(e.pointerId);}catch(_e){}};
+  el.onpointermove=e=>{if(!dragging)return;const dx=e.clientX-startX;if(Math.abs(dx)>6)moved=true;layoutCoverflow(-dx/step,false);};
+  const end=e=>{if(!dragging)return;dragging=false;const dx=(e.clientX||startX)-startX;const frac=-dx/step;const delta=Math.round(frac);if(delta!==0)cfGo(delta);else layoutCoverflow(0,true);_cfMoved=moved;setTimeout(()=>{_cfMoved=false;},60);};
+  el.onpointerup=end;el.onpointercancel=end;el.onpointerleave=end;
+}
+function renderHome(){
+  cfList=homeFilter==='All'?treks:treks.filter(t=>t.lvl===homeFilter);
+  const el=document.getElementById('homeList');_cfEl=el;
+  if(!cfList.length){el.className='hrow';el.innerHTML='<div class="empty">No treks at this level yet.</div>';return;}
+  if(cfIndex>=cfList.length)cfIndex=Math.floor(cfList.length/2);
+  el.className='coverflow';
+  el.innerHTML=cfList.map((t,i)=>featureCard(t,i)).join('')+'<div class="cf-dots" id="cfDots"></div>';
   hydrate(el);
-  setTimeout(()=>featureScroll(el),60);
+  attachCfDrag(el);
+  layoutCoverflow(0,false);
 }
 
 function renderExplore(){
@@ -1858,7 +1880,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,featureScroll});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTap,cfGo});
 
 /* init */
 loadSocial();   /* follows, likes, your posts & comments */
