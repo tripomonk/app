@@ -637,8 +637,11 @@ function renderHomeHero(){
   hydrate(box);
   const go=box.querySelector('.hh-go .msr');if(go)go.style.transform='scaleX(-1)';
 }
+const APP_VER='v95';
 function renderHome(){
   renderHomeHero();
+  const g=document.querySelector('#home .greet');
+  if(g)g.innerHTML='Hello, Explorer! 👋 <span style="opacity:.35;font-size:10px">'+APP_VER+' · '+treks.length+' treks</span>';
   const list=homeFilter==='All'?treks:treks.filter(t=>t.lvl===homeFilter);
   const el=document.getElementById('homeList');
   if(!list.length){el.className='hrow';el.innerHTML='<div class="empty">No treks at this level yet.</div>';return;}
