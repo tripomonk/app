@@ -1150,11 +1150,29 @@ function renderComments(){
 /* ---------- person profile ---------- */
 let curPerson=null;
 function openPerson(n){curPerson=n;go('person');}
+async function loadUserPosts(name){
+  const sb=getSupaClient();let remote=[];
+  if(sb){try{const{data}=await sb.from('community_posts').select('*').eq('author_name',name).order('created_at',{ascending:false});
+    remote=(data||[]).map(p=>({id:p.id,uid:p.user_id||null,n:p.author_name||'Trekker',when:timeAgo(p.created_at),txt:p.txt||'',imgs:p.imgs||[],trek:p.trek_tag||''}));}catch(e){}}
+  const localNew=userPosts.filter(p=>p.n===name&&!remote.find(r=>r.id===p.id));
+  return [...localNew,...remote];
+}
+function gridCell(p){
+  const media=(p.imgs&&p.imgs.length)?p.imgs[0]:'';
+  const isVid=media&&(media.startsWith('data:video')||/\.(mp4|mov)/.test(media));
+  const url=media?(media.startsWith('data:')?media:media+Q):'';
+  const badge=p.imgs&&p.imgs.length>1?`<span class="g-multi msr">filter_none</span>`:(isVid?`<span class="g-multi msr">play_arrow</span>`:'');
+  const inner=media?(isVid?`<video src="${media}" muted playsinline></video>`:`<div class="g-img" style="background-image:url('${url}')"></div>`):`<div class="g-img g-txt">${esc((p.txt||'').slice(0,40))}</div>`;
+  return `<div class="g-cell" onclick="openComments('${p.id}')">${inner}${badge}</div>`;
+}
 async function renderPerson(){if(!curPerson){go('community');return;}const p=getPerson(curPerson);if(!p)return;
-  const me=p.n==='You';const posts=allPosts().filter(x=>x.n===p.n);
+  const me=p.n==='You'||p.n===myName();
+  const body=document.getElementById('personBody');
+  body.innerHTML=`<div class="prof-top">${avatar(p.n,84)}<h2>${p.n}</h2><div class="handle">${p.h}</div></div><div class="skel skel-card" style="height:120px;margin:16px 0"></div>`;
+  const posts=await loadUserPosts(p.n);
   await loadEngagement(posts.map(x=>x.id));
   const flwr=(p.flwr||0)+(isFollowing(p.n)?1:0);
-  document.getElementById('personBody').innerHTML=`
+  body.innerHTML=`
     <div class="prof-top">${avatar(p.n,84)}
       <h2>${p.n}</h2><div class="handle">${p.h}</div>
       <p class="pbio">${p.bio||''}</p>
@@ -1162,8 +1180,8 @@ async function renderPerson(){if(!curPerson){go('community');return;}const p=get
       ${me?'':`<button class="btn ${isFollowing(p.n)?'ghost':''}" style="margin-top:14px" onclick="toggleFollow('${p.n.replace(/'/g,"")}')">${isFollowing(p.n)?'Following ✓':'Follow'}</button>`}
     </div>
     <div class="sec-h" style="margin:18px 4px 8px"><b>Posts</b></div>
-    ${posts.length?posts.map(postCard).join(''):`<div class="empty"><p>${me?'You have not posted yet.':'No posts yet.'}</p></div>`}`;
-  hydrate(document.getElementById('personBody'));}
+    ${posts.length?`<div class="pgrid">${posts.map(gridCell).join('')}</div>`:`<div class="empty"><p>${me?'You have not posted yet.':'No posts yet.'}</p></div>`}`;
+  hydrate(body);}
 let pkTab='Essentials',pkDone={};
 function renderPacking(){
   document.getElementById('pkTabs').innerHTML=Object.keys(packing).map(k=>`<div class="chip pill ${k===pkTab?'on':''}" onclick="setPk('${k}')">${k}</div>`).join('');
