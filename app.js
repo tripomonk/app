@@ -153,31 +153,61 @@ function saveBookingRemote(b){ if(!sbOn) return;
     body:JSON.stringify({id:b.id,trek:b.trek,name:b.name,date:b.date,pax:b.pax,total:b.total,paid:b.paid,status:b.status,checked_in:false})}).catch(()=>{});}
 /* ---- Trek News & Alerts (AI-summarized, refreshed by a scheduled function) ---- */
 let _newsCache=null;
+const ALERT_RE=/landslide|closed|closure|road block|weather|warning|alert|flood|rescue|avalanche|cloudburst|stranded|evacuat|shut|ban\b|emergency|trapped|snowfall/i;
+function isAlert(n){return (n.severity||'')==='alert' || ALERT_RE.test((n.title||'')+' '+(n.summary||''));}
 async function loadNews(){
   if(!sbOn)return[];
-  try{const r=await fetch(SB.SUPABASE_URL+'/rest/v1/news?select=*&order=published_at.desc&limit=30',{headers:sbHeaders()});
+  try{const r=await fetch(SB.SUPABASE_URL+'/rest/v1/news?select=*&order=published_at.desc&limit=40',{headers:sbHeaders()});
     if(!r.ok)return[];_newsCache=await r.json();return _newsCache;}catch(e){return[];}
 }
-function newsCard(n){
-  const alert=/landslide|closed|closure|weather|warning|alert|flood|rescue|avalanche|cloudburst/i.test((n.title||'')+(n.summary||''));
-  const when=n.published_at?timeAgo(n.published_at):'';
-  const img=n.image?`<div class="nimg" style="background-image:url('${n.image}')"></div>`:`<div class="nimg" style="display:grid;place-items:center"><span class="msr" style="color:var(--muted2);font-size:26px">newspaper</span></div>`;
-  return `<div class="ncard" onclick="openNews('${(n.url||'').replace(/'/g,'')}')">${img}<div class="nbd"><span class="ntag ${alert?'alert':''}">${alert?'⚠ Alert':'Trek News'}</span><h4>${esc(n.title||'')}</h4><small>${esc(n.summary||'')}</small><div class="nmeta">${esc(n.source||'')}${when?' · '+when:''}</div></div></div>`;
+/* minimal clean row */
+function newsRow(n){
+  const a=isAlert(n);const when=n.published_at?timeAgo(n.published_at):'';
+  return `<div class="nrow ${a?'alert':''}" onclick="openNews('${(n.url||'').replace(/'/g,'')}')">
+    <span class="ndot">${a?'⚠':''}</span>
+    <div class="nbd"><div class="ntitle">${esc(n.title||'')}</div>${n.summary?`<div class="nsum">${esc(n.summary)}</div>`:''}<div class="nmeta">${esc(n.source||'')}${when?' · '+when:''}</div></div>
+  </div>`;
 }
 function openNews(url){if(url)window.open(url,'_blank','noopener');}
 async function renderHomeNews(){
   const box=document.getElementById('homeNews');if(!box)return;
   const list=_newsCache||await loadNews();
-  if(!list||!list.length){box.innerHTML=`<div class="empty" style="padding:18px 0;font-size:12.5px;color:var(--muted)">No trek news right now — check back soon.</div>`;return;}
-  box.innerHTML=list.slice(0,3).map(newsCard).join('');hydrate(box);
+  if(!list||!list.length){box.innerHTML=`<div class="empty" style="padding:14px 0;font-size:12.5px;color:var(--muted)">No trek updates right now.</div>`;return;}
+  const alerts=list.filter(isAlert),news=list.filter(n=>!isAlert(n));
+  /* alerts first (priority), then a couple of news */
+  const show=[...alerts.slice(0,3),...news.slice(0,2)];
+  box.innerHTML=show.map(newsRow).join('');hydrate(box);
+  checkAlerts(list);
 }
 async function renderNews(){
   const box=document.getElementById('newsList');if(!box)return;
-  box.innerHTML=`<div class="skel skel-card"></div><div class="skel skel-card"></div><div class="skel skel-card"></div>`;
+  box.innerHTML=`<div class="skel skel-card" style="height:54px"></div><div class="skel skel-card" style="height:54px"></div>`;
   const list=await loadNews();
-  box.innerHTML=(list&&list.length)?list.map(newsCard).join(''):`<div class="empty"><p>No trek news available right now. Fresh updates arrive a few times a day.</p></div>`;
-  hydrate(box);
+  if(!list||!list.length){box.innerHTML=`<div class="empty"><p>No trek updates right now. Fresh alerts arrive a few times a day.</p></div>`;return;}
+  const alerts=list.filter(isAlert),news=list.filter(n=>!isAlert(n));
+  let html='';
+  if(alerts.length)html+=`<div class="nsec">⚠ Alerts</div>`+alerts.map(newsRow).join('');
+  if(news.length)html+=`<div class="nsec" style="margin-top:18px">Trek News</div>`+news.map(newsRow).join('');
+  box.innerHTML=html;hydrate(box);
 }
+/* serious-alert notification: banner + chime when a NEW alert appears */
+function checkAlerts(list){
+  const alerts=(list||_newsCache||[]).filter(isAlert);
+  if(!alerts.length)return;
+  const newest=alerts[0];const seen=localStorage.getItem('tmk_alert_seen')||'';
+  if(newest.url&&newest.url!==seen){
+    showAlertBanner(newest);
+    try{playNotifSound();}catch(e){}
+  }
+}
+function showAlertBanner(n){
+  let b=document.getElementById('alertBanner');
+  if(!b){b=document.createElement('div');b.id='alertBanner';document.querySelector('.screen').appendChild(b);}
+  b.innerHTML=`<span class="msr" style="font-size:20px">warning</span><div class="ab-tx"><b>Trek Alert</b><span>${esc(n.title||'')}</span></div><button onclick="dismissAlert('${(n.url||'').replace(/'/g,'')}')">${ic('close',16)}</button>`;
+  b.className='show';hydrate(b);
+  b.onclick=function(e){if(e.target.closest('button'))return;openNews(n.url);};
+}
+function dismissAlert(url){try{localStorage.setItem('tmk_alert_seen',url);}catch(e){}const b=document.getElementById('alertBanner');if(b)b.className='';}
 function saveEnquiry(kind,detail){ if(!sbOn) return;
   fetch(SB.SUPABASE_URL+'/rest/v1/enquiries',{method:'POST',headers:sbHeaders({'Content-Type':'application/json',Prefer:'return=minimal'}),
     body:JSON.stringify({kind:kind,detail:detail})}).catch(()=>{});}
@@ -1775,7 +1805,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert});
 
 /* init */
 loadSocial();   /* follows, likes, your posts & comments */
