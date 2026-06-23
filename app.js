@@ -198,10 +198,11 @@ async function renderDetailNews(trekName){
 async function renderHomeNews(){
   const box=document.getElementById('homeNews');if(!box)return;
   const list=_newsCache||await loadNews();
-  if(!list||!list.length){box.innerHTML=`<div class="empty" style="padding:14px 0;font-size:12.5px;color:var(--muted)">No trek updates right now.</div>`;return;}
+  if(!list||!list.length){box.className='';box.innerHTML=`<div class="empty" style="padding:14px 0;font-size:12.5px;color:var(--muted)">No trek updates right now.</div>`;return;}
   const alerts=list.filter(isAlert),news=list.filter(n=>!isAlert(n));
-  /* alerts first (priority), then a couple of news */
-  const show=[...alerts.slice(0,3),...news.slice(0,2)];
+  /* alerts first (priority), then a couple of news — horizontal cards like Popular Treks */
+  const show=[...alerts.slice(0,3),...news.slice(0,3)];
+  box.className='news-hrow';
   box.innerHTML=show.map(newsCard).join('');hydrate(box);
   checkAlerts(list);
 }
@@ -943,8 +944,9 @@ function mediaItem(src){
 let likeCounts={},likedByMe={},commentCounts={};
 function postCard(p){
   const liked=!!likedByMe[p.id];const nc=commentCounts[p.id]||0;
-  const me=p.n==='You'||p.n===myName();const sn=p.n.replace(/'/g,'');
+  const me=p.n==='You'||p.n===myName()||(p.uid&&currentUser&&p.uid===currentUser.id);const sn=p.n.replace(/'/g,'');
   const media=p.imgs&&p.imgs.length?p.imgs:[];
+  const textOnly=!media.length&&p.txt;
   const likeCount=(likeCounts[p.id]||0);
   const dots=media.length>1?`<div class="car-dots">${media.map((_,i)=>`<span class="${i===0?'on':''}"></span>`).join('')}</div>`:'';
   const follow=(!me&&!isFollowing(p.n))?` · <span class="ig-follow" onclick="toggleFollow('${sn}')">Follow</span>`:'';
@@ -960,18 +962,19 @@ function postCard(p){
    </div>
    ${p.trek?`<div class="ig-trek" onclick="openDetailByName('${p.trek.replace(/'/g,'')}')">${ic('pin',13)} ${esc(p.trek)}</div>`:''}
    ${media.length?`<div class="car" ondblclick="dblLike('${p.id}',this)"><div class="car-track" onscroll="carScroll(this)">${media.map(mediaItem).join('')}</div>${dots}<div class="heart-burst">${ic('like',96)}</div></div>`:''}
+   ${textOnly?`<div class="ig-textpost">${esc(p.txt)}</div>`:''}
+   ${tagged}
    <div class="ig-actions">
      <div class="ig-left">
-       <span class="ig-ic ${liked?'liked':''}" onclick="likePost('${p.id}')">${ic('like',26)}</span>
-       <span class="ig-ic" onclick="openComments('${p.id}')">${ic('comment',26)}</span>
-       <span class="ig-ic" onclick="repostPost('${p.id}')" title="Repost to your feed">${ic('repeat',24)}</span>
+       <span class="ig-ic ${liked?'liked':''}" onclick="likePost('${p.id}')">${ic('like',24)}</span>
+       <span class="ig-ic" onclick="openComments('${p.id}')">${ic('comment',24)}</span>
+       <span class="ig-ic" onclick="repostPost('${p.id}')" title="Repost to your feed">${ic('repeat',22)}</span>
      </div>
-     <span class="ig-ic ig-save" onclick="note('Saved to your collection.','Saved')">${ic('starline',24)}</span>
+     <span class="ig-ic ig-save" onclick="note('Saved to your collection.','Saved')">${ic('starline',22)}</span>
    </div>
-   ${tagged}
    ${likeCount?`<div class="ig-likes">${likeCount.toLocaleString('en-IN')} like${likeCount>1?'s':''}</div>`:''}
-   ${p.txt?`<div class="ig-cap ${p.txt.length>120?'clamp':''}" onclick="this.classList.remove('clamp')"><b onclick="event.stopPropagation();openPerson('${sn}')">${p.n}</b> ${esc(p.txt)}</div>`:''}
-   ${nc?`<div class="ig-comments" onclick="openComments('${p.id}')">View all ${nc} comment${nc>1?'s':''}</div>`:`<div class="ig-comments" onclick="openComments('${p.id}')">Add a comment…</div>`}
+   ${(!textOnly&&p.txt)?`<div class="ig-cap ${p.txt.length>120?'clamp':''}" onclick="this.classList.remove('clamp')"><b onclick="event.stopPropagation();openPerson('${sn}')">${p.n}</b> ${esc(p.txt)}</div>`:''}
+   <div class="ig-comments" onclick="openComments('${p.id}')">${nc?`View all ${nc} comment${nc>1?'s':''}`:'Add a comment…'}</div>
    <div class="ig-time">${p.when}</div>
   </div>`;}
 /* Repost a post to your own community feed (stays in-app, no external share) */

@@ -306,6 +306,7 @@
   .post .car-dots span{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.5);transition:.2s}
   .post .car-dots span.on{background:var(--accent2);width:7px;height:7px}
   /* action row */
+  .post .ig-textpost{margin:2px 14px 6px;padding:14px 16px;background:rgba(255,255,255,.05);border:1px solid var(--stroke);border-radius:14px;font-size:14.5px;line-height:1.5;color:var(--text)}
   .post .ig-actions{display:flex;align-items:center;justify-content:space-between;padding:8px 12px 4px}
   .post .ig-left{display:flex;align-items:center;gap:14px}
   .post .ig-ic{cursor:pointer;color:var(--text);display:flex;transition:transform .12s}
@@ -590,6 +591,10 @@
   /* — trek news / alerts: cards with priority label above — */
   .nsec{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.3px;margin:0 2px 8px}
   .news-item{margin-bottom:16px}
+  /* home news as a horizontal card row (like Popular Treks) */
+  .news-hrow{display:flex;gap:14px;overflow-x:auto;scrollbar-width:none;margin:0 -18px;padding:2px 18px 8px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+  .news-hrow::-webkit-scrollbar{display:none}
+  .news-hrow .news-item{flex:0 0 82%;max-width:300px;scroll-snap-align:start;margin-bottom:0}
   .npri{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin:0 2px 6px}
   .npri.high{color:#ff7a4d}
   .npri.low{color:var(--accent2)}
