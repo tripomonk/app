@@ -525,6 +525,28 @@
   .dcard{box-shadow:0 26px 64px -24px rgba(0,0,0,.85)}
   .post{box-shadow:0 8px 24px -16px rgba(0,0,0,.6)}
 
+  /* — swipeable coverflow trek cards — */
+  .fcrow{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:0 -18px;padding:8px 0 18px}
+  .fcrow::-webkit-scrollbar{display:none}
+  .fcrow::before,.fcrow::after{content:"";flex:0 0 9%}
+  .fcx{flex:0 0 80%;scroll-snap-align:center;background:var(--card2);border:1px solid var(--stroke);border-radius:22px;overflow:hidden;cursor:pointer;
+    transform:scale(.9);opacity:.5;transition:transform .3s cubic-bezier(.2,.8,.3,1),opacity .3s;box-shadow:0 20px 44px -20px rgba(0,0,0,.85)}
+  .fcx.active{transform:scale(1);opacity:1}
+  .fcx-img{height:200px;background-size:cover;background-position:center;position:relative}
+  .fcx-bd{padding:14px 16px 16px}
+  .fcx-bd h3{margin:0;font-size:19px;letter-spacing:-.3px}
+  .fcx-loc{color:var(--muted);font-size:12.5px;display:flex;align-items:center;gap:4px;margin:5px 0 9px}
+  .fcx-desc{font-size:12.5px;color:var(--muted);line-height:1.5;margin-bottom:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .fcx-stats{display:flex;justify-content:space-between;gap:8px;border-top:1px solid var(--stroke);padding-top:12px}
+  .fcx-stats div{display:flex;flex-direction:column}
+  .fcx-stats small{font-size:10px;color:var(--muted2)}
+  .fcx-stats b{font-size:13px;margin-top:3px;font-weight:600}
+  .fcx-foot{display:flex;align-items:center;justify-content:space-between;margin-top:13px}
+  .fcx-foot small{font-size:10px;color:var(--muted2)}
+  .fcx-price{font-size:19px;font-weight:700;color:var(--accent2)}
+  .fcx-go{width:48px;height:48px;border-radius:50%;border:0;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;display:grid;place-items:center;cursor:pointer;box-shadow:0 10px 22px -6px rgba(47,107,255,.7)}
+  .fcx-go .msr{font-size:22px}
+
   /* — trek news / alerts: cards with priority label above — */
   .nsec{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.3px;margin:0 2px 8px}
   .news-item{margin-bottom:16px}

@@ -554,8 +554,35 @@ function trekCardH(t){return `<div class="hcard" onclick="openDetail(${t.idx})">
   <div class="hbd"><h3>${t.n}</h3><div class="reg">${ic('pin',12)} ${t.region}</div>
   <div class="rt"><span class="star">★</span> <b>${t.r}</b> <span style="color:var(--muted)">(${t.rev})</span></div>
   <div class="ft"><span class="tag">${ic('clock',12)} ${t.dur}</span><span class="tag">${t.lvl}</span></div></div></div>`;}
+/* swipeable coverflow card (centered card scales up, neighbours fade) */
+function featureCard(t){return `<div class="fcx" onclick="openDetail(${t.idx})">
+  <div class="fcx-img" style="background-image:url('${t.img}')">${t.soon?'<span class="soon">Coming Soon</span>':''}</div>
+  <div class="fcx-bd">
+    <h3>${esc(t.n)}</h3>
+    <div class="fcx-loc">${ic('pin',13)} ${esc(t.region)}</div>
+    <div class="fcx-desc">${esc(t.desc||'A beautiful Himalayan trek with Tripomonk.')}</div>
+    <div class="fcx-stats">
+      <div><small>Distance</small><b>${esc(t.dist||'—')}</b></div>
+      <div><small>Best time</small><b>${esc(t.best||'—')}</b></div>
+      <div><small>Rating</small><b>★ ${t.r}</b></div>
+    </div>
+    <div class="fcx-foot"><div><small>From</small><div class="fcx-price">₹${Number(t.price).toLocaleString('en-IN')}</div></div>
+      <button class="fcx-go" onclick="event.stopPropagation();openDetail(${t.idx})"><span class="msr">arrow_forward</span></button></div>
+  </div>
+</div>`;}
+function featureScroll(row){
+  const c=row.getBoundingClientRect(),mid=c.left+c.width/2;let best=null,bd=1e9;
+  row.querySelectorAll('.fcx').forEach(card=>{const r=card.getBoundingClientRect(),cm=r.left+r.width/2,d=Math.abs(cm-mid);if(d<bd){bd=d;best=card;}});
+  row.querySelectorAll('.fcx').forEach(c2=>c2.classList.toggle('active',c2===best));
+}
 function renderHome(){const list=homeFilter==='All'?treks:treks.filter(t=>t.lvl===homeFilter);
-  document.getElementById('homeList').innerHTML=list.length?list.map(trekCardH).join(''):'<div class="empty">No treks at this level yet.</div>';hydrate(document.getElementById('homeList'));}
+  const el=document.getElementById('homeList');
+  if(!list.length){el.className='hrow';el.innerHTML='<div class="empty">No treks at this level yet.</div>';return;}
+  el.className='fcrow';el.onscroll=()=>featureScroll(el);
+  el.innerHTML=list.map(featureCard).join('');
+  hydrate(el);
+  setTimeout(()=>featureScroll(el),60);
+}
 
 function renderExplore(){
   document.getElementById('regions').innerHTML=regions.map(r=>`<div class="region" onclick="filterByRegion('${r[0]}')"><div class="av" style="background-image:url('${r[1]+Q}')"></div><span>${r[0]}</span></div>`).join('');
@@ -1818,7 +1845,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,featureScroll});
 
 /* init */
 loadSocial();   /* follows, likes, your posts & comments */
