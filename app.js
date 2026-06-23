@@ -80,7 +80,7 @@ const IMAP={menu:'menu',bell:'notifications',search:'search',sliders:'tune',back
   raft:'kayaking',para:'paragliding',bungee:'sports',ski:'downhill_skiing',camp:'festival',kayak:'kayaking',
   cloud:'partly_cloudy_day',air:'air',temp:'device_thermostat',flame:'whatshot',hills:'landscape_2',
   monitor:'monitor_heart',spo2:'spo2',steps:'directions_walk',fire:'local_fire_department',speed:'speed',watch:'watch',
-  camera:'photo_camera',close:'close',photo:'image',powerbank:'battery_charging_full',trash:'delete',message:'send',lock2:'lock'};
+  camera:'photo_camera',close:'close',photo:'image',powerbank:'battery_charging_full',trash:'delete',message:'send',lock2:'lock',repeat:'repeat'};
 /* a few icons render poorly in the Material font — use crisp inline SVGs instead */
 const SVGIC={
   backpack:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9.5 3.2A2.5 2.5 0 0 1 14.5 3.2 6 6 0 0 1 18 8.6V19a2 2 0 0 1-2 2h-1v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5H8a2 2 0 0 1-2-2V8.6a6 6 0 0 1 3.5-5.4Zm.5.9A5 5 0 0 0 8.2 6h7.6A5 5 0 0 0 14 4.1a1.5 1.5 0 0 0-4 0ZM10 16h4v5h-4z"/><path d="M6 11H4.6a1.6 1.6 0 0 0-1.6 1.6V16h3zM18 11h1.4a1.6 1.6 0 0 1 1.6 1.6V16h-3z"/></svg>'
@@ -258,7 +258,8 @@ function saveLikes(){try{localStorage.setItem('tmk_likes',JSON.stringify(likeSta
 function savePosts(){try{localStorage.setItem('tmk_posts',JSON.stringify(userPosts));}catch(e){}}
 function saveComments(){try{const cm={};allPosts().forEach(p=>{if(p.comments&&p.comments.length)cm[p.id]=p.comments;});localStorage.setItem('tmk_comments',JSON.stringify(cm));}catch(e){}}
 function allPosts(){return userPosts.concat(feed);}
-function postById(id){return allPosts().find(p=>p.id===id);}
+let _lastFeed=[];
+function postById(id){return _lastFeed.find(p=>p.id===id)||allPosts().find(p=>p.id===id);}
 function isFollowing(n){return !!followState[n];}
 function followCount(){return Object.values(followState).filter(Boolean).length;}
 function toggleFollow(n){
@@ -826,9 +827,10 @@ function postCard(p){
   const likeCount=(likeCounts[p.id]||0);
   const dots=media.length>1?`<div class="car-dots">${media.map((_,i)=>`<span class="${i===0?'on':''}"></span>`).join('')}</div>`:'';
   const follow=(!me&&!isFollowing(p.n))?` · <span class="ig-follow" onclick="toggleFollow('${sn}')">Follow</span>`:'';
-  const more=me
-    ?`<span class="ig-more" onclick="deletePost('${p.id}')">${ic('trash',20)}</span>`
-    :`<span class="ig-more" onclick="sharePost('${p.id}','${sn}')">${ic('share',18)}</span>`;
+  const more=me?`<span class="ig-more" onclick="deletePost('${p.id}')">${ic('trash',20)}</span>`:'';
+  /* tagged trekkers chips */
+  const tagged=(p.tagged&&p.tagged.length)
+    ?`<div class="ig-tags">${ic('user',13)} with ${p.tagged.map(nm=>`<span class="ig-tagn" onclick="openPerson('${String(nm).replace(/'/g,'')}')">${esc(nm)}</span>`).join(', ')}</div>`:'';
   return `<div class="post">
    <div class="ig-head">
      <div class="ig-ava" onclick="openPerson('${sn}')">${avatar(p.n,34)}</div>
@@ -841,23 +843,30 @@ function postCard(p){
      <div class="ig-left">
        <span class="ig-ic ${liked?'liked':''}" onclick="likePost('${p.id}')">${ic('like',26)}</span>
        <span class="ig-ic" onclick="openComments('${p.id}')">${ic('comment',26)}</span>
-       <span class="ig-ic" onclick="sharePost('${p.id}','${sn}')">${ic('share',24)}</span>
+       <span class="ig-ic" onclick="repostPost('${p.id}')" title="Repost to your feed">${ic('repeat',24)}</span>
      </div>
      <span class="ig-ic ig-save" onclick="note('Saved to your collection.','Saved')">${ic('starline',24)}</span>
    </div>
+   ${tagged}
    ${likeCount?`<div class="ig-likes">${likeCount.toLocaleString('en-IN')} like${likeCount>1?'s':''}</div>`:''}
    ${p.txt?`<div class="ig-cap ${p.txt.length>120?'clamp':''}" onclick="this.classList.remove('clamp')"><b onclick="event.stopPropagation();openPerson('${sn}')">${p.n}</b> ${esc(p.txt)}</div>`:''}
    ${nc?`<div class="ig-comments" onclick="openComments('${p.id}')">View all ${nc} comment${nc>1?'s':''}</div>`:`<div class="ig-comments" onclick="openComments('${p.id}')">Add a comment…</div>`}
    <div class="ig-time">${p.when}</div>
   </div>`;}
-async function sharePost(id,author){
-  const url=window.location.origin+window.location.pathname+'#post='+id;
-  const data={title:'Tripomonk Community',text:'Check out '+author+'’s post on Tripomonk',url};
-  /* native share sheet (lets the user pick ANY app, not just WhatsApp) */
-  if(navigator.share){try{await navigator.share(data);return;}catch(e){if(e&&e.name==='AbortError')return;}}
-  /* fallback: copy the in-app link */
-  try{await navigator.clipboard.writeText(url);note('Post link copied — paste it anywhere to share.','Link copied');}
-  catch(e){note(url,'Share this link');}
+/* Repost a post to your own community feed (stays in-app, no external share) */
+async function repostPost(id){
+  if(!isLoggedIn()){note('Please sign in to repost.','Sign in required').then(()=>{_loginReturn='community';go('login');});return;}
+  const orig=postById(id);if(!orig){note('Post not found.','Error');return;}
+  if((orig.txt||'').startsWith('🔁')){note('This is already a repost.','Heads up');return;}
+  if(!(await askConfirm('Repost this to your community feed?','Repost')))return;
+  const authorName=getSavedName()||(getUserEmail()?getUserEmail().split('@')[0]:'You');
+  const post={id:'p'+Date.now(),uid:currentUser.id,n:authorName,when:'just now',
+    txt:'🔁 Reposted from '+orig.n+(orig.txt?': '+orig.txt.replace(/^🔁[^:]*:\s*/,''):''),
+    imgs:orig.imgs||[],likes:0,comments:[],trek:orig.trek||'',tagged:[]};
+  userPosts.unshift(post);savePosts();
+  await savePostRemote(post);
+  commTab='For You';renderFeed();
+  note('Reposted to your feed ✓');
 }
 function carScroll(track){
   const i=Math.round(track.scrollLeft/track.clientWidth);
@@ -894,6 +903,7 @@ async function renderFeed(){
   }
   if(commTab==='Following')list=list.filter(p=>isFollowing(p.n)||(p.n===(getSavedName()||'You')));
   if(commTab==='Recent')list=[...list].sort((a,b)=>b.id.localeCompare(a.id));
+  _lastFeed=list;
   await loadEngagement(list.map(p=>p.id));
   box.innerHTML=list.length?list.map(postCard).join(''):`<div class="empty"><p>No posts yet. Share your trek story!</p></div>`;
   hydrate(box);
@@ -978,7 +988,7 @@ async function savePostRemote(post){
   const sb=getSupaClient();if(!sb)return;
   const{error}=await sb.from('community_posts').insert({
     id:post.id,user_id:currentUser?currentUser.id:null,
-    author_name:post.n,txt:post.txt||'',imgs:post.imgs||[],likes:0,trek_tag:post.trek||null
+    author_name:post.n,txt:post.txt||'',imgs:post.imgs||[],likes:0,trek_tag:post.trek||null,tagged:post.tagged||[]
   });
   if(error)note('Post saved locally but could not sync: '+error.message,'Sync error');
 }
@@ -986,7 +996,7 @@ async function loadPostsRemote(){
   const sb=getSupaClient();if(!sb)return null;
   const{data,error}=await sb.from('community_posts').select('*').order('created_at',{ascending:false}).limit(60);
   if(error){console.error('loadPostsRemote:',error.message);return null;}
-  return(data||[]).map(p=>({id:p.id,uid:p.user_id||null,n:p.author_name||'Trekker',when:timeAgo(p.created_at),txt:p.txt||'',imgs:p.imgs||[],likes:p.likes||0,comments:[],trek:p.trek_tag||''}));
+  return(data||[]).map(p=>({id:p.id,uid:p.user_id||null,n:p.author_name||'Trekker',when:timeAgo(p.created_at),txt:p.txt||'',imgs:p.imgs||[],likes:p.likes||0,comments:[],trek:p.trek_tag||'',tagged:p.tagged||[]}));
 }
 function timeAgo(ts){
   const s=Math.floor((Date.now()-new Date(ts))/1000);
@@ -1060,7 +1070,22 @@ async function refreshNotifBadge(){
 }
 
 /* ---- Post composer ---- */
-let postImgs=[],postFileRefs=[];
+let postImgs=[],postFileRefs=[],postTags=[];
+function renderTagList(){
+  const box=document.getElementById('postTagList');if(!box)return;
+  const mine=myName();
+  const followed=people.filter(p=>isFollowing(p.n)&&p.n!==mine);
+  const others=people.filter(p=>!isFollowing(p.n)&&p.n!==mine);
+  const list=[...followed,...others];
+  if(!list.length){box.innerHTML='<span style="font-size:12px;color:var(--muted2)">Follow trekkers to tag them.</span>';return;}
+  box.innerHTML=list.map(p=>`<span class="tag-chip ${postTags.includes(p.n)?'on':''}" onclick="toggleTagPerson('${p.n.replace(/'/g,'')}')">${avatar(p.n,18)} ${esc(p.n)}</span>`).join('');
+  hydrate(box);
+}
+function toggleTagPerson(n){
+  const i=postTags.indexOf(n);
+  if(i>=0)postTags.splice(i,1);else postTags.push(n);
+  renderTagList();
+}
 function renderPostPics(){const box=document.getElementById('postPics');
   box.innerHTML=postImgs.map((src,i)=>{
     const isVid=src.startsWith('data:video');
@@ -1084,6 +1109,8 @@ function addPost(){
   /* populate trek tag dropdown */
   const sel=document.getElementById('postTrek');
   if(sel)sel.innerHTML='<option value="">📍 Tag a trek (optional)</option>'+treks.map(t=>`<option value="${esc(t.n)}">${esc(t.n)}</option>`).join('');
+  /* populate people-tag chips (people you follow first, then others) */
+  postTags=[];renderTagList();
   document.getElementById('postAddIc').innerHTML=ic('camera',18);hydrate(document.getElementById('postAddIc').parentElement);
   m.classList.add('show');setTimeout(()=>ta.focus(),80);
   function close(){m.classList.remove('show');files.onchange=ok.onclick=cn.onclick=m.onclick=null;ok.textContent='Post';ok.disabled=false;}
@@ -1102,7 +1129,7 @@ function addPost(){
     }
     const authorName=getSavedName()||( currentUser?( currentUser.email?currentUser.email.split('@')[0]:'Trekker'):'You');
     const trekTag=(document.getElementById('postTrek')||{}).value||'';
-    const post={id:'p'+Date.now(),uid:currentUser?currentUser.id:null,n:authorName,when:'just now',txt:txt||'',imgs:mediaUrls,likes:0,comments:[],trek:trekTag};
+    const post={id:'p'+Date.now(),uid:currentUser?currentUser.id:null,n:authorName,when:'just now',txt:txt||'',imgs:mediaUrls,likes:0,comments:[],trek:trekTag,tagged:postTags.slice()};
     userPosts.unshift(post);
     savePosts();
     await savePostRemote(post);
@@ -1526,12 +1553,13 @@ async function bookActivity(name,priceStr){
   const amount=parseInt(String(priceStr).replace(/[^\d]/g,''))||0;
   if(amount<1){note('This activity is not bookable online yet — please contact us.','Unavailable');return;}
   if(!isLoggedIn()){note('Please sign in to book this activity.','Sign in required').then(()=>{_loginReturn='activities';go('login');});return;}
-  if(!window.Razorpay){note('Payment gateway is loading — please wait a moment and try again.','Please wait');return;}
+  if(!window.Razorpay){note('Payment gateway is still loading — please wait a few seconds and tap Book again.','Please wait');return;}
   if(!sbOn){note('Payment service not configured. Please contact Tripomonk.','Payment error');return;}
   const leadName=getSavedName()||(getUserEmail()?getUserEmail().split('@')[0]:'Guest');
   let order;
-  try{order=await rzpCall('create',{amount:amount*100,currency:'INR'});}catch(e){order=null;}
-  if(!order||!order.order_id){note((order&&order.error)?order.error:'Could not start payment. Please try again.','Payment error');return;}
+  try{order=await rzpCall('create',{amount:amount*100,currency:'INR'});}
+  catch(e){note('Could not reach payment service: '+e,'Payment error');return;}
+  if(!order||!order.order_id){note('Could not start payment — '+((order&&order.error)?order.error:'no order returned')+' (amount ₹'+amount+')','Payment error');return;}
   const rzp=new window.Razorpay({
     key:order.key_id, order_id:order.order_id, amount:order.amount, currency:order.currency||'INR',
     name:'Tripomonk', description:name+' — Adventure Activity', image:'icons/icon-192.png',
@@ -1697,7 +1725,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,sharePost,openNews,dblLike,openDetailByName});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,dblLike,openDetailByName,toggleTagPerson});
 
 /* init */
 loadSocial();   /* follows, likes, your posts & comments */

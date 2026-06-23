@@ -300,6 +300,11 @@
   .post .ig-save{color:var(--text)}
   .post .ig-likes{padding:2px 12px;font-size:13px;font-weight:600}
   .post .ig-trek{display:inline-flex;align-items:center;gap:4px;margin:0 12px 8px;font-size:11.5px;font-weight:600;color:var(--accent2);background:rgba(47,107,255,.14);padding:5px 10px;border-radius:999px;cursor:pointer}
+  .post .ig-tags{padding:2px 12px 2px;font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+  .post .ig-tags .ig-tagn{color:var(--accent2);font-weight:600;cursor:pointer}
+  .tag-list{display:flex;flex-wrap:wrap;gap:7px;max-height:120px;overflow-y:auto}
+  .tag-list .tag-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid var(--stroke);font-size:12.5px;cursor:pointer;color:var(--muted)}
+  .tag-list .tag-chip.on{background:rgba(47,107,255,.18);border-color:var(--accent);color:#fff}
   .post .ig-cap{padding:3px 12px;font-size:13px;line-height:1.5}
   .post .ig-cap b{font-weight:600;cursor:pointer;margin-right:5px}
   .post .ig-cap.clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
@@ -1082,7 +1087,8 @@
       <textarea id="postText" placeholder="How was your trek?"></textarea>
       <div class="post-pics" id="postPics"></div>
       <label class="post-add"><input type="file" id="postFiles" accept="image/*,video/*" multiple hidden/><span id="postAddIc"></span> Add photos / video</label>
-      <div class="field" style="margin-bottom:14px"><div class="inp"><span class="msr" style="font-size:18px;color:var(--accent2);margin-right:6px">location_on</span><select id="postTrek" style="all:unset;flex:1;color:var(--text);font-size:14px"></select></div></div>
+      <div class="field" style="margin-bottom:12px"><div class="inp"><span class="msr" style="font-size:18px;color:var(--accent2);margin-right:6px">location_on</span><select id="postTrek" style="all:unset;flex:1;color:var(--text);font-size:14px"></select></div></div>
+      <div style="margin-bottom:14px"><div style="font-size:12px;color:var(--muted);margin-bottom:7px">Tag trekkers</div><div id="postTagList" class="tag-list"></div></div>
       <div class="modal-actions"><button class="btn ghost" id="postCancel">Cancel</button><button class="btn" id="postOk">Post</button></div>
     </div>
   </div>
