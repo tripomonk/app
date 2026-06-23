@@ -604,6 +604,14 @@
   .ncard p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .ncard .nmeta{font-size:10.5px;color:var(--muted2);margin-top:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
   .ncard .nchip{display:inline-flex;align-items:center;gap:3px;color:var(--accent2);background:rgba(47,107,255,.14);padding:2px 7px;border-radius:6px;font-weight:600;font-size:10px}
+  /* news detail popup */
+  #newsModal .news-card{max-width:360px;padding:0;overflow:hidden;position:relative}
+  #newsModal .nm-img{height:180px;background-size:cover;background-position:center;background-color:#12243c}
+  #newsModal .nm-x{position:absolute;top:10px;right:10px;width:32px;height:32px;border-radius:50%;border:0;background:rgba(0,0,0,.5);color:#fff;font-size:20px;line-height:1;cursor:pointer;backdrop-filter:blur(4px)}
+  #newsModal .nm-body{padding:16px 18px 18px}
+  #newsModal .nm-body h3{margin:6px 0 6px;font-size:17px;line-height:1.3}
+  #newsModal .nm-meta{font-size:11px;color:var(--muted2);margin-bottom:10px}
+  #newsModal .nm-body p{font-size:13.5px;color:var(--muted);line-height:1.65;margin:0 0 16px}
   /* serious-alert banner */
   #alertBanner{position:absolute;left:10px;right:10px;top:calc(var(--safe-top) + 10px);z-index:300;display:none;align-items:center;gap:10px;
     background:linear-gradient(135deg,#b8521a,#d9701f);color:#fff;border-radius:14px;padding:11px 12px;box-shadow:0 12px 30px rgba(0,0,0,.5);animation:abIn .35s ease}
@@ -1155,6 +1163,21 @@
       <p id="modalSub" style="display:none"></p>
       <input id="modalInput" autocomplete="off"/>
       <div class="modal-actions"><button class="btn ghost" id="modalCancel">Cancel</button><button class="btn" id="modalOk">OK</button></div>
+    </div>
+  </div>
+
+  <!-- NEWS DETAIL -->
+  <div class="modal" id="newsModal">
+    <div class="modal-card news-card">
+      <div class="nm-img" id="nmImg"></div>
+      <button class="nm-x" id="nmClose">×</button>
+      <div class="nm-body">
+        <span class="npri" id="nmPri"></span>
+        <h3 id="nmTitle"></h3>
+        <div class="nm-meta" id="nmMeta"></div>
+        <p id="nmText"></p>
+        <button class="btn" id="nmOpen"><span class="ic" data-i="globe"></span> Read full article</button>
+      </div>
     </div>
   </div>
 

@@ -167,12 +167,26 @@ function newsCard(n){
   const img=n.image?`<div class="nimg" style="background-image:url('${n.image}')"></div>`:'';
   const trekChip=n.trek?`<span class="nchip">${ic('pin',11)} ${esc(n.trek)}</span>`:'';
   return `<div class="news-item">${pri}
-    <div class="ncard ${a?'alert':''}" onclick="openNews('${(n.url||'').replace(/'/g,'')}')">
+    <div class="ncard ${a?'alert':''}" onclick="openNewsDetail('${(n.url||'').replace(/'/g,'')}')">
       ${img}
       <div class="nbody"><h4>${esc(n.title||'')}</h4>${n.summary?`<p>${esc(n.summary)}</p>`:''}<div class="nmeta">${trekChip}${esc(n.source||'')}${when?' · '+when:''}</div></div>
     </div></div>`;
 }
 function openNews(url){if(url)window.open(url,'_blank','noopener');}
+function openNewsDetail(url){
+  const n=(_newsCache||[]).find(x=>x.url===url);if(!n){openNews(url);return;}
+  const a=isAlert(n);const g=id=>document.getElementById(id);
+  const img=g('nmImg');
+  if(n.image){img.style.display='';img.style.backgroundImage=`url('${n.image}')`;}else img.style.display='none';
+  g('nmPri').className='npri '+(a?'high':'low');g('nmPri').innerHTML=a?`${ic('alert',13)} High priority`:`${ic('bell',13)} Trek update`;
+  g('nmTitle').textContent=n.title||'';
+  g('nmMeta').textContent=(n.trek?n.trek+' · ':'')+(n.source||'')+(n.published_at?' · '+timeAgo(n.published_at):'');
+  g('nmText').textContent=n.summary||'Open the full article for details.';
+  g('nmOpen').onclick=()=>openNews(n.url);
+  const m=g('newsModal');m.classList.add('show');hydrate(m);
+  g('nmClose').onclick=()=>m.classList.remove('show');
+  m.onclick=e=>{if(e.target===m)m.classList.remove('show');};
+}
 async function renderDetailNews(trekName){
   const blk=document.getElementById('dNewsBlk'),box=document.getElementById('dNews');if(!box)return;
   const list=_newsCache||await loadNews();
@@ -217,7 +231,7 @@ function showAlertBanner(n){
   if(!b){b=document.createElement('div');b.id='alertBanner';document.querySelector('.screen').appendChild(b);}
   b.innerHTML=`<span class="msr" style="font-size:20px">warning</span><div class="ab-tx"><b>Trek Alert</b><span>${esc(n.title||'')}</span></div><button onclick="dismissAlert('${(n.url||'').replace(/'/g,'')}')">${ic('close',16)}</button>`;
   b.className='show';hydrate(b);
-  b.onclick=function(e){if(e.target.closest('button'))return;openNews(n.url);};
+  b.onclick=function(e){if(e.target.closest('button'))return;openNewsDetail(n.url);};
 }
 function dismissAlert(url){try{localStorage.setItem('tmk_alert_seen',url);}catch(e){}const b=document.getElementById('alertBanner');if(b)b.className='';}
 function saveEnquiry(kind,detail){ if(!sbOn) return;
@@ -1902,7 +1916,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard});
 
 /* init */
 loadSocial();   /* follows, likes, your posts & comments */
