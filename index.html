@@ -565,12 +565,10 @@
   .hhero .hh-price{position:absolute;top:14px;right:14px;z-index:1;background:rgba(0,0,0,.4);backdrop-filter:blur(6px);color:#fff;font-weight:700;font-size:13px;padding:6px 11px;border-radius:999px}
 
   /* — 3D swipe coverflow (cards stay in flow so they always render; tilt on scroll) — */
-  .coverflow{display:flex;gap:8px;overflow-x:auto;overflow-y:visible;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:0 -18px;padding:26px 0 22px;min-height:390px}
+  .coverflow{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:0 -18px;padding:4px 18px 14px}
   .coverflow::-webkit-scrollbar{display:none}
-  .coverflow::before,.coverflow::after{content:"";flex:0 0 13%}
-  .coverflow .fcx{flex:0 0 74%;max-width:300px;min-height:350px;scroll-snap-align:center;border-radius:22px;overflow:hidden;cursor:pointer;
-    background:var(--card2);border:1px solid var(--stroke);box-shadow:0 18px 40px -18px rgba(0,0,0,.85);
-    transform-origin:center center;transition:transform .14s ease-out,opacity .14s ease-out}
+  .coverflow .fcx{flex:0 0 82%;max-width:330px;scroll-snap-align:center;border-radius:20px;overflow:hidden;cursor:pointer;
+    background:var(--card2);border:1px solid var(--stroke);box-shadow:0 12px 30px -16px rgba(0,0,0,.7)}
   .cf-dots{display:none}
   .fcx-img.act{height:170px;display:grid;place-items:center;background:linear-gradient(150deg,#0b5cff,#0a3aa0)}
   .fcx-img.act .act-ic{font-size:64px;color:rgba(255,255,255,.92)}

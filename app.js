@@ -596,22 +596,6 @@ function actCardCF(a,i){return `<div class="fcx" data-i="${i}" onclick="cfTapCar
   </div></div>`;}
 function cfTapCard(card){const el=card.closest('.coverflow');if(!el||!el._cf)return;const i=+card.dataset.i;el._cf.open(el._cf.list[i],i);}
 function cfOpenCard(btn){const card=btn.closest('.fcx'),el=card.closest('.coverflow'),i=+card.dataset.i;el._cf.open(el._cf.list[i],i);}
-/* 3D tilt driven by scroll position — cards remain in normal flow (always render) */
-function cfScroll(el){
-  const rc=el.getBoundingClientRect(),mid=rc.left+rc.width/2;
-  el.querySelectorAll('.fcx').forEach(card=>{
-    const r=card.getBoundingClientRect(),cm=r.left+r.width/2;
-    const delta=(cm-mid)/r.width;            /* 0 centred, ±1 one card away */
-    const ad=Math.min(Math.abs(delta),2.4);
-    const rotY=Math.max(-42,Math.min(42,-delta*34));
-    const scale=Math.max(0.78,1-ad*0.15);
-    const ty=ad*18;
-    /* per-card perspective() in the transform is reliable on Android */
-    card.style.transform=`perspective(1000px) translateY(${ty}px) rotateY(${rotY}deg) scale(${scale})`;
-    card.style.opacity=String(Math.max(0.5,1-ad*0.3));
-    card.style.zIndex=String(100-Math.round(ad*10));
-  });
-}
 function makeCoverflow(elId,list,cardFn,openFn){
   const el=document.getElementById(elId);if(!el)return;
   if(!list.length){el.className='';el.innerHTML='<div class="empty"><p>Nothing here yet.</p></div>';return;}
@@ -619,10 +603,6 @@ function makeCoverflow(elId,list,cardFn,openFn){
   el.className='coverflow';
   el.innerHTML=list.map((it,i)=>cardFn(it,i)).join('');
   hydrate(el);
-  el.onscroll=()=>cfScroll(el);
-  const center=()=>{const c=el.querySelector('.fcx');if(c)el.scrollLeft=c.offsetLeft-(el.clientWidth-c.offsetWidth)/2;cfScroll(el);};
-  requestAnimationFrame(center);
-  setTimeout(center,160);
 }
 function renderHomeHero(){
   const box=document.getElementById('homeHero');if(!box)return;
@@ -637,11 +617,8 @@ function renderHomeHero(){
   hydrate(box);
   const go=box.querySelector('.hh-go .msr');if(go)go.style.transform='scaleX(-1)';
 }
-const APP_VER='v95';
 function renderHome(){
   renderHomeHero();
-  const g=document.querySelector('#home .greet');
-  if(g)g.innerHTML='Hello, Explorer! 👋 <span style="opacity:.35;font-size:10px">'+APP_VER+' · '+treks.length+' treks</span>';
   const list=homeFilter==='All'?treks:treks.filter(t=>t.lvl===homeFilter);
   const el=document.getElementById('homeList');
   if(!list.length){el.className='hrow';el.innerHTML='<div class="empty">No treks at this level yet.</div>';return;}
