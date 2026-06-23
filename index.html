@@ -532,12 +532,13 @@
   .post{box-shadow:0 8px 24px -16px rgba(0,0,0,.6)}
 
   /* — swipeable coverflow trek cards — */
-  .fcrow{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:0 -18px;padding:8px 0 18px}
+  .fcrow{display:flex;gap:0;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:0 -18px;padding:30px 0 24px;perspective:1100px}
   .fcrow::-webkit-scrollbar{display:none}
-  .fcrow::before,.fcrow::after{content:"";flex:0 0 9%}
-  .fcx{flex:0 0 80%;scroll-snap-align:center;background:var(--card2);border:1px solid var(--stroke);border-radius:22px;overflow:hidden;cursor:pointer;
-    transform:scale(.9);opacity:.5;transition:transform .3s cubic-bezier(.2,.8,.3,1),opacity .3s;box-shadow:0 20px 44px -20px rgba(0,0,0,.85)}
-  .fcx.active{transform:scale(1);opacity:1}
+  .fcrow::before,.fcrow::after{content:"";flex:0 0 14%}
+  .fcx{flex:0 0 72%;scroll-snap-align:center;background:var(--card2);border:1px solid var(--stroke);border-radius:24px;overflow:hidden;cursor:pointer;
+    transform-origin:center center;transition:transform .2s ease-out,opacity .2s ease-out,box-shadow .2s;will-change:transform,opacity;
+    box-shadow:0 20px 44px -20px rgba(0,0,0,.85)}
+  .fcx.active{box-shadow:0 32px 60px -22px rgba(0,0,0,.95)}
   .fcx-img{height:200px;background-size:cover;background-position:center;position:relative}
   .fcx-bd{padding:14px 16px 16px}
   .fcx-bd h3{margin:0;font-size:19px;letter-spacing:-.3px}

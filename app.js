@@ -571,9 +571,22 @@ function featureCard(t){return `<div class="fcx" onclick="openDetail(${t.idx})">
   </div>
 </div>`;}
 function featureScroll(row){
-  const c=row.getBoundingClientRect(),mid=c.left+c.width/2;let best=null,bd=1e9;
-  row.querySelectorAll('.fcx').forEach(card=>{const r=card.getBoundingClientRect(),cm=r.left+r.width/2,d=Math.abs(cm-mid);if(d<bd){bd=d;best=card;}});
-  row.querySelectorAll('.fcx').forEach(c2=>c2.classList.toggle('active',c2===best));
+  const rc=row.getBoundingClientRect(),mid=rc.left+rc.width/2;
+  let best=null,bd=1e9;const cards=[...row.querySelectorAll('.fcx')];
+  cards.forEach(card=>{
+    const r=card.getBoundingClientRect(),cm=r.left+r.width/2;
+    const delta=(cm-mid)/r.width;        /* 0 = centred, ±1 = a card away */
+    const ad=Math.min(Math.abs(delta),3);
+    const rotY=Math.max(-42,Math.min(42,-delta*34)); /* tilt toward centre */
+    const scale=Math.max(0.74,1-ad*0.17);
+    const ty=ad*26;                       /* neighbours sit lower */
+    const tx=-delta*26;                   /* pull inward so they overlap */
+    card.style.transform=`translateX(${tx}px) translateY(${ty}px) rotateY(${rotY}deg) scale(${scale})`;
+    card.style.opacity=String(Math.max(0.45,1-ad*0.32));
+    card.style.zIndex=String(100-Math.round(ad*10));
+    const d=Math.abs(cm-mid);if(d<bd){bd=d;best=card;}
+  });
+  cards.forEach(c=>c.classList.toggle('active',c===best));
 }
 function renderHome(){const list=homeFilter==='All'?treks:treks.filter(t=>t.lvl===homeFilter);
   const el=document.getElementById('homeList');
