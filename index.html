@@ -539,8 +539,7 @@
   .tcard:active,.hcard:active,.bigcard:active,.diffc:active,.gitem:active,.batch:active,.fcard:active{transform:translateY(1px) scale(.99)}
 
   /* ===== LIVELY ANIMATIONS ===== */
-  /* aurora glow drifting behind the home greeting */
-  #home{position:relative}
+  /* aurora glow drifting behind the home greeting (.view is already positioned) */
   #home::before{content:"";position:absolute;top:-40px;left:-30%;width:160%;height:240px;z-index:-1;pointer-events:none;
     background:radial-gradient(circle at 30% 40%,rgba(47,107,255,.25),transparent 60%),radial-gradient(circle at 70% 30%,rgba(255,206,31,.14),transparent 55%);
     filter:blur(18px);animation:aurora 12s ease-in-out infinite alternate}
@@ -554,10 +553,6 @@
   /* "few seats left" + news alerts pulse to create urgency */
   .batch .bd .s.few,.ncard .ntag.alert{animation:softpulse 1.8s ease-in-out infinite}
   @keyframes softpulse{0%,100%{opacity:1}50%{opacity:.55}}
-  /* quick-action tiles: gentle float (staggered) */
-  .quick .qa{animation:qfloat 4s ease-in-out infinite}
-  .quick .qa:nth-child(2){animation-delay:.5s}.quick .qa:nth-child(3){animation-delay:1s}.quick .qa:nth-child(4){animation-delay:1.5s}
-  @keyframes qfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
   /* live dot on notification bell when there's activity */
   #notifDot{animation:livedot 1.6s ease-in-out infinite}
   @keyframes livedot{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.35);opacity:.7}}
@@ -777,6 +772,7 @@
       <h1 style="font-size:23px;margin:0 0 8px">Booking Confirmed!</h1>
       <p style="color:var(--muted);font-size:13px;margin:0 24px 22px">Your seat on <b id="scName" style="color:var(--text)"></b> is reserved. Details sent to your WhatsApp &amp; email.</p></div>
     <button class="btn" onclick="go('ticket')">View E-Ticket</button>
+    <button class="btn ghost" style="margin-top:11px" onclick="go('packing')"><span class="ic" data-i="list"></span> View Packing List</button>
     <button class="btn ghost" style="margin-top:11px" onclick="go('home')">Back to Home</button>
   </section>
 
@@ -792,7 +788,8 @@
       <div class="tkg"><div><div class="k">BOOKING ID</div><div class="v" id="tkId"></div></div><div><div class="k">DATE</div><div class="v" id="tkDate"></div></div>
         <div><div class="k">TREKKERS</div><div class="v" id="tkPax"></div></div><div><div class="k">PAID</div><div class="v" id="tkPaid"></div></div></div>
     </div>
-    <button class="btn" style="margin-top:16px" onclick="wa('Hi Tripomonk, about my booking '+(cart.booking?cart.booking.id:''))"><span class="ic" data-i="chat"></span> Chat with Coordinator</button>
+    <button class="btn" style="margin-top:16px" onclick="go('packing')"><span class="ic" data-i="list"></span> Packing List for this Trek</button>
+    <button class="btn ghost" style="margin-top:11px" onclick="wa('Hi Tripomonk, about my booking '+(cart.booking?cart.booking.id:''))"><span class="ic" data-i="chat"></span> Chat with Coordinator</button>
   </section>
 
   <!-- COMMUNITY -->
