@@ -143,7 +143,7 @@ async function loadTreks(){ if(!sbOn) return;
     if(!r.ok) return; const rows=await r.json(); if(!rows||!rows.length) return;
     treks.length=0;
     rows.forEach(d=>treks.push({n:d.name,region:d.region,img:d.img,r:d.rating,rev:d.reviews,lvl:d.level,days:d.days,
-      alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,_id:d.id}));
+      alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,packing:d.packing||null,_id:d.id}));
     deriveTreks();
     renderHomeChips(); renderHome(); renderQuick();
     if(cur==='explore') renderExplore();
@@ -1209,10 +1209,24 @@ async function renderPerson(){if(!curPerson){go('community');return;}const p=get
     <div class="sec-h" style="margin:18px 4px 8px"><b>Posts</b></div>
     ${posts.length?`<div class="pgrid">${posts.map(gridCell).join('')}</div>`:`<div class="empty"><p>${me?'You have not posted yet.':'No posts yet.'}</p></div>`}`;
   hydrate(body);}
-let pkTab='Essentials',pkDone={};
+let pkTab='Essentials',pkDone={},pkTrek='';
+/* per-trek packing: a trek's custom list (stored on the trek) or the default */
+function getPacking(trekName){
+  const t=treks.find(x=>x.n===trekName);
+  if(t&&t.packing&&typeof t.packing==='object'&&Object.keys(t.packing).length){
+    const out={};Object.keys(t.packing).forEach(k=>{out[k]=(t.packing[k]||[]).map(it=>Array.isArray(it)?it:['check',String(it)]);});
+    return out;
+  }
+  return packing;
+}
 function renderPacking(){
-  document.getElementById('pkTabs').innerHTML=Object.keys(packing).map(k=>`<div class="chip pill ${k===pkTab?'on':''}" onclick="setPk('${k}')">${k}</div>`).join('');
-  document.getElementById('pkList').innerHTML=packing[pkTab].map((it,i)=>{const key=pkTab+i;return `<div class="pk ${pkDone[key]?'done':''}" onclick="togPk('${key}')"><span class="ic">${ic(it[0],20)}</span><span class="t">${it[1]}</span><span class="box">${ic('check',14)}</span></div>`;}).join('');
+  if(!pkTrek&&cart.trek)pkTrek=cart.trek.n;
+  const data=getPacking(pkTrek);
+  const cats=Object.keys(data);
+  if(!cats.includes(pkTab))pkTab=cats[0]||'Essentials';
+  const lbl=document.getElementById('pkTrekName');if(lbl)lbl.textContent=pkTrek?('For '+pkTrek):'';
+  document.getElementById('pkTabs').innerHTML=cats.map(k=>`<div class="chip pill ${k===pkTab?'on':''}" onclick="setPk('${k}')">${k}</div>`).join('');
+  document.getElementById('pkList').innerHTML=(data[pkTab]||[]).map((it,i)=>{const key=pkTrek+pkTab+i;return `<div class="pk ${pkDone[key]?'done':''}" onclick="togPk('${key.replace(/'/g,'')}')"><span class="ic">${ic(it[0],20)}</span><span class="t">${esc(it[1])}</span><span class="box">${ic('check',14)}</span></div>`;}).join('')||'<div class="empty"><p>No packing items for this trek yet.</p></div>';
   hydrate(document.getElementById('packing'));
 }
 function setPk(k){pkTab=k;renderPacking();}
@@ -1416,15 +1430,51 @@ async function sbWriteChecked(method,path,body){
     return true;
   }catch(e){note('Network error saving: '+e,'Save failed');return false;}
 }
-function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc};}
+function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null};}
 let editIdx=-1, adminTab='Treks', depTrek=null;
 function renderAdmin(){
-  document.getElementById('adminTabs').innerHTML=['Bookings','Treks','Departures','Settings'].map(x=>`<div class="chip pill ${x===adminTab?'on':''}" onclick="setAdminTab('${x}')">${x}</div>`).join('');
+  document.getElementById('adminTabs').innerHTML=['Bookings','Treks','Departures','Packing','Settings'].map(x=>`<div class="chip pill ${x===adminTab?'on':''}" onclick="setAdminTab('${x}')">${x}</div>`).join('');
   const f=document.getElementById('adminForm'); if(f){f.style.display='none';f.innerHTML='';}
   if(adminTab==='Bookings')renderAdminBookings();
   else if(adminTab==='Treks')renderAdminTreks();
   else if(adminTab==='Departures')renderDepartures();
+  else if(adminTab==='Packing')renderAdminPacking();
   else renderAdminSettings();
+}
+/* ---- admin: per-trek packing editor ---- */
+const PK_CATS=['Essentials','Clothing','Gear','Others'];
+let pkAdminTrek=null,_pkEdit=null,_pkEditTrek=null;
+function loadPkEdit(trekName){
+  const data=getPacking(trekName);const out={};
+  PK_CATS.forEach(c=>{out[c]=(data[c]||[]).map(it=>Array.isArray(it)?it[1]:String(it));});
+  return out;
+}
+function renderAdminPacking(){
+  const box=document.getElementById('adminBody');
+  const sel=pkAdminTrek||((treks.find(t=>!t.soon)||treks[0]||{}).n);pkAdminTrek=sel;
+  if(!_pkEdit||_pkEditTrek!==sel){_pkEdit=loadPkEdit(sel);_pkEditTrek=sel;}
+  const opts=treks.map(t=>`<option ${t.n===sel?'selected':''}>${esc(t.n)}</option>`).join('');
+  box.innerHTML=`
+    <div class="field"><label>Trek</label><div class="inp"><select onchange="pkAdminTrek=this.value;_pkEdit=null;renderAdminPacking()" style="all:unset;flex:1;color:var(--text)">${opts}</select></div></div>
+    ${!adminKey()?'<div class="note2" style="margin-bottom:12px;color:#ffb24d">Add your service_role key in Settings to save for everyone.</div>':''}
+    ${PK_CATS.map(c=>`
+      <div class="panel" style="margin-bottom:12px">
+        <b style="display:block;margin-bottom:8px">${c}</b>
+        ${(_pkEdit[c]||[]).map((it,i)=>`<div class="mrow" style="cursor:default;padding:9px 12px"><span class="t">${esc(it)}</span><span class="ic" onclick="pkDelItem('${c}',${i})" style="color:#ff7a7a;cursor:pointer">${ic('close',16)}</span></div>`).join('')||'<div class="note2" style="margin-bottom:8px">No items.</div>'}
+        <div class="inp" style="margin-top:8px"><input id="pkAdd_${c}" placeholder="Add item to ${c}" style="all:unset;flex:1;color:var(--text)"><span class="ic" onclick="pkAddItem('${c}')" style="color:var(--accent2);cursor:pointer">${ic('plus',18)}</span></div>
+      </div>`).join('')}
+    <button class="btn" onclick="savePackingAdmin()">Save packing list for ${esc(sel)}</button>`;
+  hydrate(box);
+}
+function pkAddItem(cat){const inp=document.getElementById('pkAdd_'+cat);const v=(inp.value||'').trim();if(!v)return;_pkEdit[cat]=_pkEdit[cat]||[];_pkEdit[cat].push(v);renderAdminPacking();}
+function pkDelItem(cat,i){_pkEdit[cat].splice(i,1);renderAdminPacking();}
+async function savePackingAdmin(){
+  const t=treks.find(x=>x.n===pkAdminTrek);if(!t){note('Trek not found.');return;}
+  t.packing=_pkEdit;
+  if(!sbOn){note('Saved on this device only (Supabase not connected).');return;}
+  if(!t._id){note('This trek isn’t in the database yet — save it in the Treks tab first.','Cannot save');return;}
+  const ok=await sbWriteChecked('PATCH','treks?id=eq.'+t._id,{packing:_pkEdit});
+  if(ok){await loadTreks();note('Packing list saved for '+pkAdminTrek+' ✓');}
 }
 async function renderAdminBookings(){
   const box=document.getElementById('adminBody');
@@ -1685,7 +1735,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='peopleSearch'){_peoplePool=null;setTimeout(()=>{const i=document.getElementById('peopleSearchInput');if(i){i.value='';i.focus();}searchPeople('');},80);}
   if(id==='news')renderNews();
   if(id==='passport')renderPassport();
-  if(id==='packing')renderPacking();
+  if(id==='packing'){pkTrek=(cart.trek&&cart.trek.n)||pkTrek||'';renderPacking();}
   if(id==='bookings')renderBookings();
   if(id==='wishlist')renderWishlist();
   if(id==='profile')renderProfile();
@@ -1725,7 +1775,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,dblLike,openDetailByName,toggleTagPerson});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin});
 
 /* init */
 loadSocial();   /* follows, likes, your posts & comments */
