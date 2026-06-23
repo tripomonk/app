@@ -606,8 +606,9 @@ function makeCoverflow(elId,list,cardFn,openFn){
   el.innerHTML=list.map((it,i)=>cardFn(it,i)).join('');
   hydrate(el);
   el.onscroll=()=>cfScroll(el);
-  requestAnimationFrame(()=>cfScroll(el));
-  setTimeout(()=>cfScroll(el),120);
+  const center=()=>{const c=el.querySelector('.fcx');if(c)el.scrollLeft=c.offsetLeft-(el.clientWidth-c.offsetWidth)/2;cfScroll(el);};
+  requestAnimationFrame(center);
+  setTimeout(center,160);
 }
 function renderHomeHero(){
   const box=document.getElementById('homeHero');if(!box)return;

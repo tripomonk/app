@@ -30,7 +30,7 @@
     --font:'Poppins',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{margin:0;height:100%;overscroll-behavior:none}
+  html,body{margin:0;height:100%;overscroll-behavior:none;overflow-x:hidden;max-width:100%}
   body{font-family:var(--font);color:var(--text);background:#06101c;display:flex;align-items:center;justify-content:center}
   /* max thickness = semibold (600); never bold */
   h1,h2,h3,h4,h5,b,strong{font-weight:600}
@@ -86,7 +86,7 @@
   .msr{font-family:'Material Symbols Rounded';font-weight:400;font-style:normal;line-height:1;white-space:nowrap;direction:ltr;display:inline-block;vertical-align:middle;overflow:hidden;max-width:1.4em;
     font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24;-webkit-font-smoothing:antialiased}
 
-  .view{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;display:none;
+  .view{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;display:none;
     padding:calc(var(--safe-top) + 16px) 18px calc(var(--safe-bottom) + 92px)}
   .view::-webkit-scrollbar{display:none}
   .view.active{display:block;animation:in .4s cubic-bezier(.22,.9,.3,1)}
@@ -565,7 +565,7 @@
   .hhero .hh-price{position:absolute;top:14px;right:14px;z-index:1;background:rgba(0,0,0,.4);backdrop-filter:blur(6px);color:#fff;font-weight:700;font-size:13px;padding:6px 11px;border-radius:999px}
 
   /* — 3D swipe coverflow (cards stay in flow so they always render; tilt on scroll) — */
-  .coverflow{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:0 -18px;padding:26px 0 22px}
+  .coverflow{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:0 -18px;padding:26px 0 22px}
   .coverflow::-webkit-scrollbar{display:none}
   .coverflow::before,.coverflow::after{content:"";flex:0 0 13%}
   .coverflow .fcx{flex:0 0 74%;max-width:300px;scroll-snap-align:center;border-radius:22px;overflow:hidden;cursor:pointer;
