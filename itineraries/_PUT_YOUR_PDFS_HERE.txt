@@ -1,0 +1,18 @@
+Drop one PDF per trek in THIS folder, named EXACTLY as below (lowercase).
+The trek's "Download PDF" button will then serve your file. If a file is
+missing, the app auto-generates a basic itinerary as a fallback.
+
+FILE NAMES:
+  Kedarkantha          ->  kedarkantha.pdf
+  Brahmatal            ->  brahmatal.pdf
+  Valley of Flowers    ->  valley-of-flowers.pdf
+  Har Ki Dun           ->  har-ki-dun.pdf
+  Nag Tibba            ->  nag-tibba.pdf
+  Roopkund             ->  roopkund.pdf
+
+Rule for any NEW trek you add later: lowercase the name and replace spaces
+with hyphens. e.g. "Bali Pass" -> bali-pass.pdf
+
+Note: serving your PDF works once the app is on a web link (Netlify/localhost).
+When opened directly from a file:// path, the browser blocks the lookup and
+shows the auto-generated fallback instead — that's expected.

@@ -1,0 +1,24 @@
+Drop your own icon files in THIS folder, named exactly as below (lowercase),
+e.g.  mountain.svg  backpack.svg  ...  (or .png if you set ICON_EXT='png' in app.js)
+
+Then open app.js and change:   const USE_CUSTOM_ICONS = false;   ->  true
+
+Tips:
+- Use simple SINGLE-COLOUR icons on a TRANSPARENT background.
+- The app auto-tints them (white on dark areas, blue on white buttons), so the
+  colour of your file doesn't matter — only its shape.
+- 24x24 SVG line icons look best. Square canvas recommended.
+
+==== FILE NAMES (57) ====
+NAV/STRUCTURE:  home  compass  ticket  heart  user  chevL  chevR  search  sliders
+TREK & LISTING: mountain  clock  star  pin  calendar  users
+SERVICES:       backpack  file  activity
+INCLUDED/META:  tent  utensils  map  bus  shield  image
+GEAR ITEMS:     shirt  boots  poles  bed  snowflake
+ACTIVITIES:     waves  wind  bridge
+PAYMENT/BOOK:   lock  card  bank  wallet  percent  gift  check  download  share  cart
+ACCOUNT/MISC:   settings  edit  logout  bell  chat  send  info  alert  plus  globe  phone  mail  upload
+STATUS BAR (optional, currently hidden): wifi  battery
+
+NOTE: the home-screen launcher logo is separate — those are the PNGs one level up
+(icons/icon-192.png, icon-512.png, icon-maskable-512.png). Replace those too.

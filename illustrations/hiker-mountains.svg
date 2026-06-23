@@ -1,0 +1,38 @@
+<svg viewBox="0 0 320 210" xmlns="http://www.w3.org/2000/svg" fill="none">
+  <defs>
+    <linearGradient id="m1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a5f95"/><stop offset="1" stop-color="#243f6b"/></linearGradient>
+    <linearGradient id="m2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#27406b"/><stop offset="1" stop-color="#1b2f50"/></linearGradient>
+  </defs>
+  <!-- sun -->
+  <circle cx="248" cy="46" r="20" fill="#ffce1f" opacity="0.95"/>
+  <!-- back mountain -->
+  <path d="M-10 165 L70 70 L150 150 L210 95 L330 165 Z" fill="url(#m1)"/>
+  <!-- front mountain + snow cap -->
+  <path d="M40 170 L130 60 L235 170 Z" fill="url(#m2)"/>
+  <path d="M130 60 L102 95 q14 8 28 0 q14 8 28 0 Z" fill="#eaf2ff"/>
+  <!-- flag on peak -->
+  <line x1="130" y1="60" x2="130" y2="36" stroke="#9fb4d6" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M130 38 L150 44 L130 50 Z" fill="#ffce1f"/>
+  <!-- dashed trail -->
+  <path d="M30 196 Q110 176 160 192 T300 182" stroke="#5b76a3" stroke-width="3" stroke-linecap="round" stroke-dasharray="2 11" opacity="0.8"/>
+  <!-- hiker -->
+  <g transform="translate(150 150)">
+    <!-- backpack -->
+    <rect x="-22" y="2" width="20" height="30" rx="7" fill="#e8584f"/>
+    <rect x="-19" y="9" width="9" height="14" rx="3" fill="#b8392f"/>
+    <!-- legs -->
+    <path d="M-2 30 L-9 52" stroke="#3a3550" stroke-width="6" stroke-linecap="round"/>
+    <path d="M2 30 L11 50" stroke="#46415e" stroke-width="6" stroke-linecap="round"/>
+    <path d="M-12 52 l-5 1" stroke="#8a3b34" stroke-width="6" stroke-linecap="round"/>
+    <path d="M11 50 l6 2" stroke="#8a3b34" stroke-width="6" stroke-linecap="round"/>
+    <!-- body -->
+    <path d="M-8 4 q12 -6 18 4 l-2 18 q-10 6 -18 -2 Z" fill="#f4eaf0"/>
+    <!-- arm -->
+    <path d="M8 10 q9 5 7 16" stroke="#f4eaf0" stroke-width="6" stroke-linecap="round"/>
+    <!-- head + cap + beard -->
+    <circle cx="9" cy="-7" r="9" fill="#e6a984"/>
+    <path d="M3 -3 q6 9 14 1 q-2 9 -8 9 q-7 0 -6 -10Z" fill="#8a5a3c"/>
+    <path d="M0 -10 q6 -10 18 -4 l1 4 q-10 -4 -18 1 Z" fill="#2f6bff"/>
+    <rect x="16" y="-9" width="9" height="3.4" rx="1.7" fill="#9fc0ff"/>
+  </g>
+</svg>

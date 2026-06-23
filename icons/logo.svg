@@ -1,0 +1,12 @@
+<svg viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tripomonk">
+  <defs>
+    <linearGradient id="tmkbg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1a7dff"/>
+      <stop offset="1" stop-color="#0c3f9c"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="600" rx="132" fill="url(#tmkbg)"/>
+  <path d="M120 450 L300 100 L480 450 L352 450 L352 300 L248 300 L248 450 Z"
+        fill="#ecf500" stroke="#ecf500" stroke-width="28"
+        stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,1080 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
+<title>Tripomonk — Himalayan Treks</title>
+<meta name="description" content="Discover, plan and book guided Himalayan treks in Uttarakhand and beyond."/>
+<meta name="theme-color" content="#0a1626"/>
+<link rel="manifest" href="manifest.webmanifest"/>
+<link rel="icon" href="icons/icon-192.png"/>
+<link rel="apple-touch-icon" href="icons/icon-192.png"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Tripomonk"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,1,0&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<style>
+  :root{
+    --bg:#0a1626; --bg2:#0c1c30; --card:rgba(255,255,255,.055); --card2:rgba(255,255,255,.09);
+    --stroke:rgba(255,255,255,.10); --stroke2:rgba(255,255,255,.16);
+    --accent:#2f6bff; --accent2:#4f8bff; --yellow:#ffce1f;
+    --text:#eef3fb; --muted:rgba(238,243,251,.58); --muted2:rgba(238,243,251,.4);
+    --r:20px; --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
+    --font:'Poppins',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;overscroll-behavior:none}
+  body{font-family:var(--font);color:var(--text);background:#06101c;display:flex;align-items:center;justify-content:center}
+  /* max thickness = semibold (600); never bold */
+  h1,h2,h3,h4,h5,b,strong{font-weight:600}
+  .soon{position:absolute;top:7px;left:7px;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);color:var(--yellow);font-size:9px;font-weight:600;padding:3px 8px;border-radius:8px;letter-spacing:.3px}
+  .phone{position:relative;width:100vw;height:100dvh;background:var(--bg)}
+  .screen{position:relative;width:100%;height:100%;overflow:hidden;
+    background:radial-gradient(120% 60% at 50% -10%, #15314f 0%, transparent 55%), linear-gradient(180deg,#0b1a2c 0%, #0a1626 60%, #091322 100%)}
+  @media(min-width:520px){
+    body{padding:24px}
+    .phone{width:392px;height:846px;max-height:94vh;border-radius:34px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+  }
+  .ic{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;flex:none}
+  .ic svg{display:block}
+  .logo-full{height:34px;width:auto;display:block}
+  .quick{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+  .qa{display:flex;flex-direction:column;align-items:center;gap:7px;background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:14px 4px;cursor:pointer;transition:transform .14s}
+  .qa:active{transform:scale(.95)}
+  .qa .qi{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:rgba(47,107,255,.16);color:var(--accent2)}
+  .qa span{font-size:10.5px;color:var(--muted);font-weight:600;text-align:center;line-height:1.2}
+  /* horizontal swipe row of trek cards */
+  .hrow{display:flex;gap:14px;overflow-x:auto;scrollbar-width:none;margin:0 -18px;padding:2px 18px 6px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+  .hrow::-webkit-scrollbar{display:none}
+  .hcard{min-width:228px;width:228px;background:var(--card);border:1px solid var(--stroke);border-radius:18px;overflow:hidden;cursor:pointer;scroll-snap-align:start}
+  .hcard .hph{height:132px;background-size:cover;background-position:center;position:relative}
+  .hcard .hbd{padding:12px 13px 14px}
+  .hcard h3{margin:0 0 3px;font-size:15px}
+  .hcard .reg{font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:4px}
+  .hcard .rt{display:flex;align-items:center;gap:5px;font-size:12px;margin:8px 0}
+  .hcard .ft{display:flex;gap:7px}
+  .gitem{display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:13px;margin-bottom:10px;cursor:pointer}
+  .gitem .gi{color:var(--accent2)} .gitem .t{flex:1} .gitem .t b{font-size:14px} .gitem .t small{display:block;color:var(--muted);font-size:11px}
+  .gitem .rate{font-size:13px;font-weight:600;color:var(--accent2)}
+  .gitem.sel{border-color:var(--accent);background:rgba(47,107,255,.12)}
+  .gitem .chk{width:22px;height:22px;border-radius:7px;border:2px solid var(--stroke2);display:grid;place-items:center;color:transparent;flex:none}
+  .gitem.sel .chk{background:var(--accent);border-color:var(--accent);color:#fff}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .atile{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:15px}
+  .atile .ai{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:rgba(47,107,255,.16);color:var(--accent2);margin-bottom:10px}
+  .atile b{font-size:14px;display:block}.atile small{font-size:11px;color:var(--muted)}
+  .atile .ap{margin-top:11px;display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:13px}
+  .atile .bk{background:var(--accent);color:#fff;border:0;font-size:11px;font-weight:600;padding:6px 12px;border-radius:999px;cursor:pointer}
+  .perm{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:15px;margin-bottom:11px}
+  .perm b{font-size:14px}.perm p{font-size:12px;color:var(--muted);margin:5px 0 0;line-height:1.5}
+  .perm .pf{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
+  .perm .pa{background:var(--accent);color:#fff;border:0;font-size:12px;font-weight:600;padding:8px 14px;border-radius:10px;cursor:pointer}
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;color:var(--muted);background:rgba(255,255,255,.06);border:1px solid var(--stroke);padding:4px 8px;border-radius:8px}
+  .msr{font-family:'Material Symbols Rounded';font-weight:400;font-style:normal;line-height:1;white-space:nowrap;direction:ltr;display:inline-block;vertical-align:middle;
+    font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24;-webkit-font-smoothing:antialiased}
+
+  .view{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;display:none;
+    padding:calc(var(--safe-top) + 16px) 18px calc(var(--safe-bottom) + 92px)}
+  .view::-webkit-scrollbar{display:none}
+  .view.active{display:block;animation:in .4s cubic-bezier(.22,.9,.3,1)}
+  @keyframes in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+  .view.flow.active{animation:slide .36s cubic-bezier(.2,.8,.2,1)}
+  @keyframes slide{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
+  .view.full{padding:0}
+
+  /* top bars */
+  .bar{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+  .bar h1{font-size:19px;font-weight:600;margin:0;flex:1}
+  .rb{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:var(--card);border:1px solid var(--stroke);color:var(--text);cursor:pointer;flex:none}
+  .rb.round{border-radius:50%}
+
+  .greet{font-size:13px;color:var(--muted);margin:2px 0 2px}
+  .htitle{font-size:24px;font-weight:600;line-height:1.2;margin:0 0 16px;letter-spacing:-.3px}
+  .htitle span{color:var(--accent2)}
+
+  .search{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:13px 15px;color:var(--muted);cursor:pointer;margin-bottom:16px}
+  .search input{all:unset;flex:1;color:var(--text);font-size:14px}
+  .search .ic{color:var(--muted)}
+
+  /* chips */
+  .chips{display:flex;gap:9px;overflow-x:auto;scrollbar-width:none;margin-bottom:20px;padding-bottom:2px}
+  /* Home difficulty chips: full-width, equal columns, corner to corner */
+  #homeChips{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;overflow:visible}
+  #homeChips .chip{min-width:0;width:auto;padding:14px 4px}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{white-space:nowrap;display:inline-flex;flex-direction:column;align-items:center;gap:6px;min-width:62px;padding:11px 6px;border-radius:16px;background:var(--card);border:1px solid var(--stroke);color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;transition:.15s}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .chip.pill{flex-direction:row;min-width:0;padding:9px 15px;border-radius:999px;font-size:12.5px}
+
+  .sec{display:flex;align-items:center;justify-content:space-between;margin:6px 2px 12px}
+  .sec h2{font-size:17px;font-weight:600;margin:0}
+  .sec a{font-size:12.5px;color:var(--accent2);cursor:pointer}
+
+  /* trek list card (home) */
+  .tcard{display:flex;gap:13px;background:var(--card);border:1px solid var(--stroke);border-radius:var(--r);padding:11px;margin-bottom:13px;cursor:pointer;transition:transform .14s}
+  .tcard:active{transform:scale(.985)}
+  .tcard .ph{width:104px;height:104px;border-radius:15px;flex:none;background-size:cover;background-position:center;position:relative}
+  .tcard .bd{flex:1;min-width:0;padding:3px 0}
+  .tcard h3{margin:0 0 3px;font-size:16px;font-weight:600}
+  .tcard .reg{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:4px}
+  .tcard .rt{display:flex;align-items:center;gap:5px;font-size:12.5px;margin:9px 0 8px}
+  .tcard .rt b{font-weight:600}.tcard .rt .g{color:var(--muted)}
+  .star{color:var(--yellow)}
+  .tcard .ft{display:flex;gap:8px;flex-wrap:wrap}
+  .tag{font-size:11px;color:var(--muted);background:rgba(255,255,255,.06);border:1px solid var(--stroke);padding:4px 9px;border-radius:8px;display:inline-flex;align-items:center;gap:5px}
+
+  /* region avatars */
+  .regions{display:flex;gap:14px;overflow-x:auto;scrollbar-width:none;margin-bottom:6px}
+  .regions::-webkit-scrollbar{display:none}
+  .region{text-align:center;cursor:pointer}
+  .region .av{width:62px;height:62px;border-radius:50%;background-size:cover;background-position:center;border:2px solid #fff;margin-bottom:7px}
+  .region span{font-size:11.5px;color:var(--muted);font-weight:600}
+
+  .diff2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:6px}
+  .diffc{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:15px;cursor:pointer}
+  .diffc b{font-size:15px;display:block}.diffc small{font-size:11.5px;color:var(--muted)}
+
+  /* big photo cards (top picks) */
+  .bigcard{height:170px;border-radius:var(--r);overflow:hidden;position:relative;background-size:cover;background-position:center;display:flex;align-items:flex-end;padding:14px;cursor:pointer;margin-bottom:13px}
+  .bigcard:before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 30%,rgba(0,0,0,.75))}
+  .bigcard .info{position:relative;z-index:1}
+  .bigcard h3{margin:0;font-size:18px;font-weight:600}
+  .bigcard .reg{font-size:12px;color:rgba(255,255,255,.8);display:flex;align-items:center;gap:4px;margin-top:3px}
+  .bigcard .pr{position:absolute;top:12px;right:12px;z-index:1;background:rgba(0,0,0,.45);backdrop-filter:blur(6px);padding:6px 11px;border-radius:999px;font-size:13px;font-weight:600}
+  .bigcard .fav{position:absolute;top:12px;left:12px;z-index:1;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.4);backdrop-filter:blur(6px);cursor:pointer}
+  .fav.on{color:#ff5a7a}
+
+  /* bottom nav */
+  .nav{position:absolute;left:0;right:0;bottom:0;z-index:50;display:flex;justify-content:space-around;align-items:center;
+    padding:10px 6px calc(var(--safe-bottom) + 10px);background:rgba(8,17,30,.92);backdrop-filter:blur(18px);border-top:1px solid var(--stroke)}
+  .nav.hide{display:none}
+  .nav button{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--muted);font-size:10px;font-weight:600;padding:4px 10px}
+  .nav button.on{color:var(--yellow)}
+
+  /* DETAIL */
+  .hero{height:320px;position:relative;background-size:cover;background-position:center}
+  .hero:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,17,30,.25) 0%,rgba(8,17,30,0) 30%,rgba(10,22,38,.6) 78%,var(--bg) 100%)}
+  .hero .htop{position:absolute;top:calc(var(--safe-top) + 12px);left:16px;right:16px;display:flex;justify-content:space-between;z-index:2}
+  .hero .htop .right{display:flex;gap:10px}
+  .hero .hb{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.4);backdrop-filter:blur(6px);color:#fff;cursor:pointer}
+  .dcard{margin:-90px 16px 0;position:relative;z-index:3;background:rgba(14,28,48,.86);backdrop-filter:blur(18px);border:1px solid var(--stroke);border-radius:24px;padding:18px}
+  .dcard h1{margin:0;font-size:22px;font-weight:600}
+  .dcard .reg{color:var(--muted);font-size:13px;margin:4px 0 10px;display:flex;align-items:center;gap:5px}
+  .dcard .meta{display:flex;align-items:center;gap:12px;font-size:13px}
+  .dcard .meta .lvl{color:#6ee7a0}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0 4px}
+  .stat{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:12px 5px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:104px}
+  .stat .ic{color:var(--accent2);margin-bottom:2px}
+  .stat b{line-height:1.2}.stat small{line-height:1.2}
+  .stat b{font-size:13px;display:block}.stat small{font-size:10px;color:var(--muted)}
+  .blk{padding:0 16px}
+  .blk h2{font-size:16px;font-weight:600;margin:22px 0 10px}
+  .blk p{font-size:13.5px;line-height:1.65;color:var(--muted);margin:0}
+  .hl{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .hlc{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:13px 6px;text-align:center;font-size:10.5px;color:var(--muted)}
+  .hlc .ic{color:var(--accent2);margin-bottom:6px;display:block;display:grid;place-items:center}
+
+  /* sticky bottom CTA */
+  .cta{position:sticky;bottom:0;z-index:40;margin:14px -18px calc(var(--safe-bottom)*-1 - 16px);padding:14px 18px calc(var(--safe-bottom) + 16px);background:var(--bg);border-top:1px solid var(--stroke);box-shadow:0 -10px 24px rgba(6,16,28,.55)}
+  .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:0;font-weight:600;font-size:15px;padding:16px;border-radius:16px;cursor:pointer}
+  .btn:active{transform:scale(.99)}
+  .btn.sm{width:auto;padding:11px 24px;font-size:13.5px;border-radius:12px}
+  .btn.ghost{background:rgba(255,255,255,.07);border:1px solid var(--stroke2);color:var(--text)}
+
+  /* itinerary timeline */
+  .tl{display:flex;gap:13px;margin-bottom:6px}
+  .tl .ph{width:64px;height:64px;border-radius:14px;flex:none;background-size:cover;background-position:center}
+  .tl .line{display:flex;flex-direction:column;align-items:center;flex:none}
+  .tl .dot{width:13px;height:13px;border-radius:50%;background:var(--accent);border:3px solid #14253c;margin-top:4px}
+  .tl .rod{flex:1;width:2px;background:var(--stroke2);margin:2px 0}
+  .tl .bd{flex:1;padding-bottom:18px}
+  .tl .d{font-size:11px;color:var(--accent2);font-weight:600}
+  .tl .bd h3{margin:2px 0 4px;font-size:14px}
+  .tl .bd p{margin:0 0 6px;font-size:12px;color:var(--muted);line-height:1.5}
+  .tl .km{font-size:11px;color:var(--muted2);display:flex;gap:12px}
+
+  /* calendar */
+  .cal{background:var(--card);border:1px solid var(--stroke);border-radius:18px;padding:16px;margin-bottom:18px}
+  .cal .ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .cal .ch b{font-size:15px}
+  .cal .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+  .cal .grid .dh{font-size:10px;color:var(--muted2);padding:4px 0}
+  .cal .grid .d{font-size:13px;padding:8px 0;border-radius:10px;cursor:pointer}
+  .cal .grid .d.off{color:var(--muted2)}
+  .cal .grid .d.on{background:var(--accent);color:#fff;font-weight:600}
+  .cal .grid .d.av{color:var(--accent2);font-weight:600}
+
+  .batch{display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:13px 14px;margin-bottom:11px;cursor:pointer}
+  .batch.on{border-color:var(--accent);background:rgba(47,107,255,.14)}
+  .batch .calb{flex:none;width:50px;height:54px;border-radius:12px;background:rgba(47,107,255,.12);border:1px solid rgba(47,107,255,.25);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+  .batch.on .calb{background:var(--accent);border-color:var(--accent)}
+  .batch .calb .mo{font-size:10px;font-weight:700;letter-spacing:.5px;color:var(--accent2);text-transform:uppercase}
+  .batch.on .calb .mo{color:rgba(255,255,255,.85)}
+  .batch .calb .dy{font-size:20px;font-weight:700;color:#fff;margin-top:1px}
+  .batch .bd{flex:1;min-width:0}
+  .batch .bd b{font-size:13.5px;display:block}
+  .batch .bd .s{font-size:11.5px;color:#6ee7a0;margin-top:3px;display:flex;align-items:center;gap:4px}
+  .batch .bd .s.few{color:#ffb24d}
+  .batch .bd .s.full{color:#ff7a7a}
+  .batch .rt{text-align:right;flex:none}
+  .batch .rt .pr{font-weight:700;font-size:15px}
+  .batch .rt .radio{width:20px;height:20px;border-radius:50%;border:2px solid var(--stroke);margin:6px 0 0 auto;display:flex;align-items:center;justify-content:center}
+  .batch.on .rt .radio{border-color:var(--accent);background:var(--accent)}
+  .batch.on .rt .radio:after{content:"";width:8px;height:8px;border-radius:50%;background:#fff}
+  .batch.full{opacity:.5;cursor:not-allowed}
+  .batch.full.on{border-color:var(--stroke);background:var(--card)}
+
+  .incl{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin-bottom:6px}
+  .incl::-webkit-scrollbar{display:none}
+  .inclc{flex:none;width:72px;text-align:center;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:13px 4px;font-size:10.5px;color:var(--muted)}
+  .inclc .ic{color:var(--accent2);margin-bottom:6px;display:grid;place-items:center}
+
+  /* fields */
+  .field{margin-bottom:13px}
+  .field label{font-size:12px;color:var(--muted);display:block;margin:0 2px 6px}
+  .field .inp{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:13px 14px}
+  .field .inp input{all:unset;flex:1;color:var(--text);font-size:14px}
+  .field .inp input::placeholder{color:var(--muted2)}
+  .field .inp .ic{color:var(--muted)}
+  .stepper{display:flex;align-items:center;gap:14px}
+  .stepper button{width:34px;height:34px;border-radius:50%;border:1px solid var(--stroke2);background:var(--card);color:#fff;font-size:18px;cursor:pointer}
+  .stepper b{min-width:22px;text-align:center;font-size:17px}
+  .steps{display:flex;gap:6px;margin-bottom:18px}
+  .steps i{flex:1;height:4px;border-radius:3px;background:var(--stroke2)}
+  .steps i.on{background:var(--accent)}
+
+  .panel{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:16px}
+  .srow{display:flex;justify-content:space-between;font-size:13px;padding:7px 0;color:var(--text)}
+  .srow.tot{border-top:1px solid var(--stroke);margin-top:6px;padding-top:12px;font-weight:600;font-size:16px}
+  .toggle{width:46px;height:27px;border-radius:999px;background:var(--stroke2);position:relative;cursor:pointer;flex:none}
+  .toggle i{position:absolute;top:3px;left:3px;width:21px;height:21px;border-radius:50%;background:#fff;transition:.25s}
+  .toggle.on{background:var(--accent)}.toggle.on i{left:22px}
+  .addon{display:flex;align-items:center;gap:11px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:12px 14px;margin-bottom:10px}
+  .addon .ic{color:var(--accent2)}.addon .t{flex:1;font-size:13px;font-weight:600}.addon .t small{display:block;font-weight:400;color:var(--muted);font-size:11px;margin-top:2px}
+  .pay{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer}
+  .pay.on{border-color:var(--accent);background:rgba(47,107,255,.12)}
+  .pay .ic{color:var(--accent2)}.pay .t{flex:1}.pay .t b{font-size:14px;display:block}.pay .t small{color:var(--muted);font-size:11px}
+  .radio{width:20px;height:20px;border-radius:50%;border:2px solid var(--stroke2);display:grid;place-items:center}
+  .pay.on .radio{border-color:var(--accent)}.pay.on .radio:after{content:"";width:10px;height:10px;border-radius:50%;background:var(--accent)}
+
+  /* community */
+  .post{background:var(--card);border:1px solid var(--stroke);border-radius:18px;padding:14px;margin-bottom:14px}
+  .post .ph{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .post .av{width:38px;height:38px;border-radius:50%;background-size:cover;background-position:center;background:linear-gradient(135deg,#ffd27a,#ff7a59)}
+  .post .nm{flex:1}.post .nm b{font-size:13.5px}.post .nm small{display:block;color:var(--muted);font-size:11px}
+  .post p{font-size:13px;line-height:1.55;margin:0 0 10px}
+  /* ===== Instagram-style post ===== */
+  .post{background:var(--card);border:1px solid var(--stroke);border-radius:14px;margin-bottom:16px;overflow:hidden}
+  .post .ig-head{display:flex;align-items:center;gap:10px;padding:10px 12px}
+  .post .ig-ava{cursor:pointer;border-radius:50%;padding:2px;background:linear-gradient(45deg,var(--accent),var(--accent2),var(--yellow));flex:none}
+  .post .ig-ava>*{display:block;border:2px solid var(--card);border-radius:50%}
+  .post .ig-meta{flex:1;min-width:0;font-size:13px}
+  .post .ig-meta b{cursor:pointer;font-weight:600}
+  .post .ig-follow{color:var(--accent2);font-weight:600;cursor:pointer}
+  .post .ig-more{color:var(--text);cursor:pointer;display:flex;align-items:center;padding:4px}
+  /* swipeable carousel */
+  .post .car{position:relative;background:#000}
+  .post .car-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .post .car-track::-webkit-scrollbar{display:none}
+  .post .slide{flex:0 0 100%;width:100%;scroll-snap-align:center;aspect-ratio:4/5;background-size:cover;background-position:center;background-color:#0e1c30}
+  .post .slide video{width:100%;height:100%;object-fit:cover;display:block}
+  .post .slide.vid{position:relative;background:#000}
+  .post .slide.vid video{position:absolute;inset:0}
+  .post .slide.vid .play-ic{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+  .post .car-dots{position:absolute;bottom:10px;left:0;right:0;display:flex;justify-content:center;gap:5px;pointer-events:none}
+  .post .car-dots span{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.5);transition:.2s}
+  .post .car-dots span.on{background:var(--accent2);width:7px;height:7px}
+  /* action row */
+  .post .ig-actions{display:flex;align-items:center;justify-content:space-between;padding:8px 12px 4px}
+  .post .ig-left{display:flex;align-items:center;gap:14px}
+  .post .ig-ic{cursor:pointer;color:var(--text);display:flex;transition:transform .12s}
+  .post .ig-ic:active{transform:scale(.85)}
+  .post .ig-ic.liked{color:#ff3040}
+  .post .ig-save{color:var(--text)}
+  .post .ig-likes{padding:2px 12px;font-size:13px;font-weight:600}
+  .post .ig-trek{display:inline-flex;align-items:center;gap:4px;margin:0 12px 8px;font-size:11.5px;font-weight:600;color:var(--accent2);background:rgba(47,107,255,.14);padding:5px 10px;border-radius:999px;cursor:pointer}
+  .post .ig-cap{padding:3px 12px;font-size:13px;line-height:1.5}
+  .post .ig-cap b{font-weight:600;cursor:pointer;margin-right:5px}
+  .post .ig-cap.clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
+  /* double-tap heart burst */
+  .post .car{position:relative;background:#000}
+  .post .heart-burst{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;color:#fff;opacity:0}
+  .post .heart-burst.go{animation:burst .9s ease}
+  @keyframes burst{0%{opacity:0;transform:scale(.3)}15%{opacity:.95;transform:scale(1.1)}30%{transform:scale(.95)}45%{opacity:.95;transform:scale(1)}100%{opacity:0;transform:scale(1)}}
+  .post .ig-comments{padding:4px 12px;font-size:13px;color:var(--muted);cursor:pointer}
+  .post .ig-time{padding:3px 12px 12px;font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.4px}
+  .fab{position:fixed;right:18px;bottom:calc(var(--safe-bottom) + 84px);z-index:45;width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;color:#fff;box-shadow:0 10px 26px rgba(47,107,255,.5);cursor:pointer}
+
+  /* packing list */
+  .pk{display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer}
+  .pk .ic{color:var(--accent2)}.pk .t{flex:1;font-size:14px}
+  .box{width:22px;height:22px;border-radius:7px;border:2px solid var(--stroke2);display:grid;place-items:center;color:transparent}
+  .pk.done .box{background:var(--accent);border-color:var(--accent);color:#fff}
+  .pk.done .t{color:var(--muted);text-decoration:line-through}
+
+  /* profile */
+  .pcover{height:150px;background-size:cover;background-position:center;position:relative}
+  .pcover:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,22,38,.2),var(--bg))}
+  .pwrap{padding:0 18px calc(var(--safe-bottom) + 92px)}
+  .pav{width:88px;height:88px;border-radius:50%;border:3px solid var(--bg);background-size:cover;background-position:center;margin:-50px 0 0;position:relative;z-index:1;background-color:#26466e;display:grid;place-items:center;font-size:32px;font-weight:600}
+  .prow{display:flex;align-items:center;justify-content:space-between;margin-top:10px}
+  .prow h1{margin:0;font-size:20px}.prow .lv{font-size:12px;color:var(--muted)}
+  .pstats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}
+  .pstat{background:var(--card);border:1px solid var(--stroke);border-radius:14px;aspect-ratio:1/1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;cursor:pointer;transition:transform .14s}
+  .pstat:active{transform:scale(.95)}
+  .pstat b{font-size:20px;display:block;line-height:1}.pstat small{font-size:10px;color:var(--muted)}
+  .mrow{display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:15px;margin-bottom:10px;cursor:pointer}
+  .mrow .ic{color:var(--accent2)}.mrow .t{flex:1;font-size:14px;font-weight:600}.mrow .ch{color:var(--muted2)}
+
+  /* splash */
+  .splash{position:absolute;inset:0;background-size:cover;background-position:center;display:flex;flex-direction:column;justify-content:flex-end;padding:34px 26px calc(var(--safe-bottom) + 34px)}
+  .splash:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,17,30,.55) 0%,rgba(8,17,30,.15) 35%,rgba(8,17,30,.92) 100%)}
+  .splash .top{position:absolute;top:calc(var(--safe-top) + 26px);left:26px;display:flex;align-items:center;gap:10px;z-index:1}
+  .splash .top img{width:38px;height:38px;border-radius:10px}
+  .splash .top b{font-size:20px;font-weight:600}
+  .splash .sub{position:absolute;top:calc(var(--safe-top) + 30px);right:24px;left:auto;text-align:right;color:rgba(255,255,255,.85);font-size:13px;font-weight:600;z-index:1}
+  .splash .c{position:relative;z-index:1}
+  .splash h1{font-size:34px;font-weight:600;line-height:1.08;margin:0 0 12px;letter-spacing:-.5px}
+  .splash p{color:rgba(255,255,255,.78);font-size:14px;line-height:1.55;margin:0 0 24px}
+  .splash .explore{text-align:center;margin-top:16px;color:rgba(255,255,255,.85);font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+
+  .empty{text-align:center;color:var(--muted);padding:40px 24px;font-size:13px}
+  .empty img{width:180px;max-width:72%;height:auto;display:block;margin:0 auto 16px}
+  /* Trek Health */
+  .hcard-hero{background:linear-gradient(140deg,#21477f,#1a2f55);border:1px solid var(--stroke);border-radius:20px;padding:22px;text-align:center;margin-bottom:14px}
+  .pulse{display:inline-grid;place-items:center;width:56px;height:56px;border-radius:50%;background:rgba(255,90,122,.2);color:#ff5a7a;margin-bottom:10px;animation:hb 1s ease-in-out infinite}
+  @keyframes hb{0%,100%{transform:scale(1)}28%{transform:scale(1.16)}45%{transform:scale(1)}}
+  .hr-num{font-size:46px;font-weight:600;line-height:1}.hr-num small{font-size:16px;opacity:.65;font-weight:400}
+  .mgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .mcard{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:15px}
+  .mcard .ic{color:var(--accent2);margin-bottom:8px}
+  .mcard .v{font-size:22px;font-weight:600}.mcard .l{font-size:11px;color:var(--muted);margin-top:2px}
+  .note2{font-size:11.5px;color:var(--muted);line-height:1.55;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:13px}
+  #map{width:100%;height:46vh;border-radius:16px;overflow:hidden;background:#0e1c30;border:1px solid var(--stroke);margin-bottom:14px}
+  .navstats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px}
+  .navstats .mcard{padding:12px 8px;text-align:center}.navstats .mcard .v{font-size:16px}
+  .leaflet-control-attribution{font-size:8px}
+  .verify{padding:16px;border-radius:14px}
+  .verify.good{background:rgba(34,197,94,.18);border:1px solid rgba(110,231,160,.5)}
+  .verify.bad{background:rgba(239,68,68,.16);border:1px solid rgba(248,113,113,.5)}
+  .verify b{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .vrow{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-top:1px solid var(--stroke)}
+  .vrow span{color:var(--muted)}
+  .qr{width:150px;height:150px;margin:8px auto 14px;background:#fff;border-radius:14px;padding:9px}
+  .qr svg{width:100%;height:100%;display:block}
+  .ticket .tk{background:var(--card);border:1px solid var(--stroke);border-radius:20px;overflow:hidden}
+  .tk .tkh{display:flex;gap:13px;align-items:center;padding:16px}
+  .tk .tkh .ph{width:58px;height:58px;border-radius:13px;background-size:cover;background-position:center;flex:none}
+  .tkdiv{border-top:2px dashed var(--stroke2);margin:0 14px}
+  .tkg{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:14px 16px}
+  .tkg .k{font-size:10px;color:var(--muted)}.tkg .v{font-size:13px;font-weight:600;margin-top:2px}
+  .success{text-align:center;padding-top:40px}
+  .checkmark{width:90px;height:90px;border-radius:50%;background:rgba(47,107,255,.16);border:2px solid var(--accent);display:grid;place-items:center;margin:0 auto 18px;color:var(--accent2);animation:pop .5s cubic-bezier(.3,1.6,.5,1)}
+  @keyframes pop{0%{transform:scale(0)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+  /* ===== motion layer ===== */
+  @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+  @keyframes fadeDown{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}
+  .stagger{opacity:0;animation:fadeUp .5s cubic-bezier(.22,.9,.3,1) forwards}
+  /* press feedback */
+  .tcard,.hcard,.bigcard,.qa,.chip,.rb,.hb,.nav button,.gitem,.atile,.batch,.pay,.mrow,.pk,.region,.diffc,.btn,.bk,.add,.pa{transition:transform .14s ease, box-shadow .2s ease}
+  .pressed{transform:scale(.96)!important}
+  /* ripple (buttons/round icons) */
+  .ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.4);transform:scale(0);animation:rip .55s ease-out;pointer-events:none}
+  @keyframes rip{to{transform:scale(2.6);opacity:0}}
+  /* nav active bounce */
+  .nav button.on .ic{animation:navpop .45s cubic-bezier(.3,1.6,.5,1)}
+  @keyframes navpop{0%{transform:translateY(0)}40%{transform:translateY(-6px) scale(1.18)}100%{transform:none}}
+  /* heart pop */
+  .fav.pop{animation:heartpop .45s cubic-bezier(.3,1.6,.5,1)}
+  @keyframes heartpop{0%{transform:scale(1)}35%{transform:scale(1.45)}60%{transform:scale(.85)}100%{transform:scale(1)}}
+  /* hero entrance */
+  #dHero,#actHero{animation:heroIn .7s ease}
+  @keyframes heroIn{from{opacity:.4}to{opacity:1}}
+  /* splash entrance */
+  .splash .top{animation:fadeDown .6s both}
+  .splash .sub{animation:fadeDown .6s .1s both}
+  .splash h1{animation:fadeUp .6s .12s both}
+  .splash p{animation:fadeUp .6s .24s both}
+  .splash .btn{animation:fadeUp .6s .34s both}
+  .splash .explore{animation:fadeUp .6s .44s both}
+  /* floating quick-action icons */
+  .qa .qi{animation:floaty 3.6s ease-in-out infinite}
+  .quick .qa:nth-child(2) .qi{animation-delay:.4s}.quick .qa:nth-child(3) .qi{animation-delay:.8s}.quick .qa:nth-child(4) .qi{animation-delay:1.2s}
+  @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+  /* shimmer sweep on primary buttons */
+  .btn:not(.ghost){position:relative;overflow:hidden}
+  .btn:not(.ghost)::after{content:"";position:absolute;top:0;left:-70%;width:45%;height:100%;background:linear-gradient(120deg,transparent,rgba(255,255,255,.28),transparent);transform:skewX(-20deg);animation:shine 4.5s ease-in-out infinite;pointer-events:none}
+  @keyframes shine{0%,55%{left:-70%}78%,100%{left:140%}}
+  /* calendar & checkbox pops */
+  .cal .grid .d.on,.gitem.sel .chk,.pk.done .box{animation:daypop .32s cubic-bezier(.3,1.6,.5,1)}
+  @keyframes daypop{0%{transform:scale(.82)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+  /* success ring pulse */
+  .checkmark{position:relative}
+  .checkmark::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:2px solid var(--accent);animation:ring 1.1s ease-out forwards}
+  @keyframes ring{from{transform:scale(.7);opacity:.6}to{transform:scale(1.35);opacity:0}}
+  /* scroll-reveal (safe: visible by default, animates when scrolled into view) */
+  .reveal.in{animation:fadeUp .6s cubic-bezier(.22,.9,.3,1)}
+  /* custom modal (replaces native prompt) */
+  .modal{position:absolute;inset:0;z-index:200;display:none;align-items:center;justify-content:center;padding:26px;background:rgba(5,11,20,.55);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+  .modal.show{display:flex;animation:mfade .22s ease}
+  @keyframes mfade{from{opacity:0}to{opacity:1}}
+  .modal-card{width:100%;max-width:330px;background:rgba(22,38,62,.82);backdrop-filter:blur(24px) saturate(150%);-webkit-backdrop-filter:blur(24px) saturate(150%);border:1px solid rgba(255,255,255,.18);border-radius:22px;padding:22px;box-shadow:0 30px 70px rgba(0,0,0,.55);animation:mpop .28s cubic-bezier(.3,1.5,.5,1)}
+  @keyframes mpop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
+  .modal-card h3{margin:0 0 4px;font-size:18px}
+  .modal-card p{margin:0 0 12px;font-size:12.5px;color:var(--muted);line-height:1.5}
+  .modal-card input{width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.24);border-radius:13px;padding:14px;color:#fff;font-size:15px;outline:none;margin:8px 0 18px}
+  .modal-card input:focus{border-color:var(--accent);background:rgba(255,255,255,.12)}
+  .modal-actions{display:flex;gap:10px}.modal-actions .btn{flex:1;padding:13px}
+  .post-card{max-width:380px}
+  .post-card textarea{width:100%;min-height:120px;resize:none;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.24);border-radius:14px;padding:14px;color:#fff;font-size:15px;font-family:inherit;line-height:1.5;outline:none;margin:6px 0 12px}
+  .post-card textarea:focus{border-color:var(--accent);background:rgba(255,255,255,.12)}
+  .post-pics{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+  .post-pics:empty{display:none}
+  .post-pics .pp{position:relative;width:72px;height:72px;border-radius:12px;background-size:cover;background-position:center;border:1px solid rgba(255,255,255,.2)}
+  .post-pics .pp button{position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;border:none;background:#ff4d6d;color:#fff;font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+  .post-add{display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-size:13.5px;font-weight:600;color:var(--accent);background:rgba(47,107,255,.12);border:1px dashed rgba(47,107,255,.5);border-radius:12px;padding:11px 14px;margin-bottom:18px}
+  .post-add .msr{font-size:18px;vertical-align:middle}
+  /* ---- social ---- */
+  .av-i{border-radius:50%;display:grid;place-items:center;font-weight:700;color:#27160a;flex:none;cursor:pointer;line-height:1}
+  .post .ph{align-items:center}
+  .post .nm b{cursor:pointer}
+  .fbtn{border:none;background:var(--accent);color:#fff;font-weight:600;font-size:12.5px;border-radius:20px;padding:8px 16px;cursor:pointer}
+  .fbtn.sm{padding:6px 13px;font-size:11.5px}
+  .fbtn.on{background:rgba(255,255,255,.12);color:var(--muted)}
+  .sec-h{display:flex;justify-content:space-between;align-items:center;margin:0 2px 10px}.sec-h b{font-size:14.5px}
+  .frow{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}.frow::-webkit-scrollbar{display:none}
+  .fcard{flex:none;width:122px;background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:14px 10px;text-align:center}
+  .fcard .av-i{margin:0 auto 8px}
+  .fcard b{display:block;font-size:12.5px;margin-bottom:1px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .fcard small{display:block;color:var(--muted);font-size:10.5px;margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .fcard .fbtn{width:100%;padding:8px 0}
+  .prof-top{text-align:center;padding:8px 0 4px}.prof-top .av-i{margin:0 auto 12px}
+  .prof-top h2{margin:0;font-size:20px}.prof-top .handle{color:var(--accent);font-size:13px;margin-top:2px}
+  .prof-top .pbio{color:var(--muted);font-size:13px;line-height:1.5;margin:10px 18px 0}
+  .prof-top .pstats{display:flex;justify-content:center;gap:30px;margin-top:16px}
+  .prof-top .pstats div{display:flex;flex-direction:column}.prof-top .pstats b{font-size:17px}.prof-top .pstats small{color:var(--muted);font-size:11.5px}
+  .empty{text-align:center;color:var(--muted);font-size:13px;padding:30px 20px}
+  /* comments sheet */
+  .cm-modal{align-items:flex-end;padding:0}
+  .cm-card{max-width:none;width:100%;border-radius:24px 24px 0 0;max-height:78%;display:flex;flex-direction:column;animation:msheet .3s cubic-bezier(.2,.9,.3,1);padding:18px 18px 14px}
+  @keyframes msheet{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  .cm-top{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}.cm-top h3{margin:0}.cm-top small{color:var(--muted);font-size:12px;flex:1}
+  .cm-x{background:none;border:none;color:var(--muted);font-size:26px;line-height:1;cursor:pointer}
+  .cm-list{flex:1;overflow-y:auto;margin:4px -4px 10px;padding:0 4px}
+  .cm{padding:9px 0;border-bottom:1px solid var(--stroke)}
+  .cm-h{display:flex;align-items:center;gap:8px;margin-bottom:5px}.cm-h b{font-size:12.5px}.cm-h small{color:var(--muted);font-size:11px}
+  .cm p{margin:0;font-size:13px;line-height:1.5;padding-left:38px}
+  .cm-empty{text-align:center;color:var(--muted);font-size:13px;padding:26px 0}
+  .cm-bar{display:flex;gap:8px;align-items:center}
+  .cm-bar input{flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.24);border-radius:22px;padding:12px 15px;color:#fff;font-size:14px;outline:none}
+  .cm-bar input:focus{border-color:var(--accent)}.cm-bar .btn{width:auto;padding:12px 18px}
+  @media (prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;animation-delay:0ms!important}}
+
+  /* auth / login screen */
+  .auth-card{background:rgba(8,17,30,.72);backdrop-filter:blur(28px) saturate(130%);-webkit-backdrop-filter:blur(28px) saturate(130%);border:1px solid rgba(255,255,255,.14);border-radius:26px 26px 0 0;padding:28px 22px calc(var(--safe-bottom) + 28px);position:relative;z-index:1}
+  #login .splash{justify-content:flex-end;padding:0}
+  #login .splash .top{top:calc(var(--safe-top) + 26px);left:26px}
+  #login .splash .sub{top:calc(var(--safe-top) + 30px)}
+  #login .splash .c{width:100%}
+  .otp-box{flex:1;height:54px;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.22);border-radius:14px;color:#fff;font-size:22px;font-weight:700;text-align:center;outline:none;font-family:inherit;transition:border-color .18s,background .18s;-webkit-appearance:none}
+  .otp-box:focus{border-color:var(--accent);background:rgba(47,107,255,.18)}
+  .otp-box.filled{border-color:rgba(100,180,255,.5);background:rgba(47,107,255,.14)}
+  #otp .splash{justify-content:center;padding:26px 22px}
+  #otp .splash .top{top:calc(var(--safe-top) + 26px);left:26px}
+  #otp .splash .c{width:100%}
+
+  /* ============================================================
+     VISUAL POLISH PASS — typography rhythm, depth, micro-interactions
+     (layered last so it refines the base styles above)
+     ============================================================ */
+  body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
+
+  /* — typography & rhythm — */
+  .greet{font-size:13px;letter-spacing:.3px;margin-bottom:1px;color:var(--muted)}
+  .htitle{font-size:26px;letter-spacing:-.6px;line-height:1.16;margin-bottom:18px}
+  .sec{margin:10px 2px 13px}
+  .sec h2{font-size:17.5px;letter-spacing:-.3px}
+  .bar h1{letter-spacing:-.3px;font-size:19.5px}
+  .dcard h1{font-size:23px;letter-spacing:-.5px;line-height:1.2}
+  .blk h2{letter-spacing:-.3px}
+  .blk p{color:rgba(238,243,251,.68);line-height:1.7}
+  .tcard h3,.hcard h3,.bigcard h3{letter-spacing:-.3px}
+
+  /* — depth: soft, restrained elevation so cards lift off the bg — */
+  .tcard,.hcard,.diffc,.gitem,.stat,.region .av,.fcard,.batch{box-shadow:0 6px 18px -12px rgba(0,0,0,.6)}
+  .bigcard{box-shadow:0 16px 36px -16px rgba(0,0,0,.72)}
+  .dcard{box-shadow:0 26px 64px -24px rgba(0,0,0,.85)}
+  .post{box-shadow:0 8px 24px -16px rgba(0,0,0,.6)}
+
+  /* — trek news cards — */
+  .ncard{display:flex;gap:12px;background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:11px;margin-bottom:11px;cursor:pointer}
+  .ncard .nimg{width:78px;height:78px;border-radius:12px;flex:none;background-size:cover;background-position:center;background-color:#12243c}
+  .ncard .nbd{flex:1;min-width:0}
+  .ncard .ntag{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--accent2);background:rgba(47,107,255,.14);padding:2px 7px;border-radius:6px;margin-bottom:5px}
+  .ncard .ntag.alert{color:#ffb24d;background:rgba(255,178,77,.14)}
+  .ncard h4{margin:0 0 3px;font-size:13px;line-height:1.35;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .ncard small{color:var(--muted);font-size:11px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .ncard .nmeta{font-size:10px;color:var(--muted2);margin-top:4px}
+
+  /* — press lift (subtle physical feel) — */
+  .tcard:active,.hcard:active,.bigcard:active,.diffc:active,.gitem:active,.batch:active,.fcard:active{transform:translateY(1px) scale(.99)}
+
+  /* — Trek Passport — */
+  .pp-hero{background:linear-gradient(150deg,#0b5cff,#0a3aa0);border-radius:20px;padding:20px;margin-bottom:16px;position:relative;overflow:hidden}
+  .pp-hero:after{content:"🏔️";position:absolute;right:-6px;bottom:-14px;font-size:90px;opacity:.18}
+  .pp-hero .lbl{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.7)}
+  .pp-hero h2{margin:4px 0 2px;font-size:22px}
+  .pp-hero .lvl{font-size:12.5px;color:rgba(255,255,255,.85)}
+  .pp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+  .pp-stat{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:14px 6px;text-align:center}
+  .pp-stat b{font-size:20px;display:block;line-height:1}.pp-stat small{font-size:10px;color:var(--muted)}
+  .pp-badges{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .pp-badge{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:14px 8px;text-align:center}
+  .pp-badge.locked{opacity:.4;filter:grayscale(.8)}
+  .pp-badge .em{font-size:30px;display:block;margin-bottom:6px}
+  .pp-badge b{font-size:11px;display:block;line-height:1.2}
+  .pp-badge small{font-size:9.5px;color:var(--muted);display:block;margin-top:3px}
+  .pp-stamp{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:11px;margin-bottom:10px}
+  .pp-stamp .ps-img{width:54px;height:54px;border-radius:12px;background-size:cover;background-position:center;flex:none}
+  .pp-stamp .ps-bd{flex:1}.pp-stamp .ps-bd b{font-size:13.5px}.pp-stamp .ps-bd small{display:block;color:var(--muted);font-size:11px}
+  .pp-stamp .ps-done{color:#6ee7a0;font-size:11px;font-weight:600}
+
+  /* — primary button: richer gradient + accent glow — */
+  .btn:not(.ghost){background:linear-gradient(135deg,#2f6bff 0%,#5d8dff 55%,#4f8bff 100%);box-shadow:0 12px 28px -10px rgba(47,107,255,.62)}
+  .btn:not(.ghost):active{box-shadow:0 6px 16px -8px rgba(47,107,255,.5)}
+
+  /* — search & inputs: clearer focus state — */
+  .search{transition:border-color .18s,background .18s}
+  .search:focus-within{border-color:rgba(95,139,255,.55);background:var(--card2)}
+
+  /* — chips: glow when active — */
+  .chip.on{box-shadow:0 8px 20px -8px rgba(47,107,255,.6)}
+
+  /* — bottom nav: active pill highlight — */
+  .nav button.on{position:relative}
+  .nav button.on::before{content:"";position:absolute;top:-2px;width:34px;height:34px;border-radius:50%;background:radial-gradient(circle,rgba(255,206,31,.22),transparent 70%)}
+
+  /* — hero: deeper cinematic scrim for legible text — */
+  .hero:after{background:linear-gradient(180deg,rgba(8,17,30,.32) 0%,rgba(8,17,30,0) 26%,rgba(10,22,38,.55) 70%,var(--bg) 100%)}
+
+  /* — premium skeleton loaders — */
+  .skel{background:linear-gradient(100deg,rgba(255,255,255,.045) 30%,rgba(255,255,255,.11) 50%,rgba(255,255,255,.045) 70%);background-size:220% 100%;animation:skl 1.3s ease-in-out infinite;border-radius:14px}
+  @keyframes skl{to{background-position:-220% 0}}
+  .skel-card{height:96px;margin-bottom:13px}
+  .skel-post{height:230px;margin-bottom:14px;border-radius:18px}
+  .skel-row{display:flex;gap:13px;align-items:center;padding:11px;margin-bottom:13px;background:var(--card);border:1px solid var(--stroke);border-radius:var(--r)}
+  .skel-row .sk-av{width:104px;height:104px;border-radius:15px;flex:none}
+  .skel-row .sk-l{flex:1}.skel-row .sk-l>div{height:12px;border-radius:6px;margin-bottom:9px}
+</style>
+</head>
+<body>
+<div class="phone"><div class="screen">
+
+  <!-- SPLASH -->
+  <section class="view full active" id="splash" data-nonav>
+    <div class="splash" id="splashBg">
+      <div class="top"><img src="icons/logo.png" alt="Tripomonk" style="width:50px;height:50px;border-radius:13px"/></div>
+      <div class="sub">Dream. Trek. Discover.</div>
+      <div class="c">
+        <h1>Every summit<br>tells a story.</h1>
+        <p>Find treks that inspire you and journeys that transform you.</p>
+        <button class="btn" onclick="startJourney()">Start Your Journey&nbsp; →</button>
+        <div class="explore" onclick="go('explore')">Explore Treks →</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOME -->
+  <section class="view" id="home" data-tab="home">
+    <div class="bar"><img class="logo-full" src="icons/logo-full.svg" alt="Tripomonk" style="height:30px"/><div style="flex:1"></div>
+      <div class="rb round" onclick="go('notifications')" style="position:relative"><span class="ic" data-i="bell"></span><span id="notifDot" style="display:none;position:absolute;top:8px;right:8px;width:9px;height:9px;border-radius:50%;background:#ff3b5c;border:2px solid var(--bg,#0b1626)"></span></div></div>
+    <div class="greet">Hello, Explorer! 👋</div>
+    <h2 class="htitle">Where do you want<br>to <span>trek</span> next?</h2>
+    <div class="search" onclick="go('search')"><span class="ic" data-i="search"></span><span>Search treks, places or regions</span></div>
+    <div class="quick" id="quick"></div>
+    <div class="chips" id="homeChips"></div>
+    <div class="sec"><h2>Popular Treks</h2><a onclick="go('explore')">View all</a></div>
+    <div class="hrow" id="homeList"></div>
+    <div class="sec" style="margin-top:20px"><h2>Trek News &amp; Alerts</h2><a onclick="go('news')">View all</a></div>
+    <div id="homeNews"></div>
+  </section>
+
+  <!-- NEWS -->
+  <section class="view flow" id="news" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Trek News &amp; Alerts</h1></div>
+    <div id="newsList"></div>
+  </section>
+
+  <!-- TREK PASSPORT -->
+  <section class="view flow" id="passport" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Trek Passport</h1></div>
+    <div id="passportBody"></div>
+  </section>
+
+  <!-- EXPLORE -->
+  <section class="view" id="explore" data-tab="explore">
+    <div class="bar"><div class="rb round" onclick="go('home')"><span class="ic" data-i="menu"></span></div><h1>Explore Treks</h1></div>
+    <div class="search" onclick="go('filters')"><span class="ic" data-i="search"></span><span>Search treks or places</span><span class="ic" data-i="sliders" onclick="event.stopPropagation();go('filters')"></span></div>
+    <div class="sec"><h2>By Region</h2></div>
+    <div class="regions" id="regions"></div>
+    <div class="sec" style="margin-top:18px"><h2>By Difficulty</h2></div>
+    <div class="diff2" id="diffGrid"></div>
+    <div class="sec" style="margin-top:18px" id="topSec"><h2 id="topHead">Top Picks For You</h2><a onclick="filterAll()">View all</a></div>
+    <div id="exploreList"></div>
+  </section>
+
+  <!-- FILTERS -->
+  <section class="view flow" id="filters" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Filters</h1><a style="color:var(--accent2);font-size:13px;cursor:pointer" onclick="resetFilters()">Reset</a></div>
+    <div class="sec"><h2 style="font-size:14px">Difficulty Level</h2></div>
+    <div class="chips" id="fDiff"></div>
+    <div class="sec"><h2 style="font-size:14px">Duration</h2></div>
+    <div class="chips" id="fDur"></div>
+    <div class="sec"><h2 style="font-size:14px">Region</h2></div>
+    <div class="chips" id="fReg"></div>
+    <div class="sec"><h2 style="font-size:14px">Best Time</h2></div>
+    <div class="chips" id="fTime"></div>
+    <div style="height:30px"></div>
+    <div class="cta"><button class="btn" id="fBtn" onclick="applyFilters()">Show Treks</button></div>
+  </section>
+
+  <!-- DETAIL -->
+  <section class="view full" id="detail" data-nonav>
+    <div class="hero" id="dHero"><div class="htop"><div class="hb" onclick="back()"><span class="ic" data-i="back"></span></div>
+      <div class="right"><div class="hb" onclick="shareTrek()"><span class="ic" data-i="share"></span></div><div class="hb fav" id="dFav" onclick="toggleFav(this)"><span class="ic" data-i="heart"></span></div></div></div></div>
+    <div class="dcard">
+      <h1 id="dName"></h1><div class="reg"><span class="ic" data-i="pin"></span><span id="dReg"></span></div>
+      <div class="meta"><span class="star">★</span> <b id="dRate"></b> <span class="g" id="dRev" style="color:var(--muted)"></span> &nbsp;·&nbsp; <span class="lvl" id="dLvl"></span></div>
+      <div class="stats" id="dStats"></div>
+    </div>
+    <div class="blk reveal"><h2>About the Trek</h2><p id="dDesc"></p></div>
+    <div class="blk reveal"><h2>Highlights</h2><div class="hl" id="dHl"></div></div>
+    <div class="blk reveal"><h2 style="display:flex;justify-content:space-between;align-items:center">Conditions <a style="font-size:12px;color:var(--accent2);cursor:pointer" onclick="openNav(cart.trek)">Trail map →</a></h2><div class="stats" id="dCond"></div></div>
+    <div class="blk reveal"><h2>Good to Know</h2><div class="stats" id="dKnow"></div></div>
+    <div class="blk reveal"><h2>Inclusions &amp; Exclusions</h2><div id="dIncl"></div></div>
+    <div class="blk reveal"><h2 style="display:flex;justify-content:space-between;align-items:center">Itinerary <a style="font-size:12px;color:var(--accent2);cursor:pointer" onclick="go('itinerary')">View full →</a></h2><div id="dItinPrev"></div></div>
+    <div class="blk reveal"><h2 style="display:flex;justify-content:space-between;align-items:center">Reviews <a style="font-size:12px;color:var(--accent2);cursor:pointer" onclick="go('reviews')">See all →</a></h2><div id="dRevPrev"></div></div>
+    <div style="padding:10px 16px calc(var(--safe-bottom) + 28px)"><button class="btn" id="dCta" onclick="go('selectDate')">View Dates &amp; Price&nbsp; →</button></div>
+  </section>
+
+  <!-- ITINERARY -->
+  <section class="view flow" id="itinerary" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Itinerary</h1><div class="rb round" onclick="downloadItinerary()"><span class="ic" data-i="download"></span></div></div>
+    <div id="itinList"></div>
+    <div style="padding:8px 16px calc(var(--safe-bottom) + 24px);display:flex;gap:10px">
+      <button class="btn ghost" style="flex:1" onclick="downloadItinerary()"><span class="ic" data-i="download"></span> Download PDF</button>
+      <button class="btn" style="flex:1.3" onclick="go('selectDate')">View Dates &amp; Price</button>
+    </div>
+  </section>
+
+  <!-- SELECT DATE -->
+  <section class="view flow" id="selectDate" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Choose Start Date</h1></div>
+    <div class="sec"><h2 style="font-size:15px">Available Departures</h2></div>
+    <div id="batches"></div>
+    <div class="sec" style="margin-top:8px"><h2 style="font-size:15px">Inclusions</h2></div>
+    <div class="incl" id="inclusions"></div>
+    <div style="padding:18px 0 calc(var(--safe-bottom) + 28px)"><button class="btn" onclick="go('travellers')">Book Now</button></div>
+  </section>
+
+  <!-- TRAVELLERS -->
+  <section class="view flow" id="travellers" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Travellers</h1></div>
+    <div class="steps"><i class="on"></i><i></i><i></i></div>
+    <div class="panel" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div><b>Trekkers</b><small style="display:block;color:var(--muted);font-size:11px">Age 10+ · price per person</small></div>
+      <div class="stepper"><button onclick="trav(-1)">−</button><b id="travN">1</b><button onclick="trav(1)">+</button></div></div>
+    <div class="field"><label>Lead trekker name *</label><div class="inp"><span class="ic" data-i="user"></span><input id="leadName" placeholder="Full name (as per ID)"/></div></div>
+    <div class="field"><label>Mobile number *</label><div class="inp"><span class="ic" data-i="phone"></span><input id="leadPhone" placeholder="10-digit mobile" inputmode="tel" maxlength="10"/></div></div>
+    <div class="field"><label>Email *</label><div class="inp"><span class="ic" data-i="mail"></span><input id="leadEmail" placeholder="you@email.com" inputmode="email" autocomplete="email"/></div></div>
+    <div class="field"><label>Emergency contact name *</label><div class="inp"><span class="ic" data-i="user"></span><input id="emName" placeholder="Family member / friend"/></div></div>
+    <div class="field"><label>Emergency contact mobile *</label><div class="inp"><span class="ic" data-i="phone"></span><input id="emPhone" placeholder="10-digit mobile" inputmode="tel" maxlength="10"/></div></div>
+    <div style="height:20px"></div>
+    <div class="cta"><button class="btn" onclick="checkTravellers()">Continue · <span id="travTot"></span></button></div>
+  </section>
+
+  <!-- REVIEW -->
+  <section class="view flow" id="review" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Review &amp; Pay</h1></div>
+    <div class="steps"><i class="on"></i><i class="on"></i><i></i></div>
+    <div class="tcard" style="cursor:default"><div class="ph" id="rvPh"></div><div class="bd"><h3 id="rvName"></h3>
+      <div class="rt"><span class="ic" data-i="calendar"></span> <span id="rvDate"></span></div>
+      <div class="rt"><span class="ic" data-i="user"></span> <span id="rvPax"></span></div></div></div>
+    <div class="sec"><h2 style="font-size:15px">Add-ons</h2></div>
+    <div class="addon"><span class="ic" data-i="backpack"></span><div class="t">Rent full gear kit<small>Jacket, boots, poles · ₹2,700</small></div><div class="toggle" onclick="addon(this,'gear',2700)"><i></i></div></div>
+    <div class="addon"><span class="ic" data-i="permits"></span><div class="t">Forest permit (assisted)<small>We process it · ₹350</small></div><div class="toggle" onclick="addon(this,'permit',350)"><i></i></div></div>
+    <div class="panel" style="margin-top:6px">
+      <div class="srow"><span>Trek (<span id="sPax">1</span> ×)</span><span id="sBase"></span></div>
+      <div class="srow" id="sGear" style="display:none"><span>Gear kit</span><span>₹2,700</span></div>
+      <div class="srow" id="sPermit" style="display:none"><span>Forest permit</span><span>₹350</span></div>
+      <div class="srow tot"><span>Total</span><span id="sTot"></span></div></div>
+    <div style="height:96px"></div>
+    <div class="cta"><button class="btn" onclick="go('payment')">Proceed to Pay</button></div>
+  </section>
+
+  <!-- PAYMENT -->
+  <section class="view flow" id="payment" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Payment</h1></div>
+    <div class="steps"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+    <div class="panel" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div><small style="color:var(--muted);font-size:11px">Amount payable</small><div style="font-size:20px;font-weight:600" id="payAmt"></div></div><span class="tag"><span class="ic" data-i="lock"></span> Razorpay</span></div>
+    <div class="pay on" onclick="selPay(this)"><span class="ic" data-i="upi"></span><div class="t"><b>UPI</b><small>GPay, PhonePe, Paytm</small></div><div class="radio"></div></div>
+    <div class="pay" onclick="selPay(this)"><span class="ic" data-i="card"></span><div class="t"><b>Card</b><small>Credit / Debit</small></div><div class="radio"></div></div>
+    <div class="pay" onclick="selPay(this)"><span class="ic" data-i="bank"></span><div class="t"><b>Netbanking</b><small>All major banks</small></div><div class="radio"></div></div>
+    <div class="panel" style="margin-top:6px;font-size:12px;color:var(--muted);line-height:1.5">Pay 25% now to confirm your seat, balance before the trek. Free cancellation up to 15 days prior.</div>
+    <div style="height:96px"></div>
+    <div class="cta"><button class="btn" onclick="confirmBooking()">Pay <span id="payNow"></span> &amp; Confirm</button></div>
+  </section>
+
+  <!-- SUCCESS -->
+  <section class="view" id="success" data-nonav>
+    <div class="success"><div class="checkmark"><span class="ic" data-i="check" data-sz="44"></span></div>
+      <h1 style="font-size:23px;margin:0 0 8px">Booking Confirmed!</h1>
+      <p style="color:var(--muted);font-size:13px;margin:0 24px 22px">Your seat on <b id="scName" style="color:var(--text)"></b> is reserved. Details sent to your WhatsApp &amp; email.</p></div>
+    <button class="btn" onclick="go('ticket')">View E-Ticket</button>
+    <button class="btn ghost" style="margin-top:11px" onclick="go('home')">Back to Home</button>
+  </section>
+
+  <!-- TICKET -->
+  <section class="view ticket" id="ticket" data-nonav>
+    <div class="bar"><div class="rb round" onclick="go('bookings')"><span class="ic" data-i="back"></span></div><h1>E-Ticket</h1></div>
+    <div class="tk">
+      <div class="tkh"><div class="ph" id="tkPh"></div><div><h3 style="margin:0" id="tkName"></h3><small style="color:var(--muted)">Tripomonk · Group departure</small></div></div>
+      <div class="tkdiv"></div>
+      <div class="qr" id="qr"></div>
+      <div style="text-align:center;color:var(--muted);font-size:11px;margin-bottom:8px">Show this QR to your trip captain</div>
+      <div class="tkdiv"></div>
+      <div class="tkg"><div><div class="k">BOOKING ID</div><div class="v" id="tkId"></div></div><div><div class="k">DATE</div><div class="v" id="tkDate"></div></div>
+        <div><div class="k">TREKKERS</div><div class="v" id="tkPax"></div></div><div><div class="k">PAID</div><div class="v" id="tkPaid"></div></div></div>
+    </div>
+    <button class="btn" style="margin-top:16px" onclick="wa('Hi Tripomonk, about my booking '+(cart.booking?cart.booking.id:''))"><span class="ic" data-i="chat"></span> Chat with Coordinator</button>
+  </section>
+
+  <!-- COMMUNITY -->
+  <section class="view" id="community" data-tab="community">
+    <div class="bar"><h1>Community</h1><div class="rb round" onclick="go('peopleSearch')" title="Find trekkers"><span class="msr" style="font-size:22px">person_search</span></div></div>
+    <div id="followStrip" style="margin-bottom:14px"></div>
+    <div class="chips" id="commTabs" style="margin-bottom:16px"></div>
+    <div id="feed"></div>
+    <div class="fab" onclick="addPost()"><span class="ic" data-i="plus"></span></div>
+  </section>
+
+  <!-- PEOPLE SEARCH -->
+  <section class="view flow" id="peopleSearch" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Find Trekkers</h1></div>
+    <div class="search" style="margin-bottom:16px">
+      <span class="msr" style="font-size:20px;color:var(--muted)">search</span>
+      <input id="peopleSearchInput" type="text" placeholder="Search by name or handle…" autocomplete="off" oninput="searchPeople(this.value)" style="all:unset;flex:1;font-size:14px;color:var(--text)"/>
+    </div>
+    <div id="peopleResults"></div>
+  </section>
+
+  <!-- PERSON PROFILE -->
+  <section class="view flow" id="person" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Profile</h1></div>
+    <div id="personBody"></div>
+    <div style="height:40px"></div>
+  </section>
+
+  <!-- PACKING -->
+  <section class="view flow" id="packing" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Packing List</h1></div>
+    <div class="chips" id="pkTabs" style="margin-bottom:16px"></div>
+    <div id="pkList"></div>
+    <div style="height:90px"></div>
+    <div class="cta"><button class="btn" onclick="downloadChecklist()"><span class="ic" data-i="download"></span> Download Checklist</button></div>
+  </section>
+
+  <!-- BOOKINGS -->
+  <section class="view" id="bookings" data-tab="bookings">
+    <div class="bar"><h1>My Bookings</h1></div>
+    <div id="bookList"></div>
+  </section>
+
+  <!-- WISHLIST -->
+  <section class="view flow" id="wishlist" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>My Wishlist</h1></div>
+    <div id="wishList"></div>
+  </section>
+
+  <!-- PROFILE -->
+  <section class="view full" id="profile" data-tab="profile">
+    <div class="pcover" id="pCover"></div>
+    <div class="pwrap">
+      <div class="pav" id="profileAv">E</div>
+      <div class="prow"><div><h1 id="profileName">Explorer</h1><div class="lv" id="profileSub">Sign in to track your treks</div></div><a style="color:var(--accent2);font-size:13px;cursor:pointer" onclick="go('editProfile')">Edit Profile</a></div>
+      <div class="pstats" id="pStats"></div>
+      <div id="menu"></div>
+    </div>
+  </section>
+
+  <!-- EDIT PROFILE -->
+  <section class="view flow" id="editProfile" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Edit Profile</h1></div>
+    <div style="text-align:center;margin-bottom:24px">
+      <div id="epAv" class="pav" style="margin:0 auto;cursor:pointer;position:relative" onclick="document.getElementById('epPhoto').click()">
+        <span style="position:absolute;bottom:0;right:0;width:26px;height:26px;border-radius:50%;background:var(--accent);display:grid;place-items:center"><span class="msr" style="font-size:14px;color:#fff">photo_camera</span></span>
+      </div>
+      <input type="file" id="epPhoto" accept="image/*" hidden onchange="epPickPhoto(this)"/>
+      <div style="color:var(--muted);font-size:11.5px;margin-top:8px">Tap photo to change</div>
+    </div>
+    <div class="field"><label>Full name</label><div class="inp"><span class="msr" style="font-size:20px;color:var(--muted)">person</span><input id="epName" placeholder="Your full name"/></div></div>
+    <div class="field"><label>Mobile</label><div class="inp"><span class="msr" style="font-size:20px;color:var(--muted)">call</span><input id="epMobile" type="tel" placeholder="+91 XXXXX XXXXX"/></div></div>
+    <div class="field"><label>Email</label><div class="inp"><span class="msr" style="font-size:20px;color:var(--muted)">mail</span><input id="epEmail" type="email" placeholder="you@email.com" readonly style="opacity:.6"/></div></div>
+    <button class="btn" style="margin-top:8px" onclick="saveProfile()">Save Changes</button>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="view flow" id="settings" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Settings</h1></div>
+    <div id="setList"></div>
+    <div style="text-align:center;color:var(--muted2);font-size:11px;margin-top:18px">Tripomonk v2.0 · Made in Uttarakhand</div>
+  </section>
+
+  <!-- LOGIN / SIGNUP -->
+  <section class="view full" id="login" data-nonav>
+    <div class="splash" id="loginBg" style="justify-content:flex-end">
+      <!-- top bar -->
+      <div class="top" style="gap:10px">
+        <img src="icons/logo.png" alt="Tripomonk" style="width:40px;height:40px;border-radius:10px"/>
+        <b style="font-size:18px">Tripomonk</b>
+      </div>
+      <div class="sub" style="font-size:12px;opacity:.75">Dream. Trek. Discover.</div>
+      <!-- card -->
+      <div class="c auth-card" style="width:100%">
+        <!-- tabs -->
+        <div style="display:flex;gap:0;background:rgba(255,255,255,.1);border-radius:14px;padding:4px;margin-bottom:22px">
+          <button id="tabSignin" onclick="authTab('signin')" style="flex:1;border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;background:var(--accent);color:#fff;transition:.2s">Sign In</button>
+          <button id="tabSignup" onclick="authTab('signup')" style="flex:1;border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;background:transparent;color:rgba(255,255,255,.75);transition:.2s">Create Account</button>
+        </div>
+        <!-- name field (signup only) -->
+        <div id="signupName" style="display:none;margin-bottom:13px">
+          <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:14px 15px">
+            <span class="msr" style="font-size:20px;color:rgba(255,255,255,.6)">person</span>
+            <input id="authName" type="text" placeholder="Your full name" autocomplete="name" style="all:unset;flex:1;color:#fff;font-size:14px;font-family:inherit"/>
+          </div>
+        </div>
+        <!-- email field -->
+        <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:14px 15px;margin-bottom:13px">
+          <span class="msr" style="font-size:20px;color:rgba(255,255,255,.6)">mail</span>
+          <input id="emailInput" type="email" inputmode="email" placeholder="your@email.com" autocomplete="email" style="all:unset;flex:1;color:#fff;font-size:14px;font-family:inherit"/>
+        </div>
+        <!-- social login buttons -->
+        <button onclick="socialLogin('google')" style="all:unset;width:100%;display:flex;align-items:center;gap:12px;background:#fff;border-radius:14px;padding:13px 16px;cursor:pointer;margin-bottom:10px;box-sizing:border-box">
+          <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.29-8.16 2.29-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+          <span style="color:#1a1a1a;font-size:14px;font-weight:600;flex:1;text-align:left">Continue with Google</span>
+        </button>
+        <button onclick="socialLogin('facebook')" style="all:unset;display:none;width:100%;align-items:center;gap:12px;background:#1877F2;border-radius:14px;padding:13px 16px;cursor:pointer;margin-bottom:16px;box-sizing:border-box">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M24 12.073C24 5.404 18.627 0 12 0S0 5.404 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.93-1.956 1.886v2.285h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>
+          <span style="color:#fff;font-size:14px;font-weight:600;flex:1;text-align:left">Continue with Facebook</span>
+        </button>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div style="flex:1;height:1px;background:rgba(255,255,255,.15)"></div>
+          <span style="font-size:12px;color:rgba(255,255,255,.45)">or use email OTP</span>
+          <div style="flex:1;height:1px;background:rgba(255,255,255,.15)"></div>
+        </div>
+        <button class="btn" id="sendOtpBtn" onclick="sendOtp()" style="margin-bottom:14px">Continue with Email →</button>
+        <button onclick="continueAsGuest()" style="all:unset;width:100%;text-align:center;color:rgba(255,255,255,.55);font-size:13px;font-weight:500;cursor:pointer;padding:10px 0;display:block">Browse without account →</button>
+        <p style="color:rgba(255,255,255,.3);font-size:11px;text-align:center;margin:14px 0 0;line-height:1.5">By continuing you agree to our Terms & Privacy Policy</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- OTP VERIFY -->
+  <section class="view full" id="otp" data-nonav>
+    <div class="splash" id="otpBg">
+      <div class="top" style="gap:10px">
+        <img src="icons/logo.png" alt="Tripomonk" style="width:40px;height:40px;border-radius:10px"/>
+        <b style="font-size:18px">Tripomonk</b>
+      </div>
+      <div class="c" style="width:100%">
+        <div style="margin-bottom:24px">
+          <div style="width:64px;height:64px;border-radius:18px;background:rgba(47,107,255,.25);border:1px solid rgba(47,107,255,.4);display:grid;place-items:center;margin-bottom:16px">
+            <span class="msr" style="font-size:30px;color:#7ab4ff">mark_email_read</span>
+          </div>
+          <h2 style="margin:0 0 8px;font-size:24px;font-weight:600">Check your email</h2>
+          <p style="color:rgba(255,255,255,.6);font-size:13.5px;margin:0;line-height:1.55">We sent a 6-digit code to<br><b id="otpPhone" style="color:#fff"></b></p>
+        </div>
+        <!-- OTP boxes -->
+        <div id="otpBoxes" style="display:flex;gap:10px;margin-bottom:20px">
+          <input type="tel" inputmode="numeric" maxlength="1" class="otp-box" oninput="otpBoxInput(this,0)" onkeydown="otpBoxKey(event,0)"/>
+          <input type="tel" inputmode="numeric" maxlength="1" class="otp-box" oninput="otpBoxInput(this,1)" onkeydown="otpBoxKey(event,1)"/>
+          <input type="tel" inputmode="numeric" maxlength="1" class="otp-box" oninput="otpBoxInput(this,2)" onkeydown="otpBoxKey(event,2)"/>
+          <input type="tel" inputmode="numeric" maxlength="1" class="otp-box" oninput="otpBoxInput(this,3)" onkeydown="otpBoxKey(event,3)"/>
+          <input type="tel" inputmode="numeric" maxlength="1" class="otp-box" oninput="otpBoxInput(this,4)" onkeydown="otpBoxKey(event,4)"/>
+          <input type="tel" inputmode="numeric" maxlength="1" class="otp-box" oninput="otpBoxInput(this,5)" onkeydown="otpBoxKey(event,5)"/>
+        </div>
+        <button class="btn" id="verifyOtpBtn" onclick="verifyOtp()" style="margin-bottom:16px">Verify &amp; Continue →</button>
+        <div style="text-align:center">
+          <span style="color:rgba(255,255,255,.5);font-size:13px">Didn't get it? </span>
+          <span style="color:var(--accent2);font-size:13px;cursor:pointer;font-weight:600" onclick="resendOtp()">Resend code</span>
+        </div>
+        <div style="text-align:center;margin-top:14px">
+          <span style="color:rgba(255,255,255,.4);font-size:12px;cursor:pointer" onclick="go('login')">← Change email</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CAPTAIN -->
+  <section class="view flow" id="captain" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Captain Check-in</h1></div>
+    <div class="panel" style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:14px">Scan or paste a trekker's e-ticket QR to verify it. Works offline — every ticket is digitally signed.</div>
+    <div class="field"><label>Paste ticket code</label><div class="inp"><span class="ic" data-i="ticket"></span><input id="capInput" placeholder="TMK1|..."/></div></div>
+    <div style="display:flex;gap:10px"><button class="btn ghost" style="flex:1" onclick="captainVerify(document.getElementById('capInput').value)">Verify</button><button class="btn ghost" style="flex:1" onclick="captainTestLast()">Test last ticket</button></div>
+    <div id="capResult" style="margin-top:16px"></div>
+  </section>
+
+  <!-- NAV -->
+  <!-- SEARCH -->
+  <section class="view flow" id="search" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div>
+      <div class="search" style="flex:1;margin:0"><span class="ic" data-i="search"></span><input id="searchInput" placeholder="Search treks, places, regions" autocomplete="off"/></div></div>
+    <div class="sec"><h2 style="font-size:14px">Popular searches</h2></div>
+    <div class="chips" id="searchSug" style="flex-wrap:wrap"></div>
+    <div class="sec"><h2 style="font-size:14px">Results</h2></div>
+    <div id="searchResults"></div>
+  </section>
+
+  <!-- NOTIFICATIONS -->
+  <section class="view flow" id="notifications" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Notifications</h1></div>
+    <div id="notiList"></div>
+  </section>
+
+  <!-- REVIEWS -->
+  <section class="view flow" id="reviews" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Reviews</h1></div>
+    <div class="panel" style="text-align:center;margin-bottom:16px"><div style="font-size:40px;font-weight:600;line-height:1" id="revAvg">4.8</div><div class="star" style="font-size:16px;margin:6px 0">★★★★★</div><small style="color:var(--muted)" id="revCount">Based on verified trekkers</small></div>
+    <div id="reviewList"></div>
+    <div style="height:20px"></div>
+  </section>
+
+  <!-- HELP -->
+  <section class="view flow" id="help" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Help &amp; Support</h1></div>
+    <button class="btn" onclick="wa('Hi Tripomonk, I need help with')"><span class="ic" data-i="chat"></span> Chat with us on WhatsApp</button>
+    <div class="sec" style="margin-top:18px"><h2 style="font-size:15px">FAQs</h2></div>
+    <div id="faqList"></div>
+  </section>
+
+  <!-- RENT GEAR -->
+  <section class="view flow" id="gear" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Rent Gear</h1></div>
+    <div class="panel" style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:14px">Reserve in the app, collect at the trek base or get it delivered. Daily rates · refundable deposit.</div>
+    <div id="gearList"></div>
+    <div class="cta"><button class="btn" onclick="gearEnquire()"><span class="ic" data-i="chat"></span> Enquire to rent</button></div>
+  </section>
+
+  <!-- PERMITS -->
+  <section class="view flow" id="permits" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Permits</h1></div>
+    <div class="panel" style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:14px">Assisted service: tell us your trek and we process the forest / eco-zone permit and ID, then send the approved copy in-app.</div>
+    <div id="permitList"></div>
+  </section>
+
+  <!-- ADVENTURE ACTIVITIES -->
+  <section class="view flow" id="activities" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Adventure Activities</h1></div>
+    <div class="grid2" id="actList"></div>
+  </section>
+
+  <!-- ADMIN · MANAGE TREKS -->
+  <section class="view flow" id="admin" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Admin · Treks</h1><div class="rb round" onclick="newTrek()"><span class="ic" data-i="plus"></span></div></div>
+    <div class="chips" id="adminTabs" style="margin-bottom:14px"></div>
+    <div id="adminForm" style="display:none"></div>
+    <div id="adminBody"></div>
+    <div style="height:calc(var(--safe-bottom) + 20px)"></div>
+  </section>
+
+  <!-- TREK NAVIGATION -->
+  <section class="view flow" id="navmap" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Trek Navigation</h1><div class="rb round" onclick="recenterNav()"><span class="ic" data-i="pin"></span></div></div>
+    <div id="map"></div>
+    <div class="navstats">
+      <div class="mcard"><span class="ic" data-i="altitude"></span><div class="v" id="nAlt">—</div><div class="l">Altitude</div></div>
+      <div class="mcard"><span class="ic" data-i="speed"></span><div class="v" id="nSpd">—</div><div class="l">Speed</div></div>
+      <div class="mcard"><span class="ic" data-i="distance"></span><div class="v" id="nDist">0.0</div><div class="l">Tracked km</div></div>
+    </div>
+    <div class="mcard" style="margin-bottom:12px"><div class="l">Distance to trek base</div><div class="v" style="font-size:18px"><span id="nToBase">—</span></div><div class="l" id="nCoord" style="margin-top:5px">Tap Start, then allow location.</div></div>
+    <button class="btn" id="navBtn" onclick="toggleNav()"><span class="ic" data-i="speed"></span> Start tracking</button>
+    <div class="note2" style="margin-top:12px">Uses your phone GPS (needs location permission + an https link). Map tiles need internet; offline trail maps + the exact marked route come with the next build.</div>
+    <div style="height:calc(var(--safe-bottom) + 20px)"></div>
+  </section>
+
+  <!-- TREK HEALTH -->
+  <section class="view flow" id="health" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Trek Health</h1><div class="rb round" onclick="connectWatch()"><span class="ic" data-i="watch"></span></div></div>
+    <div class="hcard-hero">
+      <div class="pulse"><span class="ic" data-i="monitor" data-sz="26"></span></div>
+      <div class="hr-num"><span id="hrNum">96</span> <small>bpm</small></div>
+      <div id="hConn" style="font-size:12px;color:rgba(255,255,255,.72);margin-top:5px">Demo data · tap the watch icon to connect a device</div>
+    </div>
+    <div class="mgrid">
+      <div class="mcard"><span class="ic" data-i="spo2"></span><div class="v"><span id="spo2V">97</span>%</div><div class="l">Blood oxygen (SpO₂)</div></div>
+      <div class="mcard"><span class="ic" data-i="steps"></span><div class="v" id="stepsV">7,480</div><div class="l">Steps today</div></div>
+      <div class="mcard"><span class="ic" data-i="distance"></span><div class="v"><span id="distV">5.2</span> km</div><div class="l">Distance</div></div>
+      <div class="mcard"><span class="ic" data-i="fire"></span><div class="v" id="calV">412</div><div class="l">Calories</div></div>
+      <div class="mcard"><span class="ic" data-i="altitude"></span><div class="v"><span id="elevV">840</span> m</div><div class="l">Elevation gain</div></div>
+      <div class="mcard"><span class="ic" data-i="speed"></span><div class="v" id="paceV">14:20</div><div class="l">Avg pace /km</div></div>
+    </div>
+    <div style="padding:16px 0 6px"><button class="btn" onclick="connectWatch()"><span class="ic" data-i="watch"></span> Connect watch / band</button></div>
+    <div class="note2">Live heart rate works with Bluetooth bands/watches on supported phones (Chrome). Full Fitbit, Apple Health and Google Health sync arrives with the backend.</div>
+    <div style="height:calc(var(--safe-bottom) + 20px)"></div>
+  </section>
+
+  <!-- MODAL (custom prompt) -->
+  <div class="modal" id="modal">
+    <div class="modal-card">
+      <h3 id="modalTitle">Enter code</h3>
+      <p id="modalSub" style="display:none"></p>
+      <input id="modalInput" autocomplete="off"/>
+      <div class="modal-actions"><button class="btn ghost" id="modalCancel">Cancel</button><button class="btn" id="modalOk">OK</button></div>
+    </div>
+  </div>
+
+  <!-- POST COMPOSER -->
+  <div class="modal" id="postModal">
+    <div class="modal-card post-card">
+      <h3>Share your story</h3>
+      <p>Tell fellow trekkers how it went — and add a few photos.</p>
+      <textarea id="postText" placeholder="How was your trek?"></textarea>
+      <div class="post-pics" id="postPics"></div>
+      <label class="post-add"><input type="file" id="postFiles" accept="image/*,video/*" multiple hidden/><span id="postAddIc"></span> Add photos / video</label>
+      <div class="field" style="margin-bottom:14px"><div class="inp"><span class="msr" style="font-size:18px;color:var(--accent2);margin-right:6px">location_on</span><select id="postTrek" style="all:unset;flex:1;color:var(--text);font-size:14px"></select></div></div>
+      <div class="modal-actions"><button class="btn ghost" id="postCancel">Cancel</button><button class="btn" id="postOk">Post</button></div>
+    </div>
+  </div>
+
+  <!-- COMMENTS -->
+  <div class="modal cm-modal" id="cmModal">
+    <div class="modal-card cm-card">
+      <div class="cm-top"><h3>Comments</h3><small id="cmCount"></small><button class="cm-x" id="cmClose">&times;</button></div>
+      <div class="cm-list" id="cmList"></div>
+      <div class="cm-bar"><input id="cmInput" placeholder="Add a comment…" autocomplete="off"/><button class="btn" id="cmSend">Send</button></div>
+    </div>
+  </div>
+
+  <nav class="nav hide" id="nav">
+    <button data-t="home" onclick="go('home')"><span class="ic" data-i="home"></span>Home</button>
+    <button data-t="explore" onclick="go('explore')"><span class="ic" data-i="treks"></span>Treks</button>
+    <button data-t="community" onclick="go('community')"><span class="ic" data-i="community"></span>Community</button>
+    <button data-t="bookings" onclick="go('bookings')"><span class="ic" data-i="bookings"></span>Bookings</button>
+    <button data-t="profile" onclick="go('profile')"><span class="ic" data-i="user"></span>Profile</button>
+  </nav>
+
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script>if('serviceWorker' in navigator){addEventListener('load',()=>navigator.serviceWorker.register('service-worker.js').catch(()=>{}));}</script>
+</body>
+</html>
