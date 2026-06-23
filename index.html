@@ -564,19 +564,16 @@
   .hhero .hh-go{display:inline-flex;align-items:center;gap:6px;background:var(--yellow);color:#1a1206;font-weight:700;font-size:12.5px;padding:8px 14px;border-radius:999px}
   .hhero .hh-price{position:absolute;top:14px;right:14px;z-index:1;background:rgba(0,0,0,.4);backdrop-filter:blur(6px);color:#fff;font-weight:700;font-size:13px;padding:6px 11px;border-radius:999px}
 
-  /* — dynamic 3D coverflow card stack — */
-  .coverflow{position:relative;height:418px;margin:0 -18px;overflow:hidden;perspective:1200px;touch-action:pan-y;user-select:none;-webkit-user-select:none}
-  .coverflow .fcx{position:absolute;left:50%;top:6px;width:74%;max-width:310px;border-radius:24px;overflow:hidden;cursor:pointer;
-    background:#16263e;border:1px solid rgba(255,255,255,.14);box-shadow:0 22px 48px -20px rgba(0,0,0,.85);
-    transform-origin:center center;will-change:transform,opacity;transition:none}
-  .coverflow.anim .fcx{transition:transform .42s cubic-bezier(.2,.85,.25,1),opacity .42s,box-shadow .42s}
-  .coverflow .fcx.active{box-shadow:0 34px 64px -22px rgba(0,0,0,.95),0 0 0 1px rgba(95,139,255,.25)}
-  .cf-dots{position:absolute;left:0;right:0;bottom:2px;display:flex;justify-content:center;align-items:center;gap:5px;z-index:300;pointer-events:none}
-  .cf-dots span{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.3);transition:.25s}
-  .cf-dots span.on{background:var(--accent2);width:18px;border-radius:3px}
-  .cf-dots .cf-count{font-size:11px;color:var(--muted);font-weight:600}
-  .coverflow .fcx-img.act{height:170px;display:grid;place-items:center}
-  .coverflow .fcx-img.act .act-ic{font-size:64px;color:rgba(255,255,255,.92)}
+  /* — 3D swipe coverflow (cards stay in flow so they always render; tilt on scroll) — */
+  .coverflow{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:0 -18px;padding:26px 0 22px}
+  .coverflow::-webkit-scrollbar{display:none}
+  .coverflow::before,.coverflow::after{content:"";flex:0 0 13%}
+  .coverflow .fcx{flex:0 0 74%;max-width:300px;scroll-snap-align:center;border-radius:22px;overflow:hidden;cursor:pointer;
+    background:var(--card2);border:1px solid var(--stroke);box-shadow:0 18px 40px -18px rgba(0,0,0,.85);
+    transform-origin:center center;transition:transform .14s ease-out,opacity .14s ease-out;will-change:transform,opacity}
+  .cf-dots{display:none}
+  .fcx-img.act{height:170px;display:grid;place-items:center;background:linear-gradient(150deg,#0b5cff,#0a3aa0)}
+  .fcx-img.act .act-ic{font-size:64px;color:rgba(255,255,255,.92)}
   .fcx-img{height:200px;background-size:cover;background-position:center;position:relative}
   .fcx-bd{padding:14px 16px 16px}
   .fcx-bd h3{margin:0;font-size:19px;letter-spacing:-.3px}

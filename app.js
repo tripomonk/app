@@ -580,40 +580,34 @@ function actCardCF(a,i){return `<div class="fcx" data-i="${i}" onclick="cfTapCar
     <div class="fcx-foot"><div><small>Price</small><div class="fcx-price">${esc(a[3])}</div></div>
       <button class="fcx-go" onclick="event.stopPropagation();cfOpenCard(this)"><span class="msr">flight</span></button></div>
   </div></div>`;}
-function layoutCf(el,frac,animate){
-  const st=el&&el._cf;if(!st)return;const n=st.list.length;if(!n)return;
-  el.classList.toggle('anim',!!animate);
-  el.querySelectorAll('.fcx').forEach(card=>{
-    const i=+card.dataset.i;let off=i-st.index;
-    if(n>7){if(off>n/2)off-=n;else if(off<-n/2)off+=n;}
-    off-=(frac||0);const ao=Math.abs(off);
-    if(ao>3.3){card.style.display='none';return;}
-    card.style.display='';
-    const scale=Math.max(0.68,1-ao*0.12),op=Math.max(0.28,1-ao*0.24),rot=Math.max(-22,Math.min(22,-off*7));
-    card.style.transform=`translateX(-50%) translateX(${off*46}%) translateZ(${-ao*80}px) rotateY(${rot}deg) scale(${scale})`;
-    card.style.opacity=String(op);card.style.zIndex=String(200-Math.round(ao*20));
-    card.classList.toggle('active',Math.round(off)===0);
-  });
-  const d=el.querySelector('.cf-dots');
-  if(d){if(n<=1)d.innerHTML='';else if(n<=10)d.innerHTML=st.list.map((_,i)=>`<span class="${i===st.index?'on':''}"></span>`).join('');else d.innerHTML=`<span class="cf-count">${st.index+1} / ${n}</span>`;}
-}
-function cfGoEl(el,delta){const st=el._cf;const n=st.list.length;if(!n)return;st.index=((st.index+delta)%n+n)%n;layoutCf(el,0,true);}
-function cfTapCard(card){if(_cfMoved)return;const el=card.closest('.coverflow');const st=el._cf;const i=+card.dataset.i;if(i===st.index)st.open(st.list[i],i);else{st.index=i;layoutCf(el,0,true);}}
+function cfTapCard(card){const el=card.closest('.coverflow');if(!el||!el._cf)return;const i=+card.dataset.i;el._cf.open(el._cf.list[i],i);}
 function cfOpenCard(btn){const card=btn.closest('.fcx'),el=card.closest('.coverflow'),i=+card.dataset.i;el._cf.open(el._cf.list[i],i);}
-function attachCfDrag(el){
-  let startX=0,dragging=false,step=1,moved=false;
-  el.onpointerdown=e=>{dragging=true;moved=false;startX=e.clientX;const c=el.querySelector('.fcx');step=(c?c.offsetWidth:el.offsetWidth)*0.46+1;try{el.setPointerCapture(e.pointerId);}catch(_e){}};
-  el.onpointermove=e=>{if(!dragging)return;const dx=e.clientX-startX;if(Math.abs(dx)>6)moved=true;layoutCf(el,-dx/step,false);};
-  const end=e=>{if(!dragging)return;dragging=false;const dx=(e.clientX||startX)-startX;const delta=Math.round(-dx/step);if(delta!==0)cfGoEl(el,delta);else layoutCf(el,0,true);_cfMoved=moved;setTimeout(()=>{_cfMoved=false;},60);};
-  el.onpointerup=end;el.onpointercancel=end;el.onpointerleave=end;
+/* 3D tilt driven by scroll position — cards remain in normal flow (always render) */
+function cfScroll(el){
+  const rc=el.getBoundingClientRect(),mid=rc.left+rc.width/2;
+  el.querySelectorAll('.fcx').forEach(card=>{
+    const r=card.getBoundingClientRect(),cm=r.left+r.width/2;
+    const delta=(cm-mid)/r.width;            /* 0 centred, ±1 one card away */
+    const ad=Math.min(Math.abs(delta),2.4);
+    const rotY=Math.max(-42,Math.min(42,-delta*34));
+    const scale=Math.max(0.78,1-ad*0.15);
+    const ty=ad*18;
+    /* per-card perspective() in the transform is reliable on Android */
+    card.style.transform=`perspective(1000px) translateY(${ty}px) rotateY(${rotY}deg) scale(${scale})`;
+    card.style.opacity=String(Math.max(0.5,1-ad*0.3));
+    card.style.zIndex=String(100-Math.round(ad*10));
+  });
 }
 function makeCoverflow(elId,list,cardFn,openFn){
   const el=document.getElementById(elId);if(!el)return;
   if(!list.length){el.className='';el.innerHTML='<div class="empty"><p>Nothing here yet.</p></div>';return;}
-  el._cf={list,index:Math.floor(list.length/2),open:openFn};
+  el._cf={list,open:openFn};
   el.className='coverflow';
-  el.innerHTML=list.map((it,i)=>cardFn(it,i)).join('')+'<div class="cf-dots"></div>';
-  hydrate(el);attachCfDrag(el);layoutCf(el,0,false);
+  el.innerHTML=list.map((it,i)=>cardFn(it,i)).join('');
+  hydrate(el);
+  el.onscroll=()=>cfScroll(el);
+  requestAnimationFrame(()=>cfScroll(el));
+  setTimeout(()=>cfScroll(el),120);
 }
 function renderHomeHero(){
   const box=document.getElementById('homeHero');if(!box)return;
