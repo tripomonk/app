@@ -165,13 +165,22 @@ function newsCard(n){
   const a=isAlert(n);const when=n.published_at?timeAgo(n.published_at):'';
   const pri=a?`<div class="npri high">${ic('alert',13)} High priority</div>`:`<div class="npri low">${ic('bell',13)} Trek update</div>`;
   const img=n.image?`<div class="nimg" style="background-image:url('${n.image}')"></div>`:'';
+  const trekChip=n.trek?`<span class="nchip">${ic('pin',11)} ${esc(n.trek)}</span>`:'';
   return `<div class="news-item">${pri}
     <div class="ncard ${a?'alert':''}" onclick="openNews('${(n.url||'').replace(/'/g,'')}')">
       ${img}
-      <div class="nbody"><h4>${esc(n.title||'')}</h4>${n.summary?`<p>${esc(n.summary)}</p>`:''}<div class="nmeta">${esc(n.source||'')}${when?' · '+when:''}</div></div>
+      <div class="nbody"><h4>${esc(n.title||'')}</h4>${n.summary?`<p>${esc(n.summary)}</p>`:''}<div class="nmeta">${trekChip}${esc(n.source||'')}${when?' · '+when:''}</div></div>
     </div></div>`;
 }
 function openNews(url){if(url)window.open(url,'_blank','noopener');}
+async function renderDetailNews(trekName){
+  const blk=document.getElementById('dNewsBlk'),box=document.getElementById('dNews');if(!box)return;
+  const list=_newsCache||await loadNews();
+  const mine=(list||[]).filter(n=>n.trek===trekName);
+  if(!mine.length){if(blk)blk.style.display='none';return;}
+  if(blk)blk.style.display='';
+  box.innerHTML=mine.slice(0,4).map(newsCard).join('');hydrate(box);
+}
 async function renderHomeNews(){
   const box=document.getElementById('homeNews');if(!box)return;
   const list=_newsCache||await loadNews();
@@ -614,6 +623,7 @@ function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
   const cta=document.getElementById('dCta');
   if(t.soon){cta.innerHTML=ic('bell',16)+' Coming Soon · Notify me';cta.onclick=()=>wa(t.n+' — please notify me when it goes live.');}
   else{cta.innerHTML='View Dates &amp; Price&nbsp; →';cta.onclick=()=>go('selectDate');}
+  renderDetailNews(t.n);
   go('detail');
 }
 function shareTrek(){note('Share '+cart.trek.n+' — opens share sheet.');}
