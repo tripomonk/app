@@ -484,8 +484,9 @@ async function verifyOtp(){
 async function signOut(){
   const sb=getSupaClient();if(sb)await sb.auth.signOut();
   currentUser=null;
-  /* clear personal data so the next user starts fresh */
-  try{localStorage.removeItem('tmk_uname');localStorage.removeItem('tmk_contact');}catch(e){}
+  try{
+    ['tmk_uname','tmk_umobile','tmk_uphoto','tmk_contact','tmk_bookings','tmk_posts','tmk_comments','tmk_likes','tmk_follows','tmk_admin','tmk_admin_key','tmk_captain','tmk_nav','tmk_notif_seen'].forEach(k=>localStorage.removeItem(k));
+  }catch(e){}
   hist=[];_loginReturn='home';
   go('login');
   note('Signed out successfully.','Done');
@@ -537,15 +538,13 @@ function saveProfile(){
 }
 
 /* ---------- bookings + signed QR ---------- */
-const CAPTAIN_SECRET='tripomonk-captain-shared-2026', CAPTAIN_CODE='TMK-CAPTAIN';
-function getCaptainCode(){try{return localStorage.getItem('tmk_cap_code')||CAPTAIN_CODE;}catch(e){return CAPTAIN_CODE;}}
-function getAdminCode(){try{return localStorage.getItem('tmk_admin_code')||'TMK-ADMIN';}catch(e){return 'TMK-ADMIN';}}
+const CAPTAIN_CODE='';
+function getCaptainCode(){return '';}
 function getWa(){try{return localStorage.getItem('tmk_wa')||'918924813959';}catch(e){return '918924813959';}}
 function genId(){return 'TMK-'+(Date.now().toString(36)+Math.random().toString(36).slice(2,4)).toUpperCase();}
 function sign(s){let h1=0xdeadbeef,h2=0x41c6ce57;for(let i=0;i<s.length;i++){const c=s.charCodeAt(i);h1=Math.imul(h1^c,2654435761);h2=Math.imul(h2^c,1597334677);}h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);return (4294967296*(2097151&h2)+(h1>>>0)).toString(36);}
-function ticketPayload(b){const core=[b.id,(b.name||'Guest').replace(/[|]/g,' '),b.trek,b.date,b.pax].join('|');return 'TMK1|'+core+'|'+sign(core+CAPTAIN_SECRET);}
-function parseTicket(s){const p=(s||'').trim().split('|');if(p[0]!=='TMK1'||p.length<7)return{ok:false};const core=p.slice(1,6).join('|');return{ok:sign(core+CAPTAIN_SECRET)===p[6],id:p[1],name:p[2],trek:p[3],date:p[4],pax:p[5]};}
-function getBookings(){try{return JSON.parse(localStorage.getItem('tmk_bookings')||'[]');}catch(e){return[];}}
+function ticketPayload(b){return 'TMK2|'+encodeURIComponent(b.id||'');}
+function parseTicket(s){const raw=(s||'').trim();const p=raw.split('|');if(p[0]==='TMK2'&&p[1])return{ok:true,id:decodeURIComponent(p[1])};if(p[0]==='TMK1'&&p[1])return{ok:true,id:p[1]};if(/^pay_[A-Za-z0-9_]+$/.test(raw))return{ok:true,id:raw};return{ok:false};}function getBookings(){try{return JSON.parse(localStorage.getItem('tmk_bookings')||'[]');}catch(e){return[];}}
 function saveBookings(a){try{localStorage.setItem('tmk_bookings',JSON.stringify(a));}catch(e){}}
 function isCaptain(){try{return localStorage.getItem('tmk_captain')==='1';}catch(e){return false;}}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -809,10 +808,12 @@ async function confirmBooking(){
   if(!c.phone||!c.email||!c.emName||!c.emPhone){note('Please complete your contact and emergency details first.','Details required');go('travellers');return;}
   if(!window.Razorpay){note('Payment gateway is loading — please wait a moment and try again.','Please wait');return;}
   if(!sbOn){note('Payment service not configured. Please contact Tripomonk.','Payment error');return;}
-  const advanceAmt=Math.round(total*0.25);
-  /* 1) create a server-side order (amount in paise) */
+  const bookingReq={kind:'trek',trek:t.n,date:cart.date,pax:cart.pax,name:name,email:c.email||getUserEmail()||'',phone:c.phone||'',emergency_name:c.emName||'',emergency_phone:c.emPhone||'',addons:{gear:!!cart.gear,permit:!!cart.permit}};
+  let advanceAmt=Math.round(total*0.25);
+  let pricedBooking=null;
+  /* 1) create a server-side order; server calculates the trusted amount */
   let order;
-  try{order=await rzpCall('create',{amount:advanceAmt*100,currency:'INR'});}catch(e){order=null;}
+  try{order=await rzpCall('create',{booking:bookingReq});pricedBooking=order&&order.booking?order.booking:null;if(pricedBooking){advanceAmt=Number(pricedBooking.paid)||advanceAmt;}}catch(e){order=null;}
   if(!order||!order.order_id){note((order&&order.error)?order.error:'Could not start payment. Please try again.','Payment error');return;}
   const rzp=new window.Razorpay({
     key: order.key_id,
@@ -832,14 +833,15 @@ async function confirmBooking(){
         razorpay_order_id:response.razorpay_order_id,
         razorpay_payment_id:response.razorpay_payment_id,
         razorpay_signature:response.razorpay_signature,
-        booking:{trek:t.n,name:name,date:cart.date,pax:cart.pax,total:total,paid:advanceAmt,email:c.email||getUserEmail()||'',phone:c.phone||'',emergency_name:c.emName||'',emergency_phone:c.emPhone||''}
+        booking:bookingReq
       });}catch(e){res=null;}
       if(!res||!res.ok){
         note('Payment received but we could not verify it instantly. Our team will confirm your seat shortly — please save your payment ID: '+(response.razorpay_payment_id||'—'),'Verification pending');
         return;
       }
       saveUserName(name);
-      const b={id:response.razorpay_payment_id,name:name,trek:t.n,img:t.img,date:cart.date,pax:cart.pax,total:total,paid:advanceAmt,ts:Date.now(),status:'Confirmed',checkedIn:false,paymentId:response.razorpay_payment_id};
+      const sbk=(res&&res.booking)||pricedBooking||bookingReq;
+      const b={id:response.razorpay_payment_id,name:sbk.name||name,trek:sbk.trek||t.n,img:t.img,date:sbk.date||cart.date,pax:sbk.pax||cart.pax,total:sbk.total||total,paid:sbk.paid||advanceAmt,ts:Date.now(),status:'Confirmed',checkedIn:false,paymentId:response.razorpay_payment_id};
       const all=getBookings();all.unshift(b);saveBookings(all);cart.booking=b;
       document.getElementById('scName').textContent=t.n;
       showTicket(b);go('success');
@@ -1563,20 +1565,42 @@ function stopNav(){navOn=false;if(_watchN!=null){navigator.geolocation.clearWatc
 /* ---------------- ADMIN · manage treks ---------------- */
 const ADMIN_CODE='TMK-ADMIN';
 function isAdmin(){try{return localStorage.getItem('tmk_admin')==='1';}catch(e){return false;}}
-async function adminLogin(){const c=await askCode('Admin login',{password:true,sub:'Enter your admin access code.',placeholder:'Access code'});if(c==null)return;if(c.trim()===getAdminCode()){try{localStorage.setItem('tmk_admin','1');}catch(e){}go('admin');}else note('Incorrect access code.');}
-function adminExit(){try{localStorage.removeItem('tmk_admin');}catch(e){}renderProfile();go('profile');}
-function adminKey(){try{return localStorage.getItem('tmk_admin_key')||'';}catch(e){return '';}}
-function saveAdminKey(){const v=document.getElementById('admKey').value.trim();try{localStorage.setItem('tmk_admin_key',v);}catch(e){}note(v?'Admin write key saved on this device.':'Key cleared.');renderAdmin();}
-function sbWrite(method,path,body){const key=adminKey()||SB.SUPABASE_ANON_KEY;
-  return fetch(SB.SUPABASE_URL+'/rest/v1/'+path,{method,headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json',Prefer:'return=minimal'},body:body?JSON.stringify(body):undefined});}
-/* await a write and surface any backend error so admin isn't guessing */
-async function sbWriteChecked(method,path,body){
-  if(!adminKey()){note('Add your Supabase service_role key in Admin → Settings → Backend write key first.','Write key missing');return false;}
+async function adminCall(action,payload){
+  const sb=getSupaClient();
+  if(!sb)return{ok:false,error:'Backend not connected.'};
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session)return{ok:false,error:'Please sign in with the Tripomonk admin email first.'};
   try{
-    const r=await sbWrite(method,path,body);
-    if(!r.ok){const txt=await r.text();note('Backend rejected the change ('+r.status+'): '+(txt||'no details'),'Save failed');return false;}
-    return true;
-  }catch(e){note('Network error saving: '+e,'Save failed');return false;}
+    const r=await fetch(SB.SUPABASE_URL+'/functions/v1/admin',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token,apikey:SB.SUPABASE_ANON_KEY},
+      body:JSON.stringify(Object.assign({action},payload||{}))
+    });
+    const out=await r.json().catch(()=>({ok:false,error:'Admin server returned an invalid response.'}));
+    if(!r.ok&&out&&!out.error)out.error='Admin request failed ('+r.status+').';
+    return out;
+  }catch(e){return{ok:false,error:'Network error: '+e};}
+}
+async function adminLogin(){
+  if(!isLoggedIn()){note('Please sign in with your Tripomonk admin email.','Admin sign in').then(()=>{_loginReturn='admin';go('login');});return;}
+  const res=await adminCall('ping');
+  if(res&&res.ok){try{localStorage.setItem('tmk_admin','1');localStorage.removeItem('tmk_admin_key');}catch(e){}go('admin');}
+  else{try{localStorage.removeItem('tmk_admin');}catch(e){}note((res&&res.error)||'Admin access denied.','Admin blocked');}
+}
+function adminExit(){try{localStorage.removeItem('tmk_admin');localStorage.removeItem('tmk_admin_key');}catch(e){}renderProfile();go('profile');}
+function adminKey(){return '';}
+function saveAdminKey(){note('Service-role keys are no longer stored in the app. Admin changes now use secure Supabase functions.','Security updated');}
+async function sbWriteChecked(method,path,body){
+  let res={ok:false,error:'Unsupported admin action'};
+  if(path.indexOf('treks')===0){
+    const id=(path.split('eq.')[1]||'');
+    if(method==='POST')res=await adminCall('save_trek',{trek:body});
+    else if(method==='PATCH'&&body&&Object.prototype.hasOwnProperty.call(body,'packing'))res=await adminCall('save_packing',{id:id,packing:body.packing});
+    else if(method==='PATCH')res=await adminCall('save_trek',{id:id,trek:body});
+    else if(method==='DELETE')res=await adminCall('delete_trek',{id:id});
+  }
+  if(!res||!res.ok){note((res&&res.error)||'Admin save failed.','Save failed');return false;}
+  return true;
 }
 function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null};}
 let editIdx=-1, adminTab='Treks', depTrek=null;
@@ -1604,7 +1628,7 @@ function renderAdminPacking(){
   const opts=treks.map(t=>`<option ${t.n===sel?'selected':''}>${esc(t.n)}</option>`).join('');
   box.innerHTML=`
     <div class="field"><label>Trek</label><div class="inp"><select onchange="pkAdminTrek=this.value;_pkEdit=null;renderAdminPacking()" style="all:unset;flex:1;color:var(--text)">${opts}</select></div></div>
-    ${!adminKey()?'<div class="note2" style="margin-bottom:12px;color:#ffb24d">Add your service_role key in Settings to save for everyone.</div>':''}
+    <div class="note2" style="margin-bottom:12px">Admin saves are protected by your Supabase login email.</div>
     ${PK_CATS.map(c=>`
       <div class="panel" style="margin-bottom:12px">
         <b style="display:block;margin-bottom:8px">${c}</b>
@@ -1627,20 +1651,15 @@ async function savePackingAdmin(){
 async function renderAdminBookings(){
   const box=document.getElementById('adminBody');
   if(!sbOn){box.innerHTML='<div class="note2">Connect Supabase to see bookings.</div>';return;}
-  if(!adminKey()){box.innerHTML='<div class="note2">Add your Supabase service_role key in the Settings tab to view bookings.</div>';return;}
   box.innerHTML='<div class="skel skel-card"></div><div class="skel skel-card"></div>';
-  try{
-    const key=adminKey();const h={apikey:key,Authorization:'Bearer '+key};
-    let r=await fetch(SB.SUPABASE_URL+'/rest/v1/bookings?select=*&order=created_at.desc&limit=100',{headers:h});
-    if(!r.ok) r=await fetch(SB.SUPABASE_URL+'/rest/v1/bookings?select=*&limit=100',{headers:h});
-    if(!r.ok){box.innerHTML='<div class="note2">Could not load bookings ('+r.status+'). Check your service_role key.</div>';return;}
-    const rows=await r.json();
-    if(!rows.length){box.innerHTML='<div class="empty"><p>No bookings yet.</p></div>';return;}
-    const total=rows.reduce((s,b)=>s+(Number(b.paid)||0),0);
-    box.innerHTML=`<div class="panel" style="margin-bottom:12px;display:flex;justify-content:space-between"><div><b style="font-size:18px">${rows.length}</b><small style="display:block;color:var(--muted)">bookings</small></div><div style="text-align:right"><b style="font-size:18px">${INR(total)}</b><small style="display:block;color:var(--muted)">collected</small></div></div>`+
-      rows.map(b=>`<div class="mrow" style="cursor:default;align-items:flex-start"><div class="t"><b>${esc(b.trek||'—')}</b><small>${esc(b.name||'')} · ${esc(b.date||'')} · ${b.pax||1} pax</small><small style="display:block;color:var(--muted2)">${esc(b.payment_id||b.id||'')}</small></div><div style="text-align:right"><b style="font-size:13px">${INR(b.paid||0)}</b><small style="display:block;color:#6ee7a0">${esc(b.status||'Confirmed')}</small></div></div>`).join('');
-    hydrate(box);
-  }catch(e){box.innerHTML='<div class="note2">Network error loading bookings.</div>';}
+  const res=await adminCall('list_bookings');
+  if(!res||!res.ok){box.innerHTML='<div class="note2">'+esc((res&&res.error)||'Could not load bookings.')+'</div>';return;}
+  const rows=res.rows||[];
+  if(!rows.length){box.innerHTML='<div class="empty"><p>No bookings yet.</p></div>';return;}
+  const total=rows.reduce((s,b)=>s+(Number(b.paid)||0),0);
+  box.innerHTML=`<div class="panel" style="margin-bottom:12px;display:flex;justify-content:space-between"><div><b style="font-size:18px">${rows.length}</b><small style="display:block;color:var(--muted)">bookings</small></div><div style="text-align:right"><b style="font-size:18px">${INR(total)}</b><small style="display:block;color:var(--muted)">collected</small></div></div>`+
+    rows.map(b=>`<div class="mrow" style="cursor:default;align-items:flex-start"><div class="t"><b>${esc(b.trek||'-')}</b><small>${esc(b.name||'')} · ${esc(b.date||'')} · ${b.pax||1} pax</small><small style="display:block;color:var(--muted2)">${esc(b.payment_id||b.id||'')}</small></div><div style="text-align:right"><b style="font-size:13px">${INR(b.paid||0)}</b><small style="display:block;color:#6ee7a0">${esc(b.status||'Confirmed')}</small></div></div>`).join('');
+  hydrate(box);
 }
 function setAdminTab(t){adminTab=t;renderAdmin();}
 function renderAdminTreks(){document.getElementById('adminBody').innerHTML=
@@ -1676,19 +1695,16 @@ function delBatch(i){const m=getBatchMap();if(!m[depTrek]||!m[depTrek].length)m[
   m[depTrek].splice(i,1);setBatchMap(m);renderDepartures();}
 /* ----- Settings ----- */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
-  <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact & access</b>
+  <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
-    <div class="field"><label>Admin password / code</label><div class="inp"><input id="setAdminCode" value="${esc(getAdminCode())}"></div></div>
-    <div class="field"><label>Captain password / code</label><div class="inp"><input id="setCapCode" value="${esc(getCaptainCode())}"></div></div>
     <button class="btn" onclick="saveSettings()">Save settings</button></div>
-  ${sbOn?`<div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:8px">Backend write key</b><div class="note2" style="margin-bottom:10px">Paste your Supabase service_role key to save trek edits for everyone (stays on this device only).</div><div class="field"><div class="inp"><span class="ic" data-i="lock"></span><input id="admKey" type="password" placeholder="service_role key" value="${adminKey()?'••••••••':''}"></div></div><button class="btn ghost sm" onclick="saveAdminKey()">Save key</button> ${adminKey()?'<span style="color:#6ee7a0;font-size:11px;margin-left:8px">set ✓</span>':''}</div>`:`<div class="note2" style="margin-bottom:14px">Connect Supabase (see BACKEND-SETUP) to save changes for all users.</div>`}
+  <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:8px">Secure admin access</b><div class="note2">Trek edits, packing updates and bookings now use Supabase protected admin functions. Do not paste secret database keys in the app.</div></div>
   <button class="btn ghost" onclick="adminExit()"><span class="ic" data-i="logout"></span> Log out of admin</button>`;
   hydrate(document.getElementById('adminBody'));
 }
 function saveSettings(){const g=id=>document.getElementById(id);
   try{const wa=g('setWa').value.replace(/[^0-9]/g,'');if(wa)localStorage.setItem('tmk_wa',wa);
-    const ac=g('setAdminCode').value.trim();if(ac)localStorage.setItem('tmk_admin_code',ac);
-    const cc=g('setCapCode').value.trim();if(cc)localStorage.setItem('tmk_cap_code',cc);}catch(e){}
+}catch(e){}
   note('Settings saved.');}
 function fld(id,label,val,ph){return `<div class="field"><label>${label}</label><div class="inp"><input id="${id}" value="${esc(val==null?'':val)}" placeholder="${ph||''}"></div></div>`;}
 function showAdminForm(t){const f=document.getElementById('adminForm');
@@ -1755,7 +1771,7 @@ async function bookActivity(name,priceStr){
   if(!sbOn){note('Payment service not configured. Please contact Tripomonk.','Payment error');return;}
   const leadName=getSavedName()||(getUserEmail()?getUserEmail().split('@')[0]:'Guest');
   let order;
-  try{order=await rzpCall('create',{amount:amount*100,currency:'INR'});}
+  try{order=await rzpCall('create',{booking:{kind:'activity',activity:name,trek:name,name:leadName,email:getUserEmail()||'',phone:getSavedMobile()||''}});}
   catch(e){note('Could not reach payment service: '+e,'Payment error');return;}
   if(!order||!order.order_id){note('Could not start payment — '+((order&&order.error)?order.error:'no order returned')+' (amount ₹'+amount+')','Payment error');return;}
   const rzp=new window.Razorpay({
@@ -1763,12 +1779,13 @@ async function bookActivity(name,priceStr){
     name:'Tripomonk', description:name+' — Adventure Activity', image:'icons/icon-192.png',
     prefill:{name:leadName, email:getUserEmail()||''}, notes:{activity:name}, theme:{color:'#2f6bff'},
     handler:async function(response){
-      const booking={trek:name+' (Activity)',name:leadName,date:'To be scheduled',pax:1,total:amount,paid:amount,email:getUserEmail()||''};
+      const booking={kind:'activity',activity:name,trek:name,name:leadName,email:getUserEmail()||'',phone:getSavedMobile()||''};
       let res;
       try{res=await rzpCall('verify',{razorpay_order_id:response.razorpay_order_id,razorpay_payment_id:response.razorpay_payment_id,razorpay_signature:response.razorpay_signature,booking});}catch(e){res=null;}
       if(!res||!res.ok){note('Payment received but we could not verify it instantly. Our team will confirm shortly — payment ID: '+(response.razorpay_payment_id||'—'),'Verification pending');return;}
       saveUserName(leadName);
-      const b={id:response.razorpay_payment_id,name:leadName,trek:name+' (Activity)',img:'',date:'To be scheduled',pax:1,total:amount,paid:amount,ts:Date.now(),status:'Confirmed',checkedIn:false,paymentId:response.razorpay_payment_id};
+      const sbk=(res&&res.booking)||{};
+      const b={id:response.razorpay_payment_id,name:leadName,trek:sbk.trek||name+' (Activity)',img:'',date:sbk.date||'To be scheduled',pax:1,total:sbk.total||amount,paid:sbk.paid||amount,ts:Date.now(),status:'Confirmed',checkedIn:false,paymentId:response.razorpay_payment_id};
       const all=getBookings();all.unshift(b);saveBookings(all);
       note('Payment successful! '+name+' is booked. Our team will contact you to schedule the date.','Booked ✓').then(()=>go('bookings'));
     },
@@ -1779,15 +1796,23 @@ async function bookActivity(name,priceStr){
 function downloadChecklist(){const NL=String.fromCharCode(10);let lines=['TRIPOMONK — PACKING CHECKLIST',''];Object.keys(packing).forEach(k=>{lines.push(k.toUpperCase());packing[k].forEach(i=>lines.push('  [ ] '+i[1]));lines.push('');});const a=document.createElement('a');a.href='data:text/plain;charset=utf-8,'+encodeURIComponent(lines.join(NL));a.download='Tripomonk_Packing_Checklist.txt';document.body.appendChild(a);a.click();a.remove();}
 
 /* captain */
-async function captainLogin(){const c=await askCode('Trip Captain login',{password:true,sub:'For trip captains only.',placeholder:'Access code'});if(c==null)return;if(c.trim()===getCaptainCode()){try{localStorage.setItem('tmk_captain','1');}catch(e){}go('captain');}else note('Incorrect access code.');}
+async function captainLogin(){
+  if(!isLoggedIn()){note('Please sign in with an authorised Tripomonk team email.','Team sign in').then(()=>{_loginReturn='captain';go('login');});return;}
+  const res=await adminCall('ping');
+  if(res&&res.ok){try{localStorage.setItem('tmk_captain','1');}catch(e){}go('captain');}
+  else note((res&&res.error)||'Team access denied.','Access blocked');
+}
 function captainExit(){try{localStorage.removeItem('tmk_captain');}catch(e){}renderProfile();}
-function captainVerify(txt){const t=parseTicket(txt),r=document.getElementById('capResult');
-  if(!t.ok){r.innerHTML=`<div class="verify bad"><b>${ic('alert',20)} Not verified</b><div style="font-size:13px;color:var(--muted)">This QR isn't a valid Tripomonk ticket.</div></div>`;hydrate(r);return;}
-  const all=getBookings(),b=all.find(x=>x.id===t.id);let note='';if(b){if(b.checkedIn)note='Already checked in earlier.';else{b.checkedIn=true;saveBookings(all);note='Marked as checked in ✓';}}
-  r.innerHTML=`<div class="verify good"><b>${ic('check',20)} Valid ticket</b>
-    <div class="vrow"><span>Trekker</span><b>${esc(t.name)}</b></div><div class="vrow"><span>Trek</span><b>${esc(t.trek)}</b></div>
-    <div class="vrow"><span>Date</span><b>${esc(t.date)}</b></div><div class="vrow"><span>Trekkers</span><b>${esc(t.pax)}</b></div>
-    <div class="vrow"><span>Booking</span><b>${esc(t.id)}</b></div>${note?`<div style="margin-top:10px;font-size:12px;color:var(--muted)">${note}</div>`:''}</div>`;
+async function captainVerify(txt){const t=parseTicket(txt),r=document.getElementById('capResult');
+  if(!t.ok){r.innerHTML=`<div class="verify bad"><b>${ic('alert',20)} Not verified</b><div style="font-size:13px;color:var(--muted)">This QR is not a Tripomonk booking code.</div></div>`;hydrate(r);return;}
+  r.innerHTML='<div class="verify"><b>Checking booking...</b></div>';
+  const res=await adminCall('verify_booking',{id:t.id});
+  if(!res||!res.ok){r.innerHTML=`<div class="verify bad"><b>${ic('alert',20)} Not verified</b><div style="font-size:13px;color:var(--muted)">${esc((res&&res.error)||'Booking not found')}</div></div>`;hydrate(r);return;}
+  const b=res.booking||{};
+  r.innerHTML=`<div class="verify good"><b>${ic('check',20)} Valid booking</b>
+    <div class="vrow"><span>Trekker</span><b>${esc(b.name)}</b></div><div class="vrow"><span>Trek</span><b>${esc(b.trek)}</b></div>
+    <div class="vrow"><span>Date</span><b>${esc(b.date)}</b></div><div class="vrow"><span>Trekkers</span><b>${esc(b.pax)}</b></div>
+    <div class="vrow"><span>Booking</span><b>${esc(b.id)}</b></div><div style="margin-top:10px;font-size:12px;color:var(--muted)">Marked as checked in on the server.</div></div>`;
   hydrate(r);
 }
 function captainTestLast(){const b=getBookings()[0];if(!b){note('Make a booking first, then test.');return;}const code=ticketPayload(b);document.getElementById('capInput').value=code;captainVerify(code);}
