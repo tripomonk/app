@@ -1457,7 +1457,7 @@ function renderSettings(){
   const cur2=getTheme();
   const opts=[['system','brightness_auto','System'],['light','light_mode','Light'],['dark','dark_mode','Dark']];
   const tp=document.getElementById('themePick');
-  if(tp)tp.innerHTML=opts.map(o=>`<div class="tp ${cur2===o[0]?'on':''}" onclick="setTheme('${o[0]}')"><span class="msr">${o[1]}</span><small>${o[2]}</small></div>`);
+  if(tp)tp.innerHTML=opts.map(o=>`<div class="tp ${cur2===o[0]?'on':''}" onclick="setTheme('${o[0]}')"><span class="msr">${o[1]}</span><small>${o[2]}</small></div>`).join('');
   document.getElementById('setList').innerHTML=setList.map(s=>`<div class="mrow" onclick="note('${s[1]} — coming soon')"><span class="ic">${ic(s[0],20)}</span><span class="t">${s[1]}</span><span class="ch" style="transform:scaleX(-1)">${ic('back',16)}</span></div>`).join('');
   hydrate(document.getElementById('settings'));
 }
