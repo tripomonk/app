@@ -46,6 +46,15 @@
   .theme-pick .tp.on{border-color:var(--accent);background:rgba(47,107,255,.12);color:var(--text)}
   .theme-pick .tp .msr{font-size:24px;display:block;margin-bottom:6px}
   .theme-pick .tp small{font-size:11.5px;font-weight:600}
+  /* document pages (about / privacy) */
+  .doc{padding:2px 2px 30px}
+  .doc h2{font-size:20px;margin:0 0 8px}
+  .doc h3{font-size:14.5px;margin:18px 0 6px}
+  .doc p{font-size:13.5px;line-height:1.65;color:var(--muted);margin:0 0 8px}
+  .doc ul{margin:0 0 8px;padding-left:18px}
+  .doc li{font-size:13.5px;line-height:1.6;color:var(--muted);margin-bottom:5px}
+  .doc b{color:var(--text);font-weight:600}
+  .doc .doc-note{font-size:12.5px;color:var(--muted2);font-style:italic}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;height:100%;overscroll-behavior:none;overflow-x:hidden;max-width:100%}
   body{font-family:var(--font);color:var(--text);background:#06101c;display:flex;align-items:center;justify-content:center}
@@ -982,6 +991,61 @@
     <div style="text-align:center;color:var(--muted2);font-size:11px;margin-top:18px">Tripomonk v2.0 · Made in Uttarakhand</div>
   </section>
 
+  <!-- ABOUT -->
+  <section class="view flow" id="about" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>About</h1></div>
+    <div class="doc">
+      <h2>Tripomonk Travel Private Limited</h2>
+      <p>Tripomonk is an Uttarakhand-rooted adventure travel company helping people discover the Himalayas through guided treks, backpacking trips, spiritual journeys and custom travel experiences.</p>
+      <h3>What we do</h3>
+      <ul>
+        <li>Group departures and trekking expeditions</li>
+        <li>Backpacking trips across Himachal, Ladakh, Kashmir and the Northeast</li>
+        <li>Spiritual tours including Kedarnath, Chardham, Kashi, Ayodhya and more</li>
+        <li>Custom family tours, honeymoon packages and B2B travel partnerships</li>
+      </ul>
+      <h3>Popular regions</h3>
+      <p>Uttarakhand is our home base, with featured journeys like Kedarkantha, Brahmatal, Valley of Flowers, Dayara Bugyal, Har Ki Dun, Bali Pass and Gaumukh Tapovan. We also curate trips in Himachal, Ladakh, Kashmir and Northeast India.</p>
+      <h3>Leadership</h3>
+      <p>Founder: <b>Vikas Upadhyay</b><br>Co-founder: <b>Hrash Vardhan Agrawal</b></p>
+      <p class="doc-note">Our focus is simple: organised trips, clear communication, mountain safety and warm Indian hospitality.</p>
+      <button class="btn" style="margin-top:8px" onclick="wa('Hi Tripomonk, I have a question')"><span class="ic" data-i="chat"></span> Talk to us</button>
+    </div>
+  </section>
+  <!-- PRIVACY POLICY -->
+  <section class="view flow" id="privacy" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Privacy Policy</h1></div>
+    <div class="doc">
+      <p class="doc-note">Effective date: 24 June 2026. This policy explains how Tripomonk Travel Private Limited collects, uses and protects personal data in line with applicable Indian laws, including the Digital Personal Data Protection Act, 2023 and the Information Technology Act, 2000.</p>
+      <h3>1. Information we collect</h3>
+      <ul>
+        <li><b>Account details:</b> name, email, mobile number and profile photo if you add one.</li>
+        <li><b>Booking details:</b> trek, date, traveller names, phone number, email, emergency contact and booking status.</li>
+        <li><b>Payment details:</b> payment ID, amount and payment status from Razorpay. We do not store card, UPI PIN, bank or wallet details.</li>
+        <li><b>Community content:</b> photos, videos, captions, comments, likes, follows and messages you choose to post or send.</li>
+        <li><b>App data:</b> device, login, notification and usage information needed to run and improve the app.</li>
+      </ul>
+      <h3>2. Why we use it</h3>
+      <ul>
+        <li>To create your account and keep it secure.</li>
+        <li>To process bookings, payments, e-tickets and trip communication.</li>
+        <li>To support trek operations, safety coordination and emergency contact needs.</li>
+        <li>To show community posts, notifications, alerts and app features.</li>
+        <li>To improve our services and comply with legal requirements.</li>
+      </ul>
+      <h3>3. Sharing</h3>
+      <p>We share data only where needed: with trek operations teams, guides, payment providers such as Razorpay, app infrastructure providers such as Supabase, email/notification providers, support partners, or government/legal authorities when required. We do not sell your personal data.</p>
+      <h3>4. Security and retention</h3>
+      <p>We use secure systems, access controls and trusted service providers. Booking and payment records are kept for business, tax, safety and legal reasons. Community content stays until you delete it or your account is removed, unless we must retain it for legal or safety reasons.</p>
+      <h3>5. Your choices and rights</h3>
+      <p>You may request access, correction, deletion or withdrawal of consent for your personal data. Some booking records may still be retained where law, safety or accounting rules require it.</p>
+      <h3>6. Children</h3>
+      <p>The app is meant for adults. Minors may travel only through a guardian or lead traveller booking, with required consent and supervision.</p>
+      <h3>7. Contact</h3>
+      <p>For privacy requests or concerns, contact Tripomonk at <b>tripomonk@gmail.com</b> or through the in-app WhatsApp support option.</p>
+      <p class="doc-note">By using the Tripomonk app, you agree to this Privacy Policy.</p>
+    </div>
+  </section>
   <!-- LOGIN / SIGNUP -->
   <section class="view full" id="login" data-nonav>
     <div class="splash" id="loginBg" style="justify-content:flex-end">

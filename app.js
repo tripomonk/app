@@ -329,7 +329,7 @@ function toggleFollow(n){
   }
 }
 const menu=[['bookings','My Bookings','bookings'],['shield','Trek Passport','passport'],['monitor','Trek Health','health'],['distance','Trek Navigation','navmap'],['heartmenu','My Wishlist','wishlist'],['list','Packing List','packing'],['starline','My Reviews','reviews'],['settings','Settings','settings'],['help','Help & Support','help']];
-const setList=[['user','Account & security'],['bell','Notifications'],['globe','Language · English'],['card','Payment methods'],['shield','Privacy'],['help','About Tripomonk']];
+const setList=[['user','Account & security',''],['bell','Notifications',''],['globe','Language - English',''],['card','Payment methods',''],['shield','Privacy Policy','privacy'],['help','About Tripomonk','about']];
 const notis=[['check','Booking confirmed','Your seat is confirmed — view your e-ticket.','2m'],['bell','Pack your bags!','Your trek departs in 5 days. See the packing list.','1d'],['permits','Permit approved','Your forest permit is ready to download.','2d'],['heart','EARLYBIRD: 15% off','Winter trek discount ends soon.','3d']];
 const faqs=[['How do I book a trek?','Pick a trek, choose a batch on Select Date, add travellers and pay 25% to confirm your seat.'],['What is the cancellation policy?','Free cancellation up to 15 days before departure (full refund). Within 15 days, a 50% charge applies.'],['Do you provide gear on rent?','Yes — add the gear kit (jacket, boots, poles) as an add-on at checkout.'],['Are permits included?','We arrange forest / eco-zone permits for you as an assisted service.'],['What fitness level do I need?','Easy treks suit beginners; Moderate+ need regular cardio for 3–4 weeks before.']];
 const reviewsData=[['Ananya Sharma',5,'Best organised trek I have done — guides were superb and safety was clearly the priority.','Kedarkantha'],['Karthik V.',5,'First-timer and felt totally looked after. In-app gear rental saved me a lot.','Brahmatal'],['Meera & Sam',4,'Stunning route and great food. Pickup was a little delayed but handled well.','Valley of Flowers'],['Rohit Verma',5,'Permits were sorted for me, I just showed up. Worth every rupee.','Hampta Pass']];
@@ -1458,7 +1458,10 @@ function renderSettings(){
   const opts=[['system','brightness_auto','System'],['light','light_mode','Light'],['dark','dark_mode','Dark']];
   const tp=document.getElementById('themePick');
   if(tp)tp.innerHTML=opts.map(o=>`<div class="tp ${cur2===o[0]?'on':''}" onclick="setTheme('${o[0]}')"><span class="msr">${o[1]}</span><small>${o[2]}</small></div>`).join('');
-  document.getElementById('setList').innerHTML=setList.map(s=>`<div class="mrow" onclick="note('${s[1]} — coming soon')"><span class="ic">${ic(s[0],20)}</span><span class="t">${s[1]}</span><span class="ch" style="transform:scaleX(-1)">${ic('back',16)}</span></div>`).join('');
+  document.getElementById('setList').innerHTML=setList.map(s=>{
+    const action=s[2]?`go('${s[2]}')`:`note('${s[1]} - coming soon')`;
+    return `<div class="mrow" onclick="${action}"><span class="ic">${ic(s[0],20)}</span><span class="t">${s[1]}</span><span class="ch" style="transform:scaleX(-1)">${ic('back',16)}</span></div>`;
+  }).join('');
   hydrate(document.getElementById('settings'));
 }
 function calPick(el){document.querySelectorAll('#cal .grid .d').forEach(d=>{if(!d.classList.contains('off'))d.classList.remove('on');});el.classList.add('on');}
