@@ -953,6 +953,11 @@ function postCard(p){
   const dots=media.length>1?`<div class="car-dots">${media.map((_,i)=>`<span class="${i===0?'on':''}"></span>`).join('')}</div>`:'';
   const follow=(!me&&!isFollowing(p.n))?` · <span class="ig-follow" onclick="toggleFollow('${sn}')">Follow</span>`:'';
   const more=me?`<span class="ig-more" onclick="deletePost('${p.id}')">${ic('trash',20)}</span>`:'';
+  const rail=media.length?`<div class="post-rail">
+    <button class="${liked?'on':''}" onclick="event.stopPropagation();likePost('${p.id}')" title="Like">${ic('like',18)}${likeCount?`<small>${likeCount}</small>`:''}</button>
+    <button onclick="event.stopPropagation();openComments('${p.id}')" title="Comment">${ic('comment',18)}${nc?`<small>${nc}</small>`:''}</button>
+    <button onclick="event.stopPropagation();repostPost('${p.id}')" title="Share in community">${ic('repeat',17)}</button>
+  </div>`:'';
   /* tagged trekkers chips */
   const tagged=(p.tagged&&p.tagged.length)
     ?`<div class="ig-tags">${ic('user',13)} with ${p.tagged.map(nm=>`<span class="ig-tagn" onclick="openPerson('${String(nm).replace(/'/g,'')}')">${esc(nm)}</span>`).join(', ')}</div>`:'';
@@ -963,7 +968,7 @@ function postCard(p){
      ${more}
    </div>
    ${p.trek?`<div class="ig-trek" onclick="openDetailByName('${p.trek.replace(/'/g,'')}')">${ic('pin',13)} ${esc(p.trek)}</div>`:''}
-   ${media.length?`<div class="car" ondblclick="dblLike('${p.id}',this)"><div class="car-track" onscroll="carScroll(this)">${media.map(mediaItem).join('')}</div>${dots}<div class="heart-burst">${ic('like',96)}</div></div>`:''}
+   ${media.length?`<div class="car" ondblclick="dblLike('${p.id}',this)"><div class="car-track" onscroll="carScroll(this)">${media.map(mediaItem).join('')}</div>${rail}${dots}<div class="heart-burst">${ic('like',96)}</div></div>`:''}
    ${textOnly?`<div class="ig-textpost">${esc(p.txt)}</div>`:''}
    ${tagged}
    <div class="ig-actions">
