@@ -29,6 +29,23 @@
     --r:20px; --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
     --font:'Poppins',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
   }
+  /* light theme — applied when <html class="light"> */
+  html.light{
+    --bg:#f5f7fb; --bg2:#eaeef6; --card:rgba(12,24,44,.045); --card2:rgba(12,24,44,.06);
+    --stroke:rgba(12,24,44,.12); --stroke2:rgba(12,24,44,.2);
+    --accent:#2f6bff; --accent2:#1f5be0; --yellow:#d99800;
+    --text:#102038; --muted:rgba(16,32,58,.62); --muted2:rgba(16,32,58,.42);
+  }
+  html.light body{background:#e9edf5}
+  html.light .screen{background:radial-gradient(120% 60% at 50% -10%, #dbe6f8 0%, transparent 55%), linear-gradient(180deg,#f6f8fc 0%, #eef2f9 60%, #e8edf6 100%)}
+  html.light .nav{background:rgba(255,255,255,.86);border-color:rgba(12,24,44,.1)}
+  html.light .post .ig-textpost{background:rgba(12,24,44,.04)}
+  /* appearance picker */
+  .theme-pick{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .theme-pick .tp{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:14px 6px;text-align:center;cursor:pointer;color:var(--muted)}
+  .theme-pick .tp.on{border-color:var(--accent);background:rgba(47,107,255,.12);color:var(--text)}
+  .theme-pick .tp .msr{font-size:24px;display:block;margin-bottom:6px}
+  .theme-pick .tp small{font-size:11.5px;font-weight:600}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;height:100%;overscroll-behavior:none;overflow-x:hidden;max-width:100%}
   body{font-family:var(--font);color:var(--text);background:#06101c;display:flex;align-items:center;justify-content:center}
@@ -958,6 +975,9 @@
   <!-- SETTINGS -->
   <section class="view flow" id="settings" data-nonav>
     <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Settings</h1></div>
+    <div style="font-size:12px;color:var(--muted);margin:0 2px 8px">Appearance</div>
+    <div class="theme-pick" id="themePick"></div>
+    <div style="font-size:12px;color:var(--muted);margin:18px 2px 8px">More</div>
     <div id="setList"></div>
     <div style="text-align:center;color:var(--muted2);font-size:11px;margin-top:18px">Tripomonk v2.0 · Made in Uttarakhand</div>
   </section>
