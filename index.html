@@ -95,7 +95,9 @@
   .gitem .chk{width:22px;height:22px;border-radius:7px;border:2px solid var(--stroke2);display:grid;place-items:center;color:transparent;flex:none}
   .gitem.sel .chk{background:var(--accent);border-color:var(--accent);color:#fff}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .atile{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:15px}
+  .atile{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:0 15px 15px;overflow:hidden}
+  .atile .ai-banner{height:96px;margin:0 -15px 12px;display:grid;place-items:center}
+  .atile .ai-banner .msr{font-size:46px;color:rgba(255,255,255,.95)}
   .atile .ai{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:rgba(47,107,255,.16);color:var(--accent2);margin-bottom:10px}
   .atile b{font-size:14px;display:block}.atile small{font-size:11px;color:var(--muted)}
   .atile .ap{margin-top:11px;display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:13px}
@@ -1302,6 +1304,7 @@
   <section class="view flow" id="permits" data-nonav>
     <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Permits</h1></div>
     <div class="panel" style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:14px">Assisted service: tell us your trek and we process the forest / eco-zone permit and ID, then send the approved copy in-app.</div>
+    <div class="search" style="margin-bottom:16px"><span class="msr" style="font-size:20px;color:var(--muted)">search</span><input id="permitSearch" type="text" placeholder="Search permits…" autocomplete="off" oninput="renderPermits(this.value)" style="all:unset;flex:1;font-size:14px;color:var(--text)"/></div>
     <div id="permitList"></div>
   </section>
 

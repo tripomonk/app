@@ -154,11 +154,14 @@ function saveBookingRemote(b){ if(!sbOn) return;
 /* ---- Trek News & Alerts (AI-summarized, refreshed by a scheduled function) ---- */
 let _newsCache=null;
 const ALERT_RE=/landslide|closed|closure|road block|weather|warning|alert|flood|rescue|avalanche|cloudburst|stranded|evacuat|shut|ban\b|emergency|trapped|snowfall/i;
+/* drop crime / politics / negative items that aren't trek-safety alerts */
+const NEG_RE=/murder|killed|death|dead|crime|arrest|standoff|clash|riot|protest|attack|assault|court|fir\b|police|scam|fraud|rape|violence|dispute|controversy|politic|election|encroach|raid/i;
 function isAlert(n){return (n.severity||'')==='alert' || ALERT_RE.test((n.title||'')+' '+(n.summary||''));}
+function isNegative(n){const t=(n.title||'')+' '+(n.summary||'');return NEG_RE.test(t)&&!ALERT_RE.test(t);}
 async function loadNews(){
   if(!sbOn)return[];
   try{const r=await fetch(SB.SUPABASE_URL+'/rest/v1/news?select=*&order=published_at.desc&limit=40',{headers:sbHeaders()});
-    if(!r.ok)return[];_newsCache=await r.json();return _newsCache;}catch(e){return[];}
+    if(!r.ok)return[];_newsCache=(await r.json()).filter(n=>!isNegative(n));return _newsCache;}catch(e){return[];}
 }
 /* card style with a priority label above each card */
 function newsCard(n){
@@ -697,7 +700,20 @@ function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
   renderDetailNews(t.n);
   go('detail');
 }
-function shareTrek(){note('Share '+cart.trek.n+' — opens share sheet.');}
+async function shareTrek(){
+  const t=cart.trek;if(!t)return;
+  const url=window.location.origin+window.location.pathname+'#trek='+encodeURIComponent(t.n);
+  const data={title:'Tripomonk — '+t.n,text:`Check out the ${t.n} trek (${t.region}) on Tripomonk`,url};
+  if(navigator.share){try{await navigator.share(data);return;}catch(e){if(e&&e.name==='AbortError')return;}}
+  try{await navigator.clipboard.writeText(url);note('Trip link copied — share it anywhere!','Link copied');}
+  catch(e){note(url,'Share this trip');}
+}
+/* open a trek/post directly from a shared deep link (#trek=Name) */
+function handleDeepLink(){
+  const h=window.location.hash||'';
+  const m=h.match(/#trek=([^&]+)/);
+  if(m){const name=decodeURIComponent(m[1]);setTimeout(()=>{try{openDetailByName(name);}catch(e){}},400);}
+}
 function toggleFav(el){el.classList.toggle('on');el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop');}
 
 function renderItinerary(){const t=cart.trek,it=ITIN[t.n]||[];
@@ -864,12 +880,15 @@ function buildQR(p){const el=document.getElementById('qr');try{if(typeof qrcode=
 
 /* bookings + wishlist */
 function renderBookings(){const bs=getBookings();
-  document.getElementById('bookList').innerHTML=bs.length?bs.map(b=>`<div class="tcard" onclick="openTicket('${b.id}')"><div class="ph" style="background-image:url('${b.img}')"></div>
-    <div class="bd"><h3>${b.trek}</h3><div class="rt"><span class="ic" style="color:var(--muted)">${ic('calendar',13)}</span> <span class="g">${b.date}</span></div>
-    <div class="ft"><span class="tag" style="color:${b.checkedIn?'#7dd3fc':'#6ee7a0'}">${b.checkedIn?'Checked in':b.status}</span><span class="tag">${b.id}</span></div></div></div>`).join('')
-    :'<div class="empty"><img src="illustrations/hiker-mountains.svg" alt=""/>No bookings yet. Find a trek and book your spot!<br><br><button class="btn sm" onclick="go(\'explore\')">Browse Treks</button></div>';
+  document.getElementById('bookList').innerHTML=bs.length?bs.map(b=>`<div class="tcard" style="flex-direction:column;align-items:stretch"><div style="display:flex;gap:13px;cursor:pointer" onclick="openTicket('${b.id}')"><div class="ph" style="background-image:url('${b.img}')"></div>
+    <div class="bd"><h3>${esc(b.trek)}</h3><div class="rt"><span class="ic" style="color:var(--muted)">${ic('calendar',13)}</span> <span class="g">${esc(b.date)}</span></div>
+    <div class="ft"><span class="tag" style="color:${b.checkedIn?'#7dd3fc':'#6ee7a0'}">${b.checkedIn?'Checked in':b.status}</span><span class="tag">${b.id}</span></div></div></div>
+    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn ghost sm" style="flex:1" onclick="openTicket('${b.id}')">${ic('ticket',15)} E-Ticket</button><button class="btn ghost sm" style="flex:1" onclick="openPackingFor('${(b.trek||'').replace(/'/g,'').replace(' (Activity)','')}')">${ic('list',15)} Packing</button></div></div>`).join('')
+    :'<div class="empty"><img src="illustrations/hiker-mountains.svg" alt=""/>No bookings yet. Find a trek and book your spot!<div style="text-align:center;margin-top:16px"><button class="btn sm" onclick="go(\'explore\')">Browse Treks</button></div></div>';
   hydrate(document.getElementById('bookList'));
 }
+let _pkForce='';
+function openPackingFor(trekName){_pkForce=trekName||'';go('packing');}
 function renderWishlist(){document.getElementById('wishList').innerHTML=treks.slice(2,5).map(trekCard).join('');hydrate(document.getElementById('wishList'));}
 
 /* community + packing + profile */
@@ -1806,12 +1825,16 @@ const gearItems=[['jacket','Down Jacket','-10°C rated','₹150/day'],['shoe','T
 const permitTypes=[['Forest Entry Permit','Required for most Uttarakhand treks (Sankri, Govindghat).','1–2 days','₹350'],['National Park Permit','Valley of Flowers & Hemkund route entry.','1 day','₹400'],['Eco-Zone / Camping','Designated camping & eco-sensitive-zone clearance.','2 days','₹300'],['Foreigner Permit','Extra documentation for non-Indian trekkers.','3–4 days','₹900']];
 const activitiesData=[['raft','River Rafting','Rishikesh · Grade III','₹1,200'],['para','Paragliding','Mussoorie / Tehri','₹2,500'],['bungee','Bungee Jump','Rishikesh · 83 m','₹3,700'],['ski','Skiing','Auli · with gear','₹2,200'],['camp','Camping','Lakeside · per night','₹999'],['kayak','Kayaking','Tehri Lake','₹1,500']];
 let gearSel={};
-function renderQuick(){const q=[['treks','Treks','explore'],['backpack','Rent Gear','gear'],['permits','Permits','permits'],['para','Activities','activities']];const el=document.getElementById('quick');if(!el)return;el.innerHTML=q.map(a=>`<div class="qa" onclick="go('${a[2]}')"><div class="qi">${ic(a[0],20)}</div><span>${a[1]}</span></div>`).join('');hydrate(el);}
+function renderQuick(){const q=[['backpack','Rent Gear','gear'],['permits','Permits','permits'],['para','Activities','activities']];const el=document.getElementById('quick');if(!el)return;el.style.gridTemplateColumns='repeat(3,1fr)';el.innerHTML=q.map(a=>`<div class="qa" onclick="go('${a[2]}')"><div class="qi">${ic(a[0],20)}</div><span>${a[1]}</span></div>`).join('');hydrate(el);}
 function renderGear(){document.getElementById('gearList').innerHTML=gearItems.map((g,i)=>`<div class="gitem ${gearSel[i]?'sel':''}" onclick="togGear(${i})"><span class="gi ic">${ic(g[0],22)}</span><div class="t"><b>${g[1]}</b><small>${g[2]}</small></div><span class="rate">${g[3]}</span><span class="chk">${ic('check',14)}</span></div>`).join('');hydrate(document.getElementById('gear'));}
 function togGear(i){gearSel[i]=!gearSel[i];renderGear();}
 function gearEnquire(){const picked=gearItems.filter((g,i)=>gearSel[i]).map(g=>g[1]);wa(picked.length?('I want to rent: '+picked.join(', ')):'I want to rent trek gear.');}
-function renderPermits(){document.getElementById('permitList').innerHTML=permitTypes.map(p=>`<div class="perm"><b>${p[0]}</b><p>${p[1]}</p><div class="pf"><span class="badge">${ic('clock',12)} ${p[2]} · ${p[3]}</span><button class="pa" onclick="wa('I need the ${p[0]} — please assist.')">Apply</button></div></div>`).join('');hydrate(document.getElementById('permits'));}
-function renderActivities(){const el=document.getElementById('actList');el.className='';el.innerHTML=activitiesData.map(a=>`<div class="atile"><div class="ai ic">${ic(a[0],22)}</div><b>${a[1]}</b><small>${a[2]}</small><div class="ap">${a[3]}<button class="bk" onclick="bookActivity('${a[1].replace(/'/g,'')}','${a[3]}')">Book</button></div></div>`).join('');hydrate(document.getElementById('activities'));}
+function renderPermits(q){const lq=(q||'').toLowerCase().trim();
+  const list=lq?permitTypes.filter(p=>(p[0]+' '+p[1]).toLowerCase().includes(lq)):permitTypes;
+  document.getElementById('permitList').innerHTML=list.length?list.map(p=>`<div class="perm"><b>${p[0]}</b><p>${p[1]}</p><div class="pf"><span class="badge">${ic('clock',12)} ${p[2]} · ${p[3]}</span><button class="pa" onclick="wa('I need the ${p[0]} — please assist.')">Apply</button></div></div>`).join(''):'<div class="empty"><p>No permits match your search.</p></div>';
+  hydrate(document.getElementById('permits'));}
+const ACT_GRAD=['linear-gradient(135deg,#2f6bff,#0a3aa0)','linear-gradient(135deg,#1f9e6b,#0c6b48)','linear-gradient(135deg,#ff7a59,#c43b1b)','linear-gradient(135deg,#5a8cff,#2f4fd0)','linear-gradient(135deg,#e0a200,#b06b00)','linear-gradient(135deg,#16b3c9,#0a6b88)'];
+function renderActivities(){const el=document.getElementById('actList');el.className='';el.innerHTML=activitiesData.map((a,i)=>`<div class="atile"><div class="ai-banner" style="background:${ACT_GRAD[i%ACT_GRAD.length]}"><span class="msr">${IMAP[a[0]]||'sports'}</span></div><b>${a[1]}</b><small>${a[2]}</small><div class="ap">${a[3]}<button class="bk" onclick="bookActivity('${a[1].replace(/'/g,'')}','${a[3]}')">Book</button></div></div>`).join('');hydrate(document.getElementById('activities'));}
 async function bookActivity(name,priceStr){
   const amount=parseInt(String(priceStr).replace(/[^\d]/g,''))||0;
   if(amount<1){note('This activity is not bookable online yet — please contact us.','Unavailable');return;}
@@ -1959,7 +1982,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='peopleSearch'){_peoplePool=null;setTimeout(()=>{const i=document.getElementById('peopleSearchInput');if(i){i.value='';i.focus();}searchPeople('');},80);}
   if(id==='news')renderNews();
   if(id==='passport')renderPassport();
-  if(id==='packing'){pkTrek=(cart.trek&&cart.trek.n)||pkTrek||'';renderPacking();}
+  if(id==='packing'){pkTrek=_pkForce||(cart.trek&&cart.trek.n)||'';_pkForce='';renderPacking();}
   if(id==='bookings')renderBookings();
   if(id==='wishlist')renderWishlist();
   if(id==='profile')renderProfile();
@@ -1999,7 +2022,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits});
 
 /* init */
 applyTheme();   /* dark / light / system theme */
@@ -2015,3 +2038,4 @@ loadTreks();    /* pull live treks from Supabase if configured (else built-in) *
 renderHomeNews();     /* trek news & alerts strip on home */
 refreshNotifBadge();  /* show red dot if there's new community activity */
 setInterval(refreshNotifBadge,60000);  /* poll for new activity every minute */
+handleDeepLink();     /* open a trek directly from a shared link */
