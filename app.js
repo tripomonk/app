@@ -328,7 +328,7 @@ function toggleFollow(n){
     uidForName(n).then(uid=>pushNotif({recipientId:uid,recipientName:uid?null:n,type:'follow'}));
   }
 }
-const menu=[['bookings','My Bookings','bookings'],['shield','Trek Passport','passport'],['monitor','Trek Health','health'],['distance','Trek Navigation','navmap'],['heartmenu','My Wishlist','wishlist'],['list','Packing List','packing'],['starline','My Reviews','reviews'],['settings','Settings','settings'],['help','Help & Support','help']];
+const menu=[['bookings','My Bookings','bookings'],['chat','Messages','messages'],['shield','Trek Passport','passport'],['monitor','Trek Health','health'],['distance','Trek Navigation','navmap'],['heartmenu','My Wishlist','wishlist'],['list','Packing List','packing'],['starline','My Reviews','reviews'],['settings','Settings','settings'],['help','Help & Support','help']];
 const setList=[['user','Account & security',''],['bell','Notifications',''],['globe','Language - English',''],['card','Payment methods',''],['shield','Privacy Policy','privacy'],['help','About Tripomonk','about']];
 const notis=[['check','Booking confirmed','Your seat is confirmed — view your e-ticket.','2m'],['bell','Pack your bags!','Your trek departs in 5 days. See the packing list.','1d'],['permits','Permit approved','Your forest permit is ready to download.','2d'],['heart','EARLYBIRD: 15% off','Winter trek discount ends soon.','3d']];
 const faqs=[['How do I book a trek?','Pick a trek, choose a batch on Select Date, add travellers and pay 25% to confirm your seat.'],['What is the cancellation policy?','Free cancellation up to 15 days before departure (full refund). Within 15 days, a 50% charge applies.'],['Do you provide gear on rent?','Yes — add the gear kit (jacket, boots, poles) as an add-on at checkout.'],['Are permits included?','We arrange forest / eco-zone permits for you as an assisted service.'],['What fitness level do I need?','Easy treks suit beginners; Moderate+ need regular cardio for 3–4 weeks before.']];
@@ -618,6 +618,8 @@ function renderHomeHero(){
   const go=box.querySelector('.hh-go .msr');if(go)go.style.transform='scaleX(-1)';
 }
 function renderHome(){
+  const hav=document.getElementById('homeUserAv');
+  if(hav){const name=getSavedName()||'Explorer',photo=getSavedPhoto();if(photo){hav.style.backgroundImage=`url('${photo}')`;hav.textContent='';}else{hav.style.backgroundImage='';hav.textContent=(name[0]||'E').toUpperCase();}}
   renderHomeHero();
   const list=homeFilter==='All'?treks:treks.filter(t=>t.lvl===homeFilter);
   const el=document.getElementById('homeList');el.className='hrow';
@@ -1335,7 +1337,7 @@ async function renderPerson(){if(!curPerson){go('community');return;}const p=get
       <h2>${p.n}</h2><div class="handle">${p.h}</div>
       <p class="pbio">${p.bio||''}</p>
       <div class="pstats"><div><b>${posts.length}</b><small>Posts</small></div><div><b>${flwr.toLocaleString()}</b><small>Followers</small></div><div><b>${me?followCount():'—'}</b><small>Following</small></div></div>
-      ${me?'':`<button class="btn ${isFollowing(p.n)?'ghost':''}" style="margin-top:14px" onclick="toggleFollow('${p.n.replace(/'/g,"")}')">${isFollowing(p.n)?'Following ✓':'Follow'}</button>`}
+      ${me?'':`<div class="profile-actions" style="margin:14px 0 0"><button onclick="toggleFollow('${p.n.replace(/'/g,"")}')">${isFollowing(p.n)?'Following':'Follow'}</button><button onclick="openChat('${p.n.replace(/'/g,"")}')">Message</button></div>`}
     </div>
     <div class="sec-h" style="margin:18px 4px 8px"><b>Posts</b></div>
     ${posts.length?`<div class="pgrid">${posts.map(gridCell).join('')}</div>`:`<div class="empty"><p>${me?'You have not posted yet.':'No posts yet.'}</p></div>`}`;
@@ -1430,6 +1432,14 @@ function renderProfile(){document.getElementById('pCover').style.backgroundImage
     ['check',completed,'Completed',"go('bookings')"],
     ['shield',badges,'Badges',"go('passport')"]
   ].map(s=>`<div class="pstat" onclick="${s[3]}"><b>${s[1]}</b><small>${s[2]}</small></div>`).join('');hydrate(ps);}
+  const grid=document.getElementById('pMiniGrid');
+  if(grid){
+    const mine=allPosts().filter(p=>p.n===uname||p.n==='You'||(p.uid&&currentUser&&p.uid===currentUser.id));
+    const media=mine.flatMap(p=>(p.imgs||[]).map(src=>({src,post:p}))).slice(0,5);
+    const fallback=treks.slice(0,5).map(t=>({src:t.img,post:null}));
+    const cells=(media.length?media:fallback).slice(0,5);
+    grid.innerHTML=cells.length?cells.map(c=>`<div class="pg" style="background-image:url('${c.src}${c.src&&String(c.src).startsWith('http')?Q:''}')" onclick="${c.post?`openComments('${c.post.id}')`:`openDetail(${Math.max(0,treks.findIndex(t=>t.img===c.src))})`}"></div>`).join(''):'<div class="empty">Your photos and trek moments will appear here.</div>';
+  }
   let rows=menu.map(m=>`<div class="mrow" onclick="${m[2]?`go('${m[2]}')`:'void 0'}"><span class="ic">${ic(m[0],20)}</span><span class="t">${m[1]}</span><span class="ch">${ic('back',16)}</span></div>`).join('');
   rows+=isLoggedIn()
     ?`<div class="mrow" onclick="signOut()"><span class="ic">${ic('logout',20)}</span><span class="t" style="color:#ff7a7a">Sign out</span></div>`
@@ -1446,6 +1456,40 @@ function renderProfile(){document.getElementById('pCover').style.backgroundImage
   hydrate(document.getElementById('profile'));
   document.querySelectorAll('#menu .ch svg').forEach(s=>s.style.transform='scaleX(-1)');
 }
+
+
+/* ---------- messages / chat UI ---------- */
+let chatWith='Tripomonk Team';
+function chatKey(n){return 'tmk_chat_'+String(n||'team').toLowerCase().replace(/[^a-z0-9]+/g,'_');}
+function chatSeed(n){return [
+  {who:'them',txt:'Hi '+(getSavedName()||'Explorer')+', ready for your next trek?'},
+  {who:'me',txt:'I am checking the batches.'},
+  {who:'them',txt:'Send me your preferred dates and I will help.'}
+];}
+function getChat(n){try{const raw=localStorage.getItem(chatKey(n));return raw?JSON.parse(raw):chatSeed(n);}catch(e){return chatSeed(n);}}
+function saveChat(n,rows){try{localStorage.setItem(chatKey(n),JSON.stringify(rows));}catch(e){}}
+function chatContacts(){return [{n:'Tripomonk Team',h:'Official support',bio:'Bookings, payments and trek help',flwr:0}].concat(people.slice(0,8));}
+function renderMessages(){
+  const recent=document.getElementById('recentChats'),list=document.getElementById('messageList');if(!recent||!list)return;
+  const rows=chatContacts();
+  recent.innerHTML=rows.slice(0,8).map(p=>`<div class="recent-chat" onclick="openChat('${p.n.replace(/'/g,'')}')"><div class="ring">${avatar(p.n,52)}</div><small>${esc(p.n.split(' ')[0])}</small></div>`).join('');
+  list.innerHTML=rows.map((p,i)=>{const msgs=getChat(p.n),last=msgs[msgs.length-1]||{txt:'Start a conversation'};return `<div class="chat-row" onclick="openChat('${p.n.replace(/'/g,'')}')">${avatar(p.n,46)}<div class="meta"><b>${esc(p.n)}</b><p>${esc(last.txt)}</p></div><time>${i?'Yesterday':'Now'}</time></div>`;}).join('');
+  hydrate(document.getElementById('messages'));
+}
+function openChat(n){chatWith=n||'Tripomonk Team';go('chat');}
+function renderChat(){
+  const head=document.getElementById('chatPerson'),thread=document.getElementById('chatThread');if(!head||!thread)return;
+  head.innerHTML=`<b>${esc(chatWith)}</b><small>Usually replies soon</small>`;
+  const rows=getChat(chatWith);
+  thread.innerHTML=rows.map(m=>`<div class="bubble ${m.who==='me'?'me':'them'}">${esc(m.txt)}</div>`).join('');
+  setTimeout(()=>{thread.scrollTop=thread.scrollHeight;},30);
+}
+function sendChat(){
+  const input=document.getElementById('chatInput');if(!input)return;
+  const txt=(input.value||'').trim();if(!txt)return;
+  const rows=getChat(chatWith);rows.push({who:'me',txt});saveChat(chatWith,rows);input.value='';renderChat();
+}
+
 /* ---- theme (dark / light / system) ---- */
 let _themeMq=null;
 function getTheme(){try{return localStorage.getItem('tmk_theme')||'system';}catch(e){return'system';}}
@@ -1900,6 +1944,8 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='community')renderFeed();
   if(id==='person')renderPerson();
   if(id==='search')renderSearch();
+  if(id==='messages')renderMessages();
+  if(id==='chat')renderChat();
   if(id==='notifications')renderNotifications();
   if(id==='reviews')renderReviews();
   if(id==='help')renderHelp();
@@ -1953,7 +1999,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat});
 
 /* init */
 applyTheme();   /* dark / light / system theme */
