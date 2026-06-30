@@ -46,6 +46,13 @@
   .theme-pick .tp.on{border-color:var(--accent);background:rgba(47,107,255,.12);color:var(--text)}
   .theme-pick .tp .msr{font-size:24px;display:block;margin-bottom:6px}
   .theme-pick .tp small{font-size:11.5px;font-weight:600}
+  /* review trip-summary blocks */
+  .rv-block{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:13px 14px;margin-bottom:11px}
+  .rv-block .rv-h{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;margin-bottom:7px;color:var(--text)}
+  .rv-block .rv-h .ic{color:var(--accent2)}
+  .rv-block .rv-it{font-size:12.5px;color:var(--muted);line-height:1.55;margin-bottom:4px}
+  .rv-block .rv-it b{color:var(--text);font-weight:600}
+  .rv-block .rv-more{font-size:12px;color:var(--accent2);margin-top:6px;cursor:pointer;font-weight:600}
   /* document pages (about / privacy) */
   .doc{padding:2px 2px 30px}
   .doc h2{font-size:20px;margin:0 0 8px}
@@ -858,6 +865,8 @@
     <div class="regions" id="regions"></div>
     <div class="sec" style="margin-top:18px"><h2>By Difficulty</h2></div>
     <div class="diff2" id="diffGrid"></div>
+    <div class="sec" style="margin-top:18px"><h2>By Departure City</h2></div>
+    <div class="chips" id="cityChips"></div>
     <div class="sec" style="margin-top:18px" id="topSec"><h2 id="topHead">Top Picks For You</h2><a onclick="filterAll()">View all</a></div>
     <div id="exploreList"></div>
   </section>
@@ -948,7 +957,8 @@
       <div class="srow" id="sGear" style="display:none"><span>Gear kit</span><span>₹2,700</span></div>
       <div class="srow" id="sPermit" style="display:none"><span>Forest permit</span><span>₹350</span></div>
       <div class="srow tot"><span>Total</span><span id="sTot"></span></div></div>
-    <div style="height:96px"></div>
+    <div id="rvDetails"></div>
+    <div style="height:20px"></div>
     <div class="cta"><button class="btn" onclick="go('payment')">Proceed to Pay</button></div>
   </section>
 

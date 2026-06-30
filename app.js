@@ -634,6 +634,8 @@ function renderExplore(){
   document.getElementById('regions').innerHTML=regions.map(r=>`<div class="region" onclick="filterByRegion('${r[0]}')"><div class="av" style="background-image:url('${r[1]+Q}')"></div><span>${r[0]}</span></div>`).join('');
   const dd=[['Easy','For Beginners'],['Moderate','For Trekkers'],['Difficult','For Adventurers']];
   document.getElementById('diffGrid').innerHTML=dd.map(d=>`<div class="diffc" onclick="filterByDiff('${d[0]}')"><b>${d[0]}</b><small>${d[1]}</small></div>`).join('');
+  const cc=document.getElementById('cityChips');
+  if(cc)cc.innerHTML=DEP_CITIES.map(c=>`<div class="chip pill ${exploreLabel===('From '+c)?'on':''}" onclick="filterByCity('${c}')">${ic('pin',13)} ${c}</div>`).join('');
   const list=exploreView||treks;
   const head=document.getElementById('topHead'); if(head)head.textContent=exploreLabel||'Top Picks For You';
   const el=document.getElementById('exploreList');el.className='';
@@ -644,6 +646,7 @@ let exploreView=null, exploreLabel='';
 function scrollToPicks(){const el=document.getElementById('topSec');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}
 function filterByRegion(r){exploreView=treks.filter(t=>t.region===r);exploreLabel=r+' Treks';renderExplore();scrollToPicks();}
 function filterByDiff(d){exploreView=treks.filter(t=>t.lvl===d);exploreLabel=d+' Treks';renderExplore();scrollToPicks();}
+function filterByCity(c){exploreView=treks.filter(t=>depCity(t)===c);exploreLabel='From '+c;renderExplore();scrollToPicks();}
 function filterAll(){exploreView=null;exploreLabel='';renderExplore();}
 
 /* filters */
@@ -791,6 +794,46 @@ function prefillTravellers(){
   if(g('emName')&&!g('emName').value)g('emName').value=c.emName||'';
   if(g('emPhone')&&!g('emPhone').value)g('emPhone').value=c.emPhone||'';
 }
+/* departure / pickup city per trek (primary boarding point) */
+const DEP_CITIES=['Delhi','Rishikesh','Dehradun'];
+const TREK_DEP={'Kedarkantha':'Dehradun','Har Ki Dun':'Dehradun','Brahmatal':'Dehradun','Roopkund':'Dehradun','Nag Tibba':'Dehradun','Valley of Flowers':'Rishikesh','Hampta Pass':'Delhi'};
+function depCity(t){return (t&&TREK_DEP[t.n])||'Dehradun';}
+/* standard cancellation policy */
+const CANCELLATION=[
+  'More than 30 days before departure — full refund (less payment-gateway charges).',
+  '15–29 days before — 75% refund.',
+  '7–14 days before — 50% refund.',
+  'Less than 7 days before, or no-show — no refund.',
+  'If Tripomonk cancels for weather/safety, you get a full refund or a free date change.',
+  'Refunds are processed to the original payment method within 7–10 working days.'
+];
+function reviewDetailsHTML(t){
+  const city=depCity(t);
+  const itin=(ITIN[t.n]||[]).slice(0,3);
+  return `
+  <div class="sec" style="margin-top:18px"><h2 style="font-size:15px">Trip summary</h2></div>
+  <div class="rv-block"><div class="rv-h">${ic('distance',16)} Itinerary</div>
+    ${itin.length?itin.map((d,i)=>`<div class="rv-it"><b>Day ${i+1}:</b> ${esc(d[0])}</div>`).join('')+(ITIN[t.n].length>3?`<div class="rv-more" onclick="go('itinerary')">View full itinerary →</div>`:''):'<div class="rv-it">Detailed day-wise plan shared on confirmation.</div>'}
+  </div>
+  <div class="rv-block"><div class="rv-h">${ic('pin',16)} Pickup &amp; reporting</div>
+    <div class="rv-it"><b>Pickup city:</b> ${city} (also boardable from ${DEP_CITIES.filter(c=>c!==city).join(' / ')} en route)</div>
+    <div class="rv-it"><b>Reporting:</b> by 6:30 AM on Day 1 at the ${city} pickup point (exact spot shared after booking)</div>
+  </div>
+  <div class="rv-block"><div class="rv-h">${ic('check',16)} Inclusions</div>
+    <div class="rv-it">Accommodation, all meals on trek, certified trek leader &amp; guides, permits &amp; forest fees, safety equipment and first-aid.</div>
+    <div class="rv-h" style="margin-top:10px">${ic('close',16)} Exclusions</div>
+    <div class="rv-it">Travel to/from the pickup city, personal expenses, insurance, anything not listed in inclusions.</div>
+  </div>
+  <div class="rv-block"><div class="rv-h">${ic('alert',16)} Cancellation policy</div>
+    ${CANCELLATION.map(c=>`<div class="rv-it">• ${c}</div>`).join('')}
+  </div>
+  <div class="rv-block"><div class="rv-h">${ic('list',16)} Important instructions</div>
+    <div class="rv-it">Carry a valid government photo ID. Start light cardio 2–3 weeks before. Mobile network is limited on the trail. Follow your trek leader's safety instructions at all times.</div>
+  </div>
+  <div class="rv-block" style="background:rgba(47,107,255,.1);border-color:rgba(47,107,255,.3)"><div class="rv-h">${ic('card',16)} Amount payable now</div>
+    <div class="rv-it" style="font-size:15px;color:var(--text)"><b>${INR(Math.round((cart.grand||cart.total)*0.25))}</b> advance (25%) · Total ${INR(cart.grand||cart.total)}</div>
+  </div>`;
+}
 function syncReview(){const t=cart.trek;cart.gear=false;cart.permit=false;
   document.getElementById('rvPh').style.backgroundImage=`url('${t.img}')`;
   document.getElementById('rvName').textContent=t.n;
@@ -798,10 +841,13 @@ function syncReview(){const t=cart.trek;cart.gear=false;cart.permit=false;
   document.getElementById('rvPax').textContent=cart.pax+' trekker'+(cart.pax>1?'s':'');
   document.querySelectorAll('#review .toggle').forEach(x=>x.classList.remove('on'));
   document.getElementById('sGear').style.display='none';document.getElementById('sPermit').style.display='none';
-  computeTotal();hydrate(document.getElementById('review'));
+  computeTotal();
+  const d=document.getElementById('rvDetails');if(d){d.innerHTML=reviewDetailsHTML(t);}
+  hydrate(document.getElementById('review'));
 }
 function addon(el,k,amt){el.classList.toggle('on');cart[k]=el.classList.contains('on');
-  document.getElementById(k==='gear'?'sGear':'sPermit').style.display=cart[k]?'flex':'none';computeTotal();}
+  document.getElementById(k==='gear'?'sGear':'sPermit').style.display=cart[k]?'flex':'none';computeTotal();
+  const d=document.getElementById('rvDetails');if(d&&cart.trek){d.innerHTML=reviewDetailsHTML(cart.trek);hydrate(d);}}
 function computeTotal(){const t=cart.trek;let sum=cart.total*cart.pax;if(cart.gear)sum+=2700;if(cart.permit)sum+=350;cart.grand=sum;
   document.getElementById('sPax').textContent=cart.pax;
   document.getElementById('sBase').textContent=INR(cart.total*cart.pax);
@@ -2022,7 +2068,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity});
 
 /* init */
 applyTheme();   /* dark / light / system theme */
