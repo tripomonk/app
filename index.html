@@ -46,6 +46,13 @@
   .theme-pick .tp.on{border-color:var(--accent);background:rgba(47,107,255,.12);color:var(--text)}
   .theme-pick .tp .msr{font-size:24px;display:block;margin-bottom:6px}
   .theme-pick .tp small{font-size:11.5px;font-weight:600}
+  /* pull-to-refresh indicator */
+  #ptr{position:absolute;top:calc(var(--safe-top) + 6px);left:50%;transform:translateX(-50%) translateY(0);z-index:240;width:38px;height:38px;border-radius:50%;
+    background:var(--card2);border:1px solid var(--stroke);display:grid;place-items:center;opacity:0;pointer-events:none;box-shadow:0 6px 16px rgba(0,0,0,.4)}
+  #ptr .msr{font-size:21px;color:var(--accent2);transition:transform .2s}
+  #ptr.ready .msr{transform:rotate(180deg)}
+  #ptr.spin .msr{animation:ptrspin .8s linear infinite}
+  @keyframes ptrspin{to{transform:rotate(360deg)}}
   /* review trip-summary blocks */
   .rv-block{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:13px 14px;margin-bottom:11px}
   .rv-block .rv-h{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;margin-bottom:7px;color:var(--text)}
@@ -809,6 +816,7 @@
 </head>
 <body>
 <div class="phone"><div class="screen">
+  <div id="ptr"><span class="msr">refresh</span></div>
 
   <!-- SPLASH -->
   <section class="view full active" id="splash" data-nonav>

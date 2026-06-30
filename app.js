@@ -2085,3 +2085,23 @@ renderHomeNews();     /* trek news & alerts strip on home */
 refreshNotifBadge();  /* show red dot if there's new community activity */
 setInterval(refreshNotifBadge,60000);  /* poll for new activity every minute */
 handleDeepLink();     /* open a trek directly from a shared link */
+/* ---- pull-to-refresh ---- */
+(function(){
+  let y0=0,pulling=false;const TH=70;
+  const ind=()=>document.getElementById('ptr');
+  document.addEventListener('touchstart',e=>{
+    if(document.querySelector('.modal.show')){pulling=false;return;}
+    const v=document.querySelector('.view.active');
+    if(v&&v.scrollTop<=0){y0=e.touches[0].clientY;pulling=true;}else pulling=false;
+  },{passive:true});
+  document.addEventListener('touchmove',e=>{
+    if(!pulling)return;const dy=e.touches[0].clientY-y0;const el=ind();if(!el)return;
+    if(dy>0){const d=Math.min(dy,110);el.style.transform='translateX(-50%) translateY('+d+'px)';el.style.opacity=String(Math.min(1,d/60));el.classList.toggle('ready',d>=TH);}
+    else{el.style.opacity='0';}
+  },{passive:true});
+  document.addEventListener('touchend',()=>{
+    if(!pulling)return;pulling=false;const el=ind();if(!el)return;
+    if(el.classList.contains('ready')){el.classList.add('spin');el.style.transform='translateX(-50%) translateY(70px)';el.style.opacity='1';setTimeout(()=>location.reload(),450);}
+    else{el.style.transition='transform .25s,opacity .25s';el.style.transform='translateX(-50%) translateY(0)';el.style.opacity='0';setTimeout(()=>{el.style.transition='';},260);}
+  },{passive:true});
+})();
