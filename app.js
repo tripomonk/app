@@ -294,8 +294,10 @@ function getPerson(n){return personMap[n]||(n==='You'?ME:{n:n,h:'@'+n.toLowerCas
 const AVG=[['#ffd27a','#ff7a59'],['#7ad1ff','#2f6bff'],['#b7f5c0','#2fb56b'],['#ffb3d9','#c44bd6'],['#ffe08a','#f59e0b'],['#c9b7ff','#7c5cff']];
 function initials(n){return n.split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase();}
 function avHash(n){let h=0;for(let i=0;i<n.length;i++)h=(h*31+n.charCodeAt(i))|0;return Math.abs(h);}
-function avatar(n,size){size=size||38;const g=AVG[avHash(n)%AVG.length];const fs=Math.round(size*.38);
-  return `<div class="av-i" onclick="openPerson('${n.replace(/'/g,"")}')" style="width:${size}px;height:${size}px;font-size:${fs}px;background:linear-gradient(135deg,${g[0]},${g[1]})">${initials(n)}</div>`;}
+function avatar(n,size){size=size||38;const g=AVG[avHash(n)%AVG.length];const fs=Math.round(size*.4);
+  const mine=(n==='You'||n===myName());const photo=mine?getSavedPhoto():'';
+  const bg=photo?`background-image:url('${photo}');background-size:cover;background-position:center`:`background:linear-gradient(135deg,${g[0]},${g[1]})`;
+  return `<div class="av-i" onclick="openPerson('${n.replace(/'/g,"")}')" style="width:${size}px;height:${size}px;font-size:${fs}px;${bg}">${photo?'':initials(n)}</div>`;}
 
 let postSeq=2;
 const feed=[
