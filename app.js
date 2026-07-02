@@ -331,7 +331,7 @@ function toggleFollow(n){
     uidForName(n).then(uid=>pushNotif({recipientId:uid,recipientName:uid?null:n,type:'follow'}));
   }
 }
-const menu=[['bookings','My Bookings','bookings'],['chat','Messages','messages'],['shield','Trek Passport','passport'],['monitor','Trek Health','health'],['distance','Trek Navigation','navmap'],['heartmenu','My Wishlist','wishlist'],['list','Packing List','packing'],['starline','My Reviews','reviews'],['settings','Settings','settings'],['help','Help & Support','help']];
+const menu=[['bookings','My Bookings','bookings'],['chat','Messages','messages'],['shield','Trek Passport','passport'],['monitor','Trek Health','health'],['distance','Trek Navigation','navmap'],['heartmenu','My Wishlist','wishlist'],['starline','My Reviews','reviews'],['settings','Settings','settings'],['help','Help & Support','help']];
 const setList=[['user','Account & security',''],['bell','Notifications',''],['globe','Language - English',''],['card','Payment methods',''],['shield','Privacy Policy','privacy'],['help','About Tripomonk','about']];
 const notis=[['check','Booking confirmed','Your seat is confirmed — view your e-ticket.','2m'],['bell','Pack your bags!','Your trek departs in 5 days. See the packing list.','1d'],['permits','Permit approved','Your forest permit is ready to download.','2d'],['heart','EARLYBIRD: 15% off','Winter trek discount ends soon.','3d']];
 const faqs=[['How do I book a trek?','Pick a trek, choose a batch on Select Date, add travellers and pay 25% to confirm your seat.'],['What is the cancellation policy?','Free cancellation up to 15 days before departure (full refund). Within 15 days, a 50% charge applies.'],['Do you provide gear on rent?','Yes — add the gear kit (jacket, boots, poles) as an add-on at checkout.'],['Are permits included?','We arrange forest / eco-zone permits for you as an assisted service.'],['What fitness level do I need?','Easy treks suit beginners; Moderate+ need regular cardio for 3–4 weeks before.']];
@@ -700,6 +700,7 @@ function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
   const cta=document.getElementById('dCta');
   if(t.soon){cta.innerHTML=ic('bell',16)+' Coming Soon · Notify me';cta.onclick=()=>wa(t.n+' — please notify me when it goes live.');}
   else{cta.innerHTML='View Dates &amp; Price&nbsp; →';cta.onclick=()=>go('selectDate');}
+  renderDetailGetting(t);
   renderDetailNews(t.n);
   go('detail');
 }
@@ -1648,6 +1649,33 @@ const COORDS={"Kedarkantha":[31.13,78.20],"Brahmatal":[30.10,79.62],"Valley of F
 const REGION_C={Himachal:[32.24,77.19],Uttarakhand:[30.73,79.07],Kashmir:[34.10,75.30],Ladakh:[34.20,77.60],Sikkim:[27.50,88.30]};
 let _map=null,_base=null,_uM=null,_acc=null,_last=null,navOn=false,navDist=0,navTrek=null;
 function coordsFor(t){return (t&&COORDS[t.n])||(t&&REGION_C[t.region])||[30.73,79.07];}
+/* base town + nearest rail/air per trek, for "Getting there" + directions */
+const BASE={
+  'Kedarkantha':{town:'Sankri',rail:'Dehradun (~200 km)',air:'Dehradun'},
+  'Har Ki Dun':{town:'Sankri',rail:'Dehradun (~200 km)',air:'Dehradun'},
+  'Brahmatal':{town:'Lohajung',rail:'Kathgodam (~215 km)',air:'Dehradun'},
+  'Roopkund':{town:'Lohajung',rail:'Kathgodam (~215 km)',air:'Dehradun'},
+  'Valley of Flowers':{town:'Govindghat',rail:'Rishikesh (~275 km)',air:'Dehradun'},
+  'Nag Tibba':{town:'Pantwari',rail:'Dehradun (~90 km)',air:'Dehradun'},
+  'Hampta Pass':{town:'Manali',rail:'Chandigarh (~310 km)',air:'Bhuntar / Kullu'}
+};
+function baseInfo(t){return BASE[t.n]||{town:t.region,rail:'Nearest major railhead',air:'Nearest airport'};}
+function getDirections(){
+  const t=cart.trek;if(!t)return;const b=baseInfo(t);const c=coordsFor(t);
+  const dest=(b.town&&b.town!==t.region)?encodeURIComponent(b.town+', '+t.region+', India'):`${c[0]},${c[1]}`;
+  window.open(`https://www.google.com/maps/dir/?api=1&destination=${dest}`,'_blank','noopener');
+}
+function renderDetailGetting(t){
+  const box=document.getElementById('dGetting');if(!box)return;const b=baseInfo(t);
+  box.innerHTML=`<div class="stats">
+    <div class="stat"><div class="ic" style="display:grid;place-items:center">${ic('pin',20)}</div><b>${esc(b.town)}</b><small>Base town</small></div>
+    <div class="stat"><div class="ic" style="display:grid;place-items:center">${ic('distance',20)}</div><b style="font-size:11px">${esc(b.rail)}</b><small>Nearest rail</small></div>
+    <div class="stat"><div class="ic" style="display:grid;place-items:center"><span class="msr" style="font-size:20px;color:var(--accent2)">flight</span></div><b>${esc(b.air)}</b><small>Airport</small></div>
+  </div>
+  <button class="btn ghost" style="margin-top:12px" onclick="getDirections()">${ic('pin',16)} Get directions on Google Maps</button>
+  <button class="btn ghost" style="margin-top:9px" onclick="openNav(cart.trek)">${ic('distance',16)} Live trail map</button>`;
+  hydrate(box);
+}
 function hav(a,b,c,d){const R=6371,p=Math.PI/180,x=Math.sin((c-a)*p/2)**2+Math.cos(a*p)*Math.cos(c*p)*Math.sin((d-b)*p/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
 function openNav(t){navTrek=t||cart.trek;go('navmap');}
 function renderNav(){const t=navTrek||cart.trek,c=coordsFor(t);
@@ -2068,7 +2096,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections});
 
 /* init */
 applyTheme();   /* dark / light / system theme */
