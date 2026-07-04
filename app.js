@@ -1041,13 +1041,12 @@ function postCard(p){
    ${tagged}
    <div class="ig-actions">
      <div class="ig-left">
-       <span class="ig-ic ${liked?'liked':''}" onclick="likePost('${p.id}')">${ic('like',24)}</span>
-       <span class="ig-ic" onclick="openComments('${p.id}')">${ic('comment',24)}</span>
+       <span class="ig-ic ${liked?'liked':''}" onclick="likePost('${p.id}')">${ic('like',24)}${likeCount?`<b>${likeCount.toLocaleString('en-IN')}</b>`:''}</span>
+       <span class="ig-ic" onclick="openComments('${p.id}')">${ic('comment',24)}${nc?`<b>${nc}</b>`:''}</span>
        <span class="ig-ic" onclick="repostPost('${p.id}')" title="Repost to your feed">${ic('repeat',22)}</span>
      </div>
      <span class="ig-ic ig-save" onclick="note('Saved to your collection.','Saved')">${ic('starline',22)}</span>
    </div>
-   ${likeCount?`<div class="ig-likes">${likeCount.toLocaleString('en-IN')} like${likeCount>1?'s':''}</div>`:''}
    ${(!textOnly&&p.txt)?`<div class="ig-cap ${p.txt.length>120?'clamp':''}" onclick="this.classList.remove('clamp')"><b onclick="event.stopPropagation();openPerson('${sn}')">${p.n}</b> ${esc(p.txt)}</div>`:''}
    <div class="ig-comments" onclick="openComments('${p.id}')">${nc?`View all ${nc} comment${nc>1?'s':''}`:'Add a comment…'}</div>
    <div class="ig-time">${p.when}</div>

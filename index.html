@@ -349,9 +349,12 @@
   .post .ig-textpost{margin:2px 14px 6px;padding:14px 16px;background:rgba(255,255,255,.05);border:1px solid var(--stroke);border-radius:14px;font-size:14.5px;line-height:1.5;color:var(--text)}
   .post .ig-actions{display:flex;align-items:center;justify-content:space-between;padding:8px 12px 4px}
   .post .ig-left{display:flex;align-items:center;gap:14px}
-  .post .ig-ic{cursor:pointer;color:var(--text);display:flex;transition:transform .12s}
+  .post .ig-ic{cursor:pointer;color:var(--text);display:flex;align-items:center;gap:5px;transition:transform .12s}
+  .post .ig-ic b{font-size:13.5px;font-weight:600}
   .post .ig-ic:active{transform:scale(.85)}
-  .post .ig-ic.liked{color:#ff3040}
+  .post .ig-ic.liked{color:#0065ff}
+  .post .ig-ic.liked .msr{animation:likepop .4s cubic-bezier(.3,1.6,.5,1)}
+  @keyframes likepop{0%{transform:scale(1)}40%{transform:scale(1.4)}70%{transform:scale(.9)}100%{transform:scale(1)}}
   .post .ig-save{color:var(--text)}
   .post .ig-likes{padding:2px 12px;font-size:13px;font-weight:600}
   .post .ig-trek{display:inline-flex;align-items:center;gap:4px;margin:0 12px 8px;font-size:11.5px;font-weight:600;color:var(--accent2);background:rgba(47,107,255,.14);padding:5px 10px;border-radius:999px;cursor:pointer}
@@ -365,7 +368,7 @@
   .post .ig-cap.clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
   /* double-tap heart burst */
   .post .car{position:relative;background:#000}
-  .post .heart-burst{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;color:#fff;opacity:0}
+  .post .heart-burst{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;color:#0065ff;opacity:0;filter:drop-shadow(0 2px 8px rgba(0,0,0,.5))}
   .post .heart-burst.go{animation:burst .9s ease}
   @keyframes burst{0%{opacity:0;transform:scale(.3)}15%{opacity:.95;transform:scale(1.1)}30%{transform:scale(.95)}45%{opacity:.95;transform:scale(1)}100%{opacity:0;transform:scale(1)}}
   .post .ig-comments{padding:4px 12px;font-size:13px;color:var(--muted);cursor:pointer}
