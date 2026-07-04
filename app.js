@@ -279,14 +279,7 @@ const packing={
   Others:[['powerbank','Power Bank'],['meals','Trail Snacks'],['permits','ID Copies'],['firstaid','Personal Meds']]
 };
 /* ---------- social: people directory ---------- */
-const people=[
-  {n:"Ananya Sharma",h:"@ananya.treks",bio:"Mountain chaser • 14 summits • Kedarkantha forever ❤️",home:"Kedarkantha",flwr:1240},
-  {n:"Rohit Verma",h:"@rohit.wanders",bio:"Two worlds in one trek. Lahaul calling.",home:"Hampta Pass",flwr:860},
-  {n:"Karthik V.",h:"@karthik.v",bio:"First-timer turned addict. Brahmatal was magic.",home:"Brahmatal",flwr:430},
-  {n:"Meera & Sam",h:"@meerasam",bio:"Couple who treks together, stays together 🌸",home:"Valley of Flowers",flwr:980},
-  {n:"Dev Rana",h:"@dev.himalaya",bio:"Local guide • Uttarakhand born • DM for routes.",home:"Roopkund",flwr:2100},
-  {n:"Priya Nair",h:"@priya.peaks",bio:"Weekend warrior from Dehradun. Nag Tibba regular.",home:"Nag Tibba",flwr:610}
-];
+const people=[];  /* real community members come from the database, not demo data */
 const personMap={};people.forEach(p=>personMap[p.n]=p);
 const ME={n:"You",h:"@you",bio:"Trekker with Tripomonk 🏔️",home:"",flwr:0};
 function getPerson(n){return personMap[n]||(n==='You'?ME:{n:n,h:'@'+n.toLowerCase().replace(/[^a-z]/g,''),bio:'Tripomonk trekker',home:'',flwr:0});}
@@ -300,12 +293,7 @@ function avatar(n,size){size=size||38;const g=AVG[avHash(n)%AVG.length];const fs
   return `<div class="av-i" onclick="openPerson('${n.replace(/'/g,"")}')" style="width:${size}px;height:${size}px;font-size:${fs}px;${bg}">${photo?'':initials(n)}</div>`;}
 
 let postSeq=2;
-const feed=[
-  {id:'p1',n:"Ananya Sharma",when:"2h ago · Kedarkantha Trek",txt:"The summit view was worth every step! 🏔️ Grateful for this amazing experience.",imgs:[U+"1551632811-561732d1e306",U+"1454496522488-7a8e488e8606"],likes:124,
-    comments:[{n:"Karthik V.",txt:"Stunning! Adding this to my list.",when:"1h"},{n:"Dev Rana",txt:"Glad you loved it 🙏",when:"45m"}]},
-  {id:'p2',n:"Rohit Verma",when:"1d ago · Hampta Pass",txt:"From green valleys to barren landscapes, what a surreal journey!",imgs:[U+"1644902560705-740850bc47b8"],likes:88,
-    comments:[{n:"Priya Nair",txt:"The crossover day is unreal isn't it!",when:"20h"}]}
-];
+const feed=[];  /* real posts come from the database, not demo data */
 /* persisted social state */
 let followState={},likeState={},userPosts=[];
 function loadSocial(){try{
@@ -337,7 +325,7 @@ const menu=[['bookings','My Bookings','bookings'],['chat','Messages','messages']
 const setList=[['user','Account & security',''],['bell','Notifications',''],['globe','Language - English',''],['card','Payment methods',''],['shield','Privacy Policy','privacy'],['help','About Tripomonk','about']];
 const notis=[['check','Booking confirmed','Your seat is confirmed — view your e-ticket.','2m'],['bell','Pack your bags!','Your trek departs in 5 days. See the packing list.','1d'],['permits','Permit approved','Your forest permit is ready to download.','2d'],['heart','EARLYBIRD: 15% off','Winter trek discount ends soon.','3d']];
 const faqs=[['How do I book a trek?','Pick a trek, choose a batch on Select Date, add travellers and pay 25% to confirm your seat.'],['What is the cancellation policy?','Free cancellation up to 15 days before departure (full refund). Within 15 days, a 50% charge applies.'],['Do you provide gear on rent?','Yes — add the gear kit (jacket, boots, poles) as an add-on at checkout.'],['Are permits included?','We arrange forest / eco-zone permits for you as an assisted service.'],['What fitness level do I need?','Easy treks suit beginners; Moderate+ need regular cardio for 3–4 weeks before.']];
-const reviewsData=[['Ananya Sharma',5,'Best organised trek I have done — guides were superb and safety was clearly the priority.','Kedarkantha'],['Karthik V.',5,'First-timer and felt totally looked after. In-app gear rental saved me a lot.','Brahmatal'],['Meera & Sam',4,'Stunning route and great food. Pickup was a little delayed but handled well.','Valley of Flowers'],['Rohit Verma',5,'Permits were sorted for me, I just showed up. Worth every rupee.','Hampta Pass']];
+const reviewsData=[];  /* real reviews only — demo reviews removed */
 const KNOW=[['community','8–15','Group size'],['user','10+ yrs','Min age'],['altitude','Moderate','Fitness']];
 const EXCL=['Personal expenses','Travel to the base city','Anything not in inclusions'];
 
@@ -697,7 +685,7 @@ function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
     <div><div style="font-size:11px;font-weight:600;color:var(--text);opacity:.85;margin-bottom:4px">Not included</div>${EXCL.map(excRow).join('')}</div></div>`;
   const dit=ITIN[t.n]||[];
   document.getElementById('dItinPrev').innerHTML=dit.slice(0,3).map((d,i)=>`<div class="tl"><div class="line"><div class="dot"></div>${i<2?'<div class="rod"></div>':''}</div><div class="bd"><div class="d">Day ${i+1}</div><h3>${d[0]}</h3></div></div>`).join('');
-  document.getElementById('dRevPrev').innerHTML=reviewsData.slice(0,2).map(reviewCard).join('');
+  document.getElementById('dRevPrev').innerHTML=reviewsData.length?reviewsData.slice(0,2).map(reviewCard).join(''):'<div style="font-size:12.5px;color:var(--muted)">No reviews yet — be the first after your trek.</div>';
   document.getElementById('dFav').classList.remove('on');
   const cta=document.getElementById('dCta');
   if(t.soon){cta.innerHTML=ic('bell',16)+' Coming Soon · Notify me';cta.onclick=()=>wa(t.n+' — please notify me when it goes live.');}
@@ -1619,7 +1607,7 @@ async function renderNotifications(){
   localStorage.setItem('tmk_notif_seen',String(Date.now()));
   const dot=document.getElementById('notifDot');if(dot)dot.style.display='none';
 }
-function renderReviews(){document.getElementById('reviewList').innerHTML=reviewsData.map(reviewCard).join('');hydrate(document.getElementById('reviewList'));}
+function renderReviews(){document.getElementById('reviewList').innerHTML=reviewsData.length?reviewsData.map(reviewCard).join(''):'<div class="empty"><p>No reviews yet. Be the first to review after your trek!</p></div>';hydrate(document.getElementById('reviewList'));}
 function renderHelp(){document.getElementById('faqList').innerHTML=faqs.map(f=>`<div class="panel" style="margin-bottom:10px"><b style="font-size:13.5px;display:block;margin-bottom:6px">${f[0]}</b><span style="font-size:12.5px;color:var(--muted);line-height:1.55">${f[1]}</span></div>`).join('');hydrate(document.getElementById('help'));}
 function wa(msg){saveEnquiry('whatsapp',msg||'');window.open('https://wa.me/'+getWa()+'?text='+encodeURIComponent(msg||'Hi Tripomonk'),'_blank');}
 /* ---- Trek Health (live HR via Web Bluetooth where supported; else demo) ---- */
