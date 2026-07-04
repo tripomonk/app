@@ -345,6 +345,8 @@ async function initAuth(){
   const{data:{session}}=await sb.auth.getSession();
   if(session){
     currentUser=session.user;
+    upsertProfile();   /* register this user so others can @mention/follow/notify them */
+    loadStaff();       /* role check */
     if(fromOAuth){
       /* clean the token hash out of the URL and land on home */
       try{history.replaceState(null,'',window.location.pathname);}catch(e){}
@@ -526,6 +528,7 @@ function saveProfile(){
     if(name)localStorage.setItem('tmk_uname',name);
     if(mobile)localStorage.setItem('tmk_umobile',mobile);
   }catch(e){}
+  upsertProfile();   /* keep the public profile (name/photo) in sync for follows & notifications */
   renderProfile();
   note('Profile saved successfully!','Saved ✓');
 }
@@ -540,6 +543,13 @@ function ticketPayload(b){return 'TMK2|'+encodeURIComponent(b.id||'');}
 function parseTicket(s){const raw=(s||'').trim();const p=raw.split('|');if(p[0]==='TMK2'&&p[1])return{ok:true,id:decodeURIComponent(p[1])};if(p[0]==='TMK1'&&p[1])return{ok:true,id:p[1]};if(/^pay_[A-Za-z0-9_]+$/.test(raw))return{ok:true,id:raw};return{ok:false};}function getBookings(){try{return JSON.parse(localStorage.getItem('tmk_bookings')||'[]');}catch(e){return[];}}
 function saveBookings(a){try{localStorage.setItem('tmk_bookings',JSON.stringify(a));}catch(e){}}
 function isCaptain(){try{return localStorage.getItem('tmk_captain')==='1';}catch(e){return false;}}
+/* ---- role-based access (by signed-in email) ---- */
+const ADMIN_EMAILS=['vikasupadhyay9@gmail.com'];  /* real admins only */
+function userEmail(){return ((currentUser&&currentUser.email)||'').toLowerCase();}
+function isAdminUser(){return !!userEmail()&&ADMIN_EMAILS.includes(userEmail());}
+let staffSet=new Set();
+async function loadStaff(){const sb=getSupaClient();if(!sb)return;try{const{data}=await sb.from('staff').select('email');staffSet=new Set((data||[]).map(r=>(r.email||'').toLowerCase()));}catch(e){}}
+function isStaffUser(){return isAdminUser()||(!!userEmail()&&staffSet.has(userEmail()));}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 const INR=n=>'₹'+Number(n).toLocaleString('en-IN');
 
@@ -1213,10 +1223,17 @@ async function pushNotif({recipientId,recipientName,type,postId,preview}){
   if(error)console.warn('pushNotif:',error.message);
 }
 /* resolve a display name to a user_id via their posts (best-effort) */
+/* register/refresh this user's public profile so follows/notifications can reach them */
+async function upsertProfile(){
+  const sb=getSupaClient();if(!sb||!currentUser)return;
+  try{await sb.from('profiles').upsert({id:currentUser.id,name:myName(),email:currentUser.email||'',photo:getSavedPhoto()||null,updated_at:new Date().toISOString()});}catch(e){}
+}
 async function uidForName(name){
   const sb=getSupaClient();if(!sb||!name)return null;
-  const{data}=await sb.from('community_posts').select('user_id').eq('author_name',name).not('user_id','is',null).limit(1);
-  return(data&&data[0])?data[0].user_id:null;
+  /* profiles first (covers users who haven't posted yet), then posts */
+  try{const{data}=await sb.from('profiles').select('id').eq('name',name).limit(1);if(data&&data[0])return data[0].id;}catch(e){}
+  const{data:d2}=await sb.from('community_posts').select('user_id').eq('author_name',name).not('user_id','is',null).limit(1);
+  return(d2&&d2[0])?d2[0].user_id:null;
 }
 async function loadNotifsRemote(){
   const sb=getSupaClient();if(!sb)return null;
@@ -1500,12 +1517,10 @@ function renderProfile(){document.getElementById('pCover').style.backgroundImage
   rows+=isLoggedIn()
     ?`<div class="mrow" onclick="signOut()"><span class="ic">${ic('logout',20)}</span><span class="t" style="color:#ff7a7a">Sign out</span></div>`
     :`<div class="mrow" onclick="go('login')"><span class="ic">${ic('user',20)}</span><span class="t" style="color:var(--accent2)">Sign in / Create account</span><span class="ch">${ic('back',16)}</span></div>`;
-  rows+=isCaptain()
-    ?`<div class="mrow" onclick="go('captain')"><span class="ic">${ic('shield',20)}</span><span class="t">Trip Captain Check-in</span><span class="ch">${ic('back',16)}</span></div><div class="mrow" onclick="captainExit()"><span class="ic">${ic('logout',20)}</span><span class="t">Exit captain mode</span></div>`
-    :`<div class="mrow" onclick="captainLogin()"><span class="ic">${ic('lock',20)}</span><span class="t">Staff / Captain login</span><span class="ch">${ic('back',16)}</span></div>`;
-  rows+=isAdmin()
-    ?`<div class="mrow" onclick="go('admin')"><span class="ic">${ic('edit',20)}</span><span class="t">Admin · Manage treks</span><span class="ch">${ic('back',16)}</span></div><div class="mrow" onclick="adminExit()"><span class="ic">${ic('logout',20)}</span><span class="t">Exit admin</span></div>`
-    :`<div class="mrow" onclick="adminLogin()"><span class="ic">${ic('settings',20)}</span><span class="t">Admin login</span><span class="ch">${ic('back',16)}</span></div>`;
+  /* Trip Captain — only staff (added by admin) or the admin see this */
+  if(isStaffUser())rows+=`<div class="mrow" onclick="go('captain')"><span class="ic">${ic('shield',20)}</span><span class="t">Trip Captain Check-in</span><span class="ch">${ic('back',16)}</span></div>`;
+  /* Admin — only the real admin(s) see this */
+  if(isAdminUser())rows+=`<div class="mrow" onclick="go('admin')"><span class="ic">${ic('edit',20)}</span><span class="t">Admin Dashboard</span><span class="ch">${ic('back',16)}</span></div>`;
   document.getElementById('menu').innerHTML=rows;
   const cover=document.getElementById('pCover');cover.querySelectorAll('.ch').forEach(c=>c.style.transform='rotate(180deg)');
   document.querySelectorAll('#menu .ch svg').forEach(s=>s.style.transform='scaleX(-1)');
@@ -1737,13 +1752,35 @@ async function sbWriteChecked(method,path,body){
 function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null};}
 let editIdx=-1, adminTab='Treks', depTrek=null;
 function renderAdmin(){
-  document.getElementById('adminTabs').innerHTML=['Bookings','Treks','Departures','Packing','Settings'].map(x=>`<div class="chip pill ${x===adminTab?'on':''}" onclick="setAdminTab('${x}')">${x}</div>`).join('');
+  document.getElementById('adminTabs').innerHTML=['Bookings','Treks','Departures','Packing','Staff','Settings'].map(x=>`<div class="chip pill ${x===adminTab?'on':''}" onclick="setAdminTab('${x}')">${x}</div>`).join('');
   const f=document.getElementById('adminForm'); if(f){f.style.display='none';f.innerHTML='';}
   if(adminTab==='Bookings')renderAdminBookings();
   else if(adminTab==='Treks')renderAdminTreks();
   else if(adminTab==='Departures')renderDepartures();
   else if(adminTab==='Packing')renderAdminPacking();
+  else if(adminTab==='Staff')renderAdminStaff();
   else renderAdminSettings();
+}
+async function renderAdminStaff(){
+  const box=document.getElementById('adminBody');
+  if(!adminKey()){box.innerHTML='<div class="note2">Add your Supabase service_role key in the Settings tab to manage staff.</div>';return;}
+  await loadStaff();
+  const staff=[...staffSet];
+  box.innerHTML=`<div class="note2" style="margin-bottom:12px">Staff you add here can access the <b>Trip Captain</b> check-in with their signed-in email. Only you (the admin) see this.</div>`+
+    (staff.length?staff.map(e=>`<div class="mrow" style="cursor:default"><span class="ic">${ic('user',18)}</span><span class="t">${esc(e)}</span><span class="ic" onclick="removeStaff('${esc(e)}')" style="color:#ff7a7a;cursor:pointer">${ic('close',18)}</span></div>`).join(''):'<div class="empty" style="padding:14px 0"><p>No staff added yet.</p></div>')+
+    `<div class="panel" style="margin-top:6px"><b style="display:block;margin-bottom:8px">Add staff by email</b><div class="field"><div class="inp"><span class="ic" data-i="mail"></span><input id="staffEmail" type="email" placeholder="captain@email.com"></div></div><button class="btn sm" onclick="addStaff()">Add staff</button></div>`;
+  hydrate(box);
+}
+async function addStaff(){
+  const inp=document.getElementById('staffEmail');const email=(inp.value||'').trim().toLowerCase();
+  if(!email||!email.includes('@')){note('Enter a valid email.','Invalid');return;}
+  const ok=await sbWriteChecked('POST','staff',{email});
+  if(ok){note('Staff added ✓');renderAdminStaff();}
+}
+async function removeStaff(email){
+  if(!(await askConfirm('Remove '+email+' from staff?','Remove staff')))return;
+  const ok=await sbWriteChecked('DELETE','staff?email=eq.'+encodeURIComponent(email));
+  if(ok){note('Staff removed.');renderAdminStaff();}
 }
 /* ---- admin: per-trek packing editor ---- */
 const PK_CATS=['Essentials','Clothing','Gear','Others'];
@@ -2014,8 +2051,8 @@ function genItineraryPDF(t){
 
 /* ---------- router ---------- */
 function go(id){const el=document.getElementById(id);if(!el)return;
-  if(id==='captain'&&!isCaptain()){captainLogin();return;}
-  if(id==='admin'&&!isAdmin()){adminLogin();return;}
+  if(id==='captain'&&!isStaffUser()){note('Trip Captain access is for staff only.','Restricted');return;}
+  if(id==='admin'&&!isAdminUser()){note('Admin access is restricted to the account owner.','Restricted');return;}
   if(id!==cur){hist.push(cur);try{history.pushState({s:id},'');}catch(e){}}cur=id;if(el.dataset.tab)lastTab=el.dataset.tab;
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));el.classList.add('active');
   const nav=document.getElementById('nav');nav.classList.toggle('hide',el.hasAttribute('data-nonav'));
@@ -2086,7 +2123,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections,addStaff,removeStaff});
 
 /* init */
 applyTheme();   /* dark / light / system theme */
