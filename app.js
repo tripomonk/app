@@ -545,9 +545,10 @@ const PREF_GROUPS=[
 ];
 let _prefSel=[];
 function getPrefs(){try{return JSON.parse(localStorage.getItem('tmk_prefs')||'null');}catch(e){return null;}}
+/* called when the screen opens — loads current selection once */
+function initPrefs(){_prefSel=(getPrefs()||[]).slice();renderPrefs();}
 function renderPrefs(){
   const box=document.getElementById('prefBody');if(!box)return;
-  _prefSel=(getPrefs()||[]).slice();
   box.innerHTML=PREF_GROUPS.map(g=>`<div class="sec" style="margin:6px 2px 10px"><h2 style="font-size:14.5px">${g[0]}</h2></div>
     <div class="chips" style="flex-wrap:wrap;margin-bottom:14px">${g[1].map(o=>`<div class="chip pill ${_prefSel.includes(o)?'on':''}" onclick="togglePref('${o.replace(/'/g,'')}')">${o}</div>`).join('')}</div>`).join('');
   hydrate(box);
@@ -564,7 +565,7 @@ function maybeOnboard(){
   /* show the preferences form once, after a logged-in user hasn't set them */
   if(!isLoggedIn())return;
   let done='';try{done=localStorage.getItem('tmk_onboarded')||'';}catch(e){}
-  if(!done){renderPrefs();go('onboarding');}
+  if(!done){go('onboarding');}
 }
 /* shared-interest count between me and another person's prefs */
 function sharedPrefs(otherPrefs){
@@ -2158,7 +2159,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='wishlist')renderWishlist();
   if(id==='profile')renderProfile();
   if(id==='editProfile')renderEditProfile();
-  if(id==='onboarding')renderPrefs();
+  if(id==='onboarding')initPrefs();
   if(id==='settings')renderSettings();
   staggerActive();saveNav();
 }
