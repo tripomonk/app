@@ -155,7 +155,7 @@
     font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24;-webkit-font-smoothing:antialiased}
 
   .view{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;display:none;
-    padding:calc(var(--safe-top) + 16px) 18px calc(var(--safe-bottom) + 92px)}
+    padding:max(calc(var(--safe-top) + 16px), 26px) 18px calc(var(--safe-bottom) + 92px)}
   .view::-webkit-scrollbar{display:none}
   .view.active{display:block;animation:in .4s cubic-bezier(.22,.9,.3,1)}
   @keyframes in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
@@ -353,8 +353,8 @@
   .post .nm{flex:1}.post .nm b{font-size:13.5px}.post .nm small{display:block;color:var(--muted);font-size:11px}
   .post p{font-size:13px;line-height:1.55;margin:0 0 10px}
   /* ===== Instagram-style post ===== */
-  .post{background:var(--card);border:1px solid var(--stroke);border-radius:14px;margin-bottom:16px;overflow:hidden}
-  .post .ig-head{display:flex;align-items:center;gap:10px;padding:10px 12px}
+  .post{background:var(--card);border:1px solid var(--stroke);border-radius:14px;margin-bottom:16px;padding:0;overflow:hidden}
+  .post .ig-head{display:flex;align-items:center;gap:10px;padding:11px 12px}
   .post .ig-ava{cursor:pointer;border-radius:50%;padding:2px;background:linear-gradient(45deg,var(--accent),var(--accent2),var(--yellow));flex:none}
   .post .ig-ava>*{display:block;border:2px solid var(--card);border-radius:50%}
   .post .ig-meta{flex:1;min-width:0;font-size:13px}
@@ -846,7 +846,7 @@
   .profile-actions{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin:17px 0 12px}.profile-actions button{height:44px;border-radius:999px;border:1px solid var(--stroke);background:rgba(255,255,255,.1);color:var(--text);font-family:var(--font);font-weight:700;cursor:pointer}.profile-actions button:first-child{background:var(--accent);border-color:var(--accent);color:#fff}
   #profile .pstats{gap:8px;margin:14px 0}.pstat{border-radius:18px;background:rgba(255,255,255,.08)}.pstat b{font-size:18px}.pstat small{font-size:9.5px}
   .profile-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 10px;padding:4px;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid var(--stroke)}.profile-tabs span{text-align:center;border-radius:12px;padding:9px 4px;font-size:11.5px;font-weight:700;color:var(--muted)}.profile-tabs .on{background:var(--accent);color:#fff}
-  .profile-gallery{display:grid;grid-template-columns:1.2fr .8fr .8fr;grid-auto-rows:76px;gap:5px;border-radius:26px;overflow:hidden;margin-bottom:16px;background:rgba(255,255,255,.05);border:1px solid var(--stroke);padding:5px}.profile-gallery .pg{background-size:cover;background-position:center;background-color:#10233c;min-height:76px}.profile-gallery .pg:first-child{grid-row:span 2}.profile-gallery .empty{grid-column:1/-1;padding:22px 10px;font-size:12px}
+  .profile-gallery{display:grid;grid-template-columns:1.2fr .8fr .8fr;grid-auto-rows:76px;gap:5px;border-radius:26px;overflow:hidden;margin-bottom:16px;background:rgba(255,255,255,.05);border:1px solid var(--stroke);padding:5px}.profile-gallery .pg{position:relative;background-size:cover;background-position:center;background-color:#10233c;min-height:76px;cursor:pointer;overflow:hidden}.profile-gallery .pg .pg-play{position:absolute;top:5px;right:6px;font-size:16px;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.7)}.profile-gallery .pg:first-child{grid-row:span 2}.profile-gallery .empty{grid-column:1/-1;padding:22px 10px;font-size:12px}
   .profile-menu-title{font-size:12px;color:var(--muted2);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin:8px 2px 10px}#profile .mrow{border-radius:19px;background:rgba(255,255,255,.075);padding:14px 15px}
   .chat-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px}.chat-head h1{font-size:20px;margin:0}.recent-strip{display:flex;gap:13px;overflow-x:auto;scrollbar-width:none;margin:0 -18px 16px;padding:2px 18px 8px}.recent-strip::-webkit-scrollbar{display:none}.recent-chat{flex:none;width:66px;text-align:center;cursor:pointer}.recent-chat .ring{width:58px;height:58px;border-radius:22px;padding:2px;background:linear-gradient(135deg,var(--accent),var(--accent2),var(--yellow));display:grid;place-items:center;margin:auto auto 5px}.recent-chat small{display:block;font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .chat-list .chat-row{display:flex;align-items:center;gap:12px;border-radius:22px;background:rgba(255,255,255,.085);border:1px solid var(--stroke);padding:12px;margin-bottom:10px;cursor:pointer}.chat-row .meta{flex:1;min-width:0}.chat-row b{font-size:13.5px}.chat-row p{margin:3px 0 0;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chat-row time{font-size:10px;color:var(--muted2)}
@@ -1121,7 +1121,7 @@
       <div class="prow"><div><h1 id="profileName">Explorer</h1><div class="lv" id="profileSub">Sign in to track your treks</div></div><a class="edit-pill" onclick="go('editProfile')">Edit</a></div>
       <div class="profile-actions"><button onclick="go('editProfile')">Edit Profile</button><button onclick="go('messages')">Messages</button></div>
       <div class="pstats" id="pStats"></div>
-      <div class="profile-tabs"><span class="on">All</span><span>Photos</span><span>Videos</span></div>
+      <div class="profile-tabs" id="profTabs"><span class="on" onclick="setProfTab('All',this)">All</span><span onclick="setProfTab('Photos',this)">Photos</span><span onclick="setProfTab('Videos',this)">Videos</span></div>
       <div class="profile-gallery" id="pMiniGrid"></div>
       <div class="profile-menu-title">Account</div>
       <div id="menu"></div>

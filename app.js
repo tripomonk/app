@@ -554,6 +554,26 @@ function saveProfile(){
   note('Profile saved successfully!','Saved ✓');
 }
 
+/* profile gallery — only the logged-in user's own posts, filtered by tab */
+let _profTab='All';
+function setProfTab(t,el){_profTab=t;if(el){document.querySelectorAll('#profTabs span').forEach(s=>s.classList.toggle('on',s===el));}renderProfileGallery();}
+async function renderProfileGallery(){
+  const grid=document.getElementById('pMiniGrid');if(!grid)return;
+  if(!isLoggedIn()){grid.innerHTML='<div class="empty" style="grid-column:1/-1">Sign in to see your posts here.</div>';return;}
+  grid.innerHTML='<div class="skel skel-card" style="grid-column:1/-1;height:90px"></div>';
+  const name=getSavedName()||'You';
+  let posts=[];try{posts=await loadUserPosts(name);}catch(e){posts=userPosts.filter(p=>p.n===name);}
+  const items=[];
+  posts.forEach(p=>(p.imgs||[]).forEach(src=>{const isVid=src.startsWith('data:video')||/\.(mp4|mov)/i.test(src);items.push({src,post:p,isVid});}));
+  let show=items;
+  if(_profTab==='Photos')show=items.filter(i=>!i.isVid);
+  else if(_profTab==='Videos')show=items.filter(i=>i.isVid);
+  grid.innerHTML=show.length?show.map(c=>c.isVid
+    ?`<div class="pg" onclick="openComments('${c.post.id}')"><video src="${c.src}" muted playsinline style="width:100%;height:100%;object-fit:cover"></video><span class="msr pg-play">play_arrow</span></div>`
+    :`<div class="pg" style="background-image:url('${c.src}${String(c.src).startsWith('http')?Q:''}')" onclick="openComments('${c.post.id}')"></div>`
+  ).join(''):`<div class="empty" style="grid-column:1/-1">${_profTab==='All'?'You haven\'t posted yet. Share your first trek moment!':'No '+_profTab.toLowerCase()+' yet.'}</div>`;
+}
+
 /* ---------- preferences (onboarding) — used to connect like-minded trekkers ---------- */
 const PREF_GROUPS=[
   ['Regions you love',['Uttarakhand','Himachal','Ladakh','Kashmir','Northeast','Spiritual']],
@@ -1572,14 +1592,7 @@ function renderProfile(){document.getElementById('pCover').style.backgroundImage
     ['check',completed,'Completed',"go('bookings')"],
     ['shield',badges,'Badges',"go('passport')"]
   ].map(s=>`<div class="pstat" onclick="${s[3]}"><b>${s[1]}</b><small>${s[2]}</small></div>`).join('');hydrate(ps);}
-  const grid=document.getElementById('pMiniGrid');
-  if(grid){
-    const mine=allPosts().filter(p=>p.n===uname||p.n==='You'||(p.uid&&currentUser&&p.uid===currentUser.id));
-    const media=mine.flatMap(p=>(p.imgs||[]).map(src=>({src,post:p}))).slice(0,5);
-    const fallback=treks.slice(0,5).map(t=>({src:t.img,post:null}));
-    const cells=(media.length?media:fallback).slice(0,5);
-    grid.innerHTML=cells.length?cells.map(c=>`<div class="pg" style="background-image:url('${c.src}${c.src&&String(c.src).startsWith('http')?Q:''}')" onclick="${c.post?`openComments('${c.post.id}')`:`openDetail(${Math.max(0,treks.findIndex(t=>t.img===c.src))})`}"></div>`).join(''):'<div class="empty">Your photos and trek moments will appear here.</div>';
-  }
+  renderProfileGallery();
   let rows=menu.map(m=>`<div class="mrow" onclick="${m[2]?`go('${m[2]}')`:'void 0'}"><span class="ic">${ic(m[0],20)}</span><span class="t">${m[1]}</span><span class="ch">${ic('back',16)}</span></div>`).join('');
   rows+=isLoggedIn()
     ?`<div class="mrow" onclick="signOut()"><span class="ic">${ic('logout',20)}</span><span class="t" style="color:#ff7a7a">Sign out</span></div>`
@@ -2213,7 +2226,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections,addStaff,removeStaff,togglePref,savePrefs,skipOnboarding,capScan,capStopScan});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections,addStaff,removeStaff,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab});
 
 /* init */
 applyTheme();   /* dark / light / system theme */
@@ -2231,11 +2244,27 @@ refreshNotifBadge();  /* show red dot if there's new community activity */
 setInterval(refreshNotifBadge,60000);  /* poll for new activity every minute */
 handleDeepLink();     /* open a trek directly from a shared link */
 /* ---- pull-to-refresh ---- */
+/* soft refresh — reloads the current screen's data in the background, no page reload / no layout shift */
+async function refreshCurrent(){
+  try{
+    await loadTreks();
+    _newsCache=null;await loadNews();
+    if(cur==='community'){_lastFeed=[];await renderFeed();}
+    else if(cur==='home'){renderHome();renderHomeNews();}
+    else if(cur==='news')renderNews();
+    else if(cur==='explore')renderExplore();
+    else if(cur==='bookings')renderBookings();
+    else if(cur==='profile')renderProfile();
+    else if(cur==='notifications')renderNotifications();
+    else{renderHomeNews();}
+    refreshNotifBadge();
+  }catch(e){}
+}
 (function(){
-  let y0=0,pulling=false;const TH=70;
+  let y0=0,pulling=false,busy=false;const TH=70;
   const ind=()=>document.getElementById('ptr');
   document.addEventListener('touchstart',e=>{
-    if(document.querySelector('.modal.show')){pulling=false;return;}
+    if(busy||document.querySelector('.modal.show')){pulling=false;return;}
     const v=document.querySelector('.view.active');
     if(v&&v.scrollTop<=0){y0=e.touches[0].clientY;pulling=true;}else pulling=false;
   },{passive:true});
@@ -2244,9 +2273,12 @@ handleDeepLink();     /* open a trek directly from a shared link */
     if(dy>0){const d=Math.min(dy,110);el.style.transform='translateX(-50%) translateY('+d+'px)';el.style.opacity=String(Math.min(1,d/60));el.classList.toggle('ready',d>=TH);}
     else{el.style.opacity='0';}
   },{passive:true});
+  const retract=el=>{el.classList.remove('spin','ready');el.style.transition='transform .3s,opacity .3s';el.style.transform='translateX(-50%) translateY(0)';el.style.opacity='0';setTimeout(()=>{el.style.transition='';},320);};
   document.addEventListener('touchend',()=>{
     if(!pulling)return;pulling=false;const el=ind();if(!el)return;
-    if(el.classList.contains('ready')){el.classList.add('spin');el.style.transform='translateX(-50%) translateY(70px)';el.style.opacity='1';setTimeout(()=>location.reload(),450);}
-    else{el.style.transition='transform .25s,opacity .25s';el.style.transform='translateX(-50%) translateY(0)';el.style.opacity='0';setTimeout(()=>{el.style.transition='';},260);}
+    if(el.classList.contains('ready')){
+      busy=true;el.classList.add('spin');el.style.transform='translateX(-50%) translateY(58px)';el.style.opacity='1';
+      refreshCurrent().finally(()=>{setTimeout(()=>{retract(el);busy=false;},500);});
+    }else retract(el);
   },{passive:true});
 })();
