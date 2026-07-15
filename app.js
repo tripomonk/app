@@ -1129,7 +1129,7 @@ function postCard(p){
   /* tagged trekkers chips */
   const tagged=(p.tagged&&p.tagged.length)
     ?`<div class="ig-tags">${ic('user',13)} with ${p.tagged.map(nm=>`<span class="ig-tagn" onclick="openPerson('${String(nm).replace(/'/g,'')}')">${esc(nm)}</span>`).join(', ')}</div>`:'';
-  return `<div class="post">
+  return `<div class="post" data-pid="${p.id}">
    <div class="ig-head">
      <div class="ig-ava" onclick="openPerson('${sn}')">${avatar(p.n,34)}</div>
      <div class="ig-meta"><b onclick="openPerson('${sn}')">${p.n}</b>${follow}</div>
@@ -1141,11 +1141,10 @@ function postCard(p){
    ${tagged}
    <div class="ig-actions">
      <div class="ig-left">
-       <span class="ig-ic ${liked?'liked':''}" onclick="likePost('${p.id}')">${ic('like',24)}${likeCount?`<b>${likeCount.toLocaleString('en-IN')}</b>`:''}</span>
+       <span class="ig-ic ig-like ${liked?'liked':''}" onclick="likePost('${p.id}')">${ic('like',24)}${likeCount?`<b>${likeCount.toLocaleString('en-IN')}</b>`:''}</span>
        <span class="ig-ic" onclick="openComments('${p.id}')">${ic('comment',24)}${nc?`<b>${nc}</b>`:''}</span>
        <span class="ig-ic" onclick="repostPost('${p.id}')" title="Repost to your feed">${ic('repeat',22)}</span>
      </div>
-     <span class="ig-ic ig-save" onclick="note('Saved to your collection.','Saved')">${ic('starline',22)}</span>
    </div>
    ${(!textOnly&&p.txt)?`<div class="ig-cap ${p.txt.length>120?'clamp':''}" onclick="this.classList.remove('clamp')"><b onclick="event.stopPropagation();openPerson('${sn}')">${p.n}</b> ${esc(p.txt)}</div>`:''}
    <div class="ig-comments" onclick="openComments('${p.id}')">${nc?`View all ${nc} comment${nc>1?'s':''}`:'Add a comment…'}</div>
@@ -1225,14 +1224,23 @@ function dblLike(id,carEl){
   /* only like (never unlike) on double-tap, like Instagram */
   if(!likedByMe[id])likePost(id);
 }
+/* update the like heart + count for a post in place (no full re-render, so the pop animates) */
+function updateLikeUI(id){
+  const liked=!!likedByMe[id];const n=likeCounts[id]||0;
+  document.querySelectorAll('.post[data-pid="'+id+'"] .ig-like').forEach(el=>{
+    el.classList.toggle('liked',liked);
+    /* rebuild heart + count; fresh .msr with .liked replays the likepop animation */
+    el.innerHTML=ic('like',24)+(n?'<b>'+n.toLocaleString('en-IN')+'</b>':'');
+  });
+}
 async function likePost(id){
   if(!isLoggedIn()){note('Please sign in to like posts.','Sign in required').then(()=>{_loginReturn='community';go('login');});return;}
   const sb=getSupaClient();if(!sb)return;
   const wasLiked=!!likedByMe[id];
-  /* optimistic UI */
+  /* optimistic UI — update just the tapped heart in place so the pop animation plays */
   likedByMe[id]=!wasLiked;
   likeCounts[id]=(likeCounts[id]||0)+(wasLiked?-1:1);if(likeCounts[id]<0)likeCounts[id]=0;
-  if(cur==='person')renderPerson();else renderFeed();
+  updateLikeUI(id);
   if(wasLiked){
     await sb.from('post_likes').delete().eq('post_id',id).eq('user_id',currentUser.id);
   }else{
