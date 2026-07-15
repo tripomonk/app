@@ -713,6 +713,7 @@ function renderHomeHero(){
 function renderHome(){
   const hav=document.getElementById('homeUserAv');
   if(hav){const name=getSavedName()||'Explorer',photo=getSavedPhoto();if(photo){hav.style.backgroundImage=`url('${photo}')`;hav.textContent='';}else{hav.style.backgroundImage='';hav.textContent=(name[0]||'E').toUpperCase();}}
+  const hg=document.getElementById('homeGreet');if(hg){const nm=getSavedName();hg.textContent=nm?'Hello, '+nm:'Hello there';}
   renderHomeHero();
   const list=homeFilter==='All'?treks:treks.filter(t=>t.lvl===homeFilter);
   const el=document.getElementById('homeList');el.className='hrow';
@@ -1635,7 +1636,7 @@ function renderProfile(){document.getElementById('pCover').style.backgroundImage
 let chatWith='Tripomonk Team';
 function chatKey(n){return 'tmk_chat_'+String(n||'team').toLowerCase().replace(/[^a-z0-9]+/g,'_');}
 function chatSeed(n){return [
-  {who:'them',txt:'Hi '+(getSavedName()||'Explorer')+', ready for your next trek?'},
+  {who:'them',txt:(getSavedName()?'Hi '+getSavedName()+', ready':'Hi, ready')+' for your next trek?'},
   {who:'me',txt:'I am checking the batches.'},
   {who:'them',txt:'Send me your preferred dates and I will help.'}
 ];}

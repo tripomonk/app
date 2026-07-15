@@ -66,6 +66,10 @@
   html.light .comm-pills button{background:var(--accent);color:#fff}
   html.light .comm-actions button{color:var(--text)}
   html.light .phone{box-shadow:0 0 0 1px rgba(12,24,44,.08),0 24px 70px rgba(0,0,0,.15)}
+  /* trek-detail card (below the hero image) — was hardcoded dark navy, unreadable in light mode */
+  html.light .dcard{background:rgba(255,255,255,.94);border-color:var(--stroke)}
+  html.light .dcard .meta .lvl{color:#0f9d58}
+  html.light .stat .ic{color:var(--accent2)}
   /* keep text white on gradient/photo elements (do NOT lighten these) */
   html.light .btn:not(.ghost),html.light .fcx-go,html.light .nav-center,html.light .hh-tag,html.light .npill,html.light .bigcard h3,html.light .bigcard .reg{color:#fff}
   /* appearance picker */
@@ -885,7 +889,7 @@
       <button class="home-bell" onclick="go('notifications')" style="position:relative"><span class="ic" data-i="bell"></span><span id="notifDot" style="display:none;position:absolute;top:8px;right:8px;width:9px;height:9px;border-radius:50%;background:#ff3b5c;border:2px solid var(--bg,#0b1626)"></span></button>
     </div>
     <div class="home-intro-card">
-      <div><div class="greet">Hello, Explorer</div><h2 class="htitle">Find your next <span>Himalayan trek</span></h2></div>
+      <div><div class="greet" id="homeGreet">Hello there</div><h2 class="htitle">Find your next <span>Himalayan trek</span></h2></div>
       <button onclick="go('community')"><span class="ic" data-i="community"></span></button>
     </div>
     <div class="search home-search" onclick="go('search')"><span class="ic" data-i="search"></span><span>Search treks, places or regions</span></div>
