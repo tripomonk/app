@@ -634,23 +634,31 @@
 
   /* — trek news / alerts: cards with priority label above — */
   .nsec{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.3px;margin:0 2px 8px}
-  .news-item{margin-bottom:16px}
-  /* home news as a horizontal card row (like Popular Treks) */
+  /* ===== redesigned news & alerts cards ===== */
+  .ncard2{background:var(--card);border:1px solid var(--stroke);border-radius:18px;overflow:hidden;cursor:pointer;margin-bottom:14px;box-shadow:0 10px 26px -16px rgba(0,0,0,.65);transition:transform .14s}
+  .ncard2:active{transform:scale(.99)}
+  .ncard2.alert{border-color:rgba(255,122,77,.5)}
+  .ncard2 .nimg{position:relative;width:100%;height:150px;background-size:cover;background-position:center;background-color:#12243c}
+  .ncard2 .nimg.noimg{display:grid;place-items:center}
+  .ncard2 .nimg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.28) 0%,transparent 40%,transparent 70%,rgba(8,17,30,.55) 100%)}
+  .ncard2 .npill{position:absolute;top:10px;left:10px;z-index:1;display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;padding:4px 9px;border-radius:999px;color:#fff;background:rgba(0,0,0,.5);backdrop-filter:blur(6px)}
+  .ncard2 .npill.high{background:#e0621f}
+  .ncard2 .npill.low{background:rgba(47,107,255,.85)}
+  .ncard2 .nbody{padding:12px 14px 13px}
+  .ncard2 h4{margin:0 0 5px;font-size:14.5px;font-weight:600;line-height:1.32;letter-spacing:-.2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .ncard2 p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .ncard2 .nmeta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:9px;font-size:10.5px;color:var(--muted2)}
+  .ncard2 .nchip{display:inline-flex;align-items:center;gap:3px;color:var(--accent2);background:rgba(47,107,255,.14);padding:2px 7px;border-radius:6px;font-weight:600;font-size:10px}
+  .ncard2 .nsrc{font-weight:600;color:var(--muted)}
+  .ncard2 .nread{margin-left:auto;display:inline-flex;align-items:center;gap:2px;color:var(--accent2);font-weight:600}
+  .ncard2 .nread svg{transform:scaleX(-1)}
+  /* home news as a horizontal card row */
   .news-hrow{display:flex;gap:14px;overflow-x:auto;scrollbar-width:none;margin:0 -18px;padding:2px 18px 8px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
   .news-hrow::-webkit-scrollbar{display:none}
-  .news-hrow .news-item{flex:0 0 82%;max-width:300px;scroll-snap-align:start;margin-bottom:0}
-  .npri{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin:0 2px 6px}
-  .npri.high{color:#ff7a4d}
-  .npri.low{color:var(--accent2)}
-  .ncard{background:var(--card);border:1px solid var(--stroke);border-radius:16px;overflow:hidden;cursor:pointer;box-shadow:0 6px 18px -12px rgba(0,0,0,.6)}
-  .ncard:active{transform:translateY(1px) scale(.99)}
-  .ncard.alert{border-color:rgba(255,122,77,.45)}
-  .ncard .nimg{width:100%;height:150px;background-size:cover;background-position:center;background-color:#12243c}
-  .ncard .nbody{padding:13px 14px}
-  .ncard h4{margin:0 0 5px;font-size:14px;font-weight:600;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .ncard p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .ncard .nmeta{font-size:10.5px;color:var(--muted2);margin-top:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-  .ncard .nchip{display:inline-flex;align-items:center;gap:3px;color:var(--accent2);background:rgba(47,107,255,.14);padding:2px 7px;border-radius:6px;font-weight:600;font-size:10px}
+  .news-hrow .ncard2{flex:0 0 82%;max-width:300px;scroll-snap-align:start;margin-bottom:0}
+  /* inline priority pill (news detail popup) */
+  .npri{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;padding:3px 10px;border-radius:999px;color:#fff}
+  .npri.high{background:#e0621f}.npri.low{background:rgba(47,107,255,.9)}
   /* news detail popup */
   #newsModal .news-card{max-width:360px;padding:0;overflow:hidden;position:relative}
   #newsModal .nm-img{height:180px;background-size:cover;background-position:center;background-color:#12243c}

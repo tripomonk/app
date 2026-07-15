@@ -158,22 +158,40 @@ const ALERT_RE=/landslide|closed|closure|road block|weather|warning|alert|flood|
 const NEG_RE=/murder|killed|death|dead|crime|arrest|standoff|clash|riot|protest|attack|assault|court|fir\b|police|scam|fraud|rape|violence|dispute|controversy|politic|election|encroach|raid/i;
 function isAlert(n){return (n.severity||'')==='alert' || ALERT_RE.test((n.title||'')+' '+(n.summary||''));}
 function isNegative(n){const t=(n.title||'')+' '+(n.summary||'');return NEG_RE.test(t)&&!ALERT_RE.test(t);}
+/* signature of a story so the same news from different sources dedupes */
+const NEWS_STOP=new Set(['news','india','uttarakhand','himalaya','himalayan','trek','trekking','the','and','for','with','from','over','into','after','amid','says','will','have','been','that','this','your']);
+function newsKey(n){
+  const w=(n.title||'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(x=>x.length>3&&!NEWS_STOP.has(x));
+  return w.slice(0,4).sort().join(' ');
+}
 async function loadNews(){
   if(!sbOn)return[];
-  try{const r=await fetch(SB.SUPABASE_URL+'/rest/v1/news?select=*&order=published_at.desc&limit=40',{headers:sbHeaders()});
-    if(!r.ok)return[];_newsCache=(await r.json()).filter(n=>!isNegative(n));return _newsCache;}catch(e){return[];}
+  try{const r=await fetch(SB.SUPABASE_URL+'/rest/v1/news?select=*&order=published_at.desc&limit=60',{headers:sbHeaders()});
+    if(!r.ok)return[];
+    let raw=(await r.json()).filter(n=>!isNegative(n));
+    /* keep the most relevant version: alerts first, then newest */
+    raw.sort((x,y)=>(isAlert(y)-isAlert(x))||(new Date(y.published_at)-new Date(x.published_at)));
+    const seen=new Set();
+    _newsCache=raw.filter(n=>{const k=newsKey(n);if(!k)return true;if(seen.has(k))return false;seen.add(k);return true;});
+    return _newsCache;
+  }catch(e){return[];}
 }
-/* card style with a priority label above each card */
+/* clean redesigned news card — priority pill over image, tight hierarchy */
 function newsCard(n){
   const a=isAlert(n);const when=n.published_at?timeAgo(n.published_at):'';
-  const pri=a?`<div class="npri high">${ic('alert',13)} High priority</div>`:`<div class="npri low">${ic('bell',13)} Trek update</div>`;
-  const img=n.image?`<div class="nimg" style="background-image:url('${n.image}')"></div>`:'';
+  const pri=a?`<span class="npill high">${ic('alert',12)} Alert</span>`:`<span class="npill low">${ic('bell',12)} Update</span>`;
+  const img=n.image
+    ?`<div class="nimg" style="background-image:url('${n.image}')">${pri}</div>`
+    :`<div class="nimg noimg">${pri}<span class="msr" style="font-size:30px;color:var(--muted2)">landscape</span></div>`;
   const trekChip=n.trek?`<span class="nchip">${ic('pin',11)} ${esc(n.trek)}</span>`:'';
-  return `<div class="news-item">${pri}
-    <div class="ncard ${a?'alert':''}" onclick="openNewsDetail('${(n.url||'').replace(/'/g,'')}')">
-      ${img}
-      <div class="nbody"><h4>${esc(n.title||'')}</h4>${n.summary?`<p>${esc(n.summary)}</p>`:''}<div class="nmeta">${trekChip}${esc(n.source||'')}${when?' · '+when:''}</div></div>
-    </div></div>`;
+  return `<div class="ncard2 ${a?'alert':''}" onclick="openNewsDetail('${(n.url||'').replace(/'/g,'')}')">
+    ${img}
+    <div class="nbody">
+      <h4>${esc(n.title||'')}</h4>
+      ${n.summary?`<p>${esc(n.summary)}</p>`:''}
+      <div class="nmeta">${trekChip}<span class="nsrc">${esc(n.source||'news')}</span>${when?`<span class="ndot2">•</span>${when}`:''}<span class="nread">Read ${ic('back',12)}</span></div>
+    </div>
+  </div>`;
 }
 function openNews(url){if(url)window.open(url,'_blank','noopener');}
 function openNewsDetail(url){
