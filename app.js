@@ -321,7 +321,7 @@ function toggleFollow(n){
     uidForName(n).then(uid=>pushNotif({recipientId:uid,recipientName:uid?null:n,type:'follow'}));
   }
 }
-const menu=[['bookings','My Bookings','bookings'],['chat','Messages','messages'],['shield','Trek Passport','passport'],['monitor','Trek Health','health'],['distance','Trek Navigation','navmap'],['heartmenu','My Wishlist','wishlist'],['starline','My Reviews','reviews'],['settings','Settings','settings'],['help','Help & Support','help']];
+const menu=[['bookings','My Bookings','bookings'],['chat','Messages','messages'],['shield','Trek Passport','passport'],['like','My Preferences','onboarding'],['monitor','Trek Health','health'],['distance','Trek Navigation','navmap'],['heartmenu','My Wishlist','wishlist'],['starline','My Reviews','reviews'],['settings','Settings','settings'],['help','Help & Support','help']];
 const setList=[['user','Account & security',''],['bell','Notifications',''],['globe','Language - English',''],['card','Payment methods',''],['shield','Privacy Policy','privacy'],['help','About Tripomonk','about']];
 const notis=[['check','Booking confirmed','Your seat is confirmed — view your e-ticket.','2m'],['bell','Pack your bags!','Your trek departs in 5 days. See the packing list.','1d'],['permits','Permit approved','Your forest permit is ready to download.','2d'],['heart','EARLYBIRD: 15% off','Winter trek discount ends soon.','3d']];
 const faqs=[['How do I book a trek?','Pick a trek, choose a batch on Select Date, add travellers and pay 25% to confirm your seat.'],['What is the cancellation policy?','Free cancellation up to 15 days before departure (full refund). Within 15 days, a 50% charge applies.'],['Do you provide gear on rent?','Yes — add the gear kit (jacket, boots, poles) as an add-on at checkout.'],['Are permits included?','We arrange forest / eco-zone permits for you as an assisted service.'],['What fitness level do I need?','Easy treks suit beginners; Moderate+ need regular cardio for 3–4 weeks before.']];
@@ -355,6 +355,7 @@ async function initAuth(){
       const ret=_loginReturn;_loginReturn=null;
       go(ret||'home');
     }
+    setTimeout(maybeOnboard,600);  /* first-time users pick their preferences */
   }
   sb.auth.onAuthStateChange((_,session)=>{
     currentUser=session?session.user:null;
@@ -473,8 +474,10 @@ async function verifyOtp(){
   if(btn){btn.textContent='Verify & Continue';btn.disabled=false;}
   if(error){note('Incorrect OTP. Please try again.','Wrong OTP');return;}
   currentUser=data.user;
+  upsertProfile();loadStaff();
   const ret=_loginReturn;_loginReturn=null;
   go(ret||lastTab||'home');
+  setTimeout(maybeOnboard,600);
 }
 async function signOut(){
   const sb=getSupaClient();if(sb)await sb.auth.signOut();
@@ -531,6 +534,42 @@ function saveProfile(){
   upsertProfile();   /* keep the public profile (name/photo) in sync for follows & notifications */
   renderProfile();
   note('Profile saved successfully!','Saved ✓');
+}
+
+/* ---------- preferences (onboarding) — used to connect like-minded trekkers ---------- */
+const PREF_GROUPS=[
+  ['Regions you love',['Uttarakhand','Himachal','Ladakh','Kashmir','Northeast','Spiritual']],
+  ['Trek style',['Trekking','Backpacking','Spiritual tours','Family trips','Solo','Group departures']],
+  ['Interests',['Photography','Camping','Adventure sports','Wildlife','Culture & food','Fitness & endurance']],
+  ['Experience level',['Beginner','Intermediate','Advanced']]
+];
+let _prefSel=[];
+function getPrefs(){try{return JSON.parse(localStorage.getItem('tmk_prefs')||'null');}catch(e){return null;}}
+function renderPrefs(){
+  const box=document.getElementById('prefBody');if(!box)return;
+  _prefSel=(getPrefs()||[]).slice();
+  box.innerHTML=PREF_GROUPS.map(g=>`<div class="sec" style="margin:6px 2px 10px"><h2 style="font-size:14.5px">${g[0]}</h2></div>
+    <div class="chips" style="flex-wrap:wrap;margin-bottom:14px">${g[1].map(o=>`<div class="chip pill ${_prefSel.includes(o)?'on':''}" onclick="togglePref('${o.replace(/'/g,'')}')">${o}</div>`).join('')}</div>`).join('');
+  hydrate(box);
+}
+function togglePref(o){const i=_prefSel.indexOf(o);if(i>=0)_prefSel.splice(i,1);else _prefSel.push(o);renderPrefs();}
+async function savePrefs(){
+  try{localStorage.setItem('tmk_prefs',JSON.stringify(_prefSel));localStorage.setItem('tmk_onboarded','1');}catch(e){}
+  const sb=getSupaClient();if(sb&&currentUser){try{await sb.from('profiles').update({prefs:_prefSel}).eq('id',currentUser.id);}catch(e){}}
+  note('Preferences saved! We\'ll suggest trekkers who share your vibe.','Saved ✓');
+  go(lastTab||'community');
+}
+function skipOnboarding(){try{localStorage.setItem('tmk_onboarded','1');}catch(e){}back();}
+function maybeOnboard(){
+  /* show the preferences form once, after a logged-in user hasn't set them */
+  if(!isLoggedIn())return;
+  let done='';try{done=localStorage.getItem('tmk_onboarded')||'';}catch(e){}
+  if(!done){renderPrefs();go('onboarding');}
+}
+/* shared-interest count between me and another person's prefs */
+function sharedPrefs(otherPrefs){
+  const mine=getPrefs()||[];if(!mine.length||!otherPrefs||!otherPrefs.length)return 0;
+  const set=new Set(mine);return otherPrefs.filter(p=>set.has(p)).length;
 }
 
 /* ---------- bookings + signed QR ---------- */
@@ -956,21 +995,29 @@ function reviewCard(r){return `<div class="panel" style="margin-bottom:12px"><di
 /* ---- people search ---- */
 async function loadPeopleRemote(){
   const sb=getSupaClient();if(!sb)return[];
-  /* get distinct authors from community_posts */
-  const{data}=await sb.from('community_posts').select('author_name,user_id').limit(200);
-  if(!data)return[];
-  const seen=new Set();
-  return data.filter(r=>{if(seen.has(r.author_name))return false;seen.add(r.author_name);return true;})
-    .map(r=>({n:r.author_name,h:'@'+r.author_name.toLowerCase().replace(/[^a-z0-9]/g,''),bio:'Tripomonk trekker',flwr:0}));
+  /* pull registered members (with their preferences) from profiles */
+  try{const{data}=await sb.from('profiles').select('name,prefs').limit(300);
+    if(data&&data.length){const seen=new Set();
+      return data.filter(r=>r.name&&!seen.has(r.name)&&seen.add(r.name))
+        .map(r=>({n:r.name,h:'@'+r.name.toLowerCase().replace(/[^a-z0-9]/g,''),prefs:r.prefs||[],bio:(r.prefs&&r.prefs.length)?r.prefs.slice(0,3).join(' · '):'Tripomonk trekker',flwr:0}));
+    }
+  }catch(e){}
+  /* fallback: authors from posts */
+  const{data:d2}=await sb.from('community_posts').select('author_name').limit(200);
+  const seen2=new Set();
+  return (d2||[]).filter(r=>r.author_name&&!seen2.has(r.author_name)&&seen2.add(r.author_name))
+    .map(r=>({n:r.author_name,h:'@'+r.author_name.toLowerCase().replace(/[^a-z0-9]/g,''),prefs:[],bio:'Tripomonk trekker',flwr:0}));
 }
 function personRow(p){
   const sn=p.n.replace(/'/g,'');
+  const shared=sharedPrefs(p.prefs);
+  const match=shared>0?`<span class="pmatch">${ic('like',11)} ${shared} shared interest${shared>1?'s':''}</span>`:'';
   return `<div class="mrow" style="gap:12px;padding:10px 0">
     ${avatar(p.n,44)}
     <div style="flex:1;min-width:0">
       <b style="font-size:13.5px;display:block;cursor:pointer" onclick="openPerson('${sn}')">${p.n}</b>
-      <span style="font-size:12px;color:var(--muted)">${p.h}</span>
-      ${p.bio?`<span style="font-size:12px;color:var(--muted2);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">${p.bio}</span>`:''}
+      ${match||`<span style="font-size:12px;color:var(--muted)">${p.h}</span>`}
+      ${p.bio?`<span style="font-size:12px;color:var(--muted2);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:210px">${esc(p.bio)}</span>`:''}
     </div>
     <button class="fbtn ${isFollowing(p.n)?'on':''}" onclick="toggleFollow('${sn}');renderPeopleResults(_lastPeopleQ)">${isFollowing(p.n)?'Following':'Follow'}</button>
   </div>`;}
@@ -984,6 +1031,8 @@ async function searchPeople(q){
     const remoteNames=new Set(remote.map(r=>r.n));
     const mine=myName();
     _peoplePool=[...remote,...people.filter(p=>!remoteNames.has(p.n))].filter(p=>p.n!==mine);
+    /* like-minded first: most shared interests on top */
+    _peoplePool.sort((a,b)=>sharedPrefs(b.prefs)-sharedPrefs(a.prefs));
   }
   const lq=(q||'').toLowerCase().trim();
   const results=lq
@@ -1762,24 +1811,28 @@ function renderAdmin(){
 }
 async function renderAdminStaff(){
   const box=document.getElementById('adminBody');
-  if(!adminKey()){box.innerHTML='<div class="note2">Add your Supabase service_role key in the Settings tab to manage staff.</div>';return;}
   await loadStaff();
   const staff=[...staffSet];
-  box.innerHTML=`<div class="note2" style="margin-bottom:12px">Staff you add here can access the <b>Trip Captain</b> check-in with their signed-in email. Only you (the admin) see this.</div>`+
+  box.innerHTML=`<div class="note2" style="margin-bottom:12px">Staff you add here can open <b>Trip Captain check-in</b> (ticket scanning) with their signed-in email. Only you (the admin) see this tab.</div>`+
     (staff.length?staff.map(e=>`<div class="mrow" style="cursor:default"><span class="ic">${ic('user',18)}</span><span class="t">${esc(e)}</span><span class="ic" onclick="removeStaff('${esc(e)}')" style="color:#ff7a7a;cursor:pointer">${ic('close',18)}</span></div>`).join(''):'<div class="empty" style="padding:14px 0"><p>No staff added yet.</p></div>')+
-    `<div class="panel" style="margin-top:6px"><b style="display:block;margin-bottom:8px">Add staff by email</b><div class="field"><div class="inp"><span class="ic" data-i="mail"></span><input id="staffEmail" type="email" placeholder="captain@email.com"></div></div><button class="btn sm" onclick="addStaff()">Add staff</button></div>`;
+    `<div class="panel" style="margin-top:6px"><b style="display:block;margin-bottom:8px">Add staff by email</b><div class="field"><div class="inp"><span class="ic" data-i="mail"></span><input id="staffEmail" type="email" placeholder="captain@email.com"></div></div><button class="btn sm" onclick="addStaff()">Add staff</button></div>
+    <button class="btn ghost" style="margin-top:14px" onclick="go('captain')"><span class="ic" data-i="ticket"></span> Open ticket check-in / scanner</button>`;
   hydrate(box);
 }
 async function addStaff(){
   const inp=document.getElementById('staffEmail');const email=(inp.value||'').trim().toLowerCase();
   if(!email||!email.includes('@')){note('Enter a valid email.','Invalid');return;}
-  const ok=await sbWriteChecked('POST','staff',{email});
-  if(ok){note('Staff added ✓');renderAdminStaff();}
+  const sb=getSupaClient();if(!sb){note('Backend not connected.','Error');return;}
+  const{error}=await sb.from('staff').insert({email});
+  if(error){note('Could not add staff: '+error.message,'Error');return;}
+  staffSet.add(email);note('Staff added ✓');renderAdminStaff();
 }
 async function removeStaff(email){
   if(!(await askConfirm('Remove '+email+' from staff?','Remove staff')))return;
-  const ok=await sbWriteChecked('DELETE','staff?email=eq.'+encodeURIComponent(email));
-  if(ok){note('Staff removed.');renderAdminStaff();}
+  const sb=getSupaClient();if(!sb)return;
+  const{error}=await sb.from('staff').delete().eq('email',email);
+  if(error){note('Could not remove: '+error.message,'Error');return;}
+  staffSet.delete(email);note('Staff removed.');renderAdminStaff();
 }
 /* ---- admin: per-trek packing editor ---- */
 const PK_CATS=['Essentials','Clothing','Gear','Others'];
@@ -1987,6 +2040,23 @@ async function captainVerify(txt){const t=parseTicket(txt),r=document.getElement
     <div class="vrow"><span>Booking</span><b>${esc(b.id)}</b></div><div style="margin-top:10px;font-size:12px;color:var(--muted)">Marked as checked in on the server.</div></div>`;
   hydrate(r);
 }
+let _capStream=null,_capRAF=null;
+async function capScan(){
+  if(!('BarcodeDetector' in window)){note('Live QR scanning needs Chrome on Android. Please paste the ticket code below instead.','Not supported here');return;}
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    _capStream=stream;const v=document.getElementById('capVideo');v.srcObject=stream;await v.play();
+    document.getElementById('capCam').style.display='';
+    const det=new window.BarcodeDetector({formats:['qr_code']});
+    const tick=async()=>{
+      if(!_capStream)return;
+      try{const codes=await det.detect(v);if(codes&&codes.length){const val=codes[0].rawValue;capStopScan();captainVerify(val);return;}}catch(e){}
+      _capRAF=requestAnimationFrame(tick);
+    };
+    tick();
+  }catch(e){note('Could not access the camera. Allow camera permission and try again.','Camera error');}
+}
+function capStopScan(){if(_capRAF)cancelAnimationFrame(_capRAF);_capRAF=null;if(_capStream){_capStream.getTracks().forEach(t=>t.stop());_capStream=null;}const c=document.getElementById('capCam');if(c)c.style.display='none';}
 function captainTestLast(){const b=getBookings()[0];if(!b){note('Make a booking first, then test.');return;}const code=ticketPayload(b);document.getElementById('capInput').value=code;captainVerify(code);}
 
 /* itinerary PDF (your uploaded PDF, else fallback message) */
@@ -2074,6 +2144,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='help')renderHelp();
   if(id==='health')renderHealth(); else stopHealth();
   if(id==='navmap')renderNav(); else stopNav();
+  if(id!=='captain')capStopScan();
   if(id==='admin')renderAdmin();
   if(id==='gear')renderGear();
   if(id==='permits')renderPermits();
@@ -2087,6 +2158,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='wishlist')renderWishlist();
   if(id==='profile')renderProfile();
   if(id==='editProfile')renderEditProfile();
+  if(id==='onboarding')renderPrefs();
   if(id==='settings')renderSettings();
   staggerActive();saveNav();
 }
@@ -2122,7 +2194,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections,addStaff,removeStaff});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections,addStaff,removeStaff,togglePref,savePrefs,skipOnboarding,capScan,capStopScan});
 
 /* init */
 applyTheme();   /* dark / light / system theme */
