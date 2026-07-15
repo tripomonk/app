@@ -503,7 +503,7 @@ async function signOut(){
   try{
     ['tmk_uname','tmk_umobile','tmk_uphoto','tmk_contact','tmk_bookings','tmk_posts','tmk_comments','tmk_likes','tmk_follows','tmk_admin','tmk_admin_key','tmk_captain','tmk_nav','tmk_notif_seen'].forEach(k=>localStorage.removeItem(k));
   }catch(e){}
-  hist=[];_loginReturn='home';
+  hist=[];_loginReturn='home';_prefSkippedSession=false;staffSet=new Set();
   go('login');
   note('Signed out successfully.','Done');
 }
@@ -581,8 +581,18 @@ const PREF_GROUPS=[
   ['Interests',['Photography','Camping','Adventure sports','Wildlife','Culture & food','Fitness & endurance']],
   ['Experience level',['Beginner','Intermediate','Advanced']]
 ];
-let _prefSel=[];
-function getPrefs(){try{return JSON.parse(localStorage.getItem('tmk_prefs')||'null');}catch(e){return null;}}
+let _prefSel=[],_prefSkippedSession=false;
+/* per-ACCOUNT storage key — different accounts on the same device stay independent */
+function prefKey(){return currentUser?('tmk_prefs_'+currentUser.id):'tmk_prefs_guest';}
+function getPrefs(){try{return JSON.parse(localStorage.getItem(prefKey())||'null');}catch(e){return null;}}
+function isPrefsDone(){const p=getPrefs();return !!(p&&p.length);}
+/* pull this account's prefs from their profile so completion is known on any device */
+async function loadPrefsFromProfile(){
+  const sb=getSupaClient();if(!sb||!currentUser)return;
+  try{const{data}=await sb.from('profiles').select('prefs').eq('id',currentUser.id).maybeSingle();
+    if(data&&data.prefs&&data.prefs.length){try{localStorage.setItem(prefKey(),JSON.stringify(data.prefs));}catch(e){}}
+  }catch(e){}
+}
 /* called when the screen opens — loads current selection once */
 function initPrefs(){_prefSel=(getPrefs()||[]).slice();renderPrefs();}
 function renderPrefs(){
@@ -593,17 +603,19 @@ function renderPrefs(){
 }
 function togglePref(o){const i=_prefSel.indexOf(o);if(i>=0)_prefSel.splice(i,1);else _prefSel.push(o);renderPrefs();}
 async function savePrefs(){
-  try{localStorage.setItem('tmk_prefs',JSON.stringify(_prefSel));localStorage.setItem('tmk_onboarded','1');}catch(e){}
+  if(!_prefSel.length){note('Pick at least one preference, or tap back to skip for now.','Add a preference');return;}
+  try{localStorage.setItem(prefKey(),JSON.stringify(_prefSel));}catch(e){}
   const sb=getSupaClient();if(sb&&currentUser){try{await sb.from('profiles').update({prefs:_prefSel}).eq('id',currentUser.id);}catch(e){}}
   note('Preferences saved! We\'ll suggest trekkers who share your vibe.','Saved ✓');
-  go(lastTab||'community');
+  if(cur==='onboarding')go(lastTab||'community');else back();
 }
-function skipOnboarding(){try{localStorage.setItem('tmk_onboarded','1');}catch(e){}back();}
-function maybeOnboard(){
-  /* show the preferences form once, after a logged-in user hasn't set them */
+/* skip = don't complete; not marked done, so it keeps being offered next login (per account) */
+function skipOnboarding(){_prefSkippedSession=true;go(lastTab||'home');}
+async function maybeOnboard(){
   if(!isLoggedIn())return;
-  let done='';try{done=localStorage.getItem('tmk_onboarded')||'';}catch(e){}
-  if(!done){go('onboarding');}
+  await loadPrefsFromProfile();          /* know THIS account's completion status */
+  if(_prefSkippedSession||isPrefsDone())return;
+  go('onboarding');
 }
 /* shared-interest count between me and another person's prefs */
 function sharedPrefs(otherPrefs){
@@ -1593,7 +1605,9 @@ function renderProfile(){document.getElementById('pCover').style.backgroundImage
     ['shield',badges,'Badges',"go('passport')"]
   ].map(s=>`<div class="pstat" onclick="${s[3]}"><b>${s[1]}</b><small>${s[2]}</small></div>`).join('');hydrate(ps);}
   renderProfileGallery();
-  let rows=menu.map(m=>`<div class="mrow" onclick="${m[2]?`go('${m[2]}')`:'void 0'}"><span class="ic">${ic(m[0],20)}</span><span class="t">${m[1]}</span><span class="ch">${ic('back',16)}</span></div>`).join('');
+  let rows='';
+  if(isLoggedIn()&&!isPrefsDone())rows+=`<div class="pref-prompt" onclick="go('onboarding')"><span class="msr">interests</span><div><b>Complete your preferences</b><small>Help us connect you with like-minded trekkers</small></div><span class="msr" style="margin-left:auto">chevron_right</span></div>`;
+  rows+=menu.map(m=>`<div class="mrow" onclick="${m[2]?`go('${m[2]}')`:'void 0'}"><span class="ic">${ic(m[0],20)}</span><span class="t">${m[1]}</span><span class="ch">${ic('back',16)}</span></div>`).join('');
   rows+=isLoggedIn()
     ?`<div class="mrow" onclick="signOut()"><span class="ic">${ic('logout',20)}</span><span class="t" style="color:#ff7a7a">Sign out</span></div>`
     :`<div class="mrow" onclick="go('login')"><span class="ic">${ic('user',20)}</span><span class="t" style="color:var(--accent2)">Sign in / Create account</span><span class="ch">${ic('back',16)}</span></div>`;
