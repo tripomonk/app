@@ -38,8 +38,35 @@
   }
   html.light body{background:#e9edf5}
   html.light .screen{background:radial-gradient(120% 60% at 50% -10%, #dbe6f8 0%, transparent 55%), linear-gradient(180deg,#f6f8fc 0%, #eef2f9 60%, #e8edf6 100%)}
-  html.light .nav{background:rgba(255,255,255,.86);border-color:rgba(12,24,44,.1)}
-  html.light .post .ig-textpost{background:rgba(12,24,44,.04)}
+  html.light .nav{background:rgba(255,255,255,.9);border-color:rgba(12,24,44,.1)}
+  /* ===== Light-mode component fixes (surfaces/inputs/modals that used dark literals) ===== */
+  html.light .badge,
+  html.light .tag,
+  html.light .btn.ghost,
+  html.light .post .ig-textpost,
+  html.light .tag-list .tag-chip,
+  html.light .comm-actions button,
+  html.light #community .ctabs{background:rgba(12,24,44,.05);border-color:var(--stroke)}
+  html.light .fbtn.on{background:rgba(12,24,44,.08);color:var(--muted)}
+  html.light .modal-card{background:#ffffff;border-color:rgba(12,24,44,.1);box-shadow:0 30px 70px rgba(0,0,0,.22);color:var(--text)}
+  html.light .modal-card p,html.light .modal-card h3{color:var(--text)}
+  html.light .modal-card input,
+  html.light .modal-card textarea,
+  html.light .post-card textarea,
+  html.light .cm-bar input,
+  html.light .otp-box{background:rgba(12,24,44,.05);border-color:rgba(12,24,44,.18);color:var(--text)}
+  html.light .modal-card input:focus,
+  html.light .post-card textarea:focus,
+  html.light .cm-bar input:focus,
+  html.light .otp-box:focus{background:rgba(47,107,255,.08);border-color:var(--accent)}
+  html.light .otp-box{color:var(--text)}
+  html.light .story.add .ring{border-color:rgba(12,24,44,.22)}
+  html.light .skel{background:linear-gradient(100deg,rgba(12,24,44,.05) 30%,rgba(12,24,44,.11) 50%,rgba(12,24,44,.05) 70%);background-size:220% 100%}
+  html.light .comm-pills button{background:var(--accent);color:#fff}
+  html.light .comm-actions button{color:var(--text)}
+  html.light .phone{box-shadow:0 0 0 1px rgba(12,24,44,.08),0 24px 70px rgba(0,0,0,.15)}
+  /* keep text white on gradient/photo elements (do NOT lighten these) */
+  html.light .btn:not(.ghost),html.light .fcx-go,html.light .nav-center,html.light .hh-tag,html.light .npill,html.light .bigcard h3,html.light .bigcard .reg{color:#fff}
   /* appearance picker */
   .theme-pick{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
   .theme-pick .tp{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:14px 6px;text-align:center;cursor:pointer;color:var(--muted)}
