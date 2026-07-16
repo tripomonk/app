@@ -547,7 +547,7 @@ async function signOut(){
   const sb=getSupaClient();if(sb)await sb.auth.signOut();
   currentUser=null;
   try{
-    ['tmk_uname','tmk_umobile','tmk_uphoto','tmk_contact','tmk_bookings','tmk_posts','tmk_comments','tmk_likes','tmk_follows','tmk_admin','tmk_admin_key','tmk_captain','tmk_nav','tmk_notif_seen'].forEach(k=>localStorage.removeItem(k));
+    ['tmk_uname','tmk_uhandle','tmk_umobile','tmk_uphoto','tmk_contact','tmk_bookings','tmk_posts','tmk_comments','tmk_likes','tmk_follows','tmk_admin','tmk_admin_key','tmk_captain','tmk_nav','tmk_notif_seen'].forEach(k=>localStorage.removeItem(k));
   }catch(e){}
   hist=[];_loginReturn='home';_prefSkippedSession=false;staffSet=new Set();
   go('login');
@@ -558,6 +558,60 @@ function getSavedName(){try{return localStorage.getItem('tmk_uname')||'';}catch(
 function saveUserName(n){try{if(n)localStorage.setItem('tmk_uname',n);}catch(e){}}
 function getSavedMobile(){try{return localStorage.getItem('tmk_umobile')||'';}catch(e){return'';}}
 function getSavedPhoto(){try{return localStorage.getItem('tmk_uphoto')||'';}catch(e){return'';}}
+function getSavedUsername(){try{return localStorage.getItem('tmk_uhandle')||'';}catch(e){return'';}}
+
+/* ---------- username: pick, check, keep ---------- */
+const USERNAME_RESERVED=['admin','tripomonk','support','help','root','staff','team','official','captain','moderator','mod','api','www'];
+/* returns an error string, or '' when the shape is valid */
+function usernameError(u){
+  if(!u)return 'Pick a username so trekkers can find you.';
+  if(u.length<3)return 'Too short — at least 3 characters.';
+  if(u.length>20)return 'Too long — 20 characters max.';
+  if(!/^[a-z0-9._]+$/.test(u))return 'Only lowercase letters, numbers, dots and underscores.';
+  if(/^[._]|[._]$/.test(u))return 'Cannot start or end with a dot or underscore.';
+  if(/[._]{2,}/.test(u))return 'No two dots or underscores in a row.';
+  if(USERNAME_RESERVED.includes(u))return 'That username is reserved.';
+  return '';
+}
+/* is it free? checks every profile except your own */
+async function usernameAvailable(u){
+  const sb=getSupaClient();if(!sb)return{ok:false,err:'Cannot reach the server right now.'};
+  try{
+    let q=sb.from('profiles').select('id').ilike('username',u).limit(1);
+    if(currentUser)q=q.neq('id',currentUser.id);
+    const{data,error}=await q;
+    if(error)return{ok:false,err:'Could not check that username.'};
+    return{ok:!(data&&data.length)};
+  }catch(e){return{ok:false,err:'Could not check that username.'};}
+}
+let _unameTimer=null,_unameSeq=0,_unameOk=false;
+function setUnameMsg(txt,cls){
+  const m=document.getElementById('epUserMsg');if(!m)return;
+  m.textContent=txt;m.className='uname-msg'+(cls?' '+cls:'');
+}
+function unameSpin(on){const s=document.getElementById('epUserSpin');if(s)s.classList.toggle('on',!!on);}
+function onUsernameInput(v){
+  const inp=document.getElementById('epUser');
+  /* usernames are always lowercase — normalise as they type */
+  const u=(v||'').toLowerCase().replace(/[^a-z0-9._]/g,'');
+  if(inp&&inp.value!==u)inp.value=u;
+  _unameOk=false;
+  clearTimeout(_unameTimer);unameSpin(false);
+  if(u===getSavedUsername()&&u){_unameOk=true;setUnameMsg('This is your current username.','ok');return;}
+  const err=usernameError(u);
+  if(err){setUnameMsg(err,u?'bad':'');return;}
+  setUnameMsg('Checking availability…');
+  unameSpin(true);
+  const seq=++_unameSeq;
+  _unameTimer=setTimeout(async()=>{
+    const res=await usernameAvailable(u);
+    if(seq!==_unameSeq)return;            /* a newer keystroke won */
+    unameSpin(false);
+    if(res.err){setUnameMsg(res.err,'bad');return;}
+    _unameOk=res.ok;
+    setUnameMsg(res.ok?'@'+u+' is available 🎉':'@'+u+' is already taken.',res.ok?'ok':'bad');
+  },450);
+}
 
 function renderEditProfile(){
   const name=getSavedName();const mobile=getSavedMobile();const email=getUserEmail()||'';const photo=getSavedPhoto();
@@ -565,6 +619,12 @@ function renderEditProfile(){
   if(inp('epName'))inp('epName').value=name;
   if(inp('epMobile'))inp('epMobile').value=mobile;
   if(inp('epEmail'))inp('epEmail').value=email;
+  const uname=getSavedUsername();
+  if(inp('epUser')){
+    inp('epUser').value=uname;
+    _unameOk=!!uname;unameSpin(false);
+    setUnameMsg(uname?'This is your current username.':'3–20 characters · letters, numbers, dots and underscores',uname?'ok':'');
+  }
   const av=document.getElementById('epAv');
   if(av){
     if(photo){av.style.backgroundImage=`url('${photo}')`;av.style.backgroundSize='cover';av.style.backgroundPosition='center';av.textContent='';}
@@ -681,15 +741,40 @@ function openCropper(src){
   };
 }
 
-function saveProfile(){
+async function saveProfile(){
   const name=(document.getElementById('epName').value||'').trim();
   const mobile=(document.getElementById('epMobile').value||'').trim();
+  const uname=((document.getElementById('epUser')||{}).value||'').trim().toLowerCase();
   if(!name){note('Please enter your full name.','Name required');document.getElementById('epName').focus();return;}
+  if(uname){
+    const err=usernameError(uname);
+    if(err){note(err,'Check your username');document.getElementById('epUser').focus();return;}
+  }
+  const btn=document.getElementById('epSaveBtn');
+  if(btn){btn.disabled=true;btn.textContent='Saving…';}
+  const restore=()=>{if(btn){btn.disabled=false;btn.textContent='Save Changes';}};
+
+  /* the username is claimed on the server first — a unique index there is the real guard,
+     since an availability check can always be beaten by someone typing at the same moment */
+  if(uname&&uname!==getSavedUsername()){
+    const sb=getSupaClient();
+    if(!sb||!currentUser){restore();note('Please sign in to set a username.','Sign in required');return;}
+    const{error}=await sb.from('profiles').upsert({id:currentUser.id,email:currentUser.email||'',username:uname,updated_at:new Date().toISOString()});
+    if(error){
+      restore();
+      const taken=error.code==='23505'||/duplicate|unique/i.test(error.message||'');
+      if(taken){setUnameMsg('@'+uname+' was just taken. Try another.','bad');note('That username was just taken by someone else. Please pick another.','Username taken');}
+      else note('Could not save your username: '+error.message,'Error');
+      return;
+    }
+    try{localStorage.setItem('tmk_uhandle',uname);}catch(e){}
+  }
   try{
     if(name)localStorage.setItem('tmk_uname',name);
     if(mobile)localStorage.setItem('tmk_umobile',mobile);
   }catch(e){}
-  upsertProfile();   /* keep the public profile (name/photo) in sync for follows & notifications */
+  await upsertProfile();   /* keep the public profile (name/photo/username) in sync for follows & notifications */
+  restore();
   renderProfile();
   note('Profile saved successfully!','Saved ✓');
 }
@@ -1188,10 +1273,10 @@ function reviewCard(r){return `<div class="panel" style="margin-bottom:12px"><di
 async function loadPeopleRemote(){
   const sb=getSupaClient();if(!sb)return[];
   /* pull registered members (with their preferences) from profiles */
-  try{const{data}=await sb.from('profiles').select('name,prefs').limit(300);
+  try{const{data}=await sb.from('profiles').select('name,prefs,username').limit(300);
     if(data&&data.length){const seen=new Set();
       return data.filter(r=>r.name&&!seen.has(r.name)&&seen.add(r.name))
-        .map(r=>({n:r.name,h:'@'+r.name.toLowerCase().replace(/[^a-z0-9]/g,''),prefs:r.prefs||[],bio:(r.prefs&&r.prefs.length)?r.prefs.slice(0,3).join(' · '):'Tripomonk trekker',flwr:0}));
+        .map(r=>({n:r.name,h:'@'+(r.username||r.name.toLowerCase().replace(/[^a-z0-9]/g,'')),prefs:r.prefs||[],bio:(r.prefs&&r.prefs.length)?r.prefs.slice(0,3).join(' · '):'Tripomonk trekker',flwr:0}));
     }
   }catch(e){}
   /* fallback: authors from posts */
@@ -1478,6 +1563,7 @@ async function upsertProfile(){
   const row={id:currentUser.id,email:currentUser.email||'',updated_at:new Date().toISOString()};
   const nm=getSavedName();if(nm)row.name=nm;
   const ph=getSavedPhoto();if(ph)row.photo=ph;
+  const un=getSavedUsername();if(un)row.username=un;
   try{await sb.from('profiles').upsert(row);}catch(e){}
 }
 /* pull the stored profile back down after a login — localStorage is cleared on sign-out,
@@ -1485,10 +1571,11 @@ async function upsertProfile(){
 async function loadProfileFromServer(){
   const sb=getSupaClient();if(!sb||!currentUser)return;
   try{
-    const{data}=await sb.from('profiles').select('name,photo,prefs').eq('id',currentUser.id).maybeSingle();
+    const{data}=await sb.from('profiles').select('name,photo,prefs,username').eq('id',currentUser.id).maybeSingle();
     if(data){
       if(data.name)try{localStorage.setItem('tmk_uname',data.name);}catch(e){}
       if(data.photo)try{localStorage.setItem('tmk_uphoto',data.photo);}catch(e){}
+      if(data.username)try{localStorage.setItem('tmk_uhandle',data.username);}catch(e){}
     }
   }catch(e){}
   await loadFollowsFromServer();
@@ -1819,7 +1906,11 @@ function renderProfile(){document.getElementById('pCover').style.backgroundImage
     else{pav.style.backgroundImage='';pav.textContent=(uname[0]||'E').toUpperCase();}
   }
   const pname=document.getElementById('profileName');if(pname)pname.textContent=isLoggedIn()?uname:'Guest';
-  const psub=document.getElementById('profileSub');if(psub)psub.textContent=isLoggedIn()?(getUserEmail()||'Trekker'):'Sign in to track your treks';
+  const psub=document.getElementById('profileSub');
+  if(psub){
+    const un=getSavedUsername();
+    psub.textContent=isLoggedIn()?(un?'@'+un:(getUserEmail()||'Trekker')):'Sign in to track your treks';
+  }
   /* dynamic, tappable stat tiles */
   const bs=getBookings();
   const upcoming=bs.filter(b=>!b.checkedIn).length;

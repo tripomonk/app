@@ -585,6 +585,17 @@
   .cm-top{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}.cm-top h3{margin:0}.cm-top small{color:var(--muted);font-size:12px;flex:1}
   .cm-x{background:none;border:none;color:var(--muted);font-size:26px;line-height:1;cursor:pointer}
   .cm-list{flex:1;overflow-y:auto;margin:4px -4px 10px;padding:0 4px}
+  /* ---- username picker ---- */
+  .uname-at{font-size:15px;font-weight:600;color:var(--muted);flex:none}
+  .uname-msg{display:block;margin:6px 2px 0;font-size:11.5px;color:var(--muted2);line-height:1.4}
+  .uname-msg.ok{color:#0f9d58}
+  html.light .uname-msg.ok{color:#0b7a44}
+  .uname-msg.bad{color:#ff5a6e}
+  .uname-spin{flex:none;width:15px;height:15px;border-radius:50%;border:2px solid var(--stroke2);
+    border-top-color:var(--accent);display:none;animation:uspin .7s linear infinite}
+  .uname-spin.on{display:block}
+  @keyframes uspin{to{transform:rotate(360deg)}}
+
   /* ---- profile photo cropper ---- */
   .crop-card{max-width:340px;padding:20px 18px 16px}
   .crop-title{margin:0 0 14px;font-size:16px;text-align:center}
@@ -1211,9 +1222,13 @@
       <div style="color:var(--muted);font-size:11.5px;margin-top:8px">Tap photo to change</div>
     </div>
     <div class="field"><label>Full name</label><div class="inp"><span class="msr" style="font-size:20px;color:var(--muted)">person</span><input id="epName" placeholder="Your full name"/></div></div>
+    <div class="field"><label>Username</label>
+      <div class="inp"><span class="uname-at">@</span><input id="epUser" placeholder="yourname" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="20" oninput="onUsernameInput(this.value)"/><span class="uname-spin" id="epUserSpin"></span></div>
+      <small class="uname-msg" id="epUserMsg">3–20 characters · letters, numbers, dots and underscores</small>
+    </div>
     <div class="field"><label>Mobile</label><div class="inp"><span class="msr" style="font-size:20px;color:var(--muted)">call</span><input id="epMobile" type="tel" placeholder="+91 XXXXX XXXXX"/></div></div>
     <div class="field"><label>Email</label><div class="inp"><span class="msr" style="font-size:20px;color:var(--muted)">mail</span><input id="epEmail" type="email" placeholder="you@email.com" readonly style="opacity:.6"/></div></div>
-    <button class="btn" style="margin-top:8px" onclick="saveProfile()">Save Changes</button>
+    <button class="btn" id="epSaveBtn" style="margin-top:8px" onclick="saveProfile()">Save Changes</button>
   </section>
 
   <!-- SETTINGS -->
