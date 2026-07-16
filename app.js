@@ -335,10 +335,11 @@ async function loadFollowsFromServer(){
   }catch(e){}
 }
 async function syncFollow(n,on){
-  const sb=getSupaClient();if(!sb||!currentUser)return;
+  const sb=getSupaClient();if(!sb)return;
+  const uid=await authUid();if(!uid)return;
   try{
-    if(on)await sb.from('follows').upsert({follower_id:currentUser.id,following_name:n},{onConflict:'follower_id,following_name'});
-    else await sb.from('follows').delete().eq('follower_id',currentUser.id).eq('following_name',n);
+    if(on)await sb.from('follows').upsert({follower_id:uid,following_name:n},{onConflict:'follower_id,following_name'});
+    else await sb.from('follows').delete().eq('follower_id',uid).eq('following_name',n);
   }catch(e){}
 }
 function saveLikes(){try{localStorage.setItem('tmk_likes',JSON.stringify(likeState));}catch(e){}}
@@ -384,7 +385,7 @@ const KNOW=[['community','8–15','Group size'],['user','10+ yrs','Min age'],['a
 const EXCL=['Personal expenses','Travel to the base city','Anything not in inclusions'];
 
 /* ---------- Auth ---------- */
-let _supa=null,currentUser=null,_loginReturn=null,_loginEmail='';
+let _supa=null,currentUser=null,_loginReturn=null,_loginEmail='',_profileLoadedFor=null;
 function getSupaClient(){
   if(_supa)return _supa;
   if(!sbOn||!window.supabase)return null;
@@ -392,6 +393,20 @@ function getSupaClient(){
   return _supa;
 }
 function isLoggedIn(){return!!currentUser;}
+function renderFeedIfOpen(){if(cur==='community')renderFeed();else if(cur==='person')renderPerson();}
+/* The live session's user id — never trust a cached currentUser for writes. If the
+   session changed underneath us, an insert built from a stale id fails the RLS check
+   ("new row violates row-level security policy"), which is exactly what a user hits
+   after switching accounts. */
+async function authUid(){
+  const sb=getSupaClient();if(!sb)return null;
+  try{
+    const{data:{session}}=await sb.auth.getSession();
+    if(!session)return null;
+    if(!currentUser||currentUser.id!==session.user.id)currentUser=session.user;
+    return session.user.id;
+  }catch(e){return currentUser?currentUser.id:null;}
+}
 async function initAuth(){
   const sb=getSupaClient();if(!sb)return;
   /* did we just come back from an OAuth (Google) redirect? */
@@ -415,12 +430,16 @@ async function initAuth(){
     setTimeout(maybeOnboard,600);  /* first-time users pick their preferences */
   }
   sb.auth.onAuthStateChange(async(evt,session)=>{
-    const hadUser=!!currentUser;
     currentUser=session?session.user:null;
-    /* only on a real sign-in — not on every token refresh */
-    if(session&&evt==='SIGNED_IN'&&!hadUser){
+    if(!session){_profileLoadedFor=null;}
+    /* reload whenever a DIFFERENT account is in play — keyed on the user id, not on
+       "was anyone logged in", so switching accounts swaps identity properly.
+       Token refreshes keep the same id, so they don't re-fetch. */
+    else if(_profileLoadedFor!==session.user.id){
       await loadProfileFromServer();
       upsertProfile();
+      loadStaff();
+      renderFeedIfOpen();
     }
     if(cur==='profile')renderProfile();
     /* catch session arriving after OAuth redirect */
@@ -545,11 +564,10 @@ async function verifyOtp(){
 }
 async function signOut(){
   const sb=getSupaClient();if(sb)await sb.auth.signOut();
-  currentUser=null;
-  try{
-    ['tmk_uname','tmk_uhandle','tmk_umobile','tmk_uphoto','tmk_contact','tmk_bookings','tmk_posts','tmk_comments','tmk_likes','tmk_follows','tmk_admin','tmk_admin_key','tmk_captain','tmk_nav','tmk_notif_seen'].forEach(k=>localStorage.removeItem(k));
-  }catch(e){}
-  hist=[];_loginReturn='home';_prefSkippedSession=false;staffSet=new Set();
+  currentUser=null;_profileLoadedFor=null;
+  clearLocalIdentity();
+  try{['tmk_contact','tmk_uid','tmk_nav'].forEach(k=>localStorage.removeItem(k));}catch(e){}
+  hist=[];_loginReturn='home';
   go('login');
   note('Signed out successfully.','Done');
 }
@@ -758,8 +776,9 @@ async function saveProfile(){
      since an availability check can always be beaten by someone typing at the same moment */
   if(uname&&uname!==getSavedUsername()){
     const sb=getSupaClient();
-    if(!sb||!currentUser){restore();note('Please sign in to set a username.','Sign in required');return;}
-    const{error}=await sb.from('profiles').upsert({id:currentUser.id,email:currentUser.email||'',username:uname,updated_at:new Date().toISOString()});
+    const uid=sb?await authUid():null;
+    if(!sb||!uid){restore();note('Please sign in to set a username.','Sign in required');return;}
+    const{error}=await sb.from('profiles').upsert({id:uid,email:(currentUser&&currentUser.email)||'',username:uname,updated_at:new Date().toISOString()});
     if(error){
       restore();
       const taken=error.code==='23505'||/duplicate|unique/i.test(error.message||'');
@@ -1467,10 +1486,11 @@ async function likePost(id){
   likedByMe[id]=!wasLiked;
   likeCounts[id]=(likeCounts[id]||0)+(wasLiked?-1:1);if(likeCounts[id]<0)likeCounts[id]=0;
   updateLikeUI(id);
+  const uid=await authUid();if(!uid)return;
   if(wasLiked){
-    await sb.from('post_likes').delete().eq('post_id',id).eq('user_id',currentUser.id);
+    await sb.from('post_likes').delete().eq('post_id',id).eq('user_id',uid);
   }else{
-    const{error}=await sb.from('post_likes').insert({post_id:id,user_id:currentUser.id});
+    const{error}=await sb.from('post_likes').insert({post_id:id,user_id:uid});
     if(!error){const p=postById(id);if(p&&(p.uid||p.n))pushNotif({recipientId:p.uid,recipientName:p.uid?null:p.n,type:'like',postId:id});}
   }
 }
@@ -1518,8 +1538,9 @@ async function uploadMedia(file){
 /* ---- Remote posts (Supabase DB) ---- */
 async function savePostRemote(post){
   const sb=getSupaClient();if(!sb)return;
+  const uid=await authUid();
   const{error}=await sb.from('community_posts').insert({
-    id:post.id,user_id:currentUser?currentUser.id:null,
+    id:post.id,user_id:uid,
     author_name:post.n,txt:post.txt||'',imgs:post.imgs||[],likes:0,trek_tag:post.trek||null,tagged:post.tagged||[]
   });
   if(error)note('Post saved locally but could not sync: '+error.message,'Sync error');
@@ -1559,17 +1580,29 @@ async function pushNotif({recipientId,recipientName,type,postId,preview}){
 /* register/refresh this user's public profile so follows/notifications can reach them.
    Only writes fields we actually have — an empty local value must never blank the stored one. */
 async function upsertProfile(){
-  const sb=getSupaClient();if(!sb||!currentUser)return;
-  const row={id:currentUser.id,email:currentUser.email||'',updated_at:new Date().toISOString()};
+  const sb=getSupaClient();if(!sb)return;
+  const uid=await authUid();if(!uid)return;
+  const row={id:uid,email:(currentUser&&currentUser.email)||'',updated_at:new Date().toISOString()};
   const nm=getSavedName();if(nm)row.name=nm;
   const ph=getSavedPhoto();if(ph)row.photo=ph;
   const un=getSavedUsername();if(un)row.username=un;
   try{await sb.from('profiles').upsert(row);}catch(e){}
 }
+/* everything that identifies ONE person on this device */
+const IDENTITY_KEYS=['tmk_uname','tmk_uhandle','tmk_uphoto','tmk_umobile','tmk_follows','tmk_posts','tmk_likes','tmk_comments','tmk_bookings','tmk_notif_seen','tmk_admin','tmk_admin_key','tmk_captain'];
+function clearLocalIdentity(){
+  try{IDENTITY_KEYS.forEach(k=>localStorage.removeItem(k));}catch(e){}
+  followState={};staffSet=new Set();_prefSkippedSession=false;
+}
 /* pull the stored profile back down after a login — localStorage is cleared on sign-out,
    so the server copy is the source of truth for name/photo/follows across devices */
 async function loadProfileFromServer(){
   const sb=getSupaClient();if(!sb||!currentUser)return;
+  /* if a DIFFERENT account signed in on this device, wipe the previous person's
+     name/photo/follows first — otherwise they post under the old identity */
+  let prev=null;try{prev=localStorage.getItem('tmk_uid');}catch(e){}
+  if(prev&&prev!==currentUser.id)clearLocalIdentity();
+  try{localStorage.setItem('tmk_uid',currentUser.id);}catch(e){}
   try{
     const{data}=await sb.from('profiles').select('name,photo,prefs,username').eq('id',currentUser.id).maybeSingle();
     if(data){
@@ -1579,6 +1612,7 @@ async function loadProfileFromServer(){
     }
   }catch(e){}
   await loadFollowsFromServer();
+  _profileLoadedFor=currentUser.id;
 }
 async function uidForName(name){
   const sb=getSupaClient();if(!sb||!name)return null;
@@ -1783,12 +1817,15 @@ async function openComments(id){
     const v=inp.value.trim();if(!v)return;
     if(!isLoggedIn()){note('Please sign in to comment.','Sign in required').then(()=>{close();_loginReturn='community';go('login');});return;}
     const sb=getSupaClient();if(!sb)return;
+    /* use the LIVE session id — a stale one fails the row-level security check */
+    const uid=await authUid();
+    if(!uid){note('Your session expired. Please sign in again.','Sign in required').then(()=>{close();_loginReturn='community';go('login');});return;}
     inp.value='';
     /* show it straight away, then confirm with the server */
     const tmp={id:'tmp-'+Date.now(),post_id:id,author_name:myName(),txt:v,created_at:new Date().toISOString()};
     cmList.push(tmp);commentCounts[id]=cmList.length;
     appendComment(tmp);updateCommentUI(id);
-    const{data,error}=await sb.from('post_comments').insert({post_id:id,user_id:currentUser.id,author_name:myName(),txt:v}).select().single();
+    const{data,error}=await sb.from('post_comments').insert({post_id:id,user_id:uid,author_name:myName(),txt:v}).select().single();
     if(error){
       cmList=cmList.filter(c=>c.id!==tmp.id);commentCounts[id]=cmList.length;
       const el=document.querySelector('#cmList .cm[data-cid="'+tmp.id+'"]');if(el)el.remove();
