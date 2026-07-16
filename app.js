@@ -1363,7 +1363,7 @@ function postCard(p){
    </div>
    ${p.trek?`<div class="ig-trek" onclick="openDetailByName('${p.trek.replace(/'/g,'')}')">${ic('pin',13)} ${esc(p.trek)}</div>`:''}
    ${media.length?`<div class="car" ondblclick="dblLike('${p.id}',this)"><div class="car-track" onscroll="carScroll(this)">${media.map(mediaItem).join('')}</div>${rail}${dots}<div class="heart-burst">${ic('like',96)}</div></div>`:''}
-   ${textOnly?`<div class="ig-textpost">${esc(p.txt)}</div>`:''}
+   ${textOnly?`<div class="ig-textpost">${linkifyMentions(esc(p.txt))}</div>`:''}
    ${tagged}
    <div class="ig-actions">
      <div class="ig-left">
@@ -1372,7 +1372,7 @@ function postCard(p){
        <span class="ig-ic" onclick="repostPost('${p.id}')" title="Repost to your feed">${ic('repeat',22)}</span>
      </div>
    </div>
-   ${(!textOnly&&p.txt)?`<div class="ig-cap ${p.txt.length>120?'clamp':''}" onclick="this.classList.remove('clamp')"><b onclick="event.stopPropagation();openPerson('${sn}')">${p.n}</b> ${esc(p.txt)}</div>`:''}
+   ${(!textOnly&&p.txt)?`<div class="ig-cap ${p.txt.length>120?'clamp':''}" onclick="this.classList.remove('clamp')"><b onclick="event.stopPropagation();openPerson('${sn}')">${p.n}</b> ${linkifyMentions(esc(p.txt))}</div>`:''}
    <div class="ig-comments" onclick="openComments('${p.id}')">${nc?`View all ${nc} comment${nc>1?'s':''}`:'Add a comment…'}</div>
    <div class="ig-time">${p.when}</div>
   </div>`;}
@@ -1597,11 +1597,12 @@ async function loadNotifsRemote(){
   if(error){console.warn('loadNotifsRemote:',error.message);return null;}
   return data||[];
 }
-const NOTIF_ICON={like:'favorite',comment:'chat_bubble',follow:'person_add'};
+const NOTIF_ICON={like:'favorite',comment:'chat_bubble',follow:'person_add',mention:'alternate_email'};
 function notifText(n){
   if(n.type==='like')return `<b>${n.actor_name}</b> liked your post`;
   if(n.type==='comment')return `<b>${n.actor_name}</b> commented: ${n.preview?'“'+n.preview+'”':''}`;
   if(n.type==='follow')return `<b>${n.actor_name}</b> started following you`;
+  if(n.type==='mention')return `<b>${n.actor_name}</b> mentioned you: ${n.preview?'“'+n.preview+'”':''}`;
   return `<b>${n.actor_name}</b> interacted with you`;
 }
 let _lastUnread=-1;
@@ -1627,8 +1628,78 @@ async function refreshNotifBadge(){
   _lastUnread=unread;
 }
 
+/* ---------- @mentions ---------- */
+function personByUsername(u){
+  const h='@'+String(u||'').toLowerCase();
+  return people.find(p=>String(p.h||'').toLowerCase()===h)||null;
+}
+function openMention(u){
+  const p=personByUsername(u);
+  if(p)openPerson(p.n);
+  else note('No trekker with the username @'+u+' yet.','Not found');
+}
+/* turn @username into a link. Runs on ALREADY-ESCAPED text — the pattern only ever
+   matches [a-z0-9._], so nothing can break out of the onclick string. */
+/* the @ must start the text or follow a space/bracket — otherwise "vikas@gmail.com"
+   would turn "@gmail.com" into a mention */
+const MENTION_RE=/(^|[\s([{])@([a-zA-Z0-9][a-zA-Z0-9._]{1,18}[a-zA-Z0-9])/g;
+function linkifyMentions(escaped){
+  return String(escaped==null?'':escaped).replace(MENTION_RE,(m,pre,u)=>
+    `${pre}<span class="mention" onclick="event.stopPropagation();openMention('${u.toLowerCase()}')">@${u}</span>`);
+}
+/* every @username actually present in the text */
+function mentionsIn(txt){
+  const out=[];const re=new RegExp(MENTION_RE.source,'g');let m;
+  while((m=re.exec(String(txt||'')))){const u=m[2].toLowerCase();if(!out.includes(u))out.push(u);}
+  return out;
+}
+/* tell the people who were mentioned */
+async function notifyMentions(txt,postId){
+  const mine=(getSavedUsername()||'').toLowerCase();
+  for(const u of mentionsIn(txt)){
+    if(u===mine)continue;                 /* never ping yourself */
+    const p=personByUsername(u);if(!p)continue;
+    const uid=await uidForName(p.n);
+    pushNotif({recipientId:uid,recipientName:uid?null:p.n,type:'mention',postId,preview:String(txt||'').slice(0,60)});
+  }
+}
+
 /* ---- Post composer ---- */
 let postImgs=[],postFileRefs=[],postTags=[];
+/* @-autocomplete inside the composer */
+let _mentionRange=null;
+function hideMentionBox(){const b=document.getElementById('mentionBox');if(b)b.classList.remove('show');_mentionRange=null;}
+function onPostTextInput(ta){
+  const box=document.getElementById('mentionBox');if(!box)return;
+  const pos=ta.selectionStart;
+  /* only when the caret sits right after an @word */
+  const m=ta.value.slice(0,pos).match(/(?:^|\s)@([a-zA-Z0-9._]*)$/);
+  if(!m){hideMentionBox();return;}
+  const q=m[1].toLowerCase();
+  const mine=myName();
+  const list=people.filter(p=>{
+    if(p.n===mine)return false;
+    const h=String(p.h||'').replace(/^@/,'').toLowerCase();
+    return !q||h.startsWith(q)||p.n.toLowerCase().includes(q);
+  }).slice(0,6);
+  if(!list.length){hideMentionBox();return;}
+  _mentionRange={start:pos-m[1].length-1,end:pos};   /* the "@word" span itself */
+  box.innerHTML=list.map(p=>{
+    const h=String(p.h||'').replace(/^@/,'');
+    return `<div class="mention-row" onclick="pickMention('${h.replace(/'/g,'')}')">${avatar(p.n,26)}<div><b>${esc(p.n)}</b><small>@${esc(h)}</small></div></div>`;
+  }).join('');
+  hydrate(box);box.classList.add('show');
+}
+function pickMention(u){
+  const ta=document.getElementById('postText');
+  if(!ta||!_mentionRange)return;
+  const v=ta.value;
+  const ins='@'+u+' ';
+  ta.value=v.slice(0,_mentionRange.start)+ins+v.slice(_mentionRange.end);
+  const caret=_mentionRange.start+ins.length;
+  hideMentionBox();
+  ta.focus();ta.setSelectionRange(caret,caret);
+}
 function renderTagList(){
   const box=document.getElementById('postTagList');if(!box)return;
   const mine=myName();
@@ -1636,7 +1707,7 @@ function renderTagList(){
   const others=people.filter(p=>!isFollowing(p.n)&&p.n!==mine);
   const list=[...followed,...others];
   if(!list.length){box.innerHTML='<span style="font-size:12px;color:var(--muted2)">Follow trekkers to tag them.</span>';return;}
-  box.innerHTML=list.map(p=>`<span class="tag-chip ${postTags.includes(p.n)?'on':''}" onclick="toggleTagPerson('${p.n.replace(/'/g,'')}')">${avatar(p.n,18)} ${esc(p.n)}</span>`).join('');
+  box.innerHTML=list.map(p=>`<span class="tag-chip ${postTags.includes(p.n)?'on':''}" onclick="toggleTagPerson('${p.n.replace(/'/g,'')}')">${avatar(p.n,18)} ${esc(p.h||p.n)}</span>`).join('');
   hydrate(box);
 }
 function toggleTagPerson(n){
@@ -1691,6 +1762,7 @@ function addPost(){
     userPosts.unshift(post);
     savePosts();
     await savePostRemote(post);
+    notifyMentions(post.txt,post.id);   /* ping anyone @mentioned in the caption */
     close();commTab='For You';renderFeed();
   };
   cn.onclick=close;m.onclick=e=>{if(e.target===m)close();};
@@ -1728,6 +1800,7 @@ async function openComments(id){
     if(el)el.dataset.cid=data.id;
     tmp.id=data.id;
     if(p.uid||p.n)pushNotif({recipientId:p.uid,recipientName:p.uid?null:p.n,type:'comment',postId:id,preview:v.slice(0,60)});
+    notifyMentions(v,id);   /* ping anyone @mentioned in the comment */
   }
   ok.onclick=send;inp.onkeydown=e=>{if(e.key==='Enter')send();};
   cl.onclick=close;m.onclick=e=>{if(e.target===m)close();};
@@ -1739,7 +1812,7 @@ async function loadComments(id){
   renderComments();
 }
 function commentHTML(c,isNew){
-  return `<div class="cm${isNew?' new':''}" data-cid="${esc(c.id)}"><div class="cm-h">${avatar(c.author_name||'Trekker',30)}<div><b>${esc(c.author_name||'Trekker')}</b> <small>${timeAgo(c.created_at)}</small></div></div><p>${esc(c.txt)}</p></div>`;
+  return `<div class="cm${isNew?' new':''}" data-cid="${esc(c.id)}"><div class="cm-h">${avatar(c.author_name||'Trekker',30)}<div><b>${esc(c.author_name||'Trekker')}</b> <small>${timeAgo(c.created_at)}</small></div></div><p>${linkifyMentions(esc(c.txt))}</p></div>`;
 }
 function updateCmHeader(){
   const h=document.getElementById('cmCount');if(!h)return;
