@@ -1612,6 +1612,7 @@ async function loadProfileFromServer(){
     }
   }catch(e){}
   await loadFollowsFromServer();
+  loadCart();   /* cart is keyed per account — swap to this user's one */
   _profileLoadedFor=currentUser.id;
 }
 async function uidForName(name){
@@ -2623,6 +2624,84 @@ function recalcAct(){
   if(btn)btn.disabled=false;
 }
 
+/* ============================================================
+   PRICING ENGINE
+   ------------------------------------------------------------
+   ⚠ Everything here is DISPLAY ONLY. The razorpay edge function
+   already prices server-side (pricedBooking) and must keep doing
+   so — a total sent from the browser can be edited by the user.
+   Step 4 mirrors this function in the edge function; this copy
+   only tells the customer what they're about to pay.
+
+   Defaults match how treks are sold today: no separate GST line
+   and no convenience fee. Do not switch those on without your CA.
+   ============================================================ */
+const MKT_PRICING={
+  gstPct:0,          /* ⚠ treks show no GST line today. Confirm rate + ITC with your CA first. */
+  conveniencePct:0,  /* 0 = no booking fee, matching the trek flow */
+  weekendPct:0,      /* weekend/seasonal surcharge, off until operators confirm */
+  groupTiers:[{min:6,pct:5},{min:10,pct:10}],
+  /* ⚠ client-side coupons are visible and forgeable. The edge function MUST
+     re-validate any code before it affects the amount charged. */
+  coupons:{TREK10:{pct:10,label:'10% off'}}
+};
+const isWeekendISO=iso=>{if(!iso)return false;const d=new Date(iso+'T00:00:00').getDay();return d===0||d===6;};
+const pct=(n,p)=>Math.round(n*p/100);
+
+/* pure: same inputs -> same breakdown. Mirror this server-side. */
+function priceCart(items,opts){
+  opts=opts||{};
+  const lines=(items||[]).map(it=>{
+    const a=actById(it.actId);
+    const per=a?a.price:0;
+    const childPer=(a&&a.childPrice!=null)?a.childPrice:per;
+    const base=it.adults*per+it.children*childPer;
+    const weekend=isWeekendISO(it.date)?pct(base,MKT_PRICING.weekendPct):0;
+    return {actId:it.actId,name:a?a.n:'(removed)',per,base,weekend,pax:it.adults+it.children,
+            adults:it.adults,children:it.children,date:it.date,slot:it.slot,total:base+weekend};
+  });
+  const subtotal=lines.reduce((s,l)=>s+l.base,0);
+  const weekendTotal=lines.reduce((s,l)=>s+l.weekend,0);
+  const totalPax=lines.reduce((s,l)=>s+l.pax,0);
+  /* biggest tier the headcount qualifies for */
+  const tier=MKT_PRICING.groupTiers.filter(t=>totalPax>=t.min).sort((a,b)=>b.pct-a.pct)[0];
+  const groupPctVal=tier?tier.pct:0;
+  const groupDisc=pct(subtotal+weekendTotal,groupPctVal);
+  const code=(opts.coupon||'').trim().toUpperCase();
+  const cp=MKT_PRICING.coupons[code];
+  const couponDisc=cp?pct(subtotal+weekendTotal-groupDisc,cp.pct):0;
+  const net=Math.max(0,subtotal+weekendTotal-groupDisc-couponDisc);
+  const convenience=pct(net,MKT_PRICING.conveniencePct);
+  const gst=pct(net+convenience,MKT_PRICING.gstPct);
+  const grand=net+convenience+gst;
+  return {lines,subtotal,weekendTotal,totalPax,groupPct:groupPctVal,groupDisc,
+          coupon:cp?code:'',couponLabel:cp?cp.label:'',couponDisc,couponInvalid:!!(code&&!cp),
+          convenience,gst,grand};
+}
+
+/* ---- cart state (per account, survives reload) ---- */
+let cartItems=[],cartCoupon='';
+function cartKey(){return currentUser?('tmk_cart_'+currentUser.id):'tmk_cart_guest';}
+function loadCart(){
+  try{const r=JSON.parse(localStorage.getItem(cartKey())||'{}');
+    cartItems=Array.isArray(r.items)?r.items:[];cartCoupon=r.coupon||'';}
+  catch(e){cartItems=[];cartCoupon='';}
+  /* drop anything whose activity no longer exists */
+  cartItems=cartItems.filter(i=>actById(i.actId));
+  updateCartBadge();
+}
+function saveCart(){
+  try{localStorage.setItem(cartKey(),JSON.stringify({items:cartItems,coupon:cartCoupon}));}catch(e){}
+  updateCartBadge();
+}
+function cartCount(){return cartItems.length;}
+function updateCartBadge(){
+  const n=cartCount();
+  document.querySelectorAll('.cart-badge').forEach(b=>{b.textContent=n;b.style.display=n?'':'none';});
+  const fab=document.getElementById('cartFab');
+  if(fab)fab.style.display=n?'':'none';
+}
+
 /* nothing gets added half-filled — the operator needs a real date, slot and headcount */
 function validateAct(){
   const a=actById(curAct);if(!a)return 'Something went wrong — please reopen this activity.';
@@ -2636,7 +2715,116 @@ function validateAct(){
 function addActToCart(){
   const err=validateAct();
   if(err){note(err,'Check your booking');return;}
-  note('Added — the live cart is being built in the next step.','Coming next');
+  const a=actById(curAct);
+  /* same activity + same date + same slot = update it, don't stack duplicates */
+  const dup=cartItems.find(i=>i.actId===curAct&&i.date===actSel.date&&i.slot===actSel.slot);
+  if(dup){
+    const merged=dup.adults+actSel.adults+dup.children+actSel.children;
+    if(merged>a.maxGroup){note('You already have this slot in your adventure, and together that exceeds the '+a.maxGroup+'-person limit.','Group limit');return;}
+    dup.adults+=actSel.adults;dup.children+=actSel.children;dup.exp=actSel.exp;
+  }else{
+    cartItems.push({actId:curAct,dest:a.dest,date:actSel.date,slot:actSel.slot,
+                    adults:actSel.adults,children:actSel.children,exp:actSel.exp});
+  }
+  saveCart();
+  note(a.n+' added to your adventure.','Added ✓').then(()=>go('cart'));
+}
+function removeCartItem(i){
+  const it=cartItems[i];if(!it)return;
+  const a=actById(it.actId);
+  askConfirm('Remove '+(a?a.n:'this item')+' from your adventure?','Remove').then(ok=>{
+    if(!ok)return;
+    cartItems.splice(i,1);saveCart();renderCart();
+  });
+}
+function stepCartPax(i,kind,delta){
+  const it=cartItems[i];if(!it)return;
+  const a=actById(it.actId);if(!a)return;
+  if(kind==='a')it.adults=Math.max(0,it.adults+delta);else it.children=Math.max(0,it.children+delta);
+  if(it.adults+it.children>a.maxGroup){
+    if(kind==='a')it.adults-=delta;else it.children-=delta;
+    note('Maximum '+a.maxGroup+' people for '+a.n+'.','Group limit');
+  }
+  if(it.adults<1&&it.children>0)it.adults=1;
+  if(it.adults+it.children<1){removeCartItem(i);return;}
+  saveCart();renderCart();
+}
+function applyCoupon(){
+  const v=(document.getElementById('cartCoupon').value||'').trim().toUpperCase();
+  cartCoupon=v;saveCart();renderCart();
+}
+function clearCart(){
+  askConfirm('Clear everything from your adventure?','Clear all').then(ok=>{
+    if(!ok)return;cartItems=[];cartCoupon='';saveCart();renderCart();
+  });
+}
+
+/* ---- cart screen ---- */
+const prettyDate=iso=>{if(!iso)return '';const d=new Date(iso+'T00:00:00');
+  return d.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});};
+
+function renderCart(){
+  const body=document.getElementById('cartBody');if(!body)return;
+  const clr=document.getElementById('cartClear');if(clr)clr.style.display=cartItems.length?'':'none';
+  if(!cartItems.length){
+    body.innerHTML=`<div class="empty" style="padding:40px 0">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Your adventure is empty.</p>
+      <button class="btn" style="max-width:220px;margin:0 auto" onclick="go('dests')">Browse destinations</button></div>`;
+    updateCartBadge();return;
+  }
+  const b=priceCart(cartItems,{coupon:cartCoupon});
+  const items=cartItems.map((it,i)=>{
+    const a=actById(it.actId);if(!a)return '';
+    const line=b.lines[i];
+    return `<div class="citem">
+      <div class="cph" style="background-image:url('${a.img+Q}')"></div>
+      <div class="cbd">
+        <h4>${esc(a.n)}</h4>
+        <div class="cwhen">${ic('calendar',11)} ${esc(prettyDate(it.date))} · ${esc(it.slot)}${isWeekendISO(it.date)&&MKT_PRICING.weekendPct?' · <i style="color:#ffce1f;font-style:normal">weekend</i>':''}</div>
+        <div class="crow">
+          <div class="cmini"><small>Adults</small><button onclick="stepCartPax(${i},'a',-1)">−</button><b>${it.adults}</b><button onclick="stepCartPax(${i},'a',1)">+</button></div>
+          <span class="cpr">${INR(line.total)}</span>
+        </div>
+        ${it.children?`<div class="crow" style="margin-top:6px"><div class="cmini"><small>Children</small><button onclick="stepCartPax(${i},'c',-1)">−</button><b>${it.children}</b><button onclick="stepCartPax(${i},'c',1)">+</button></div></div>`:''}
+      </div>
+      <button class="cx" onclick="removeCartItem(${i})" title="Remove">${ic('trash',18)}</button>
+    </div>`;}).join('');
+
+  /* every line shown — no surprise charges at the end */
+  const rows=[];
+  rows.push(`<div class="br"><span>Activities (${b.totalPax} ${b.totalPax===1?'person':'people'})</span><b>${INR(b.subtotal)}</b></div>`);
+  if(b.weekendTotal)rows.push(`<div class="br"><span>Weekend pricing</span><b>+${INR(b.weekendTotal)}</b></div>`);
+  if(b.groupDisc)rows.push(`<div class="br off"><span>Group discount (${b.groupPct}% · ${b.totalPax}+ people)</span><b>−${INR(b.groupDisc)}</b></div>`);
+  if(b.couponDisc)rows.push(`<div class="br off"><span>Coupon ${esc(b.coupon)} (${esc(b.couponLabel)})</span><b>−${INR(b.couponDisc)}</b></div>`);
+  if(b.convenience)rows.push(`<div class="br"><span>Convenience fee</span><b>${INR(b.convenience)}</b></div>`);
+  if(b.gst)rows.push(`<div class="br"><span>GST</span><b>${INR(b.gst)}</b></div>`);
+
+  const nextTier=MKT_PRICING.groupTiers.filter(t=>b.totalPax<t.min).sort((a,c)=>a.min-c.min)[0];
+
+  body.innerHTML=`${items}
+    <div class="coupon">
+      <div class="inp"><span class="msr" style="font-size:18px;color:var(--muted)">sell</span>
+        <input id="cartCoupon" placeholder="Coupon code" autocapitalize="characters" value="${esc(cartCoupon)}"/></div>
+      <button onclick="applyCoupon()">Apply</button>
+    </div>
+    ${cartCoupon?`<p class="coupon-msg ${b.couponInvalid?'bad':'ok'}">${b.couponInvalid?'“'+esc(cartCoupon)+'” is not a valid code.':esc(b.coupon)+' applied — '+esc(b.couponLabel)}</p>`:''}
+    ${nextTier?`<p class="coupon-msg" style="color:var(--muted2)">Add ${nextTier.min-b.totalPax} more ${nextTier.min-b.totalPax===1?'person':'people'} to unlock ${nextTier.pct}% off.</p>`:''}
+    <div class="bill">
+      ${rows.join('')}
+      <div class="bsep"></div>
+      <div class="br grand"><span>Total</span><b>${INR(b.grand)}</b></div>
+    </div>
+    <button class="btn" onclick="cartCheckout()">Continue to checkout &nbsp;→</button>
+    <p style="font-size:11px;color:var(--muted2);text-align:center;margin:12px 0 0;line-height:1.5">
+      Final price is confirmed by Tripomonk before payment.</p>
+    <div style="height:calc(var(--safe-bottom) + 20px)"></div>`;
+  hydrate(body);
+  updateCartBadge();
+}
+function cartCheckout(){
+  if(!cartItems.length){note('Add an activity first.','Empty');return;}
+  if(!isLoggedIn()){note('Please sign in to book.','Sign in required').then(()=>{_loginReturn='cart';go('login');});return;}
+  note('Checkout and payment are the next step — the server must price this cart before it can charge anything.','Coming next');
 }
 
 /* ---- destinations grid ---- */
@@ -2861,6 +3049,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='dests')renderDests();
   if(id==='dest')renderDest();
   if(id==='act')renderAct();
+  if(id==='cart')renderCart();
   if(id==='community')renderFeed();
   if(id==='peopleSearch'){_peoplePool=null;setTimeout(()=>{const i=document.getElementById('peopleSearchInput');if(i){i.value='';i.focus();}searchPeople('');},80);}
   if(id==='news')renderNews();
@@ -2911,6 +3100,7 @@ Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDi
 /* init */
 applyTheme();   /* dark / light / system theme */
 loadSocial();   /* follows, likes, your posts & comments */
+loadCart();     /* adventure cart (per account) */
 initAuth();     /* restore login session if user was previously signed in */
 document.getElementById('splashBg').style.backgroundImage=`url('${treks[0].img.replace('w=900','w=1200')}')`;
 initLoginBg();
