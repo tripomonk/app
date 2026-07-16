@@ -330,10 +330,26 @@ let _lastFeed=[];
 function postById(id){return _lastFeed.find(p=>p.id===id)||allPosts().find(p=>p.id===id);}
 function isFollowing(n){return !!followState[n];}
 function followCount(){return Object.values(followState).filter(Boolean).length;}
+/* update only the follow buttons for this person — a full re-render made the whole feed flicker */
+function updateFollowUI(n){
+  const on=!!followState[n];
+  document.querySelectorAll('[data-follow]').forEach(el=>{
+    if(el.dataset.follow!==n)return;
+    el.classList.toggle('on',on);
+    el.textContent=on?'Following':'Follow';
+    el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop');
+  });
+  /* follower tally on the person screen */
+  const f=document.getElementById('pFlwr');
+  if(f&&f.dataset.person===n){
+    const base=+f.dataset.base||0;
+    f.textContent=(base+(on?1:0)).toLocaleString();
+  }
+}
 function toggleFollow(n){
   const wasFollowing=!!followState[n];
   followState[n]=!followState[n];saveFollows();
-  if(cur==='community')renderFeed();if(cur==='person')renderPerson();
+  updateFollowUI(n);
   /* notify the user when newly followed */
   if(!wasFollowing){
     uidForName(n).then(uid=>pushNotif({recipientId:uid,recipientName:uid?null:n,type:'follow'}));
@@ -1120,11 +1136,11 @@ function postCard(p){
   const textOnly=!media.length&&p.txt;
   const likeCount=(likeCounts[p.id]||0);
   const dots=media.length>1?`<div class="car-dots">${media.map((_,i)=>`<span class="${i===0?'on':''}"></span>`).join('')}</div>`:'';
-  const follow=(!me&&!isFollowing(p.n))?` · <span class="ig-follow" onclick="toggleFollow('${sn}')">Follow</span>`:'';
+  const follow=me?'':` · <span class="ig-follow${isFollowing(p.n)?' on':''}" data-follow="${esc(p.n)}" onclick="toggleFollow('${sn}')">${isFollowing(p.n)?'Following':'Follow'}</span>`;
   const more=me?`<span class="ig-more" onclick="deletePost('${p.id}')">${ic('trash',20)}</span>`:'';
   const rail=media.length?`<div class="post-rail">
     <button class="${liked?'on':''}" onclick="event.stopPropagation();likePost('${p.id}')" title="Like">${ic('like',18)}${likeCount?`<small>${likeCount}</small>`:''}</button>
-    <button onclick="event.stopPropagation();openComments('${p.id}')" title="Comment">${ic('comment',18)}${nc?`<small>${nc}</small>`:''}</button>
+    <button data-cm="1" onclick="event.stopPropagation();openComments('${p.id}')" title="Comment">${ic('comment',18)}${nc?`<small>${nc}</small>`:''}</button>
     <button onclick="event.stopPropagation();repostPost('${p.id}')" title="Share in community">${ic('repeat',17)}</button>
   </div>`:'';
   /* tagged trekkers chips */
@@ -1143,7 +1159,7 @@ function postCard(p){
    <div class="ig-actions">
      <div class="ig-left">
        <span class="ig-ic ig-like ${liked?'liked':''}" onclick="likePost('${p.id}')">${ic('like',24)}${likeCount?`<b>${likeCount.toLocaleString('en-IN')}</b>`:''}</span>
-       <span class="ig-ic" onclick="openComments('${p.id}')">${ic('comment',24)}${nc?`<b>${nc}</b>`:''}</span>
+       <span class="ig-ic ig-comment" onclick="openComments('${p.id}')">${ic('comment',24)}${nc?`<b>${nc}</b>`:''}</span>
        <span class="ig-ic" onclick="repostPost('${p.id}')" title="Repost to your feed">${ic('repeat',22)}</span>
      </div>
    </div>
@@ -1460,18 +1476,30 @@ async function openComments(id){
   document.getElementById('cmCount').textContent='Comments';
   inp.value='';m.classList.add('show');
   await loadComments(id);
+  subscribeComments(id);
   setTimeout(()=>inp.focus(),80);
-  function close(){m.classList.remove('show');ok.onclick=cl.onclick=inp.onkeydown=m.onclick=null;}
+  function close(){unsubscribeComments();m.classList.remove('show');ok.onclick=cl.onclick=inp.onkeydown=m.onclick=null;}
   async function send(){
     const v=inp.value.trim();if(!v)return;
     if(!isLoggedIn()){note('Please sign in to comment.','Sign in required').then(()=>{close();_loginReturn='community';go('login');});return;}
     const sb=getSupaClient();if(!sb)return;
     inp.value='';
-    const{error}=await sb.from('post_comments').insert({post_id:id,user_id:currentUser.id,author_name:myName(),txt:v});
-    if(error){note('Could not post comment: '+error.message,'Error');return;}
+    /* show it straight away, then confirm with the server */
+    const tmp={id:'tmp-'+Date.now(),post_id:id,author_name:myName(),txt:v,created_at:new Date().toISOString()};
+    cmList.push(tmp);commentCounts[id]=cmList.length;
+    appendComment(tmp);updateCommentUI(id);
+    const{data,error}=await sb.from('post_comments').insert({post_id:id,user_id:currentUser.id,author_name:myName(),txt:v}).select().single();
+    if(error){
+      cmList=cmList.filter(c=>c.id!==tmp.id);commentCounts[id]=cmList.length;
+      const el=document.querySelector('#cmList .cm[data-cid="'+tmp.id+'"]');if(el)el.remove();
+      updateCmHeader();updateCommentUI(id);
+      note('Could not post comment: '+error.message,'Error');return;
+    }
+    /* adopt the real id so the realtime echo doesn't duplicate it */
+    const el=document.querySelector('#cmList .cm[data-cid="'+tmp.id+'"]');
+    if(el)el.dataset.cid=data.id;
+    tmp.id=data.id;
     if(p.uid||p.n)pushNotif({recipientId:p.uid,recipientName:p.uid?null:p.n,type:'comment',postId:id,preview:v.slice(0,60)});
-    commentCounts[id]=(commentCounts[id]||0)+1;
-    await loadComments(id);
   }
   ok.onclick=send;inp.onkeydown=e=>{if(e.key==='Enter')send();};
   cl.onclick=close;m.onclick=e=>{if(e.target===m)close();};
@@ -1482,11 +1510,62 @@ async function loadComments(id){
   commentCounts[id]=cmList.length;
   renderComments();
 }
+function commentHTML(c,isNew){
+  return `<div class="cm${isNew?' new':''}" data-cid="${esc(c.id)}"><div class="cm-h">${avatar(c.author_name||'Trekker',30)}<div><b>${esc(c.author_name||'Trekker')}</b> <small>${timeAgo(c.created_at)}</small></div></div><p>${esc(c.txt)}</p></div>`;
+}
+function updateCmHeader(){
+  const h=document.getElementById('cmCount');if(!h)return;
+  h.textContent=cmList.length?cmList.length+(cmList.length>1?' comments':' comment'):'No comments yet';
+}
 function renderComments(){
   const list=document.getElementById('cmList');if(!list)return;
-  document.getElementById('cmCount').textContent=cmList.length?cmList.length+(cmList.length>1?' comments':' comment'):'No comments yet';
-  list.innerHTML=cmList.length?cmList.map(c=>`<div class="cm"><div class="cm-h">${avatar(c.author_name||'Trekker',30)}<div><b>${esc(c.author_name||'Trekker')}</b> <small>${timeAgo(c.created_at)}</small></div></div><p>${esc(c.txt)}</p></div>`).join(''):`<div class="cm-empty">Be the first to comment 💬</div>`;
+  updateCmHeader();
+  /* existing comments render without .new, so nothing re-animates on every open */
+  list.innerHTML=cmList.length?cmList.map(c=>commentHTML(c,false)).join(''):`<div class="cm-empty">Be the first to comment 💬</div>`;
   hydrate(list);
+}
+/* add a single comment with a slide-in — only the new node animates */
+function appendComment(c){
+  const list=document.getElementById('cmList');if(!list)return;
+  const empty=list.querySelector('.cm-empty');if(empty)empty.remove();
+  list.insertAdjacentHTML('beforeend',commentHTML(c,true));
+  const el=list.lastElementChild;
+  hydrate(el);
+  updateCmHeader();
+  el.scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+/* keep the post's comment count in sync without touching the rest of the feed */
+function updateCommentUI(id){
+  const nc=commentCounts[id]||0;
+  document.querySelectorAll('.post[data-pid="'+id+'"]').forEach(post=>{
+    const cIc=post.querySelector('.ig-ic.ig-comment');
+    if(cIc)cIc.innerHTML=ic('comment',24)+(nc?'<b>'+nc+'</b>':'');
+    const rail=post.querySelector('.post-rail button[data-cm]');
+    if(rail)rail.innerHTML=ic('comment',18)+(nc?'<small>'+nc+'</small>':'');
+    const link=post.querySelector('.ig-comments');
+    if(link)link.textContent=nc?'View all '+nc+' comment'+(nc>1?'s':''):'Add a comment…';
+  });
+}
+/* live comments from other users (needs post_comments in the supabase_realtime publication) */
+let cmChannel=null;
+function subscribeComments(id){
+  const sb=getSupaClient();if(!sb||!sb.channel)return;
+  unsubscribeComments();
+  try{
+    cmChannel=sb.channel('cm-'+id)
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'post_comments',filter:'post_id=eq.'+id},payload=>{
+        const c=payload.new;if(!c)return;
+        if(cmId!==id)return;
+        if(cmList.some(x=>String(x.id)===String(c.id)))return; /* our own echo */
+        cmList.push(c);commentCounts[id]=cmList.length;
+        appendComment(c);updateCommentUI(id);
+      }).subscribe();
+  }catch(e){}
+}
+function unsubscribeComments(){
+  if(!cmChannel)return;
+  try{getSupaClient().removeChannel(cmChannel);}catch(e){}
+  cmChannel=null;
 }
 /* ---------- person profile ---------- */
 let curPerson=null;
@@ -1512,13 +1591,13 @@ async function renderPerson(){if(!curPerson){go('community');return;}const p=get
   body.innerHTML=`<div class="prof-top">${avatar(p.n,84)}<h2>${p.n}</h2><div class="handle">${p.h}</div></div><div class="skel skel-card" style="height:120px;margin:16px 0"></div>`;
   const posts=await loadUserPosts(p.n);
   await loadEngagement(posts.map(x=>x.id));
-  const flwr=(p.flwr||0)+(isFollowing(p.n)?1:0);
+  const base=p.flwr||0;const flwr=base+(isFollowing(p.n)?1:0);
   body.innerHTML=`
     <div class="prof-top">${avatar(p.n,84)}
       <h2>${p.n}</h2><div class="handle">${p.h}</div>
       <p class="pbio">${p.bio||''}</p>
-      <div class="pstats"><div><b>${posts.length}</b><small>Posts</small></div><div><b>${flwr.toLocaleString()}</b><small>Followers</small></div><div><b>${me?followCount():'—'}</b><small>Following</small></div></div>
-      ${me?'':`<div class="profile-actions" style="margin:14px 0 0"><button onclick="toggleFollow('${p.n.replace(/'/g,"")}')">${isFollowing(p.n)?'Following':'Follow'}</button><button onclick="openChat('${p.n.replace(/'/g,"")}')">Message</button></div>`}
+      <div class="pstats"><div><b>${posts.length}</b><small>Posts</small></div><div><b id="pFlwr" data-person="${esc(p.n)}" data-base="${base}">${flwr.toLocaleString()}</b><small>Followers</small></div><div><b>${me?followCount():'—'}</b><small>Following</small></div></div>
+      ${me?'':`<div class="profile-actions" style="margin:14px 0 0"><button class="${isFollowing(p.n)?'on':''}" data-follow="${esc(p.n)}" onclick="toggleFollow('${p.n.replace(/'/g,"")}')">${isFollowing(p.n)?'Following':'Follow'}</button><button onclick="openChat('${p.n.replace(/'/g,"")}')">Message</button></div>`}
     </div>
     <div class="sec-h" style="margin:18px 4px 8px"><b>Posts</b></div>
     ${posts.length?`<div class="pgrid">${posts.map(gridCell).join('')}</div>`:`<div class="empty"><p>${me?'You have not posted yet.':'No posts yet.'}</p></div>`}`;

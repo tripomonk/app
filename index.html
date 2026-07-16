@@ -372,7 +372,12 @@
   .post .ig-ava>*{display:block;border:2px solid var(--card);border-radius:50%}
   .post .ig-meta{flex:1;min-width:0;font-size:13px}
   .post .ig-meta b{cursor:pointer;font-weight:600}
-  .post .ig-follow{color:var(--accent2);font-weight:600;cursor:pointer}
+  .post .ig-follow{color:var(--accent2);font-weight:600;cursor:pointer;display:inline-block;transition:color .22s ease}
+  .post .ig-follow.on{color:var(--muted)}
+  .post .ig-follow.on::before{content:'✓ ';font-weight:700}
+  /* only the tapped follow button animates */
+  .ig-follow.pop,.profile-actions button.pop{animation:followpop .34s cubic-bezier(.3,1.5,.5,1)}
+  @keyframes followpop{0%{transform:scale(1)}45%{transform:scale(1.16)}100%{transform:scale(1)}}
   .post .ig-more{color:var(--text);cursor:pointer;display:flex;align-items:center;padding:4px}
   /* swipeable carousel */
   .post .car{position:relative;background:#000}
@@ -581,6 +586,9 @@
   .cm-x{background:none;border:none;color:var(--muted);font-size:26px;line-height:1;cursor:pointer}
   .cm-list{flex:1;overflow-y:auto;margin:4px -4px 10px;padding:0 4px}
   .cm{padding:9px 0;border-bottom:1px solid var(--stroke)}
+  /* only a freshly posted/received comment slides in */
+  .cm.new{animation:cmIn .34s cubic-bezier(.22,.9,.3,1)}
+  @keyframes cmIn{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
   .cm-h{display:flex;align-items:center;gap:8px;margin-bottom:5px}.cm-h b{font-size:12.5px}.cm-h small{color:var(--muted);font-size:11px}
   .cm p{margin:0;font-size:13px;line-height:1.5;padding-left:38px}
   .cm-empty{text-align:center;color:var(--muted);font-size:13px;padding:26px 0}
@@ -857,7 +865,7 @@
   #profile .pwrap{padding:0 calc(16px + var(--safe-right)) calc(var(--safe-bottom) + 98px) calc(16px + var(--safe-left))}
   #profile .pav{width:96px;height:96px;margin:-58px auto 0;border-width:5px;box-shadow:0 18px 34px -22px rgba(0,0,0,.9)}
   #profile .prow{justify-content:center;text-align:center;gap:10px;position:relative}.edit-pill{position:absolute;right:0;top:4px;color:#fff;background:var(--accent);border-radius:999px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer}.prow h1{font-size:21px}.prow .lv{max-width:260px;margin:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .profile-actions{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin:17px 0 12px}.profile-actions button{height:44px;border-radius:999px;border:1px solid var(--stroke);background:rgba(255,255,255,.1);color:var(--text);font-family:var(--font);font-weight:700;cursor:pointer}.profile-actions button:first-child{background:var(--accent);border-color:var(--accent);color:#fff}
+  .profile-actions{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin:17px 0 12px}.profile-actions button{height:44px;border-radius:999px;border:1px solid var(--stroke);background:rgba(255,255,255,.1);color:var(--text);font-family:var(--font);font-weight:700;cursor:pointer}.profile-actions button:first-child{background:var(--accent);border-color:var(--accent);color:#fff}.profile-actions button.on,.profile-actions button:first-child.on{background:rgba(255,255,255,.1);border-color:var(--stroke);color:var(--text);transition:background .22s ease,color .22s ease}
   #profile .pstats{gap:8px;margin:14px 0}.pstat{border-radius:18px;background:rgba(255,255,255,.08)}.pstat b{font-size:18px}.pstat small{font-size:9.5px}
   .profile-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 10px;padding:4px;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid var(--stroke)}.profile-tabs span{text-align:center;border-radius:12px;padding:9px 4px;font-size:11.5px;font-weight:700;color:var(--muted)}.profile-tabs .on{background:var(--accent);color:#fff}
   .profile-gallery{display:grid;grid-template-columns:1.2fr .8fr .8fr;grid-auto-rows:76px;gap:5px;border-radius:26px;overflow:hidden;margin-bottom:16px;background:rgba(255,255,255,.05);border:1px solid var(--stroke);padding:5px}.profile-gallery .pg{position:relative;background-size:cover;background-position:center;background-color:#10233c;min-height:76px;cursor:pointer;overflow:hidden}.profile-gallery .pg .pg-play{position:absolute;top:5px;right:6px;font-size:16px;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.7)}.profile-gallery .pg:first-child{grid-row:span 2}.profile-gallery .empty{grid-column:1/-1;padding:22px 10px;font-size:12px}
