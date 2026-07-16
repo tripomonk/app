@@ -297,7 +297,20 @@ const packing={
   Others:[['powerbank','Power Bank'],['meals','Trail Snacks'],['permits','ID Copies'],['firstaid','Personal Meds']]
 };
 /* ---------- social: people directory ---------- */
-const people=[];  /* real community members come from the database, not demo data */
+const people=[];  /* legacy demo array — kept empty; real members live in peoplePool */
+/* Shared member list, loaded once from `profiles`. Mentions, @-tagging and the story
+   tray all read this — before, they each filtered the empty `people` array, which is
+   why the mention popup never appeared. */
+let peoplePool=[],_peopleLoaded=0;
+async function ensurePeople(force){
+  const fresh=Date.now()-_peopleLoaded<120000;   /* 2 min cache */
+  if(peoplePool.length&&fresh&&!force)return peoplePool;
+  const remote=await loadPeopleRemote();
+  const mine=myName();
+  peoplePool=(remote||[]).filter(p=>p.n&&p.n!==mine);
+  _peopleLoaded=Date.now();
+  return peoplePool;
+}
 const personMap={};people.forEach(p=>personMap[p.n]=p);
 const ME={n:"You",h:"@you",bio:"Trekker with Tripomonk 🏔️",home:"",flwr:0};
 function getPerson(n){return personMap[n]||(n==='You'?ME:{n:n,h:'@'+n.toLowerCase().replace(/[^a-z]/g,''),bio:'Tripomonk trekker',home:'',flwr:0});}
@@ -1284,13 +1297,132 @@ let commTab='Discover';
 function renderCommTabs(){document.getElementById('commTabs').innerHTML=['Discover','Following'].map(t=>`<div class="ctab ${t===commTab?'on':''}" onclick="selCommTab('${t}')">${t}</div>`).join('');}
 function selCommTab(t){commTab=t;renderFeed();}
 /* Instagram-style stories row: Your Story + trekkers */
+/* ============================================================
+   STORIES — separate from posts. Live 24h, then stop showing.
+   Ring spins while unseen; goes flat once viewed.
+   ============================================================ */
+let storyGroups=[];           /* [{n, uid, items:[...]}] */
+const STORY_MS=5000;
+function seenStories(){try{return JSON.parse(localStorage.getItem('tmk_seen_stories')||'{}');}catch(e){return{};}}
+function markStorySeen(id){try{const s=seenStories();s[id]=1;localStorage.setItem('tmk_seen_stories',JSON.stringify(s));}catch(e){}}
+const groupSeen=g=>{const s=seenStories();return g.items.every(i=>s[i.id]);};
+
+async function loadStories(){
+  const sb=getSupaClient();if(!sb){storyGroups=[];return;}
+  const since=new Date(Date.now()-24*3600e3).toISOString();
+  try{
+    const{data}=await sb.from('stories').select('*').gt('created_at',since).order('created_at',{ascending:true});
+    const by={};
+    (data||[]).forEach(r=>{(by[r.author_name]=by[r.author_name]||[]).push(r);});
+    const mine=myName();
+    storyGroups=Object.keys(by).map(n=>({n,uid:(by[n][0]||{}).user_id||null,items:by[n]}))
+      /* unseen first, your own always first */
+      .sort((a,b)=>(a.n===mine?-1:b.n===mine?1:0)||(groupSeen(a)-groupSeen(b)));
+    await loadAuthorPhotos(storyGroups.map(g=>g.n));
+  }catch(e){storyGroups=[];}   /* table missing = no stories, not a crash */
+}
 function renderStories(){
   const box=document.getElementById('storiesRow');if(!box)return;
   const mine=myName();
-  const ppl=people.filter(p=>p.n!==mine);
-  const yourStory=`<div class="story add" onclick="addPost()"><div class="ring"><div class="plus">${avatar(mine,57)}</div></div><small>Your story</small></div>`;
-  box.innerHTML=yourStory+ppl.map(p=>`<div class="story" onclick="openPerson('${p.n.replace(/'/g,'')}')"><div class="ring">${avatar(p.n,57)}</div><small>${esc(p.n.split(' ')[0])}</small></div>`).join('');
+  const myGroup=storyGroups.find(g=>g.n===mine);
+  const others=storyGroups.filter(g=>g.n!==mine);
+  const yours=`<div class="story ${myGroup?'mine-has':'add'}" onclick="${myGroup?`openStory('${mine.replace(/'/g,'')}')`:'addStory()'}">
+      <div class="ring">${myGroup?avatar(mine,57):`<div class="plus">${avatar(mine,57)}</div>`}<span class="sadd" onclick="event.stopPropagation();addStory()">+</span></div>
+      <small>Your story</small></div>`;
+  box.innerHTML=yours+others.map(g=>{
+    const seen=groupSeen(g);
+    return `<div class="story ${seen?'seen':'unseen'}" onclick="openStory('${g.n.replace(/'/g,'')}')">
+      <div class="ring">${avatar(g.n,57)}</div><small>${esc(g.n.split(' ')[0])}</small></div>`;}).join('');
   hydrate(box);
+}
+/* ---- add a story ---- */
+function addStory(){
+  if(!isLoggedIn()){note('Please sign in to add a story.','Sign in required').then(()=>{_loginReturn='community';go('login');});return;}
+  const f=document.getElementById('storyFile');if(f){f.value='';f.click();}
+}
+async function onStoryPick(input){
+  const file=input.files&&input.files[0];if(!file)return;
+  input.value='';
+  if(!/^image\//.test(file.type)){note('Stories support photos right now.','Photo only');return;}
+  const sb=getSupaClient();const uid=sb?await authUid():null;
+  if(!sb||!uid){note('Please sign in to add a story.','Sign in required');return;}
+  note('Uploading your story…','Just a moment');
+  try{
+    /* stories are viewed full-screen on a phone — 1080px is plenty and uploads fast */
+    const small=await compressImage(file,{maxW:1080,quality:.78});
+    const path=`stories/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+    const{error:upErr}=await sb.storage.from('community').upload(path,small,{cacheControl:'3600',upsert:false});
+    if(upErr)throw new Error(upErr.message);
+    const{data:pub}=sb.storage.from('community').getPublicUrl(path);
+    const{error}=await sb.from('stories').insert({user_id:uid,author_name:myName(),img:pub.publicUrl});
+    if(error)throw new Error(error.message);
+    document.getElementById('modal').classList.remove('show');
+    await loadStories();renderStories();
+    sfx('repost');
+    note('Story added — it stays up for 24 hours.','Posted ✓');
+  }catch(e){
+    document.getElementById('modal').classList.remove('show');
+    note('Could not add your story: '+e.message,'Error');
+  }
+}
+/* ---- viewer ---- */
+let _svGroup=null,_svIdx=0,_svTimer=null;
+function openStory(name){
+  const g=storyGroups.find(x=>x.n===name);if(!g||!g.items.length)return;
+  _svGroup=g;_svIdx=0;
+  const v=document.getElementById('storyViewer');v.classList.add('show');
+  document.getElementById('svClose').onclick=closeStory;
+  document.getElementById('svNext').onclick=()=>stepStory(1);
+  document.getElementById('svPrev').onclick=()=>stepStory(-1);
+  document.getElementById('svDel').onclick=deleteCurrentStory;
+  showStoryFrame();
+}
+function closeStory(){
+  clearTimeout(_svTimer);_svTimer=null;_svGroup=null;
+  const v=document.getElementById('storyViewer');if(v)v.classList.remove('show');
+  renderStories();   /* rings update to 'seen' */
+}
+function stepStory(d){
+  if(!_svGroup)return;
+  const next=_svIdx+d;
+  if(next<0){_svIdx=0;showStoryFrame();return;}
+  if(next>=_svGroup.items.length){
+    /* roll on to the next person who still has something unseen */
+    const mine=myName();
+    const rest=storyGroups.filter(g=>g!==_svGroup&&g.n!==mine&&!groupSeen(g));
+    if(rest.length){_svGroup=rest[0];_svIdx=0;showStoryFrame();return;}
+    closeStory();return;
+  }
+  _svIdx=next;showStoryFrame();
+}
+function showStoryFrame(){
+  const g=_svGroup;if(!g)return;
+  const it=g.items[_svIdx];if(!it)return;
+  markStorySeen(it.id);
+  /* progress bars */
+  const bars=document.getElementById('svBars');
+  bars.innerHTML=g.items.map((_,i)=>`<div class="sb ${i<_svIdx?'done':i===_svIdx?'live':''}" style="--sbdur:${STORY_MS}ms"><i></i></div>`).join('');
+  document.getElementById('svWho').innerHTML=`${avatar(g.n,30)}<div>${esc(g.n)}<br><small>${timeAgo(it.created_at)}</small></div>`;
+  const stage=document.getElementById('svStage');
+  stage.innerHTML=`<img src="${esc(it.img)}" alt=""/>`;
+  hydrate(document.getElementById('storyViewer'));
+  /* only your own story can be deleted */
+  const del=document.getElementById('svDel');
+  del.classList.toggle('show',g.n===myName());
+  clearTimeout(_svTimer);
+  _svTimer=setTimeout(()=>stepStory(1),STORY_MS);
+}
+async function deleteCurrentStory(){
+  const g=_svGroup;if(!g)return;
+  const it=g.items[_svIdx];if(!it)return;
+  clearTimeout(_svTimer);
+  if(!(await askConfirm('Delete this story?','Delete'))){_svTimer=setTimeout(()=>stepStory(1),STORY_MS);return;}
+  const sb=getSupaClient();const uid=sb?await authUid():null;
+  if(!sb||!uid)return;
+  const{data,error}=await sb.from('stories').delete().eq('id',it.id).eq('user_id',uid).select('id');
+  if(error||!data||!data.length){note('Could not delete that story.','Error');return;}
+  closeStory();
+  await loadStories();renderStories();
 }
 function reviewCard(r){return `<div class="panel" style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:7px"><div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#ffd27a,#ff7a59);display:grid;place-items:center;font-weight:600;color:#5a2a00">${r[0][0]}</div><div><b style="font-size:13px">${r[0]}</b><div class="star" style="font-size:11px">${'★'.repeat(r[1])}${'☆'.repeat(5-r[1])} <span style="color:var(--muted2)">· ${r[3]}</span></div></div></div><p style="margin:0;font-size:12.5px;color:var(--muted);line-height:1.55">${r[2]}</p></div>`;}
 /* "Trekkers to follow" strip */
@@ -1489,6 +1621,8 @@ async function deletePost(id){
 }
 async function renderFeed(){
   renderCommTabs();renderStories();
+  /* stories + member list load alongside the feed, then the tray re-renders */
+  Promise.all([loadStories(),ensurePeople()]).then(()=>renderStories()).catch(()=>{});
   const box=document.getElementById('feed');
   box.innerHTML=`<div class="skel skel-post"></div><div class="skel skel-post"></div>`;
   /* try remote first; null = error, [] = genuinely empty */
@@ -1597,9 +1731,41 @@ function askConfirm(msg,title){return new Promise(res=>{
   function done(v){m.classList.remove('show');ok.onclick=cn.onclick=m.onclick=null;ok.textContent='OK';res(v);}
   ok.onclick=()=>done(true); cn.onclick=()=>done(false); m.onclick=e=>{if(e.target===m)done(false);};
 });}
+/* ---- image compression ----
+   Phone photos are 3–8 MB. Uploading them raw is slow to send on a hill signal and
+   slow to load in the feed. Resize + re-encode before upload; videos and GIFs pass
+   through untouched, and we keep the original if compressing didn't actually help. */
+async function compressImage(file,opts){
+  opts=opts||{};
+  const maxW=opts.maxW||1440, quality=opts.quality||.82;
+  if(!file||!/^image\//.test(file.type||'')||/gif/i.test(file.type||''))return file;
+  try{
+    let src;
+    if(window.createImageBitmap){ src=await createImageBitmap(file); }
+    else{
+      const url=URL.createObjectURL(file);
+      src=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url;});
+      URL.revokeObjectURL(url);
+    }
+    const w0=src.width||src.naturalWidth, h0=src.height||src.naturalHeight;
+    if(!w0||!h0)return file;
+    const scale=Math.min(1,maxW/w0);
+    const w=Math.round(w0*scale), h=Math.round(h0*scale);
+    const c=document.createElement('canvas');c.width=w;c.height=h;
+    const ctx=c.getContext('2d');
+    ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+    ctx.drawImage(src,0,0,w,h);
+    if(src.close)src.close();
+    const blob=await new Promise(res=>c.toBlob(res,'image/jpeg',quality));
+    /* an already-small or well-compressed file can come out BIGGER — keep the original */
+    if(!blob||blob.size>=file.size)return file;
+    return new File([blob],(file.name||'photo').replace(/\.\w+$/,'')+'.jpg',{type:'image/jpeg'});
+  }catch(e){return file;}   /* compression is a nicety, never a blocker */
+}
 /* ---- Supabase Storage upload ---- */
 async function uploadMedia(file){
   const sb=getSupaClient();if(!sb)return null;
+  file=await compressImage(file);
   const ext=(file.name||'').split('.').pop()||( file.type.startsWith('video')?'mp4':'jpg');
   const path=`posts/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
   const{error}=await sb.storage.from('community').upload(path,file,{cacheControl:'3600',upsert:false});
@@ -1785,7 +1951,7 @@ function onPostTextInput(ta){
   if(!m){hideMentionBox();return;}
   const q=m[1].toLowerCase();
   const mine=myName();
-  const list=people.filter(p=>{
+  const list=peoplePool.filter(p=>{
     if(p.n===mine)return false;
     const h=String(p.h||'').replace(/^@/,'').toLowerCase();
     return !q||h.startsWith(q)||p.n.toLowerCase().includes(q);
@@ -1811,10 +1977,10 @@ function pickMention(u){
 function renderTagList(){
   const box=document.getElementById('postTagList');if(!box)return;
   const mine=myName();
-  const followed=people.filter(p=>isFollowing(p.n)&&p.n!==mine);
-  const others=people.filter(p=>!isFollowing(p.n)&&p.n!==mine);
+  const followed=peoplePool.filter(p=>isFollowing(p.n)&&p.n!==mine);
+  const others=peoplePool.filter(p=>!isFollowing(p.n)&&p.n!==mine);
   const list=[...followed,...others];
-  if(!list.length){box.innerHTML='<span style="font-size:12px;color:var(--muted2)">Follow trekkers to tag them.</span>';return;}
+  if(!list.length){box.innerHTML='<span style="font-size:12px;color:var(--muted2)">No other trekkers yet.</span>';return;}
   box.innerHTML=list.map(p=>`<span class="tag-chip ${postTags.includes(p.n)?'on':''}" onclick="toggleTagPerson('${p.n.replace(/'/g,'')}')">${avatar(p.n,18)} ${esc(p.h||p.n)}</span>`).join('');
   hydrate(box);
 }
@@ -1840,6 +2006,8 @@ function addPost(){
     return;
   }
   postImgs=[];postFileRefs=[];
+  /* warm the member list so @-mentions suggest instantly instead of on second keystroke */
+  ensurePeople().then(()=>renderTagList());
   const m=document.getElementById('postModal'),ta=document.getElementById('postText'),
     files=document.getElementById('postFiles'),ok=document.getElementById('postOk'),cn=document.getElementById('postCancel');
   ta.value='';renderPostPics();

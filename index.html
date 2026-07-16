@@ -777,6 +777,29 @@
   html.light .crop-mask{background:radial-gradient(circle at 50% 50%, transparent 0 49.5%, rgba(255,255,255,.75) 50.5% 100%)}
   html.light .crop-mask::after{border-color:rgba(16,32,58,.75)}
 
+  /* ---- story viewer ---- */
+  .story-viewer{position:absolute;inset:0;z-index:300;background:#050c16;display:none;flex-direction:column}
+  .story-viewer.show{display:flex}
+  .sv-bars{display:flex;gap:4px;padding:calc(var(--safe-top) + 10px) 12px 0;flex:none}
+  .sv-bars .sb{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.28);overflow:hidden}
+  .sv-bars .sb i{display:block;height:100%;width:0;background:#fff;border-radius:2px}
+  .sv-bars .sb.done i{width:100%}
+  .sv-bars .sb.live i{animation:sbFill var(--sbdur,5s) linear forwards}
+  @keyframes sbFill{from{width:0}to{width:100%}}
+  .sv-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;flex:none;z-index:2}
+  .sv-who{display:flex;align-items:center;gap:9px;color:#fff;font-size:13px;font-weight:600}
+  .sv-who small{font-size:11px;color:rgba(255,255,255,.66);font-weight:400}
+  .sv-x{all:unset;width:44px;height:44px;display:grid;place-items:center;color:#fff;font-size:26px;cursor:pointer;flex:none}
+  .sv-stage{flex:1;min-height:0;display:grid;place-items:center;background:#050c16;position:relative}
+  .sv-stage img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+  .sv-tap{position:absolute;top:64px;bottom:0;width:36%;z-index:1;cursor:pointer}
+  .sv-tap.prev{left:0}
+  .sv-tap.next{right:0;width:64%}
+  .sv-del{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--safe-bottom) + 18px);z-index:3;
+    display:none;min-height:44px;padding:0 18px;border-radius:999px;border:1px solid rgba(255,255,255,.3);
+    background:rgba(0,0,0,.45);color:#fff;font-family:var(--font);font-size:12.5px;font-weight:600;cursor:pointer}
+  .sv-del.show{display:block}
+
   /* ---- settings toggle switch ---- */
   .tgl{flex:none;width:44px;height:26px;border-radius:999px;background:var(--card2);border:1px solid var(--stroke2);
     position:relative;transition:background .2s,border-color .2s;cursor:pointer}
@@ -881,6 +904,18 @@
   .story{flex:none;width:64px;text-align:center;cursor:pointer}
   .story .ring{width:62px;height:62px;border-radius:50%;padding:2.5px;background:linear-gradient(45deg,var(--accent),var(--accent2),var(--yellow));display:grid;place-items:center;margin:0 auto 5px}
   .story .ring>*{border:2.5px solid var(--bg);border-radius:50%;display:block}
+  /* unseen story: live rotating gradient ring. seen: flat, quiet. */
+  .story.unseen .ring{background:conic-gradient(from 0deg,var(--accent),var(--yellow),#ff5a7a,var(--accent2),var(--accent));
+    animation:ringSpin 3s linear infinite}
+  @keyframes ringSpin{to{transform:rotate(360deg)}}
+  /* counter-rotate the inner photo so only the ring spins */
+  .story.unseen .ring>*{animation:ringSpin 3s linear infinite reverse}
+  @media(prefers-reduced-motion:reduce){.story.unseen .ring,.story.unseen .ring>*{animation:none}}
+  .story.seen .ring{background:var(--stroke2)}
+  .story.mine-has .ring{background:conic-gradient(from 0deg,var(--accent),var(--accent2),var(--accent))}
+  .story .ring{position:relative}
+  .story .sadd{position:absolute;right:-2px;bottom:-2px;width:20px;height:20px;border-radius:50%;
+    background:var(--accent);border:2px solid var(--bg);display:grid;place-items:center;color:#fff;font-size:13px;line-height:1;z-index:2}
   .story.add .ring{background:none;border:2px dashed rgba(255,255,255,.25);padding:0;position:relative}
   .story.add .ring .plus{width:100%;height:100%;border-radius:50%;display:grid;place-items:center;color:var(--accent2);background:rgba(47,107,255,.12);border:0}
   .story small{font-size:10.5px;color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1826,6 +1861,20 @@
       <div class="modal-actions"><button class="btn ghost" id="postCancel">Cancel</button><button class="btn" id="postOk">Post</button></div>
     </div>
   </div>
+
+  <!-- STORY VIEWER -->
+  <div class="story-viewer" id="storyViewer">
+    <div class="sv-bars" id="svBars"></div>
+    <div class="sv-head">
+      <div class="sv-who" id="svWho"></div>
+      <button class="sv-x" id="svClose" aria-label="Close">&times;</button>
+    </div>
+    <div class="sv-stage" id="svStage"></div>
+    <div class="sv-tap prev" id="svPrev" aria-label="Previous"></div>
+    <div class="sv-tap next" id="svNext" aria-label="Next"></div>
+    <button class="sv-del" id="svDel">Delete</button>
+  </div>
+  <input type="file" id="storyFile" accept="image/*" hidden onchange="onStoryPick(this)"/>
 
   <!-- POST ACTIONS (three-dot) -->
   <div class="modal" id="postMenuModal">
