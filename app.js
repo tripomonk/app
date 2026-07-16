@@ -2712,48 +2712,163 @@ const activitiesData=[['raft','River Rafting','Rishikesh · Grade III','₹1,200
    ============================================================ */
 const DESTS=[
   {id:'rishikesh',n:'Rishikesh',state:'Uttarakhand',img:U+'1591017403286-fd8493524e1e',
-   best:'Sep – Jun (rafting shuts in monsoon)',lvl:'Beginner friendly',budget:'₹2,000 – ₹5,000 / day',
+   best:'Sep - Jun (rafting shuts in monsoon)',lvl:'Beginner friendly',budget:'Rs 2,000 - 5,000 / day',
    blurb:'India’s adventure capital on the Ganga — rafting, bungee, cliff jumping and riverside camps, all within a few km.',
    attractions:['Laxman Jhula','Beatles Ashram','Triveni Ghat','Neer Waterfall'],
-   tips:['Carry a change of clothes for rafting days.','Alcohol and meat are banned in the temple town area.','Book Shivpuri stretch early on weekends — it sells out.'],
-   near:['Chopta','Auli','Mussoorie']},
-  {id:'manali',n:'Manali',state:'Himachal',img:U+'1626621341517-bbf3d9990a23',soon:true},
-  {id:'bir',n:'Bir Billing',state:'Himachal',img:U+'1600011689032-8b628b8a8747',soon:true},
-  {id:'auli',n:'Auli',state:'Uttarakhand',img:U+'1551524559-8af4e6624178',soon:true},
-  {id:'spiti',n:'Spiti Valley',state:'Himachal',img:U+'1626621341517-bbf3d9990a23',soon:true},
-  {id:'leh',n:'Leh',state:'Ladakh',img:U+'1581793745862-99fde7fa73d2',soon:true}
+   tips:['Carry a change of clothes for rafting days.','Alcohol and meat are banned in the temple town area.','Book the Shivpuri stretch early on weekends — it sells out.'],
+   near:['Chopta','Auli']},
+  {id:'manali',n:'Manali',state:'Himachal',img:U+'1626621341517-bbf3d9990a23',
+   best:'Mar - Jun, Oct - Feb (snow)',lvl:'All levels',budget:'Rs 2,500 - 6,000 / day',
+   blurb:'Solang and the Atal Tunnel put paragliding, snow sports and high-mountain drives within 30 minutes of town.',
+   attractions:['Solang Valley','Atal Tunnel','Hadimba Temple','Old Manali'],
+   tips:['Solang is busiest 11am-3pm — go early.','Carry ID for Rohtang / Atal permits.','Snow gear rents cheaper in town than at Solang.'],
+   near:['Kasol','Bir Billing','Spiti Valley']},
+  {id:'kasol',n:'Kasol',state:'Himachal',img:U+'1626621341517-bbf3d9990a23',
+   best:'Mar - Jun, Sep - Nov',lvl:'Easy - Moderate',budget:'Rs 1,500 - 3,500 / day',
+   blurb:'Parvati valley base for Kheerganga, riverside cafes and slow mountain days.',
+   attractions:['Kheerganga','Tosh','Malana','Manikaran Sahib'],
+   tips:['Kheerganga is a 12 km round trip — start before 9am.','Cash is king; ATMs are unreliable.','Respect Malana’s local customs and no-touch rules.'],
+   near:['Manali','Bir Billing']},
+  {id:'bir',n:'Bir Billing',state:'Himachal',img:U+'1600011689032-8b628b8a8747',
+   best:'Mar - Jun, Sep - Nov',lvl:'Beginner friendly',budget:'Rs 1,500 - 4,000 / day',
+   blurb:'India’s paragliding capital — take off at Billing, land at Bir. No experience needed.',
+   attractions:['Billing take-off','Bir landing ground','Sherab Ling Monastery','Bir tea gardens'],
+   tips:['Flights are morning-only, when the wind allows.','Carry a windproof layer — it is cold at take-off.','Monsoon (Jul-Aug) is closed for flying.'],
+   near:['Manali','Kasol']},
+  {id:'chopta',n:'Chopta',state:'Uttarakhand',img:U+'1714744715493-ad89b7ff503e',
+   best:'Mar - Jun, Sep - Nov (snow Dec-Feb)',lvl:'Easy - Moderate',budget:'Rs 1,500 - 3,500 / day',
+   blurb:'The “mini Switzerland” of Uttarakhand — meadows, Tungnath temple and the Chandrashila summit.',
+   attractions:['Tungnath Temple','Chandrashila Summit','Deoriatal','Kanchula Korak'],
+   tips:['Tungnath is the world’s highest Shiva temple — 3.5 km up.','Very limited food above Chopta; carry snacks.','Nights are cold year-round.'],
+   near:['Rishikesh','Auli']},
+  {id:'auli',n:'Auli',state:'Uttarakhand',img:U+'1551524559-8af4e6624178',
+   best:'Jan - Mar (skiing), Apr - Jun',lvl:'Beginner - Intermediate',budget:'Rs 2,500 - 6,000 / day',
+   blurb:'India’s best-known ski slope, with Nanda Devi straight ahead and Asia’s longest cable car.',
+   attractions:['Auli ski slopes','Auli Ropeway','Gurson Bugyal','Nanda Devi views'],
+   tips:['Snow is reliable Jan-Mar only.','Ski gear rents at the slope; book instructors ahead.','Joshimath is the base town for stays.'],
+   near:['Chopta','Rishikesh']},
+  {id:'leh',n:'Leh',state:'Ladakh',img:U+'1581793745862-99fde7fa73d2',
+   best:'Jun - Sep',lvl:'Moderate (altitude)',budget:'Rs 3,000 - 7,000 / day',
+   blurb:'High-desert Ladakh — Zanskar rafting, Khardung La rides and moonscape valleys above 11,000 ft.',
+   attractions:['Pangong Lake','Nubra Valley','Khardung La','Magnetic Hill'],
+   tips:['Take 48 hours to acclimatise before any activity. This is not optional.','Inner Line Permits are needed for Nubra / Pangong.','Carry cash — connectivity is patchy outside Leh.'],
+   near:['Spiti Valley','Kashmir']},
+  {id:'spiti',n:'Spiti Valley',state:'Himachal',img:U+'1626621341517-bbf3d9990a23',
+   best:'May - Oct (road open)',lvl:'Moderate - Difficult',budget:'Rs 2,500 - 6,000 / day',
+   blurb:'A cold desert of monasteries and 4,000 m villages — Chandratal, Key, Hikkim and long empty roads.',
+   attractions:['Key Monastery','Chandratal Lake','Hikkim','Langza'],
+   tips:['Acclimatise at Kaza before going higher.','Fuel up at Kaza — the next pump is far.','Kunzum and Rohtang close with early snow; check road status.'],
+   near:['Manali','Leh']},
+  {id:'goa',n:'Goa',state:'Goa',img:U+'1512343879784-a960bf40e7f2',
+   best:'Nov - Mar',lvl:'Beginner friendly',budget:'Rs 2,000 - 5,000 / day',
+   blurb:'Warm-water diving, snorkelling and parasailing off Grande Island and the north beaches.',
+   attractions:['Grande Island','Dudhsagar Falls','Palolem Beach','Fort Aguada'],
+   tips:['Water sports shut in monsoon (Jun-Sep).','Grande Island trips leave early from Mormugao.','Agree the price before boarding any boat.'],
+   near:['Andaman']},
+  {id:'meghalaya',n:'Meghalaya',state:'Meghalaya',img:U+'1600011689032-8b628b8a8747',
+   best:'Oct - Apr',lvl:'Moderate',budget:'Rs 2,000 - 4,500 / day',
+   blurb:'Living root bridges, river caves and the clearest water in India at Umngot.',
+   attractions:['Double Decker Root Bridge','Dawki / Umngot River','Nohkalikai Falls','Mawsmai Cave'],
+   tips:['The Double Decker is 3,000+ steps down and back — it is a real trek.','Wettest place on earth: waterproof everything.','Caves flood in monsoon and close.'],
+   near:['Andaman']},
+  {id:'andaman',n:'Andaman',state:'Andaman & Nicobar',img:U+'1512343879784-a960bf40e7f2',
+   best:'Oct - May',lvl:'Beginner friendly',budget:'Rs 3,000 - 7,000 / day',
+   blurb:'India’s best diving — coral, sea walks and Havelock’s white sand.',
+   attractions:['Radhanagar Beach','Havelock Island','Cellular Jail','Neil Island'],
+   tips:['Do not fly within 18-24 hours of diving.','Ferries between islands sell out — book ahead.','Mobile data is weak; download maps offline.'],
+   near:['Goa']},
+  {id:'kashmir',n:'Kashmir',state:'Jammu & Kashmir',img:U+'1756847845343-7a1053567775',
+   best:'Apr - Oct, Dec - Feb (ski)',lvl:'All levels',budget:'Rs 2,500 - 6,000 / day',
+   blurb:'Gulmarg’s gondola and powder in winter; alpine lakes and meadows through summer.',
+   attractions:['Gulmarg Gondola','Dal Lake','Pahalgam','Sonmarg'],
+   tips:['Gulmarg powder season is Jan-Feb.','Check local advisories before you travel.','Shikara and pony rates are negotiable — agree first.'],
+   near:['Leh']}
 ];
-/* One destination's bookable activities. price = per person, INR. */
-const ACTS=[
-  {id:'raft16',dest:'rishikesh',n:'River Rafting — Shivpuri to NIM Beach',cat:'Water',
-   img:U+'1530866495561-507c9faab2ed',price:1200,dur:'3–4 hrs',lvl:'Moderate',
-   grade:'Grade III+',minAge:14,maxGroup:8,start:'Shivpuri (16 km stretch)',
-   map:'https://maps.google.com/?q=Shivpuri+Rafting+Point+Rishikesh',
-   slots:['09:00','11:30','14:00'],
-   desc:'The classic 16 km Ganga run — Roller Coaster, Golf Course and Club House rapids, ending at NIM Beach.',
-   inc:['Certified river guide','Life jacket, helmet, paddle','Raft & safety kayak','Changing room at finish'],
-   exc:['Transport to Shivpuri','Photos/videos','Meals','Personal expenses'],
-   carry:['Quick-dry clothes','Change of clothes','Towel','Floaters with straps'],
-   safety:['Life jacket and helmet must stay on for the whole run.','Non-swimmers can raft — tell your guide before you start.','Not permitted for pregnant women or anyone with heart/spine conditions.','Rafting is suspended during monsoon high water (Jul–Aug).'],
-   cancel:'Free cancellation up to 24 hrs before the slot. No refund after that.',
-   faqs:[['Do I need to know swimming?','No. Life jackets are mandatory and your guide is trained for rescue. Tell them you cannot swim at the briefing.'],
-         ['What if it rains?','Light rain is fine. The run is called off only if the water level is unsafe — you get a full refund or a free reschedule.'],
-         ['Can I carry my phone?','Not on the raft. Leave valuables in the changing room locker at the start point.']]},
-  {id:'bungee',dest:'rishikesh',n:'Bungee Jumping — 83 m',cat:'Air',
-   img:U+'1601024445121-e5b82f020549',price:3700,dur:'2–3 hrs',lvl:'Extreme',
-   grade:'83 m fixed platform',minAge:12,maxGroup:1,start:'Mohanchatti',
-   map:'https://maps.google.com/?q=Bungee+Jumping+Mohanchatti+Rishikesh',
-   slots:['09:00','12:00','15:00'],
-   desc:'India’s highest fixed-platform jump, over a rocky gorge outside Rishikesh.',
-   inc:['Jump master & full harness','Weigh-in and briefing','Certificate'],
-   exc:['Transport','Photos/videos','Meals'],
-   carry:['Fitted clothing','Sports shoes','Photo ID'],
-   safety:['Weight limits apply (operator-verified at check-in).','Not permitted with heart conditions, high BP, epilepsy, recent surgery, or pregnancy.','Decision of the jump master is final.'],
-   cancel:'Non-refundable once the slot is confirmed.',
-   faqs:[['Can I back out on the platform?','Yes, but the slot is non-refundable once you have been harnessed and weighed.'],
-         ['Is there a weight limit?','Yes — the operator confirms your weight at check-in. Bring a photo ID.'],
-         ['Can I jump twice?','Yes, book a second slot. There is no repeat discount.']]}
+
+/* Baseline safety per activity type. Generic, well-established rules only — the
+   operator’s own briefing and medical limits always take precedence over these. */
+const SAFETY_BASE={
+  water:['Life jacket and helmet stay on for the whole activity.','Tell your guide if you cannot swim — you can still take part.','Declare pregnancy, heart, spine or blood-pressure conditions before booking.','The operator’s call on water conditions is final.'],
+  air:['Fly only with a certified pilot on inspected equipment.','Weight and age limits are confirmed by the operator at check-in.','Declare heart, blood-pressure, epilepsy, recent surgery or pregnancy before booking.','Flights are cancelled in poor wind or visibility — no exceptions.'],
+  snow:['Helmet is mandatory. Take an instructor for your first session.','Dress for wind chill; snow glare needs eye protection.','Declare any joint, heart or blood-pressure conditions.','Slopes close in poor visibility or avalanche risk.'],
+  ride:['Helmet mandatory. Stay with your guide and on marked trails.','Not suitable with back, neck or heart conditions.','The operator’s call on route and weather is final.'],
+  trail:['Go with a registered guide — do not trek alone.','Acclimatise properly and descend if you feel altitude sickness.','Carry water, warm layers and a headlamp.','Mountain weather turns fast; the guide’s call is final.'],
+  sea:['A certified instructor supervises you at all times.','Do not fly within 18-24 hours of diving.','Declare asthma, heart, sinus or ear conditions before booking.','Never hold your breath on ascent — follow your briefing exactly.']
+};
+const CARRY_BASE={
+  water:['Quick-dry clothes','Change of clothes','Towel','Strapped floaters'],
+  air:['Fitted clothing','Sports shoes','Windproof layer','Photo ID'],
+  snow:['Warm layers','Gloves','Sunglasses or goggles','Sunscreen'],
+  ride:['Closed shoes','Sunglasses','Scarf or buff','Photo ID'],
+  trail:['Trek shoes','Water bottle','Warm layer','Headlamp'],
+  sea:['Swimwear','Towel','Sunscreen','Change of clothes']
+};
+const INC_BASE={
+  water:['Certified guide','Safety gear','Equipment','Basic first aid'],
+  air:['Certified pilot','Full harness and helmet','Pre-flight briefing'],
+  snow:['Instructor session','Ski or board and boots','Helmet'],
+  ride:['Guide','Vehicle and fuel','Helmet','Basic first aid'],
+  trail:['Registered guide','Permits where needed','Basic first aid'],
+  sea:['Certified instructor','Full gear','Briefing and shore support']
+};
+const EXC_BASE=['Transport to the start point','Photos and videos','Meals','Personal expenses and tips','Anything not listed under Inclusions'];
+
+/* [id, dest, name, cat, price, dur, lvl, minAge, maxGroup, startPoint, safetyKey, grade] */
+const ACT_SEED=[
+  ['raft16','rishikesh','River Rafting — Shivpuri to NIM Beach','Water',1200,'3-4 hrs','Moderate',14,8,'Shivpuri (16 km stretch)','water','Grade III+'],
+  ['bungee','rishikesh','Bungee Jumping — 83 m','Air',3700,'2-3 hrs','Extreme',12,1,'Mohanchatti','air','83 m platform'],
+  ['zipline-rsh','rishikesh','Flying Fox / Zipline','Air',1800,'1-2 hrs','Easy',12,3,'Mohanchatti','air','1 km span'],
+  ['camp-rsh','rishikesh','Riverside Camping','Camp',999,'1 night','Easy',5,20,'Byasi','trail','Tented camp'],
+  ['kayak-rsh','rishikesh','Kayaking on the Ganga','Water',1500,'2 hrs','Moderate',14,6,'Brahmapuri','water','Grade II-III'],
+  ['para-manali','manali','Paragliding — Solang Valley','Air',2500,'15-20 min','Easy',12,1,'Solang Valley','air','Tandem'],
+  ['zip-manali','manali','Zipline — Solang','Air',900,'30 min','Easy',10,4,'Solang Valley','air','Cable span'],
+  ['atv-manali','manali','ATV Ride — Solang','Ride',1200,'20-30 min','Easy',14,2,'Solang Valley','ride','Off-road track'],
+  ['ski-manali','manali','Skiing — Solang (winter)','Snow',2000,'2-3 hrs','Beginner',10,6,'Solang Valley','snow','Beginner slope'],
+  ['kheerganga','kasol','Kheerganga Trek','Trek',2500,'2 days','Moderate',12,15,'Barshaini','trail','12 km round trip'],
+  ['camp-kasol','kasol','Parvati Riverside Camping','Camp',1200,'1 night','Easy',5,20,'Kasol','trail','Tented camp'],
+  ['para-bir','bir','Paragliding — Billing to Bir','Air',3000,'20-30 min','Easy',12,1,'Billing take-off','air','Tandem, 2,400 m'],
+  ['tungnath','chopta','Tungnath and Chandrashila Trek','Trek',2200,'1 day','Moderate',10,15,'Chopta','trail','9 km round trip'],
+  ['camp-chopta','chopta','Meadow Camping — Chopta','Camp',1500,'1 night','Easy',5,20,'Chopta','trail','Tented camp'],
+  ['ski-auli','auli','Skiing — Auli','Snow',2200,'Half day','Beginner',10,6,'Auli slopes','snow','Beginner-intermediate'],
+  ['snowboard-auli','auli','Snowboarding — Auli','Snow',2600,'Half day','Intermediate',14,4,'Auli slopes','snow','Intermediate'],
+  ['ropeway-auli','auli','Auli Ropeway','Ride',1000,'45 min','Easy',3,6,'Joshimath','ride','4 km cable car'],
+  ['raft-zanskar','leh','Zanskar River Rafting','Water',2500,'3-4 hrs','Difficult',16,8,'Chilling','water','Grade III-IV'],
+  ['safari-leh','leh','Nubra and Khardung La Jeep Safari','Ride',4500,'1 day','Moderate',8,6,'Leh','ride','5,359 m pass'],
+  ['bike-leh','leh','Mountain Biking — Khardung La descent','Ride',3000,'Half day','Difficult',16,8,'Khardung La','ride','Downhill'],
+  ['safari-spiti','spiti','Spiti Jeep Safari','Ride',4000,'1 day','Moderate',8,6,'Kaza','ride','High passes'],
+  ['camp-chandratal','spiti','Chandratal Camping','Camp',2500,'1 night','Moderate',10,15,'Chandratal','trail','4,250 m'],
+  ['bike-spiti','spiti','Mountain Biking — Spiti','Ride',2800,'Half day','Difficult',16,8,'Kaza','ride','High altitude'],
+  ['scuba-goa','goa','Scuba Diving — Grande Island','Sea',3500,'Half day','Beginner',10,4,'Mormugao jetty','sea','Try-dive'],
+  ['snorkel-goa','goa','Snorkelling — Grande Island','Sea',1500,'2 hrs','Easy',8,10,'Mormugao jetty','sea','Shallow reef'],
+  ['para-goa','goa','Parasailing — North Goa','Air',1800,'15 min','Easy',10,2,'Calangute','air','Boat tow'],
+  ['root-bridge','meghalaya','Double Decker Root Bridge Trek','Trek',2000,'1 day','Difficult',12,12,'Tyrna','trail','3,000+ steps'],
+  ['kayak-dawki','meghalaya','Kayaking — Umngot River, Dawki','Water',1200,'2 hrs','Easy',8,4,'Dawki','water','Flat water'],
+  ['cave-megh','meghalaya','Caving — Mawsmai','Trek',800,'1-2 hrs','Easy',6,10,'Cherrapunji','trail','Lit cave'],
+  ['scuba-andaman','andaman','Scuba Diving — Havelock','Sea',4000,'Half day','Beginner',10,4,'Havelock Island','sea','Try-dive'],
+  ['snorkel-andaman','andaman','Snorkelling — Elephant Beach','Sea',1500,'2 hrs','Easy',8,10,'Havelock Island','sea','Shallow reef'],
+  ['seawalk-andaman','andaman','Sea Walking — North Bay','Sea',3500,'2 hrs','Easy',10,4,'North Bay Island','sea','Helmet walk, 5 m'],
+  ['ski-gulmarg','kashmir','Skiing — Gulmarg','Snow',3000,'Half day','Beginner',10,6,'Gulmarg','snow','Powder'],
+  ['gondola-gulmarg','kashmir','Gulmarg Gondola','Ride',1200,'1-2 hrs','Easy',3,6,'Gulmarg','ride','Phase 1 and 2'],
+  ['shikara','kashmir','Shikara Ride — Dal Lake','Ride',800,'1 hr','Easy',3,6,'Dal Lake','water','Flat water']
 ];
+const CAT_IMG={Water:U+'1530866495561-507c9faab2ed',Air:U+'1601024445121-e5b82f020549',Snow:U+'1551524559-8af4e6624178',
+  Ride:U+'1581793745862-99fde7fa73d2',Camp:U+'1504280390367-361c6d9f38f4',Trek:U+'1513614835783-51537729c8ba',Sea:U+'1512343879784-a960bf40e7f2'};
+/* expand the compact seed rows into full activity objects */
+const ACTS=ACT_SEED.map(a=>{
+  const [id,dest,n,cat,price,dur,lvl,minAge,maxGroup,start,sk,grade]=a;
+  const dn=(DESTS.find(d=>d.id===dest)||{}).n||'';
+  return {id,dest,n,cat,price,dur,lvl,minAge,maxGroup,start,grade,
+    img:CAT_IMG[cat]||CAT_IMG.Trek,
+    map:'https://maps.google.com/?q='+encodeURIComponent(start+' '+dn),
+    slots:cat==='Camp'?['14:00']:['09:00','11:30','14:00'],
+    desc:n+' at '+dn+'. Run by a local operator with certified guides and safety gear included.',
+    inc:INC_BASE[sk]||INC_BASE.trail, exc:EXC_BASE, carry:CARRY_BASE[sk]||CARRY_BASE.trail,
+    safety:SAFETY_BASE[sk]||SAFETY_BASE.trail,
+    cancel:'Free cancellation up to 24 hrs before the slot. No refund after that.',
+    faqs:[['Is this suitable for beginners?','Yes if the difficulty above says Easy or Beginner. Your guide briefs you before you start.'],
+          ['What if the weather turns?','If the operator calls it off for safety, you get a full refund or a free reschedule.'],
+          ['Do I need my own gear?','No — the safety gear listed under Inclusions is provided.']]};
+});
 const destById=id=>DESTS.find(d=>d.id===id)||null;
 const actsFor=id=>ACTS.filter(a=>a.dest===id);
 const actById=id=>ACTS.find(a=>a.id===id)||null;
@@ -2897,12 +3012,20 @@ const pct=(n,p)=>Math.round(n*p/100);
 function priceCart(items,opts){
   opts=opts||{};
   const lines=(items||[]).map(it=>{
+    /* treks are multi-day departures: one price per head, no weekend surcharge */
+    if(it.kind==='trek'){
+      const t=treks.find(x=>x.n===it.trekName);
+      const per=it.unitPrice||(t?t.price:0);
+      const base=per*(it.adults||1);
+      return {kind:'trek',trekName:it.trekName,name:it.trekName,per,base,weekend:0,
+              pax:it.adults||1,adults:it.adults||1,children:0,date:it.date,slot:'',total:base};
+    }
     const a=actById(it.actId);
     const per=a?a.price:0;
     const childPer=(a&&a.childPrice!=null)?a.childPrice:per;
     const base=it.adults*per+it.children*childPer;
     const weekend=isWeekendISO(it.date)?pct(base,MKT_PRICING.weekendPct):0;
-    return {actId:it.actId,name:a?a.n:'(removed)',per,base,weekend,pax:it.adults+it.children,
+    return {kind:'activity',actId:it.actId,name:a?a.n:'(removed)',per,base,weekend,pax:it.adults+it.children,
             adults:it.adults,children:it.children,date:it.date,slot:it.slot,total:base+weekend};
   });
   const subtotal=lines.reduce((s,l)=>s+l.base,0);
@@ -2931,8 +3054,9 @@ function loadCart(){
   try{const r=JSON.parse(localStorage.getItem(cartKey())||'{}');
     cartItems=Array.isArray(r.items)?r.items:[];cartCoupon=r.coupon||'';}
   catch(e){cartItems=[];cartCoupon='';}
-  /* drop anything whose activity no longer exists */
-  cartItems=cartItems.filter(i=>actById(i.actId));
+  /* drop anything whose activity/trek no longer exists — must handle BOTH kinds,
+     or every trek in the cart gets silently deleted on reload */
+  cartItems=cartItems.filter(i=>i.kind==='trek'?treks.some(t=>t.n===i.trekName):actById(i.actId));
   updateCartBadge();
 }
 function saveCart(){
@@ -2974,6 +3098,19 @@ function addActToCart(){
   saveCart();
   note(a.n+' added to your adventure.','Added ✓').then(()=>go('cart'));
 }
+/* add the selected trek + departure to the same adventure cart */
+function addTrekToCart(){
+  const t=cart.trek;
+  if(!t){note('Please open a trek first.','Nothing selected');return;}
+  if(t.soon){note('This trek is not open for booking yet.','Coming soon');return;}
+  if(!cart.date){note('Please choose a departure date first.','Pick a date');return;}
+  const unit=cart.total||t.price;
+  const dup=cartItems.find(i=>i.kind==='trek'&&i.trekName===t.n&&i.date===cart.date);
+  if(dup)dup.adults+=1;
+  else cartItems.push({kind:'trek',trekName:t.n,date:cart.date,adults:1,children:0,unitPrice:unit});
+  saveCart();
+  note(t.n+' added to your adventure.','Added ✓').then(()=>go('cart'));
+}
 function removeCartItem(i){
   const it=cartItems[i];if(!it)return;
   const a=actById(it.actId);
@@ -2984,12 +3121,14 @@ function removeCartItem(i){
 }
 function stepCartPax(i,kind,delta){
   const it=cartItems[i];if(!it)return;
-  const a=actById(it.actId);if(!a)return;
   if(kind==='a')it.adults=Math.max(0,it.adults+delta);else it.children=Math.max(0,it.children+delta);
-  if(it.adults+it.children>a.maxGroup){
+  /* treks have no per-slot group cap — the batch seat count governs at checkout */
+  const a=it.kind==='trek'?null:actById(it.actId);
+  if(a&&it.adults+it.children>a.maxGroup){
     if(kind==='a')it.adults-=delta;else it.children-=delta;
     note('Maximum '+a.maxGroup+' people for '+a.n+'.','Group limit');
   }
+  if(it.kind==='trek'&&it.adults>20){it.adults=20;note('For groups over 20, talk to us directly.','Large group');}
   if(it.adults<1&&it.children>0)it.adults=1;
   if(it.adults+it.children<1){removeCartItem(i);return;}
   saveCart();renderCart();
@@ -3019,25 +3158,35 @@ function renderCart(){
   }
   const b=priceCart(cartItems,{coupon:cartCoupon});
   const items=cartItems.map((it,i)=>{
-    const a=actById(it.actId);if(!a)return '';
+    const isTrek=it.kind==='trek';
+    const t=isTrek?treks.find(x=>x.n===it.trekName):null;
+    const a=isTrek?null:actById(it.actId);
+    if(!isTrek&&!a)return '';
+    if(isTrek&&!t)return '';
     const line=b.lines[i];
+    const img=isTrek?t.img:a.img;
+    const title=isTrek?t.n:a.n;
+    const when=isTrek?`${ic('calendar',11)} ${esc(it.date)} · <i style="font-style:normal;color:var(--accent2)">${t.days} days</i>`
+                     :`${ic('calendar',11)} ${esc(prettyDate(it.date))} · ${esc(it.slot)}${isWeekendISO(it.date)&&MKT_PRICING.weekendPct?' · <i style="color:#ffce1f;font-style:normal">weekend</i>':''}`;
     return `<div class="citem">
-      <div class="cph" style="background-image:url('${a.img+Q}')"></div>
+      <div class="cph" style="background-image:url('${img+Q}')"></div>
       <div class="cbd">
-        <h4>${esc(a.n)}</h4>
-        <div class="cwhen">${ic('calendar',11)} ${esc(prettyDate(it.date))} · ${esc(it.slot)}${isWeekendISO(it.date)&&MKT_PRICING.weekendPct?' · <i style="color:#ffce1f;font-style:normal">weekend</i>':''}</div>
+        <h4>${esc(title)}</h4>
+        <div class="cwhen">${when}</div>
         <div class="crow">
           <div class="cmini"><small>Adults</small><button onclick="stepCartPax(${i},'a',-1)">−</button><b>${it.adults}</b><button onclick="stepCartPax(${i},'a',1)">+</button></div>
           <span class="cpr">${INR(line.total)}</span>
         </div>
-        ${it.children?`<div class="crow" style="margin-top:6px"><div class="cmini"><small>Children</small><button onclick="stepCartPax(${i},'c',-1)">−</button><b>${it.children}</b><button onclick="stepCartPax(${i},'c',1)">+</button></div></div>`:''}
+        ${(!isTrek&&it.children)?`<div class="crow" style="margin-top:6px"><div class="cmini"><small>Children</small><button onclick="stepCartPax(${i},'c',-1)">−</button><b>${it.children}</b><button onclick="stepCartPax(${i},'c',1)">+</button></div></div>`:''}
       </div>
       <button class="cx" onclick="removeCartItem(${i})" title="Remove">${ic('trash',18)}</button>
     </div>`;}).join('');
 
   /* every line shown — no surprise charges at the end */
   const rows=[];
-  rows.push(`<div class="br"><span>Activities (${b.totalPax} ${b.totalPax===1?'person':'people'})</span><b>${INR(b.subtotal)}</b></div>`);
+  const nTrek=b.lines.filter(l=>l.kind==='trek').length, nAct=b.lines.length-nTrek;
+  const what=nTrek&&nAct?'Treks & activities':nTrek?'Treks':'Activities';
+  rows.push(`<div class="br"><span>${what} (${b.totalPax} ${b.totalPax===1?'person':'people'})</span><b>${INR(b.subtotal)}</b></div>`);
   if(b.weekendTotal)rows.push(`<div class="br"><span>Weekend pricing</span><b>+${INR(b.weekendTotal)}</b></div>`);
   if(b.groupDisc)rows.push(`<div class="br off"><span>Group discount (${b.groupPct}% · ${b.totalPax}+ people)</span><b>−${INR(b.groupDisc)}</b></div>`);
   if(b.couponDisc)rows.push(`<div class="br off"><span>Coupon ${esc(b.coupon)} (${esc(b.couponLabel)})</span><b>−${INR(b.couponDisc)}</b></div>`);
@@ -3075,15 +3224,13 @@ function cartCheckout(){
 /* ---- destinations grid ---- */
 function destCard(d){
   const n=actsFor(d.id).length;
-  return `<div class="bigcard" onclick="${d.soon?`note('${d.n} is coming soon — we are signing local operators now.','Coming soon')`:`openDest('${d.id}')`}" style="background-image:url('${d.img+Q}')">
-    <span class="pr">${d.soon?'Coming Soon':n+' activit'+(n===1?'y':'ies')}</span>
-    <div class="info"><h3>${esc(d.n)}</h3><div class="reg">${ic('pin',12)} ${esc(d.state)}</div></div></div>`;
+  return `<div class="dcell" onclick="openDest('${d.id}')" style="background-image:url('${d.img+Q}')">
+    <span class="dcell-n">${n}</span>
+    <div class="dcell-b"><b>${esc(d.n)}</b><small>${esc(d.state)}</small></div></div>`;
 }
 function renderDests(){
   const el=document.getElementById('destList');if(!el)return;
-  const live=DESTS.filter(d=>!d.soon),soon=DESTS.filter(d=>d.soon);
-  el.innerHTML=live.map(destCard).join('')
-    +(soon.length?`<div class="sec" style="margin-top:18px"><h2 style="font-size:15px">Coming soon</h2></div>`+soon.map(destCard).join(''):'');
+  el.innerHTML=`<div class="dgrid">${DESTS.map(destCard).join('')}</div>`;
   hydrate(el);
 }
 /* ---- one destination ---- */
