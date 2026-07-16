@@ -327,7 +327,7 @@ function photoFor(n){
 function avatar(n,size){size=size||38;const g=AVG[avHash(n)%AVG.length];const fs=Math.round(size*.4);
   const photo=photoFor(n);
   const bg=photo?`background-image:url('${photo}');background-size:cover;background-position:center`:`background:linear-gradient(135deg,${g[0]},${g[1]})`;
-  return `<div class="av-i" onclick="openPerson('${n.replace(/'/g,"")}')" style="width:${size}px;height:${size}px;font-size:${fs}px;${bg}">${photo?'':initials(n)}</div>`;}
+  return `<div class="av-i" onclick="openPerson('${jsq(n)}')" style="width:${size}px;height:${size}px;font-size:${fs}px;${bg}">${photo?'':initials(n)}</div>`;}
 
 let postSeq=2;
 const feed=[];  /* real posts come from the database, not demo data */
@@ -797,7 +797,7 @@ async function saveProfile(){
     const sb=getSupaClient();
     const uid=sb?await authUid():null;
     if(!sb||!uid){restore();note('Please sign in to set a username.','Sign in required');return;}
-    const{error}=await sb.from('profiles').upsert({id:uid,email:(currentUser&&currentUser.email)||'',username:uname,updated_at:new Date().toISOString()});
+    const{error}=await sb.from('profiles').upsert({id:uid,username:uname,updated_at:new Date().toISOString()});
     if(error){
       restore();
       const taken=error.code==='23505'||/duplicate|unique/i.test(error.message||'');
@@ -903,6 +903,10 @@ function isAdminUser(){return !!userEmail()&&ADMIN_EMAILS.includes(userEmail());
 let staffSet=new Set();
 async function loadStaff(){const sb=getSupaClient();if(!sb)return;try{const{data}=await sb.from('staff').select('email');staffSet=new Set((data||[]).map(r=>(r.email||'').toLowerCase()));}catch(e){}}
 function isStaffUser(){return isAdminUser()||(!!userEmail()&&staffSet.has(userEmail()));}
+/* Escape a value for use inside onclick="fn('HERE')".
+   esc() alone is not enough: it leaves backslashes and lets a crafted name break
+   out of the quoted JS string. Strip the dangerous chars, then HTML-escape. */
+function jsq(s){return esc(String(s==null?'':s).replace(/[\'"`<>]/g,''));}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 const INR=n=>'₹'+Number(n).toLocaleString('en-IN');
 
@@ -1284,7 +1288,7 @@ function renderBookings(){const bs=getBookings();
   document.getElementById('bookList').innerHTML=bs.length?bs.map(b=>`<div class="tcard" style="flex-direction:column;align-items:stretch"><div style="display:flex;gap:13px;cursor:pointer" onclick="openTicket('${b.id}')"><div class="ph" style="background-image:url('${b.img}')"></div>
     <div class="bd"><h3>${esc(b.trek)}</h3><div class="rt"><span class="ic" style="color:var(--muted)">${ic('calendar',13)}</span> <span class="g">${esc(b.date)}</span></div>
     <div class="ft"><span class="tag" style="color:${b.checkedIn?'#7dd3fc':'#6ee7a0'}">${b.checkedIn?'Checked in':b.status}</span><span class="tag">${b.id}</span></div></div></div>
-    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn ghost sm" style="flex:1" onclick="openTicket('${b.id}')">${ic('ticket',15)} E-Ticket</button><button class="btn ghost sm" style="flex:1" onclick="openPackingFor('${(b.trek||'').replace(/'/g,'').replace(' (Activity)','')}')">${ic('list',15)} Packing</button></div></div>`).join('')
+    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn ghost sm" style="flex:1" onclick="openTicket('${b.id}')">${ic('ticket',15)} E-Ticket</button><button class="btn ghost sm" style="flex:1" onclick="openPackingFor('${jsq((b.trek||'').replace(' (Activity)',''))}')">${ic('list',15)} Packing</button></div></div>`).join('')
     :'<div class="empty"><img src="illustrations/hiker-mountains.svg" alt=""/>No bookings yet. Find a trek and book your spot!<div style="text-align:center;margin-top:16px"><button class="btn sm" onclick="go(\'explore\')">Browse Treks</button></div></div>';
   hydrate(document.getElementById('bookList'));
 }
@@ -1326,12 +1330,12 @@ function renderStories(){
   const mine=myName();
   const myGroup=storyGroups.find(g=>g.n===mine);
   const others=storyGroups.filter(g=>g.n!==mine);
-  const yours=`<div class="story ${myGroup?'mine-has':'add'}" onclick="${myGroup?`openStory('${mine.replace(/'/g,'')}')`:'addStory()'}">
+  const yours=`<div class="story ${myGroup?'mine-has':'add'}" onclick="${myGroup?`openStory('${jsq(mine)}')`:'addStory()'}">
       <div class="ring">${myGroup?avatar(mine,57):`<div class="plus">${avatar(mine,57)}</div>`}<span class="sadd" onclick="event.stopPropagation();addStory()">+</span></div>
       <small>Your story</small></div>`;
   box.innerHTML=yours+others.map(g=>{
     const seen=groupSeen(g);
-    return `<div class="story ${seen?'seen':'unseen'}" onclick="openStory('${g.n.replace(/'/g,'')}')">
+    return `<div class="story ${seen?'seen':'unseen'}" onclick="openStory('${jsq(g.n)}')">
       <div class="ring">${avatar(g.n,57)}</div><small>${esc(g.n.split(' ')[0])}</small></div>`;}).join('');
   hydrate(box);
 }
@@ -1445,14 +1449,14 @@ async function loadPeopleRemote(){
     .map(r=>({n:r.author_name,h:'@'+r.author_name.toLowerCase().replace(/[^a-z0-9]/g,''),prefs:[],bio:'Tripomonk trekker',flwr:0}));
 }
 function personRow(p){
-  const sn=p.n.replace(/'/g,'');
+  const sn=jsq(p.n);
   const shared=sharedPrefs(p.prefs);
   const match=shared>0?`<span class="pmatch">${ic('like',11)} ${shared} shared interest${shared>1?'s':''}</span>`:'';
   return `<div class="mrow" style="gap:12px;padding:10px 0">
     ${avatar(p.n,44)}
     <div style="flex:1;min-width:0">
-      <b style="font-size:13.5px;display:block;cursor:pointer" onclick="openPerson('${sn}')">${p.n}</b>
-      ${match||`<span style="font-size:12px;color:var(--muted)">${p.h}</span>`}
+      <b style="font-size:13.5px;display:block;cursor:pointer" onclick="openPerson('${sn}')">${esc(p.n)}</b>
+      ${match||`<span style="font-size:12px;color:var(--muted)">${esc(p.h)}</span>`}
       ${p.bio?`<span style="font-size:12px;color:var(--muted2);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:210px">${esc(p.bio)}</span>`:''}
     </div>
     <button class="fbtn ${isFollowing(p.n)?'on':''}" onclick="toggleFollow('${sn}');renderPeopleResults(_lastPeopleQ)">${isFollowing(p.n)?'Following':'Follow'}</button>
@@ -1485,8 +1489,8 @@ function renderFollowStrip(){const box=document.getElementById('followStrip');if
   const sugg=people.filter(p=>!isFollowing(p.n)&&p.n!==mine);
   if(!sugg.length){box.innerHTML='';return;}
   box.innerHTML=`<div class="sec-h"><b>Trekkers to follow</b></div><div class="frow">${sugg.map(p=>`
-    <div class="fcard">${avatar(p.n,52)}<b onclick="openPerson('${p.n.replace(/'/g,"")}')">${p.n}</b><small>${p.h}</small>
-    <button class="fbtn" onclick="toggleFollow('${p.n.replace(/'/g,"")}')">Follow</button></div>`).join('')}</div>`;
+    <div class="fcard">${avatar(p.n,52)}<b onclick="openPerson('${jsq(p.n)}')">${esc(p.n)}</b><small>${esc(p.h)}</small>
+    <button class="fbtn" onclick="toggleFollow('${jsq(p.n)}')">Follow</button></div>`).join('')}</div>`;
   hydrate(box);}
 function mediaItem(src){
   if(src.startsWith('data:video')||src.includes('.mp4')||src.includes('.mov')){
@@ -1499,7 +1503,7 @@ function mediaItem(src){
 let likeCounts={},likedByMe={},commentCounts={};
 function postCard(p){
   const liked=!!likedByMe[p.id];const nc=commentCounts[p.id]||0;
-  const me=p.n==='You'||p.n===myName()||(p.uid&&currentUser&&p.uid===currentUser.id);const sn=p.n.replace(/'/g,'');
+  const me=p.n==='You'||p.n===myName()||(p.uid&&currentUser&&p.uid===currentUser.id);const sn=jsq(p.n);
   const media=p.imgs&&p.imgs.length?p.imgs:[];
   const textOnly=!media.length&&p.txt;
   const likeCount=(likeCounts[p.id]||0);
@@ -1509,14 +1513,14 @@ function postCard(p){
   /* the actions live under the photo only — no duplicate overlay rail */
   /* tagged trekkers chips */
   const tagged=(p.tagged&&p.tagged.length)
-    ?`<div class="ig-tags">${ic('user',13)} with ${p.tagged.map(nm=>`<span class="ig-tagn" onclick="openPerson('${String(nm).replace(/'/g,'')}')">${esc(nm)}</span>`).join(', ')}</div>`:'';
+    ?`<div class="ig-tags">${ic('user',13)} with ${p.tagged.map(nm=>`<span class="ig-tagn" onclick="openPerson('${jsq(nm)}')">${esc(nm)}</span>`).join(', ')}</div>`:'';
   return `<div class="post" data-pid="${p.id}">
    <div class="ig-head">
      <div class="ig-ava" onclick="openPerson('${sn}')">${avatar(p.n,34)}</div>
-     <div class="ig-meta"><b onclick="openPerson('${sn}')">${p.n}</b>${follow}</div>
+     <div class="ig-meta"><b onclick="openPerson('${sn}')">${esc(p.n)}</b>${follow}</div>
      ${more}
    </div>
-   ${p.trek?`<div class="ig-trek" onclick="openDetailByName('${p.trek.replace(/'/g,'')}')">${ic('pin',13)} ${esc(p.trek)}</div>`:''}
+   ${p.trek?`<div class="ig-trek" onclick="openDetailByName('${jsq(p.trek)}')">${ic('pin',13)} ${esc(p.trek)}</div>`:''}
    ${media.length?`<div class="car" ondblclick="dblLike('${p.id}',this)"><div class="car-track" onscroll="carScroll(this)">${media.map(mediaItem).join('')}</div>${dots}<div class="heart-burst">${ic('like',96)}</div></div>`:''}
    ${textOnly?`<div class="ig-textpost">${linkifyMentions(esc(p.txt))}</div>`:''}
    ${tagged}
@@ -1602,7 +1606,7 @@ function updatePostCaptionUI(id,txt){
     const cap=post.querySelector('.ig-cap');
     const textpost=post.querySelector('.ig-textpost');
     if(textpost){textpost.textContent=txt;return;}
-    if(cap){cap.innerHTML=`<b onclick="event.stopPropagation();openPerson('${String(p?p.n:'').replace(/'/g,'')}')">${p?p.n:''}</b> ${esc(txt)}`;}
+    if(cap){cap.innerHTML=`<b onclick="event.stopPropagation();openPerson('${jsq(p?p.n:'')}')">${esc(p?p.n:'')}</b> ${esc(txt)}`;}
     else if(txt&&p&&!(p.imgs&&p.imgs.length)){renderFeedIfOpen();}
   });
 }
@@ -1821,7 +1825,10 @@ async function pushNotif({recipientId,recipientName,type,postId,preview}){
 async function upsertProfile(){
   const sb=getSupaClient();if(!sb)return;
   const uid=await authUid();if(!uid)return;
-  const row={id:uid,email:(currentUser&&currentUser.email)||'',updated_at:new Date().toISOString()};
+  /* No email here. `profiles` is publicly readable so the community can show
+     names and photos — writing emails into it leaked every user's address to
+     anyone with the anon key. The address already lives in auth.users. */
+  const row={id:uid,updated_at:new Date().toISOString()};
   const nm=getSavedName();if(nm)row.name=nm;
   const ph=getSavedPhoto();if(ph)row.photo=ph;
   const un=getSavedUsername();if(un)row.username=un;
@@ -1960,7 +1967,7 @@ function onPostTextInput(ta){
   _mentionRange={start:pos-m[1].length-1,end:pos};   /* the "@word" span itself */
   box.innerHTML=list.map(p=>{
     const h=String(p.h||'').replace(/^@/,'');
-    return `<div class="mention-row" onclick="pickMention('${h.replace(/'/g,'')}')">${avatar(p.n,26)}<div><b>${esc(p.n)}</b><small>@${esc(h)}</small></div></div>`;
+    return `<div class="mention-row" onclick="pickMention('${jsq(h)}')">${avatar(p.n,26)}<div><b>${esc(p.n)}</b><small>@${esc(h)}</small></div></div>`;
   }).join('');
   hydrate(box);box.classList.add('show');
 }
@@ -1981,7 +1988,7 @@ function renderTagList(){
   const others=peoplePool.filter(p=>!isFollowing(p.n)&&p.n!==mine);
   const list=[...followed,...others];
   if(!list.length){box.innerHTML='<span style="font-size:12px;color:var(--muted2)">No other trekkers yet.</span>';return;}
-  box.innerHTML=list.map(p=>`<span class="tag-chip ${postTags.includes(p.n)?'on':''}" onclick="toggleTagPerson('${p.n.replace(/'/g,'')}')">${avatar(p.n,18)} ${esc(p.h||p.n)}</span>`).join('');
+  box.innerHTML=list.map(p=>`<span class="tag-chip ${postTags.includes(p.n)?'on':''}" onclick="toggleTagPerson('${jsq(p.n)}')">${avatar(p.n,18)} ${esc(p.h||p.n)}</span>`).join('');
   hydrate(box);
 }
 function toggleTagPerson(n){
@@ -2167,16 +2174,16 @@ function gridCell(p){
 async function renderPerson(){if(!curPerson){go('community');return;}const p=getPerson(curPerson);if(!p)return;
   const me=p.n==='You'||p.n===myName();
   const body=document.getElementById('personBody');
-  body.innerHTML=`<div class="prof-top">${avatar(p.n,84)}<h2>${p.n}</h2><div class="handle">${p.h}</div></div><div class="skel skel-card" style="height:120px;margin:16px 0"></div>`;
+  body.innerHTML=`<div class="prof-top">${avatar(p.n,84)}<h2>${esc(p.n)}</h2><div class="handle">${esc(p.h)}</div></div><div class="skel skel-card" style="height:120px;margin:16px 0"></div>`;
   const posts=await loadUserPosts(p.n);
   await Promise.all([loadEngagement(posts.map(x=>x.id)),loadAuthorPhotos([p.n])]);
   const base=p.flwr||0;const flwr=base+(isFollowing(p.n)?1:0);
   body.innerHTML=`
     <div class="prof-top">${avatar(p.n,84)}
-      <h2>${p.n}</h2><div class="handle">${p.h}</div>
+      <h2>${esc(p.n)}</h2><div class="handle">${esc(p.h)}</div>
       <p class="pbio">${p.bio||''}</p>
       <div class="pstats"><div><b>${posts.length}</b><small>Posts</small></div><div><b id="pFlwr" data-person="${esc(p.n)}" data-base="${base}">${flwr.toLocaleString()}</b><small>Followers</small></div><div><b>${me?followCount():'—'}</b><small>Following</small></div></div>
-      ${me?'':`<div class="profile-actions" style="margin:14px 0 0"><button class="${isFollowing(p.n)?'on':''}" data-follow="${esc(p.n)}" onclick="toggleFollow('${p.n.replace(/'/g,"")}')">${isFollowing(p.n)?'Following':'Follow'}</button><button onclick="openChat('${p.n.replace(/'/g,"")}')">Message</button></div>`}
+      ${me?'':`<div class="profile-actions" style="margin:14px 0 0"><button class="${isFollowing(p.n)?'on':''}" data-follow="${esc(p.n)}" onclick="toggleFollow('${jsq(p.n)}')">${isFollowing(p.n)?'Following':'Follow'}</button><button onclick="openChat('${jsq(p.n)}')">Message</button></div>`}
     </div>
     <div class="sec-h" style="margin:18px 4px 8px"><b>Posts</b></div>
     ${posts.length?`<div class="pgrid">${posts.map(gridCell).join('')}</div>`:`<div class="empty"><p>${me?'You have not posted yet.':'No posts yet.'}</p></div>`}`;
@@ -2308,8 +2315,8 @@ function chatContacts(){return [{n:'Tripomonk Team',h:'Official support',bio:'Bo
 function renderMessages(){
   const recent=document.getElementById('recentChats'),list=document.getElementById('messageList');if(!recent||!list)return;
   const rows=chatContacts();
-  recent.innerHTML=rows.slice(0,8).map(p=>`<div class="recent-chat" onclick="openChat('${p.n.replace(/'/g,'')}')"><div class="ring">${avatar(p.n,52)}</div><small>${esc(p.n.split(' ')[0])}</small></div>`).join('');
-  list.innerHTML=rows.map((p,i)=>{const msgs=getChat(p.n),last=msgs[msgs.length-1]||{txt:'Start a conversation'};return `<div class="chat-row" onclick="openChat('${p.n.replace(/'/g,'')}')">${avatar(p.n,46)}<div class="meta"><b>${esc(p.n)}</b><p>${esc(last.txt)}</p></div><time>${i?'Yesterday':'Now'}</time></div>`;}).join('');
+  recent.innerHTML=rows.slice(0,8).map(p=>`<div class="recent-chat" onclick="openChat('${jsq(p.n)}')"><div class="ring">${avatar(p.n,52)}</div><small>${esc(p.n.split(' ')[0])}</small></div>`).join('');
+  list.innerHTML=rows.map((p,i)=>{const msgs=getChat(p.n),last=msgs[msgs.length-1]||{txt:'Start a conversation'};return `<div class="chat-row" onclick="openChat('${jsq(p.n)}')">${avatar(p.n,46)}<div class="meta"><b>${esc(p.n)}</b><p>${esc(last.txt)}</p></div><time>${i?'Yesterday':'Now'}</time></div>`;}).join('');
   hydrate(document.getElementById('messages'));
 }
 function openChat(n){chatWith=n||'Tripomonk Team';go('chat');}
