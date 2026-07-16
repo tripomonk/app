@@ -305,8 +305,14 @@ function getPerson(n){return personMap[n]||(n==='You'?ME:{n:n,h:'@'+n.toLowerCas
 const AVG=[['#ffd27a','#ff7a59'],['#7ad1ff','#2f6bff'],['#b7f5c0','#2fb56b'],['#ffb3d9','#c44bd6'],['#ffe08a','#f59e0b'],['#c9b7ff','#7c5cff']];
 function initials(n){return n.split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase();}
 function avHash(n){let h=0;for(let i=0;i<n.length;i++)h=(h*31+n.charCodeAt(i))|0;return Math.abs(h);}
+/* other people's profile photos, keyed by display name (filled from `profiles`) */
+let photoByName={};
+function photoFor(n){
+  if(n==='You'||n===myName())return getSavedPhoto();
+  return photoByName[n]||'';
+}
 function avatar(n,size){size=size||38;const g=AVG[avHash(n)%AVG.length];const fs=Math.round(size*.4);
-  const mine=(n==='You'||n===myName());const photo=mine?getSavedPhoto():'';
+  const photo=photoFor(n);
   const bg=photo?`background-image:url('${photo}');background-size:cover;background-position:center`:`background:linear-gradient(135deg,${g[0]},${g[1]})`;
   return `<div class="av-i" onclick="openPerson('${n.replace(/'/g,"")}')" style="width:${size}px;height:${size}px;font-size:${fs}px;${bg}">${photo?'':initials(n)}</div>`;}
 
@@ -1292,8 +1298,10 @@ function reviewCard(r){return `<div class="panel" style="margin-bottom:12px"><di
 async function loadPeopleRemote(){
   const sb=getSupaClient();if(!sb)return[];
   /* pull registered members (with their preferences) from profiles */
-  try{const{data}=await sb.from('profiles').select('name,prefs,username').limit(300);
+  try{const{data}=await sb.from('profiles').select('name,prefs,username,photo').limit(300);
     if(data&&data.length){const seen=new Set();
+      /* cache photos while we're here — stories/search then show real faces */
+      data.forEach(r=>{if(r.name&&!(r.name in photoByName))photoByName[r.name]=r.photo||'';});
       return data.filter(r=>r.name&&!seen.has(r.name)&&seen.add(r.name))
         .map(r=>({n:r.name,h:'@'+(r.username||r.name.toLowerCase().replace(/[^a-z0-9]/g,'')),prefs:r.prefs||[],bio:(r.prefs&&r.prefs.length)?r.prefs.slice(0,3).join(' · '):'Tripomonk trekker',flwr:0}));
     }
@@ -1365,12 +1373,8 @@ function postCard(p){
   const likeCount=(likeCounts[p.id]||0);
   const dots=media.length>1?`<div class="car-dots">${media.map((_,i)=>`<span class="${i===0?'on':''}"></span>`).join('')}</div>`:'';
   const follow=me?'':` · <span class="ig-follow${isFollowing(p.n)?' on':''}" data-follow="${esc(p.n)}" onclick="toggleFollow('${sn}')">${isFollowing(p.n)?'Following':'Follow'}</span>`;
-  const more=me?`<span class="ig-more" onclick="deletePost('${p.id}')">${ic('trash',20)}</span>`:'';
-  const rail=media.length?`<div class="post-rail">
-    <button class="${liked?'on':''}" onclick="event.stopPropagation();likePost('${p.id}')" title="Like">${ic('like',18)}${likeCount?`<small>${likeCount}</small>`:''}</button>
-    <button data-cm="1" onclick="event.stopPropagation();openComments('${p.id}')" title="Comment">${ic('comment',18)}${nc?`<small>${nc}</small>`:''}</button>
-    <button onclick="event.stopPropagation();repostPost('${p.id}')" title="Share in community">${ic('repeat',17)}</button>
-  </div>`:'';
+  const more=me?`<span class="ig-more" onclick="postMenu('${p.id}')" title="Post options"><span class="msr" style="font-size:21px">more_horiz</span></span>`:'';
+  /* the actions live under the photo only — no duplicate overlay rail */
   /* tagged trekkers chips */
   const tagged=(p.tagged&&p.tagged.length)
     ?`<div class="ig-tags">${ic('user',13)} with ${p.tagged.map(nm=>`<span class="ig-tagn" onclick="openPerson('${String(nm).replace(/'/g,'')}')">${esc(nm)}</span>`).join(', ')}</div>`:'';
@@ -1381,7 +1385,7 @@ function postCard(p){
      ${more}
    </div>
    ${p.trek?`<div class="ig-trek" onclick="openDetailByName('${p.trek.replace(/'/g,'')}')">${ic('pin',13)} ${esc(p.trek)}</div>`:''}
-   ${media.length?`<div class="car" ondblclick="dblLike('${p.id}',this)"><div class="car-track" onscroll="carScroll(this)">${media.map(mediaItem).join('')}</div>${rail}${dots}<div class="heart-burst">${ic('like',96)}</div></div>`:''}
+   ${media.length?`<div class="car" ondblclick="dblLike('${p.id}',this)"><div class="car-track" onscroll="carScroll(this)">${media.map(mediaItem).join('')}</div>${dots}<div class="heart-burst">${ic('like',96)}</div></div>`:''}
    ${textOnly?`<div class="ig-textpost">${linkifyMentions(esc(p.txt))}</div>`:''}
    ${tagged}
    <div class="ig-actions">
@@ -1415,6 +1419,60 @@ function carScroll(track){
   const dots=track.parentElement.querySelectorAll('.car-dots span');
   dots.forEach((d,j)=>d.classList.toggle('on',j===i));
 }
+/* three-dot sheet on your own posts */
+function postMenu(id){
+  const m=document.getElementById('postMenuModal');if(!m)return;
+  const ed=document.getElementById('pmEdit'),del=document.getElementById('pmDelete'),cx=document.getElementById('pmCancel');
+  function close(){m.classList.remove('show');ed.onclick=del.onclick=cx.onclick=m.onclick=null;}
+  ed.onclick=()=>{close();editPostCaption(id);};
+  del.onclick=()=>{close();deletePost(id);};
+  cx.onclick=close;
+  m.onclick=e=>{if(e.target===m)close();};
+  m.classList.add('show');
+}
+function editPostCaption(id){
+  const p=postById(id);if(!p){note('Post not found.','Error');return;}
+  const m=document.getElementById('editPostModal'),ta=document.getElementById('epCaption'),
+        save=document.getElementById('epCapSave'),cancel=document.getElementById('epCapCancel');
+  ta.value=p.txt||'';
+  function close(){m.classList.remove('show');save.onclick=cancel.onclick=m.onclick=null;}
+  cancel.onclick=close;
+  m.onclick=e=>{if(e.target===m)close();};
+  save.onclick=async()=>{
+    const txt=(ta.value||'').trim();
+    const sb=getSupaClient();
+    const uid=sb?await authUid():null;
+    if(!sb||!uid){note('Please sign in to edit this post.','Sign in required');return;}
+    save.disabled=true;save.textContent='Saving…';
+    /* scope to the owner as well as the id — the DB policy is the real guard,
+       this just fails fast and never edits someone else's row */
+    /* .select() matters: a row blocked by RLS comes back as 0 rows and NO error,
+       so without this an edit that never happened would report success */
+    const{data,error}=await sb.from('community_posts').update({txt}).eq('id',id).eq('user_id',uid).select('id');
+    save.disabled=false;save.textContent='Save';
+    if(error){note('Could not save: '+error.message,'Error');return;}
+    if(!data||!data.length){note('This post could not be updated — you can only edit your own posts.','Not saved');return;}
+    /* update in place — no full feed re-render */
+    p.txt=txt;
+    const local=userPosts.find(x=>x.id===id);if(local){local.txt=txt;try{localStorage.setItem('tmk_posts',JSON.stringify(userPosts));}catch(e){}}
+    close();
+    updatePostCaptionUI(id,txt);
+    note('Caption updated.','Saved ✓');
+  };
+  m.classList.add('show');
+  setTimeout(()=>ta.focus(),80);
+}
+/* refresh just this post's caption text */
+function updatePostCaptionUI(id,txt){
+  const p=postById(id);
+  document.querySelectorAll('.post[data-pid="'+id+'"]').forEach(post=>{
+    const cap=post.querySelector('.ig-cap');
+    const textpost=post.querySelector('.ig-textpost');
+    if(textpost){textpost.textContent=txt;return;}
+    if(cap){cap.innerHTML=`<b onclick="event.stopPropagation();openPerson('${String(p?p.n:'').replace(/'/g,'')}')">${p?p.n:''}</b> ${esc(txt)}`;}
+    else if(txt&&p&&!(p.imgs&&p.imgs.length)){renderFeedIfOpen();}
+  });
+}
 async function deletePost(id){
   if(!(await askConfirm('Delete this post? This cannot be undone.','Delete post')))return;
   /* remove locally first */
@@ -1446,9 +1504,22 @@ async function renderFeed(){
   if(commTab==='Following')list=list.filter(p=>isFollowing(p.n)||(p.n===(getSavedName()||'You')));
   if(commTab==='Recent')list=[...list].sort((a,b)=>b.id.localeCompare(a.id));
   _lastFeed=list;
-  await loadEngagement(list.map(p=>p.id));
+  await Promise.all([loadEngagement(list.map(p=>p.id)),loadAuthorPhotos(list.map(p=>p.n))]);
   box.innerHTML=list.length?list.map(postCard).join(''):`<div class="empty"><p>No posts yet. Share your trek story!</p></div>`;
   hydrate(box);
+}
+/* pull profile photos for the authors on screen — one query, cached, skips names we already have */
+async function loadAuthorPhotos(names){
+  const sb=getSupaClient();if(!sb)return;
+  const mine=myName();
+  const need=[...new Set(names)].filter(n=>n&&n!==mine&&n!=='You'&&!(n in photoByName));
+  if(!need.length)return;
+  try{
+    const{data}=await sb.from('profiles').select('name,photo').in('name',need);
+    (data||[]).forEach(r=>{if(r.name)photoByName[r.name]=r.photo||'';});
+  }catch(e){}
+  /* remember the misses too, so we don't re-query every render */
+  need.forEach(n=>{if(!(n in photoByName))photoByName[n]='';});
 }
 /* fetch shared like + comment counts for the visible posts (one query each) */
 async function loadEngagement(ids){
@@ -1847,6 +1918,7 @@ async function loadComments(id){
   const sb=getSupaClient();
   if(sb){try{const{data}=await sb.from('post_comments').select('*').eq('post_id',id).order('created_at',{ascending:true});cmList=data||[];}catch(e){cmList=[];}}
   commentCounts[id]=cmList.length;
+  await loadAuthorPhotos(cmList.map(c=>c.author_name));   /* so commenters show their photo too */
   renderComments();
 }
 function commentHTML(c,isNew){
@@ -1879,8 +1951,6 @@ function updateCommentUI(id){
   document.querySelectorAll('.post[data-pid="'+id+'"]').forEach(post=>{
     const cIc=post.querySelector('.ig-ic.ig-comment');
     if(cIc)cIc.innerHTML=ic('comment',24)+(nc?'<b>'+nc+'</b>':'');
-    const rail=post.querySelector('.post-rail button[data-cm]');
-    if(rail)rail.innerHTML=ic('comment',18)+(nc?'<small>'+nc+'</small>':'');
     const link=post.querySelector('.ig-comments');
     if(link)link.textContent=nc?'View all '+nc+' comment'+(nc>1?'s':''):'Add a comment…';
   });
@@ -1929,7 +1999,7 @@ async function renderPerson(){if(!curPerson){go('community');return;}const p=get
   const body=document.getElementById('personBody');
   body.innerHTML=`<div class="prof-top">${avatar(p.n,84)}<h2>${p.n}</h2><div class="handle">${p.h}</div></div><div class="skel skel-card" style="height:120px;margin:16px 0"></div>`;
   const posts=await loadUserPosts(p.n);
-  await loadEngagement(posts.map(x=>x.id));
+  await Promise.all([loadEngagement(posts.map(x=>x.id)),loadAuthorPhotos([p.n])]);
   const base=p.flwr||0;const flwr=base+(isFollowing(p.n)?1:0);
   body.innerHTML=`
     <div class="prof-top">${avatar(p.n,84)}
