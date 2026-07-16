@@ -26,6 +26,8 @@
     --stroke:rgba(255,255,255,.10); --stroke2:rgba(255,255,255,.16);
     --accent:#2f6bff; --accent2:#4f8bff; --yellow:#ffce1f;
     --text:#eef3fb; --muted:rgba(238,243,251,.58); --muted2:rgba(238,243,251,.4);
+    /* body copy: a touch stronger than --muted, but still themed */
+    --muted-strong:rgba(238,243,251,.68);
     --r:20px; --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
     --safe-left:env(safe-area-inset-left,0px); --safe-right:env(safe-area-inset-right,0px);
     --font:'Poppins',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
@@ -36,6 +38,7 @@
     --stroke:rgba(12,24,44,.12); --stroke2:rgba(12,24,44,.2);
     --accent:#2f6bff; --accent2:#1f5be0; --yellow:#d99800;
     --text:#102038; --muted:rgba(16,32,58,.62); --muted2:rgba(16,32,58,.42);
+    --muted-strong:rgba(16,32,58,.75);
   }
   html.light body{background:#e9edf5}
   html.light .screen{background:radial-gradient(120% 60% at 50% -10%, #dbe6f8 0%, transparent 55%), linear-gradient(180deg,#f6f8fc 0%, #eef2f9 60%, #e8edf6 100%)}
@@ -317,7 +320,10 @@
   .batch.on .calb{background:var(--accent);border-color:var(--accent)}
   .batch .calb .mo{font-size:10px;font-weight:700;letter-spacing:.5px;color:var(--accent2);text-transform:uppercase}
   .batch.on .calb .mo{color:rgba(255,255,255,.85)}
-  .batch .calb .dy{font-size:20px;font-weight:700;color:#fff;margin-top:1px}
+  /* unselected: pale blue tile on the themed bg, so the date must flip.
+     selected (.batch.on): solid accent tile, so it stays white. */
+  .batch .calb .dy{font-size:20px;font-weight:700;color:var(--text);margin-top:1px}
+  .batch.on .calb .dy{color:#fff}
   .batch .bd{flex:1;min-width:0}
   .batch .bd b{font-size:13.5px;display:block}
   .batch .bd .s{font-size:11.5px;color:#6ee7a0;margin-top:3px;display:flex;align-items:center;gap:4px}
@@ -344,7 +350,8 @@
   .field .inp input::placeholder{color:var(--muted2)}
   .field .inp .ic{color:var(--muted)}
   .stepper{display:flex;align-items:center;gap:14px}
-  .stepper button{width:34px;height:34px;border-radius:50%;border:1px solid var(--stroke2);background:var(--card);color:#fff;font-size:18px;cursor:pointer}
+  /* sits on var(--card), which flips with the theme — so the glyph must flip too */
+  .stepper button{width:34px;height:34px;border-radius:50%;border:1px solid var(--stroke2);background:var(--card);color:var(--text);font-size:18px;cursor:pointer}
   .stepper b{min-width:22px;text-align:center;font-size:17px}
   .steps{display:flex;gap:6px;margin-bottom:18px}
   .steps i{flex:1;height:4px;border-radius:3px;background:var(--stroke2)}
@@ -412,7 +419,8 @@
   .post .ig-tags .ig-tagn{color:var(--accent2);font-weight:600;cursor:pointer}
   .tag-list{display:flex;flex-wrap:wrap;gap:7px;max-height:120px;overflow-y:auto}
   .tag-list .tag-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid var(--stroke);font-size:12.5px;cursor:pointer;color:var(--muted)}
-  .tag-list .tag-chip.on{background:rgba(47,107,255,.18);border-color:var(--accent);color:#fff}
+  /* translucent blue over the themed bg — text must flip, not stay white */
+  .tag-list .tag-chip.on{background:rgba(47,107,255,.18);border-color:var(--accent);color:var(--text)}
   .post .ig-cap{padding:3px 12px;font-size:13px;line-height:1.5}
   .post .ig-cap b{font-weight:600;cursor:pointer;margin-right:5px}
   .post .ig-cap.clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
@@ -438,7 +446,7 @@
   .pcover{height:150px;background-size:cover;background-position:center;position:relative}
   .pcover:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,22,38,.2),var(--bg))}
   .pwrap{padding:0 calc(18px + var(--safe-right)) calc(var(--safe-bottom) + 92px) calc(18px + var(--safe-left))}
-  .pav{width:88px;height:88px;border-radius:50%;border:3px solid var(--bg);background-size:cover;background-position:center;margin:-50px 0 0;position:relative;z-index:1;background-color:#26466e;display:grid;place-items:center;font-size:32px;font-weight:600}
+  .pav{width:88px;height:88px;border-radius:50%;border:3px solid var(--bg);background-size:cover;background-position:center;margin:-50px 0 0;position:relative;z-index:1;background-color:#26466e;display:grid;place-items:center;font-size:32px;font-weight:600;color:#fff}
   .prow{display:flex;align-items:center;justify-content:space-between;margin-top:10px}
   .prow h1{margin:0;font-size:20px}.prow .lv{font-size:12px;color:var(--muted)}
   .pstats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}
@@ -704,7 +712,7 @@
   #act .cta{margin:14px 0 0;padding:14px calc(16px + var(--safe-right)) calc(var(--safe-bottom) + 16px) calc(16px + var(--safe-left))}
   #act .cta .btn{min-height:48px}
   .ctarow{display:flex;align-items:center;justify-content:space-between;gap:12px}
-  .ctarow small{display:block;font-size:10px;color:var(--muted2)}
+  .ctarow small{display:block;font-size:10px;color:var(--muted)}
   .ctarow b{font-size:19px}
 
   /* ---- @mentions ---- */
@@ -812,7 +820,7 @@
   .bar h1{letter-spacing:-.3px;font-size:19.5px}
   .dcard h1{font-size:23px;letter-spacing:-.5px;line-height:1.2}
   .blk h2{letter-spacing:-.3px}
-  .blk p{color:rgba(238,243,251,.68);line-height:1.7}
+  .blk p{color:var(--muted-strong);line-height:1.7}
   .tcard h3,.hcard h3,.bigcard h3{letter-spacing:-.3px}
 
   /* — depth: soft, restrained elevation so cards lift off the bg — */
