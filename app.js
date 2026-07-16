@@ -1412,6 +1412,7 @@ async function repostPost(id){
   userPosts.unshift(post);savePosts();
   await savePostRemote(post);
   commTab='For You';renderFeed();
+  sfx('repost');
   note('Reposted to your feed ✓');
 }
 function carScroll(track){
@@ -1557,6 +1558,7 @@ async function likePost(id){
   likedByMe[id]=!wasLiked;
   likeCounts[id]=(likeCounts[id]||0)+(wasLiked?-1:1);if(likeCounts[id]<0)likeCounts[id]=0;
   updateLikeUI(id);
+  sfx(wasLiked?'unlike':'like');
   const uid=await authUid();if(!uid)return;
   if(wasLiked){
     await sb.from('post_likes').delete().eq('post_id',id).eq('user_id',uid);
@@ -1896,7 +1898,7 @@ async function openComments(id){
     /* show it straight away, then confirm with the server */
     const tmp={id:'tmp-'+Date.now(),post_id:id,author_name:myName(),txt:v,created_at:new Date().toISOString()};
     cmList.push(tmp);commentCounts[id]=cmList.length;
-    appendComment(tmp);updateCommentUI(id);
+    appendComment(tmp);updateCommentUI(id);sfx('comment');
     const{data,error}=await sb.from('post_comments').insert({post_id:id,user_id:uid,author_name:myName(),txt:v}).select().single();
     if(error){
       cmList=cmList.filter(c=>c.id!==tmp.id);commentCounts[id]=cmList.length;
@@ -1967,7 +1969,7 @@ function subscribeComments(id){
         if(cmId!==id)return;
         if(cmList.some(x=>String(x.id)===String(c.id)))return; /* our own echo */
         cmList.push(c);commentCounts[id]=cmList.length;
-        appendComment(c);updateCommentUI(id);
+        appendComment(c);updateCommentUI(id);sfx('notif');   /* someone else commented, live */
       }).subscribe();
   }catch(e){}
 }
@@ -2175,7 +2177,12 @@ function renderSettings(){
   const opts=[['system','brightness_auto','System'],['light','light_mode','Light'],['dark','dark_mode','Dark']];
   const tp=document.getElementById('themePick');
   if(tp)tp.innerHTML=opts.map(o=>`<div class="tp ${cur2===o[0]?'on':''}" onclick="setTheme('${o[0]}')"><span class="msr">${o[1]}</span><small>${o[2]}</small></div>`).join('');
-  document.getElementById('setList').innerHTML=setList.map(s=>{
+  /* sounds must be mutable — an app you can't silence is one people close */
+  const soundRow=`<div class="mrow" onclick="setSound(!soundOn())">
+    <span class="ic"><span class="msr" style="font-size:20px">volume_up</span></span>
+    <span class="t">Sound effects</span>
+    <span class="tgl ${soundOn()?'on':''}" id="soundToggle"><i></i></span></div>`;
+  document.getElementById('setList').innerHTML=soundRow+setList.map(s=>{
     const action=s[2]?`go('${s[2]}')`:`note('${s[1]} - coming soon')`;
     return `<div class="mrow" onclick="${action}"><span class="ic">${ic(s[0],20)}</span><span class="t">${s[1]}</span><span class="ch" style="transform:scaleX(-1)">${ic('back',16)}</span></div>`;
   }).join('');
@@ -3286,3 +3293,61 @@ async function refreshCurrent(){
     setTimeout(show,1200);
   });
 })();
+
+/* ---------- update prompt ---------- */
+let _updateReady=false;
+function showUpdateToast(){
+  _updateReady=true;
+  const t=document.getElementById('updateToast');if(!t)return;
+  if(sessionStorage.getItem('tmk_update_dismissed')==='1')return;
+  t.classList.add('show');
+  sfx('notif');
+}
+function applyUpdate(){location.reload();}
+document.addEventListener('DOMContentLoaded',()=>{
+  const x=document.getElementById('utX');
+  if(x)x.onclick=e=>{
+    e.stopPropagation();                 /* don't trigger the toast's reload */
+    document.getElementById('updateToast').classList.remove('show');
+    try{sessionStorage.setItem('tmk_update_dismissed','1');}catch(err){}
+  };
+});
+
+/* ---------- sound effects ----------
+   Synthesised with Web Audio: no audio files to ship, cache or fail offline.
+   Muted via Settings; browsers also block audio until the user interacts, and
+   every trigger here IS a tap, so the context unlocks naturally. */
+let _actx=null;
+function soundOn(){try{return localStorage.getItem('tmk_sound')!=='0';}catch(e){return true;}}
+function setSound(on){try{localStorage.setItem('tmk_sound',on?'1':'0');}catch(e){}
+  if(on)sfx('like');            /* preview so the toggle is audible */
+  const el=document.getElementById('soundToggle');
+  if(el)el.classList.toggle('on',on);
+}
+const SFX={
+  like:   {notes:[[880,0],[1320,.07]], dur:.13, type:'sine',     vol:.07},
+  comment:{notes:[[620,0],[820,.06]],  dur:.12, type:'triangle', vol:.06},
+  repost: {notes:[[520,0],[700,.05],[880,.1]], dur:.16, type:'sine', vol:.055},
+  notif:  {notes:[[990,0],[1480,.09]], dur:.2,  type:'sine',     vol:.07},
+  unlike: {notes:[[520,0]],            dur:.08, type:'sine',     vol:.04}
+};
+function sfx(kind){
+  if(!soundOn())return;
+  const s=SFX[kind];if(!s)return;
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+    _actx=_actx||new AC();
+    if(_actx.state==='suspended')_actx.resume();
+    const t0=_actx.currentTime;
+    s.notes.forEach(([freq,at])=>{
+      const o=_actx.createOscillator(),g=_actx.createGain();
+      o.type=s.type;o.frequency.setValueAtTime(freq,t0+at);
+      /* quick attack, smooth decay — a click is what a raw gate sounds like */
+      g.gain.setValueAtTime(0,t0+at);
+      g.gain.linearRampToValueAtTime(s.vol,t0+at+.012);
+      g.gain.exponentialRampToValueAtTime(.0001,t0+at+s.dur);
+      o.connect(g);g.connect(_actx.destination);
+      o.start(t0+at);o.stop(t0+at+s.dur+.02);
+    });
+  }catch(e){}
+}
