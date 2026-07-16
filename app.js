@@ -322,6 +322,25 @@ function loadSocial(){try{
   feed.forEach(p=>{if(cm[p.id])p.comments=cm[p.id];});
 }catch(e){}}
 function saveFollows(){try{localStorage.setItem('tmk_follows',JSON.stringify(followState));}catch(e){}}
+/* follows live on the server too, so they survive sign-out and follow you across devices */
+async function loadFollowsFromServer(){
+  const sb=getSupaClient();if(!sb||!currentUser)return;
+  try{
+    const{data}=await sb.from('follows').select('following_name').eq('follower_id',currentUser.id);
+    if(data){
+      followState={};
+      data.forEach(r=>{if(r.following_name)followState[r.following_name]=true;});
+      saveFollows();
+    }
+  }catch(e){}
+}
+async function syncFollow(n,on){
+  const sb=getSupaClient();if(!sb||!currentUser)return;
+  try{
+    if(on)await sb.from('follows').upsert({follower_id:currentUser.id,following_name:n},{onConflict:'follower_id,following_name'});
+    else await sb.from('follows').delete().eq('follower_id',currentUser.id).eq('following_name',n);
+  }catch(e){}
+}
 function saveLikes(){try{localStorage.setItem('tmk_likes',JSON.stringify(likeState));}catch(e){}}
 function savePosts(){try{localStorage.setItem('tmk_posts',JSON.stringify(userPosts));}catch(e){}}
 function saveComments(){try{const cm={};allPosts().forEach(p=>{if(p.comments&&p.comments.length)cm[p.id]=p.comments;});localStorage.setItem('tmk_comments',JSON.stringify(cm));}catch(e){}}
@@ -350,6 +369,7 @@ function toggleFollow(n){
   const wasFollowing=!!followState[n];
   followState[n]=!followState[n];saveFollows();
   updateFollowUI(n);
+  syncFollow(n,!wasFollowing);
   /* notify the user when newly followed */
   if(!wasFollowing){
     uidForName(n).then(uid=>pushNotif({recipientId:uid,recipientName:uid?null:n,type:'follow'}));
@@ -379,8 +399,11 @@ async function initAuth(){
   const{data:{session}}=await sb.auth.getSession();
   if(session){
     currentUser=session.user;
+    /* restore name/photo/follows BEFORE upserting, or an empty local copy overwrites the stored one */
+    await loadProfileFromServer();
     upsertProfile();   /* register this user so others can @mention/follow/notify them */
     loadStaff();       /* role check */
+    if(cur==='profile')renderProfile();
     if(fromOAuth){
       /* clean the token hash out of the URL and land on home */
       try{history.replaceState(null,'',window.location.pathname);}catch(e){}
@@ -391,8 +414,14 @@ async function initAuth(){
     }
     setTimeout(maybeOnboard,600);  /* first-time users pick their preferences */
   }
-  sb.auth.onAuthStateChange((_,session)=>{
+  sb.auth.onAuthStateChange(async(evt,session)=>{
+    const hadUser=!!currentUser;
     currentUser=session?session.user:null;
+    /* only on a real sign-in — not on every token refresh */
+    if(session&&evt==='SIGNED_IN'&&!hadUser){
+      await loadProfileFromServer();
+      upsertProfile();
+    }
     if(cur==='profile')renderProfile();
     /* catch session arriving after OAuth redirect */
     if(session&&(cur==='login'||cur==='otp')){
@@ -508,6 +537,7 @@ async function verifyOtp(){
   if(btn){btn.textContent='Verify & Continue';btn.disabled=false;}
   if(error){note('Incorrect OTP. Please try again.','Wrong OTP');return;}
   currentUser=data.user;
+  await loadProfileFromServer();   /* pull back name/photo/follows before writing anything */
   upsertProfile();loadStaff();
   const ret=_loginReturn;_loginReturn=null;
   go(ret||lastTab||'home');
@@ -547,14 +577,108 @@ function renderEditProfile(){
   }
 }
 
+/* ---------- profile photo: crop / zoom / reposition before saving ---------- */
+let _crop=null;
 function epPickPhoto(input){
   const file=input.files[0];if(!file)return;
+  if(!/^image\//.test(file.type)){note('Please choose an image file.','Not an image');input.value='';return;}
   const reader=new FileReader();
-  reader.onload=e=>{
-    try{localStorage.setItem('tmk_uphoto',e.target.result);}catch(err){}
-    renderEditProfile();
-  };
+  reader.onload=e=>openCropper(e.target.result);
+  reader.onerror=()=>note('Could not read that file.','Error');
   reader.readAsDataURL(file);
+  input.value='';   /* so picking the same file again still fires change */
+}
+function drawCrop(){
+  if(!_crop)return;
+  const{ctx,img,S,scale,x,y}=_crop;
+  ctx.clearRect(0,0,S,S);
+  ctx.drawImage(img,x,y,img.width*scale,img.height*scale);
+}
+/* keep the photo covering the crop window — no empty gaps at the edges */
+function clampCrop(){
+  const{img,S,scale}=_crop;
+  const w=img.width*scale,h=img.height*scale;
+  _crop.x=Math.min(0,Math.max(S-w,_crop.x));
+  _crop.y=Math.min(0,Math.max(S-h,_crop.y));
+}
+function setCropScale(mult,ox,oy){
+  const c=_crop;const old=c.scale;
+  c.scale=c.minScale*mult;
+  /* zoom about a focal point so it doesn't drift */
+  const fx=(ox==null?c.S/2:ox),fy=(oy==null?c.S/2:oy);
+  const k=c.scale/old;
+  c.x=fx-(fx-c.x)*k;c.y=fy-(fy-c.y)*k;
+  clampCrop();drawCrop();
+}
+function openCropper(src){
+  const m=document.getElementById('cropModal'),cv=document.getElementById('cropCanvas'),
+        stage=document.getElementById('cropStage'),zoom=document.getElementById('cropZoom'),
+        ok=document.getElementById('cropOk'),cancel=document.getElementById('cropCancel');
+  if(!m||!cv)return;
+  const img=new Image();
+  img.onerror=()=>note('Could not read that image.','Error');
+  img.onload=()=>{
+    m.classList.add('show');
+    /* measure after the modal is visible, or the stage has no size yet */
+    const S=Math.round(stage.getBoundingClientRect().width)||300;
+    const dpr=Math.min(window.devicePixelRatio||1,3);
+    cv.width=S*dpr;cv.height=S*dpr;
+    const ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);
+    const minScale=Math.max(S/img.width,S/img.height);   /* cover the window */
+    _crop={img,S,ctx,minScale,scale:minScale,x:0,y:0};
+    _crop.x=(S-img.width*minScale)/2;_crop.y=(S-img.height*minScale)/2;
+    zoom.value=1;drawCrop();
+
+    /* drag to reposition + pinch to zoom */
+    const pts=new Map();let pinch0=0,scale0=1;
+    stage.onpointerdown=e=>{stage.setPointerCapture(e.pointerId);pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      if(pts.size===2){const[a,b]=[...pts.values()];pinch0=Math.hypot(a.x-b.x,a.y-b.y);scale0=+zoom.value;}};
+    stage.onpointermove=e=>{
+      if(!pts.has(e.pointerId))return;
+      const prev=pts.get(e.pointerId);
+      const cur={x:e.clientX,y:e.clientY};
+      pts.set(e.pointerId,cur);
+      if(pts.size===2){
+        const[a,b]=[...pts.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);
+        if(pinch0>0){
+          const mult=Math.min(4,Math.max(1,scale0*(d/pinch0)));
+          zoom.value=mult;
+          const r=stage.getBoundingClientRect();
+          setCropScale(mult,(a.x+b.x)/2-r.left,(a.y+b.y)/2-r.top);
+        }
+        return;
+      }
+      _crop.x+=cur.x-prev.x;_crop.y+=cur.y-prev.y;
+      clampCrop();drawCrop();
+    };
+    const end=e=>{pts.delete(e.pointerId);if(pts.size<2)pinch0=0;};
+    stage.onpointerup=end;stage.onpointercancel=end;
+    zoom.oninput=()=>setCropScale(+zoom.value);
+  };
+  img.src=src;
+
+  function close(){
+    m.classList.remove('show');
+    stage.onpointerdown=stage.onpointermove=stage.onpointerup=stage.onpointercancel=null;
+    zoom.oninput=null;ok.onclick=cancel.onclick=m.onclick=null;_crop=null;
+  }
+  cancel.onclick=close;
+  m.onclick=e=>{if(e.target===m)close();};
+  ok.onclick=async()=>{
+    if(!_crop){close();return;}
+    /* render the visible window to a fixed 512px square — small enough to store & sync */
+    const out=document.createElement('canvas');out.width=512;out.height=512;
+    const octx=out.getContext('2d');
+    const k=512/_crop.S;
+    octx.drawImage(_crop.img,_crop.x*k,_crop.y*k,_crop.img.width*_crop.scale*k,_crop.img.height*_crop.scale*k);
+    let url;
+    try{url=out.toDataURL('image/jpeg',.86);}catch(e){note('Could not process that image.','Error');return;}
+    close();
+    try{localStorage.setItem('tmk_uphoto',url);}catch(err){note('Photo is too large to store on this device.','Storage full');return;}
+    renderEditProfile();
+    upsertProfile();          /* sync to the server so it survives sign-out / other devices */
+    if(cur==='profile')renderProfile();
+  };
 }
 
 function saveProfile(){
@@ -1347,10 +1471,27 @@ async function pushNotif({recipientId,recipientName,type,postId,preview}){
   if(error)console.warn('pushNotif:',error.message);
 }
 /* resolve a display name to a user_id via their posts (best-effort) */
-/* register/refresh this user's public profile so follows/notifications can reach them */
+/* register/refresh this user's public profile so follows/notifications can reach them.
+   Only writes fields we actually have — an empty local value must never blank the stored one. */
 async function upsertProfile(){
   const sb=getSupaClient();if(!sb||!currentUser)return;
-  try{await sb.from('profiles').upsert({id:currentUser.id,name:myName(),email:currentUser.email||'',photo:getSavedPhoto()||null,updated_at:new Date().toISOString()});}catch(e){}
+  const row={id:currentUser.id,email:currentUser.email||'',updated_at:new Date().toISOString()};
+  const nm=getSavedName();if(nm)row.name=nm;
+  const ph=getSavedPhoto();if(ph)row.photo=ph;
+  try{await sb.from('profiles').upsert(row);}catch(e){}
+}
+/* pull the stored profile back down after a login — localStorage is cleared on sign-out,
+   so the server copy is the source of truth for name/photo/follows across devices */
+async function loadProfileFromServer(){
+  const sb=getSupaClient();if(!sb||!currentUser)return;
+  try{
+    const{data}=await sb.from('profiles').select('name,photo,prefs').eq('id',currentUser.id).maybeSingle();
+    if(data){
+      if(data.name)try{localStorage.setItem('tmk_uname',data.name);}catch(e){}
+      if(data.photo)try{localStorage.setItem('tmk_uphoto',data.photo);}catch(e){}
+    }
+  }catch(e){}
+  await loadFollowsFromServer();
 }
 async function uidForName(name){
   const sb=getSupaClient();if(!sb||!name)return null;
@@ -2383,4 +2524,68 @@ async function refreshCurrent(){
       refreshCurrent().finally(()=>{setTimeout(()=>{retract(el);busy=false;},500);});
     }else retract(el);
   },{passive:true});
+})();
+
+/* ---------- install app prompt (mobile web only) ---------- */
+(function(){
+  let deferred=null;
+  const DISMISS_KEY='tmk_install_dismissed';
+  const isMobile=()=>/android|iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.maxTouchPoints>1&&/mac/i.test(navigator.platform));
+  const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.maxTouchPoints>1&&/mac/i.test(navigator.platform)&&!window.MSStream);
+  const isAndroid=()=>/android/i.test(navigator.userAgent);
+  /* already running as an installed app? then never nag */
+  const installed=()=>window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
+  const dismissed=()=>{try{return localStorage.getItem(DISMISS_KEY)==='1';}catch(e){return false;}};
+  const storeUrl=()=>{
+    if(isAndroid()&&SB.PLAY_STORE_URL)return SB.PLAY_STORE_URL;
+    if(isIOS()&&SB.APP_STORE_URL)return SB.APP_STORE_URL;
+    return '';
+  };
+
+  function show(){
+    const bar=document.getElementById('installBar');if(!bar)return;
+    if(!isMobile()||installed()||dismissed())return;
+    const store=storeUrl();
+    /* iOS Safari has no install prompt — tell people where the button is */
+    if(!store&&!deferred&&isIOS()){
+      const sub=document.getElementById('ibSub');
+      if(sub)sub.textContent='Tap Share, then “Add to Home Screen”';
+      const go=document.getElementById('ibGo');
+      if(go)go.textContent='How';
+    }
+    /* nothing to offer: no store link, no PWA prompt, not iOS */
+    if(!store&&!deferred&&!isIOS())return;
+    bar.classList.add('show');
+  }
+  function hide(){const bar=document.getElementById('installBar');if(bar)bar.classList.remove('show');}
+
+  window.addEventListener('beforeinstallprompt',e=>{
+    e.preventDefault();      /* keep the mini-infobar away; we drive it from our own button */
+    deferred=e;
+    show();
+  });
+  window.addEventListener('appinstalled',()=>{
+    deferred=null;hide();
+    try{localStorage.setItem(DISMISS_KEY,'1');}catch(e){}
+  });
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    const go=document.getElementById('ibGo'),x=document.getElementById('ibX');
+    if(x)x.onclick=()=>{hide();try{localStorage.setItem(DISMISS_KEY,'1');}catch(e){}};
+    if(go)go.onclick=async()=>{
+      const store=storeUrl();
+      if(store){window.open(store,'_blank','noopener');return;}
+      if(deferred){
+        deferred.prompt();
+        try{const{outcome}=await deferred.userChoice;if(outcome==='accepted')hide();}catch(e){}
+        deferred=null;return;
+      }
+      if(isIOS()){
+        note('Open the Share menu in Safari, then choose “Add to Home Screen”.','Install Tripomonk');
+        return;
+      }
+    };
+    /* store link needs no browser prompt — offer it right away */
+    setTimeout(show,1200);
+  });
 })();

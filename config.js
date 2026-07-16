@@ -12,5 +12,11 @@
 window.TMK_CONFIG = {
   SUPABASE_URL: "https://pdenkohcsjnagcfvwbfi.supabase.co",
   SUPABASE_ANON_KEY: "sb_publishable_nC4q3VEA4nfWQaZeBSoZsQ__e5OC-X2",
-  RAZORPAY_KEY_ID: "rzp_test_T4fTTBNhnhcF6R"  // test key — swap for live key when ready
+  RAZORPAY_KEY_ID: "rzp_test_T4fTTBNhnhcF6R",  // test key — swap for live key when ready
+
+  /* Native app store links. Leave blank while there is no native app —
+     the install bar then uses the browser's own PWA install prompt.
+     Fill either one in and that platform's bar links to the store instead. */
+  PLAY_STORE_URL: "",
+  APP_STORE_URL: ""
 };

@@ -585,6 +585,48 @@
   .cm-top{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}.cm-top h3{margin:0}.cm-top small{color:var(--muted);font-size:12px;flex:1}
   .cm-x{background:none;border:none;color:var(--muted);font-size:26px;line-height:1;cursor:pointer}
   .cm-list{flex:1;overflow-y:auto;margin:4px -4px 10px;padding:0 4px}
+  /* ---- profile photo cropper ---- */
+  .crop-card{max-width:340px;padding:20px 18px 16px}
+  .crop-title{margin:0 0 14px;font-size:16px;text-align:center}
+  .crop-stage{position:relative;width:100%;aspect-ratio:1;border-radius:16px;overflow:hidden;background:#0a1626;touch-action:none;cursor:grab}
+  .crop-stage:active{cursor:grabbing}
+  .crop-stage canvas{display:block;width:100%;height:100%}
+  /* circular window: everything outside the circle dims */
+  .crop-mask{position:absolute;inset:0;pointer-events:none;border-radius:16px;
+    background:radial-gradient(circle at 50% 50%, transparent 0 49.5%, rgba(6,16,28,.72) 50.5% 100%)}
+  .crop-mask::after{content:'';position:absolute;inset:0;border-radius:50%;border:2px solid rgba(255,255,255,.9);
+    box-shadow:0 0 0 1px rgba(0,0,0,.25)}
+  .crop-zoom{display:flex;align-items:center;gap:10px;margin:14px 2px 4px;color:var(--muted)}
+  .crop-zoom .msr{font-size:19px}
+  .crop-zoom input[type=range]{flex:1;accent-color:var(--accent);height:44px;cursor:pointer}
+  .crop-hint{margin:0 0 14px;text-align:center;font-size:11.5px;color:var(--muted2)}
+  html.light .crop-stage{background:#e6ebf4}
+  html.light .crop-mask{background:radial-gradient(circle at 50% 50%, transparent 0 49.5%, rgba(255,255,255,.75) 50.5% 100%)}
+  html.light .crop-mask::after{border-color:rgba(16,32,58,.75)}
+
+  /* ---- install app bar (mobile web only) ---- */
+  /* clears the nav bar, whose raised centre button makes it ~85px tall */
+  .install-bar{position:absolute;left:calc(10px + var(--safe-left));right:calc(10px + var(--safe-right));
+    bottom:calc(var(--safe-bottom) + 96px);z-index:60;display:none;align-items:center;gap:11px;padding:11px 12px;
+    border-radius:18px;background:rgba(12,24,42,.94);backdrop-filter:blur(20px) saturate(140%);-webkit-backdrop-filter:blur(20px) saturate(140%);
+    border:1px solid rgba(255,255,255,.14);box-shadow:0 18px 40px -14px rgba(0,0,0,.7);
+    animation:ibIn .34s cubic-bezier(.22,.9,.3,1)}
+  .install-bar.show{display:flex}
+  @keyframes ibIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  .install-bar .ib-ic{width:38px;height:38px;flex:none;border-radius:12px;display:grid;place-items:center;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
+  .install-bar .ib-ic .msr{font-size:21px}
+  .install-bar .ib-tx{flex:1;min-width:0;display:flex;flex-direction:column}
+  .install-bar .ib-tx b{font-size:13px}
+  .install-bar .ib-tx small{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .install-bar .ib-go{flex:none;min-height:44px;padding:0 16px;border:0;border-radius:999px;background:var(--accent);
+    color:#fff;font-family:var(--font);font-size:12.5px;font-weight:700;cursor:pointer}
+  .install-bar .ib-x{all:unset;flex:none;width:40px;height:40px;display:grid;place-items:center;border-radius:50%;
+    color:var(--muted);font-size:20px;line-height:1;cursor:pointer}
+  html.light .install-bar{background:rgba(255,255,255,.96);border-color:rgba(12,24,44,.12);box-shadow:0 18px 40px -18px rgba(0,0,0,.3)}
+  /* when the bar is up, lift the FAB clear of it */
+  .install-bar.show ~ .fab{bottom:calc(var(--safe-bottom) + 176px)}
+
   .cm{padding:9px 0;border-bottom:1px solid var(--stroke)}
   /* only a freshly posted/received comment slides in */
   .cm.new{animation:cmIn .34s cubic-bezier(.22,.9,.3,1)}
@@ -1498,6 +1540,32 @@
       <div class="cm-list" id="cmList"></div>
       <div class="cm-bar"><input id="cmInput" placeholder="Add a comment…" autocomplete="off"/><button class="btn" id="cmSend">Send</button></div>
     </div>
+  </div>
+
+  <!-- CROP PROFILE PHOTO -->
+  <div class="modal" id="cropModal">
+    <div class="modal-card crop-card">
+      <h3 class="crop-title">Adjust your photo</h3>
+      <div class="crop-stage" id="cropStage">
+        <canvas id="cropCanvas"></canvas>
+        <div class="crop-mask"></div>
+      </div>
+      <div class="crop-zoom">
+        <span class="msr">zoom_out</span>
+        <input type="range" id="cropZoom" min="1" max="4" step="0.01" value="1" aria-label="Zoom"/>
+        <span class="msr">zoom_in</span>
+      </div>
+      <p class="crop-hint">Drag to reposition · pinch or slide to zoom</p>
+      <div class="modal-actions"><button class="btn ghost" id="cropCancel">Cancel</button><button class="btn" id="cropOk">Save photo</button></div>
+    </div>
+  </div>
+
+  <!-- INSTALL APP (mobile web only) -->
+  <div class="install-bar" id="installBar">
+    <div class="ib-ic"><span class="msr">install_mobile</span></div>
+    <div class="ib-tx"><b>Install Tripomonk</b><small id="ibSub">Add to your home screen — faster, works offline</small></div>
+    <button class="ib-go" id="ibGo">Install</button>
+    <button class="ib-x" id="ibX" aria-label="Dismiss">&times;</button>
   </div>
 
   <!-- lives outside the scrolling view so it anchors to the column, not the viewport -->
