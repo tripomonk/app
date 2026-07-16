@@ -2453,8 +2453,241 @@ async function delTrek(i){const t=treks[i];if(!(await askConfirm('Delete "'+t.n+
 const gearItems=[['jacket','Down Jacket','-10°C rated','₹150/day'],['shoe','Trekking Shoes','Waterproof, all sizes','₹120/day'],['backpack','Backpack 60L','Rain cover included','₹100/day'],['poles','Trek Poles','Pair, foldable','₹60/day'],['bed','Sleeping Bag','-15°C comfort','₹120/day'],['snow','Micro-spikes','Grip for snow treks','₹90/day']];
 const permitTypes=[['Forest Entry Permit','Required for most Uttarakhand treks (Sankri, Govindghat).','1–2 days','₹350'],['National Park Permit','Valley of Flowers & Hemkund route entry.','1 day','₹400'],['Eco-Zone / Camping','Designated camping & eco-sensitive-zone clearance.','2 days','₹300'],['Foreigner Permit','Extra documentation for non-Indian trekkers.','3–4 days','₹900']];
 const activitiesData=[['raft','River Rafting','Rishikesh · Grade III','₹1,200'],['para','Paragliding','Mussoorie / Tehri','₹2,500'],['bungee','Bungee Jump','Rishikesh · 83 m','₹3,700'],['ski','Skiing','Auli · with gear','₹2,200'],['camp','Camping','Lakeside · per night','₹999'],['kayak','Kayaking','Tehri Lake','₹1,500']];
+
+/* ============================================================
+   ADVENTURE MARKETPLACE — destinations & bookable activities
+   ------------------------------------------------------------
+   Live: Rishikesh only. Everything else is soon:true until we
+   have signed operators — an empty destination is worse than none.
+
+   ⚠ Prices, slots and operator details are PLACEHOLDERS.
+   Replace with operator-confirmed numbers before selling.
+   Safety text must be signed off by the operator, not guessed.
+   ============================================================ */
+const DESTS=[
+  {id:'rishikesh',n:'Rishikesh',state:'Uttarakhand',img:U+'1591017403286-fd8493524e1e',
+   best:'Sep – Jun (rafting shuts in monsoon)',lvl:'Beginner friendly',budget:'₹2,000 – ₹5,000 / day',
+   blurb:'India’s adventure capital on the Ganga — rafting, bungee, cliff jumping and riverside camps, all within a few km.',
+   attractions:['Laxman Jhula','Beatles Ashram','Triveni Ghat','Neer Waterfall'],
+   tips:['Carry a change of clothes for rafting days.','Alcohol and meat are banned in the temple town area.','Book Shivpuri stretch early on weekends — it sells out.'],
+   near:['Chopta','Auli','Mussoorie']},
+  {id:'manali',n:'Manali',state:'Himachal',img:U+'1626621341517-bbf3d9990a23',soon:true},
+  {id:'bir',n:'Bir Billing',state:'Himachal',img:U+'1600011689032-8b628b8a8747',soon:true},
+  {id:'auli',n:'Auli',state:'Uttarakhand',img:U+'1551524559-8af4e6624178',soon:true},
+  {id:'spiti',n:'Spiti Valley',state:'Himachal',img:U+'1626621341517-bbf3d9990a23',soon:true},
+  {id:'leh',n:'Leh',state:'Ladakh',img:U+'1581793745862-99fde7fa73d2',soon:true}
+];
+/* One destination's bookable activities. price = per person, INR. */
+const ACTS=[
+  {id:'raft16',dest:'rishikesh',n:'River Rafting — Shivpuri to NIM Beach',cat:'Water',
+   img:U+'1530866495561-507c9faab2ed',price:1200,dur:'3–4 hrs',lvl:'Moderate',
+   grade:'Grade III+',minAge:14,maxGroup:8,start:'Shivpuri (16 km stretch)',
+   map:'https://maps.google.com/?q=Shivpuri+Rafting+Point+Rishikesh',
+   slots:['09:00','11:30','14:00'],
+   desc:'The classic 16 km Ganga run — Roller Coaster, Golf Course and Club House rapids, ending at NIM Beach.',
+   inc:['Certified river guide','Life jacket, helmet, paddle','Raft & safety kayak','Changing room at finish'],
+   exc:['Transport to Shivpuri','Photos/videos','Meals','Personal expenses'],
+   carry:['Quick-dry clothes','Change of clothes','Towel','Floaters with straps'],
+   safety:['Life jacket and helmet must stay on for the whole run.','Non-swimmers can raft — tell your guide before you start.','Not permitted for pregnant women or anyone with heart/spine conditions.','Rafting is suspended during monsoon high water (Jul–Aug).'],
+   cancel:'Free cancellation up to 24 hrs before the slot. No refund after that.',
+   faqs:[['Do I need to know swimming?','No. Life jackets are mandatory and your guide is trained for rescue. Tell them you cannot swim at the briefing.'],
+         ['What if it rains?','Light rain is fine. The run is called off only if the water level is unsafe — you get a full refund or a free reschedule.'],
+         ['Can I carry my phone?','Not on the raft. Leave valuables in the changing room locker at the start point.']]},
+  {id:'bungee',dest:'rishikesh',n:'Bungee Jumping — 83 m',cat:'Air',
+   img:U+'1601024445121-e5b82f020549',price:3700,dur:'2–3 hrs',lvl:'Extreme',
+   grade:'83 m fixed platform',minAge:12,maxGroup:1,start:'Mohanchatti',
+   map:'https://maps.google.com/?q=Bungee+Jumping+Mohanchatti+Rishikesh',
+   slots:['09:00','12:00','15:00'],
+   desc:'India’s highest fixed-platform jump, over a rocky gorge outside Rishikesh.',
+   inc:['Jump master & full harness','Weigh-in and briefing','Certificate'],
+   exc:['Transport','Photos/videos','Meals'],
+   carry:['Fitted clothing','Sports shoes','Photo ID'],
+   safety:['Weight limits apply (operator-verified at check-in).','Not permitted with heart conditions, high BP, epilepsy, recent surgery, or pregnancy.','Decision of the jump master is final.'],
+   cancel:'Non-refundable once the slot is confirmed.',
+   faqs:[['Can I back out on the platform?','Yes, but the slot is non-refundable once you have been harnessed and weighed.'],
+         ['Is there a weight limit?','Yes — the operator confirms your weight at check-in. Bring a photo ID.'],
+         ['Can I jump twice?','Yes, book a second slot. There is no repeat discount.']]}
+];
+const destById=id=>DESTS.find(d=>d.id===id)||null;
+const actsFor=id=>ACTS.filter(a=>a.dest===id);
+const actById=id=>ACTS.find(a=>a.id===id)||null;
+
+/* ---- activity detail ---- */
+let curAct=null;
+/* what the user picked on this screen */
+let actSel={date:'',slot:'',adults:1,children:0,exp:'Beginner'};
+const EXP_LEVELS=['Beginner','Intermediate','Expert'];
+function todayISO(d){const t=new Date();t.setDate(t.getDate()+(d||0));return t.toISOString().slice(0,10);}
+
+function openAct(id){
+  const a=actById(id);if(!a)return;
+  curAct=id;
+  actSel={date:'',slot:(a.slots&&a.slots[0])||'',adults:1,children:0,exp:'Beginner'};
+  go('act');renderAct();
+}
+/* children = anyone under 18 who still clears the activity's minimum age.
+   If the minimum age is 18+, children simply cannot join. */
+const actAllowsChildren=a=>a.minAge<18;
+
+function renderAct(){
+  const a=actById(curAct);if(!a)return;
+  const d=destById(a.dest);
+  const hero=document.getElementById('actHero');if(hero)hero.style.backgroundImage=`url('${a.img+Q}')`;
+  document.getElementById('actName').textContent=a.n;
+  document.getElementById('actWhere').textContent=(d?d.n+' · ':'')+a.start;
+  /* no invented ratings — say "new" until real reviews exist */
+  document.getElementById('actMeta').innerHTML=a.r
+    ?`<span class="star">★</span> <b>${a.r}</b> <span class="g" style="color:var(--muted)">(${a.rev} reviews)</span> &nbsp;·&nbsp; <span class="lvl">${esc(a.lvl)}</span>`
+    :`<span class="g" style="color:var(--muted)">No reviews yet</span> &nbsp;·&nbsp; <span class="lvl">${esc(a.lvl)}</span>`;
+  const stats=[['clock',a.dur,'Duration'],['altitude',a.lvl,'Difficulty'],['user','Age '+a.minAge+'+','Minimum'],['community','Max '+a.maxGroup,'Group size']];
+  document.getElementById('actStats').innerHTML=stats.map(s=>
+    `<div class="stat"><div class="ic" style="display:grid;place-items:center">${ic(s[0],20)}</div><b style="font-size:11.5px">${esc(s[1])}</b><small>${s[2]}</small></div>`).join('');
+  document.getElementById('actDesc').textContent=a.desc||'';
+
+  /* date: today at the earliest */
+  const dt=document.getElementById('actDate');
+  dt.min=todayISO(0);dt.value=actSel.date||'';
+
+  /* slots */
+  document.getElementById('actSlots').innerHTML=(a.slots||[]).map(s=>
+    `<span class="tap ${actSel.slot===s?'sel':''}" onclick="pickSlot('${s}')">${s}</span>`).join('');
+
+  /* participants */
+  document.getElementById('actAdultAge').textContent='18+';
+  document.getElementById('actAdults').textContent=actSel.adults;
+  const childRow=document.getElementById('actChildRow');
+  childRow.style.display=actAllowsChildren(a)?'':'none';
+  document.getElementById('actChildAge').textContent=a.minAge+'–17 yrs';
+  document.getElementById('actChildren').textContent=actSel.children;
+
+  /* experience */
+  document.getElementById('actExp').innerHTML=EXP_LEVELS.map(l=>
+    `<span class="tap ${actSel.exp===l?'sel':''}" onclick="pickExp('${l}')">${l}</span>`).join('');
+
+  /* safety */
+  document.getElementById('actSafety').innerHTML=(a.safety||[]).map(s=>
+    `<div><span class="msr">priority_high</span>${esc(s)}</div>`).join('');
+
+  /* start point */
+  document.getElementById('actStart').textContent=a.start;
+  document.getElementById('actTimings').textContent='Slots: '+(a.slots||[]).join(' · ');
+  const mp=document.getElementById('actMap');if(mp)mp.href=a.map||'#';
+
+  document.getElementById('actInc').innerHTML=`<div class="inclist yes">${(a.inc||[]).map(x=>`<div><span class="msr">check_circle</span>${esc(x)}</div>`).join('')}</div>`;
+  document.getElementById('actExc').innerHTML=`<div class="inclist no">${(a.exc||[]).map(x=>`<div><span class="msr">cancel</span>${esc(x)}</div>`).join('')}</div>`;
+  document.getElementById('actCarry').innerHTML=(a.carry||[]).map(x=>`<span>${esc(x)}</span>`).join('');
+  document.getElementById('actCancel').textContent=a.cancel||'';
+  document.getElementById('actRev').innerHTML=`<div class="empty" style="padding:18px 0"><p style="font-size:12.5px;color:var(--muted)">No reviews yet — be the first once you've done it.</p></div>`;
+  document.getElementById('actFaqs').innerHTML=(a.faqs||[]).map(f=>
+    `<details class="faq"><summary>${esc(f[0])}</summary><p>${esc(f[1])}</p></details>`).join('');
+
+  recalcAct();
+  hydrate(document.getElementById('act'));
+}
+function pickSlot(s){actSel.slot=s;renderAct();}
+function pickExp(l){actSel.exp=l;renderAct();}
+function stepPax(kind,delta){
+  const a=actById(curAct);if(!a)return;
+  if(kind==='a')actSel.adults=Math.max(0,actSel.adults+delta);
+  else actSel.children=Math.max(0,actSel.children+delta);
+  /* never exceed the operator's max group size */
+  const total=actSel.adults+actSel.children;
+  if(total>a.maxGroup){
+    if(kind==='a')actSel.adults-=delta;else actSel.children-=delta;
+    note('This activity allows a maximum of '+a.maxGroup+' people per booking.','Group limit');
+  }
+  if(actSel.adults<1&&actSel.children>0)actSel.adults=1;   /* a minor cannot go alone */
+  renderAct();
+}
+function actPax(){return actSel.adults+actSel.children;}
+function actSubtotal(){
+  const a=actById(curAct);if(!a)return 0;
+  const child=a.childPrice!=null?a.childPrice:a.price;
+  return actSel.adults*a.price+actSel.children*child;
+}
+function recalcAct(){
+  const a=actById(curAct);if(!a)return;
+  const dt=document.getElementById('actDate');if(dt)actSel.date=dt.value||'';
+  const total=actSubtotal();
+  document.getElementById('actTotal').textContent=INR(total);
+  document.getElementById('actPriceSub').textContent=actPax()+(actPax()===1?' person':' people')+' · '+INR(a.price)+' each';
+  /* age rule stated plainly, not buried */
+  const warn=document.getElementById('actAgeWarn');
+  if(warn){
+    const msgs=[];
+    if(!actAllowsChildren(a))msgs.push('Minimum age '+a.minAge+'. Under-'+a.minAge+'s cannot take part.');
+    else msgs.push('Minimum age '+a.minAge+'. Anyone younger cannot take part, and under-18s need a parent or guardian present.');
+    warn.textContent=msgs.join(' ');warn.style.display='';
+  }
+  const btn=document.getElementById('actAdd');
+  if(btn)btn.disabled=false;
+}
+
+/* nothing gets added half-filled — the operator needs a real date, slot and headcount */
+function validateAct(){
+  const a=actById(curAct);if(!a)return 'Something went wrong — please reopen this activity.';
+  if(!actSel.date)return 'Please choose a date.';
+  if(actSel.date<todayISO(0))return 'That date has passed — please pick today or later.';
+  if(!actSel.slot)return 'Please choose a time slot.';
+  if(actPax()<1)return 'Add at least one participant.';
+  if(actPax()>a.maxGroup)return 'This activity allows a maximum of '+a.maxGroup+' people per booking.';
+  return '';
+}
+function addActToCart(){
+  const err=validateAct();
+  if(err){note(err,'Check your booking');return;}
+  note('Added — the live cart is being built in the next step.','Coming next');
+}
+
+/* ---- destinations grid ---- */
+function destCard(d){
+  const n=actsFor(d.id).length;
+  return `<div class="bigcard" onclick="${d.soon?`note('${d.n} is coming soon — we are signing local operators now.','Coming soon')`:`openDest('${d.id}')`}" style="background-image:url('${d.img+Q}')">
+    <span class="pr">${d.soon?'Coming Soon':n+' activit'+(n===1?'y':'ies')}</span>
+    <div class="info"><h3>${esc(d.n)}</h3><div class="reg">${ic('pin',12)} ${esc(d.state)}</div></div></div>`;
+}
+function renderDests(){
+  const el=document.getElementById('destList');if(!el)return;
+  const live=DESTS.filter(d=>!d.soon),soon=DESTS.filter(d=>d.soon);
+  el.innerHTML=live.map(destCard).join('')
+    +(soon.length?`<div class="sec" style="margin-top:18px"><h2 style="font-size:15px">Coming soon</h2></div>`+soon.map(destCard).join(''):'');
+  hydrate(el);
+}
+/* ---- one destination ---- */
+let curDest=null;
+function openDest(id){
+  const d=destById(id);if(!d){note('That destination is not available yet.','Not found');return;}
+  curDest=id;go('dest');renderDest();
+}
+function renderDest(){
+  const d=destById(curDest);if(!d)return;
+  const hero=document.getElementById('destHero');if(hero)hero.style.backgroundImage=`url('${d.img+Q}')`;
+  document.getElementById('destName').textContent=d.n;
+  document.getElementById('destState').textContent=d.state;
+  document.getElementById('destBlurb').textContent=d.blurb||'';
+  const stats=[['calendar',d.best||'—','Best time'],['altitude',d.lvl||'—','Level'],['card',d.budget||'—','Avg budget']];
+  document.getElementById('destStats').innerHTML=stats.map(s=>
+    `<div class="stat"><div class="ic" style="display:grid;place-items:center">${ic(s[0],20)}</div><b style="font-size:11px">${esc(s[1])}</b><small>${s[2]}</small></div>`).join('');
+  /* activities */
+  const acts=actsFor(d.id);
+  document.getElementById('destActs').innerHTML=acts.length
+    ?acts.map(a=>`<div class="arow" onclick="openAct('${a.id}')">
+      <div class="aph" style="background-image:url('${a.img+Q}')"></div>
+      <div class="abd"><h4>${esc(a.n)}</h4><small>${esc(a.cat)} · ${esc(a.grade||'')}</small>
+        <div class="atags"><i>${ic('clock',10)} ${esc(a.dur)}</i><i>${esc(a.lvl)}</i><i>Age ${a.minAge}+</i></div></div>
+      <div class="apr"><b>${INR(a.price)}</b><small>per person</small></div></div>`).join('')
+    :`<div class="empty"><p>No activities listed here yet.</p></div>`;
+  /* attractions / tips / nearby */
+  document.getElementById('destAttr').innerHTML=(d.attractions||[]).map(a=>`<span>${esc(a)}</span>`).join('');
+  document.getElementById('destTips').innerHTML=`<div class="tiplist">${(d.tips||[]).map(t=>`<div><span class="msr">lightbulb</span>${esc(t)}</div>`).join('')}</div>`;
+  const nearBlk=document.getElementById('destNearBlk');
+  const near=(d.near||[]);
+  if(nearBlk)nearBlk.style.display=near.length?'':'none';
+  document.getElementById('destNear').innerHTML=near.map(n=>`<span>${esc(n)}</span>`).join('');
+  hydrate(document.getElementById('dest'));
+}
 let gearSel={};
-function renderQuick(){const q=[['backpack','Rent Gear','gear'],['permits','Permits','permits'],['para','Activities','activities']];const el=document.getElementById('quick');if(!el)return;el.style.gridTemplateColumns='repeat(3,1fr)';el.innerHTML=q.map(a=>`<div class="qa" onclick="go('${a[2]}')"><div class="qi">${ic(a[0],20)}</div><span>${a[1]}</span></div>`).join('');hydrate(el);}
+function renderQuick(){const q=[['pin','Destinations','dests'],['backpack','Rent Gear','gear'],['permits','Permits','permits'],['para','Activities','activities']];const el=document.getElementById('quick');if(!el)return;el.style.gridTemplateColumns='repeat(4,1fr)';el.innerHTML=q.map(a=>`<div class="qa" onclick="go('${a[2]}')"><div class="qi">${ic(a[0],20)}</div><span>${a[1]}</span></div>`).join('');hydrate(el);}
 function renderGear(){document.getElementById('gearList').innerHTML=gearItems.map((g,i)=>`<div class="gitem ${gearSel[i]?'sel':''}" onclick="togGear(${i})"><span class="gi ic">${ic(g[0],22)}</span><div class="t"><b>${g[1]}</b><small>${g[2]}</small></div><span class="rate">${g[3]}</span><span class="chk">${ic('check',14)}</span></div>`).join('');hydrate(document.getElementById('gear'));}
 function togGear(i){gearSel[i]=!gearSel[i];renderGear();}
 function gearEnquire(){const picked=gearItems.filter((g,i)=>gearSel[i]).map(g=>g[1]);wa(picked.length?('I want to rent: '+picked.join(', ')):'I want to rent trek gear.');}
@@ -2625,6 +2858,9 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='gear')renderGear();
   if(id==='permits')renderPermits();
   if(id==='activities')renderActivities();
+  if(id==='dests')renderDests();
+  if(id==='dest')renderDest();
+  if(id==='act')renderAct();
   if(id==='community')renderFeed();
   if(id==='peopleSearch'){_peoplePool=null;setTimeout(()=>{const i=document.getElementById('peopleSearchInput');if(i){i.value='';i.focus();}searchPeople('');},80);}
   if(id==='news')renderNews();

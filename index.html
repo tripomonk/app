@@ -265,6 +265,11 @@
   .dcard .meta{display:flex;align-items:center;gap:12px;font-size:13px}
   .dcard .meta .lvl{color:#6ee7a0}
   .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0 4px}
+  /* grid items default to min-width:auto and refuse to shrink below their text,
+     which pushed the 4-up stat row off narrow screens. Let them shrink and wrap. */
+  .stats>.stat{min-width:0}
+  .stats>.stat b,.stats>.stat small{min-width:0;overflow-wrap:anywhere;hyphens:auto}
+  @media(max-width:340px){.stats{grid-template-columns:repeat(2,1fr)}}
   .stat{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:12px 5px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:104px}
   .stat .ic{color:var(--accent2);margin-bottom:2px}
   .stat b{line-height:1.2}.stat small{line-height:1.2}
@@ -585,6 +590,83 @@
   .cm-top{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}.cm-top h3{margin:0}.cm-top small{color:var(--muted);font-size:12px;flex:1}
   .cm-x{background:none;border:none;color:var(--muted);font-size:26px;line-height:1;cursor:pointer}
   .cm-list{flex:1;overflow-y:auto;margin:4px -4px 10px;padding:0 4px}
+  /* ---- adventure marketplace ---- */
+  .dest-intro{margin:0 0 14px;font-size:12.5px;color:var(--muted);line-height:1.5}
+  .chiprow{display:flex;flex-wrap:wrap;gap:8px}
+  .chiprow span{font-size:11.5px;font-weight:600;color:var(--accent2);background:rgba(47,107,255,.12);
+    border:1px solid rgba(47,107,255,.2);padding:7px 11px;border-radius:999px}
+  /* tappable chips (slots, experience) need a real 44px target; plain label chips don't */
+  .chiprow span.tap{cursor:pointer;min-height:44px;display:inline-flex;align-items:center;box-sizing:border-box;padding:7px 14px}
+  .tiplist{display:flex;flex-direction:column;gap:9px}
+  .tiplist div{display:flex;gap:9px;font-size:12.5px;color:var(--muted);line-height:1.5}
+  .tiplist .msr{font-size:15px;color:var(--accent2);flex:none;margin-top:1px}
+  /* activity row inside a destination */
+  .arow{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--stroke);
+    border-radius:16px;padding:10px;margin-bottom:10px;cursor:pointer}
+  .arow .aph{width:74px;height:74px;flex:none;border-radius:12px;background-size:cover;background-position:center}
+  .arow .abd{flex:1;min-width:0}
+  .arow .abd h4{margin:0 0 3px;font-size:13.5px;font-weight:600;line-height:1.3}
+  .arow .abd small{display:block;font-size:11px;color:var(--muted);margin-bottom:5px}
+  .arow .atags{display:flex;flex-wrap:wrap;gap:5px}
+  .arow .atags i{font-style:normal;font-size:10px;font-weight:600;color:var(--muted);
+    background:var(--card2);border:1px solid var(--stroke);padding:3px 7px;border-radius:7px}
+  .arow .apr{flex:none;text-align:right}
+  .arow .apr b{display:block;font-size:14px}
+  .arow .apr small{font-size:9.5px;color:var(--muted2)}
+
+  /* ---- activity detail ---- */
+  .lbl{font-size:11.5px;font-weight:600;color:var(--muted);margin:14px 2px 8px}
+  .slotrow span{cursor:pointer;transition:.15s}
+  .chiprow span.sel{background:var(--accent);border-color:var(--accent);color:#fff}
+  .chiprow span.off{opacity:.4;cursor:not-allowed;text-decoration:line-through}
+  .paxrow{display:flex;flex-direction:column;gap:9px}
+  .paxi{display:flex;align-items:center;justify-content:space-between;background:var(--card);
+    border:1px solid var(--stroke);border-radius:14px;padding:11px 13px}
+  .paxi b{font-size:13px;display:block}
+  .paxi small{font-size:10.5px;color:var(--muted2)}
+  .paxi .stepper{display:flex;align-items:center;gap:4px}
+  .paxi .stepper button{all:unset;width:44px;height:44px;display:grid;place-items:center;cursor:pointer;
+    border-radius:11px;background:var(--card2);border:1px solid var(--stroke);font-size:17px;color:var(--text)}
+  .paxi .stepper button:active{transform:scale(.92)}
+  .agewarn{margin-top:12px;font-size:11.5px;line-height:1.5;color:#ffce1f;
+    background:rgba(255,206,31,.1);border:1px solid rgba(255,206,31,.28);border-radius:12px;padding:10px 12px}
+  html.light .agewarn{color:#8a6100;background:rgba(217,152,0,.1);border-color:rgba(217,152,0,.3)}
+  /* safety must look different from marketing copy */
+  .safety-blk h2{display:flex;align-items:center;gap:7px;color:#ff8a5a}
+  .safety-blk h2 .msr{font-size:19px}
+  html.light .safety-blk h2{color:#c2410c}
+  .safety-blk{background:rgba(255,120,80,.07);border:1px solid rgba(255,120,80,.22);
+    border-radius:16px;padding:14px;margin:0 0 16px}
+  .safety-blk .tiplist .msr{color:#ff8a5a}
+  html.light .safety-blk{background:rgba(194,65,12,.06);border-color:rgba(194,65,12,.2)}
+  html.light .safety-blk .tiplist .msr{color:#c2410c}
+  .startbox{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card);
+    border:1px solid var(--stroke);border-radius:14px;padding:12px}
+  .startbox b{font-size:13px;display:block}
+  .startbox small{font-size:11px;color:var(--muted)}
+  .mapbtn{flex:none;display:inline-flex;align-items:center;gap:5px;min-height:44px;padding:0 13px;border-radius:999px;
+    background:rgba(47,107,255,.14);border:1px solid rgba(47,107,255,.28);color:var(--accent2);
+    font-size:12px;font-weight:700;text-decoration:none;cursor:pointer}
+  .mapbtn .msr{font-size:16px}
+  .inclist{display:flex;flex-direction:column;gap:8px}
+  .inclist div{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;line-height:1.5;color:var(--muted)}
+  .inclist .msr{font-size:15px;flex:none;margin-top:1px}
+  .inclist.yes .msr{color:#0f9d58}
+  .inclist.no .msr{color:#ff5a6e}
+  .faq{border-bottom:1px solid var(--stroke)}
+  .faq summary{cursor:pointer;list-style:none;padding:12px 0;font-size:13px;font-weight:600;
+    display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:44px;box-sizing:border-box}
+  .faq summary::-webkit-details-marker{display:none}
+  .faq summary::after{content:'+';font-size:17px;color:var(--accent2);flex:none}
+  .faq[open] summary::after{content:'−'}
+  .faq p{margin:0 0 12px;font-size:12.5px;line-height:1.55;color:var(--muted)}
+  /* .cta's negative margins assume a padded .view; #act is .view.full, so reset them */
+  #act .cta{margin:14px 0 0;padding:14px calc(16px + var(--safe-right)) calc(var(--safe-bottom) + 16px) calc(16px + var(--safe-left))}
+  #act .cta .btn{min-height:48px}
+  .ctarow{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .ctarow small{display:block;font-size:10px;color:var(--muted2)}
+  .ctarow b{font-size:19px}
+
   /* ---- @mentions ---- */
   .mention{color:var(--accent2);font-weight:600;cursor:pointer}
   .mention-wrap{position:relative}
@@ -1471,6 +1553,79 @@
     <div class="panel" style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:14px">Assisted service: tell us your trek and we process the forest / eco-zone permit and ID, then send the approved copy in-app.</div>
     <div class="search" style="margin-bottom:16px"><span class="msr" style="font-size:20px;color:var(--muted)">search</span><input id="permitSearch" type="text" placeholder="Search permits…" autocomplete="off" oninput="renderPermits(this.value)" style="all:unset;flex:1;font-size:14px;color:var(--text)"/></div>
     <div id="permitList"></div>
+  </section>
+
+  <!-- MARKETPLACE · DESTINATIONS -->
+  <section class="view flow" id="dests" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Destinations</h1></div>
+    <p class="dest-intro">Pick a place, then build your own adventure — activities, stay, gear and transport.</p>
+    <div id="destList"></div>
+  </section>
+
+  <!-- MARKETPLACE · ONE DESTINATION -->
+  <section class="view full" id="dest" data-nonav>
+    <div class="hero" id="destHero"><div class="htop"><div class="hb" onclick="back()"><span class="ic" data-i="back"></span></div></div></div>
+    <div class="dcard">
+      <h1 id="destName"></h1>
+      <div class="reg"><span class="ic" data-i="pin"></span><span id="destState"></span></div>
+      <div class="stats" id="destStats"></div>
+    </div>
+    <div class="blk"><h2>About</h2><p id="destBlurb"></p></div>
+    <div class="blk"><h2>Adventure activities</h2><div id="destActs"></div></div>
+    <div class="blk"><h2>Popular attractions</h2><div class="chiprow" id="destAttr"></div></div>
+    <div class="blk"><h2>Local tips</h2><div id="destTips"></div></div>
+    <div class="blk" id="destNearBlk"><h2>Nearby</h2><div class="chiprow" id="destNear"></div></div>
+    <div style="height:calc(var(--safe-bottom) + 28px)"></div>
+  </section>
+
+  <!-- MARKETPLACE · ACTIVITY DETAIL -->
+  <section class="view full" id="act" data-nonav>
+    <div class="hero" id="actHero"><div class="htop"><div class="hb" onclick="back()"><span class="ic" data-i="back"></span></div></div></div>
+    <div class="dcard">
+      <h1 id="actName"></h1>
+      <div class="reg"><span class="ic" data-i="pin"></span><span id="actWhere"></span></div>
+      <div class="meta" id="actMeta"></div>
+      <div class="stats" id="actStats"></div>
+    </div>
+
+    <div class="blk"><h2>About</h2><p id="actDesc"></p></div>
+
+    <!-- date / slot / people -->
+    <div class="blk">
+      <h2>Choose date &amp; time</h2>
+      <div class="field"><label>Date</label><div class="inp"><span class="msr" style="font-size:19px;color:var(--muted)">event</span><input type="date" id="actDate" onchange="recalcAct()"/></div></div>
+      <div class="lbl">Time slot</div>
+      <div class="chiprow slotrow" id="actSlots"></div>
+      <div class="lbl">Participants</div>
+      <div class="paxrow">
+        <div class="paxi"><div><b>Adults</b><small id="actAdultAge"></small></div>
+          <div class="stepper"><button onclick="stepPax('a',-1)">−</button><b id="actAdults">1</b><button onclick="stepPax('a',1)">+</button></div></div>
+        <div class="paxi" id="actChildRow"><div><b>Children</b><small id="actChildAge"></small></div>
+          <div class="stepper"><button onclick="stepPax('c',-1)">−</button><b id="actChildren">0</b><button onclick="stepPax('c',1)">+</button></div></div>
+      </div>
+      <div class="lbl">Experience level</div>
+      <div class="chiprow" id="actExp"></div>
+      <div class="agewarn" id="actAgeWarn" style="display:none"></div>
+    </div>
+
+    <div class="blk safety-blk"><h2><span class="msr">health_and_safety</span> Safety — read before booking</h2><div class="tiplist" id="actSafety"></div></div>
+
+    <div class="blk"><h2>Starting point</h2>
+      <div class="startbox"><div><b id="actStart"></b><small id="actTimings"></small></div>
+        <a class="mapbtn" id="actMap" target="_blank" rel="noopener"><span class="msr">map</span> Map</a></div>
+    </div>
+
+    <div class="blk"><h2>What's included</h2><div id="actInc"></div></div>
+    <div class="blk"><h2>Not included</h2><div id="actExc"></div></div>
+    <div class="blk"><h2>What to carry</h2><div class="chiprow" id="actCarry"></div></div>
+    <div class="blk"><h2>Cancellation policy</h2><p id="actCancel"></p></div>
+    <div class="blk"><h2>Reviews</h2><div id="actRev"></div></div>
+    <div class="blk"><h2>FAQs</h2><div id="actFaqs"></div></div>
+
+    <div class="cta">
+      <div class="ctarow"><div><small id="actPriceSub"></small><b id="actTotal">₹0</b></div>
+        <button class="btn" id="actAdd" onclick="addActToCart()" style="width:auto;padding:0 22px">Add to my adventure</button></div>
+    </div>
   </section>
 
   <!-- ADVENTURE ACTIVITIES -->
