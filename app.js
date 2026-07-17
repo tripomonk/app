@@ -3958,6 +3958,7 @@ function renderHostTrip(){
     }
   }
   const dt=document.getElementById('htDate');if(dt)dt.min=todayISO(0);
+  const et=document.getElementById('htEnd');if(et)et.min=(dt&&dt.value)||todayISO(0);
   htPreview();
   hydrate(document.getElementById('hostTrip'));
 }
@@ -3967,8 +3968,9 @@ function htPreview(){
   const v=id=>((document.getElementById(id)||{}).value||'').trim();
   const title=v('htTitle')||'Your trip title';
   const dest=v('htDest')||'Destination';
-  const date=v('htDate'), days=v('htDays'), max=v('htMax'), price=parseFloat(v('htPrice'));
-  const when=date?new Date(date+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'Date not set';
+  const date=v('htDate'), end=v('htEnd'), days=v('htDays'), max=v('htMax'), price=parseFloat(v('htPrice'));
+  const fmt=d=>new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+  const when=date?(end&&end>=date?fmt(date)+' – '+fmt(end):fmt(date)):'Date not set';
   const bits=[when];
   if(days)bits.push(days+' days');
   if(max)bits.push('max '+max);
@@ -3979,6 +3981,23 @@ function htPreview(){
     +'<small style="margin-top:3px">'+esc(bits.join(' · '))+'</small>'
     +'<span class="tpp">'+(price>=0&&!isNaN(price)?INR(price)+' <span style="font-size:11px;color:var(--muted2);font-weight:400">per person</span>':'<span style="font-size:12px;color:var(--muted2);font-weight:400">Price not set</span>')+'</span>';
   hydrate(box);
+}
+/* open a native date picker even though the input's chrome is stripped */
+function openPicker(id){const el=document.getElementById(id);if(!el)return;try{el.showPicker?el.showPicker():el.focus();}catch(e){el.focus();}}
+/* end date can't be before start; nudge it forward and cap its min */
+function htEndFromStart(){
+  const s=document.getElementById('htDate'),e=document.getElementById('htEnd');if(!s||!e)return;
+  if(s.value){e.min=s.value;if(e.value&&e.value<s.value)e.value=s.value;}
+  htDaysFromRange();
+}
+/* days is derived from the range — inclusive, so a same-day trip is 1 day */
+function htDaysFromRange(){
+  const s=(document.getElementById('htDate')||{}).value,e=(document.getElementById('htEnd')||{}).value;
+  const d=document.getElementById('htDays');if(!d)return;
+  if(s&&e&&e>=s){
+    const ms=new Date(e+'T00:00:00')-new Date(s+'T00:00:00');
+    d.value=Math.round(ms/864e5)+1;
+  }else d.value='';
 }
 function pickHtDiff(x){_htDiff=x;renderHostTrip();}
 function htPickImg(input){
@@ -4004,12 +4023,13 @@ async function openHostTrip(id){
     if(!t){note('Trip not found.','Error');_editTripId=null;return;}
     if(t.status==='live'){note('Live trips are locked — message us to change them.','Locked');_editTripId=null;return;}
     _htDiff=t.difficulty||'Moderate';_htImgData=t.img||'';
-    set('htTitle',t.title);set('htDest',t.destination);set('htDate',t.start_date);
+    set('htTitle',t.title);set('htDest',t.destination);set('htDate',t.start_date);set('htEnd',t.end_date);
     set('htDays',t.days);set('htMax',t.max_people);set('htPrice',t.price);
     set('htDesc',t.description);set('htInc',t.inclusions);set('htExc',t.exclusions);
+    htDaysFromRange();
   }else{
     _htDiff='Moderate';_htImgData='';
-    ['htTitle','htDest','htDate','htDays','htMax','htPrice','htDesc','htInc','htExc'].forEach(k=>set(k,''));
+    ['htTitle','htDest','htDate','htEnd','htDays','htMax','htPrice','htDesc','htInc','htExc'].forEach(k=>set(k,''));
   }
   go('hostTrip');renderHostTrip();
   const h=document.querySelector('#hostTrip .bar h1');if(h)h.textContent=id?'Edit trip':'Create a trip';
@@ -4017,12 +4037,14 @@ async function openHostTrip(id){
 }
 async function submitHostTrip(){
   const v=id=>((document.getElementById(id)||{}).value||'').trim();
-  const title=v('htTitle'),dest=v('htDest'),date=v('htDate');
+  const title=v('htTitle'),dest=v('htDest'),date=v('htDate'),end=v('htEnd');
   const days=parseInt(v('htDays'),10),max=parseInt(v('htMax'),10),price=parseFloat(v('htPrice'));
   if(!title){note('Give your trip a title.','Title required');return;}
   if(!dest){note('Where does this trip go?','Destination required');return;}
   if(!date){note('Pick a start date.','Date required');return;}
   if(date<todayISO(0)){note('Start date cannot be in the past.','Check the date');return;}
+  if(!end){note('Pick an end date.','Date required');return;}
+  if(end<date){note('End date cannot be before the start date.','Check the dates');return;}
   if(!days||days<1){note('How many days is the trip?','Duration required');return;}
   if(!max||max<1){note('How many people can join?','Group size required');return;}
   if(!(price>=0)||isNaN(price)){note('Set a price per person.','Price required');return;}
@@ -4044,7 +4066,10 @@ async function submitHostTrip(){
       if(up.error)throw new Error(up.error.message);
       imgUrl=sb.storage.from('community').getPublicUrl(path).data.publicUrl;
     }
-    const row={host_id:uid,host_name:myName(),title:title,destination:dest,start_date:date,
+    /* the host's real name is what they gave on their APPLICATION, not a stale
+       localStorage value (which could be blank or, if the admin created it, wrong) */
+    const hostName=(_hostApp&&_hostApp.full_name)||myName();
+    const row={host_id:uid,host_name:hostName,title:title,destination:dest,start_date:date,end_date:end,
       days:days,max_people:max,difficulty:_htDiff,price:price,
       description:v('htDesc'),inclusions:v('htInc'),exclusions:v('htExc')};
     /* keep the existing photo on edit unless a new one was picked */

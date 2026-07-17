@@ -353,6 +353,12 @@
   .field .inp{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:13px 14px}
   .field .inp input{all:unset;flex:1;color:var(--text);font-size:14px}
   .field .inp input::placeholder{color:var(--muted2)}
+  /* `all:unset` above kills the native date UI and can make the field un-tappable.
+     Restore appearance, keep the picker icon, and let the whole row open the picker. */
+  .field .inp.dateinp{cursor:pointer}
+  .field .inp input[type=date]{-webkit-appearance:none;appearance:none;min-height:20px}
+  .field .inp input[type=date]::-webkit-date-and-time-value{text-align:left}
+  .field .inp input[type=date]::-webkit-calendar-picker-indicator{opacity:0;position:absolute;right:0;width:100%;height:100%;cursor:pointer}
   .field .inp .ic{color:var(--muted)}
   .stepper{display:flex;align-items:center;gap:14px}
   /* sits on var(--card), which flips with the theme — so the glyph must flip too */
@@ -1998,9 +2004,10 @@
     <div class="field"><label>Destination *</label><div class="inp"><span class="msr" style="font-size:18px;color:var(--muted)">pin_drop</span><input id="htDest" placeholder="e.g. Spiti Valley" oninput="htPreview()"/></div></div>
 
     <div class="tform-sec"><span class="msr">event</span><b>When &amp; who</b></div>
-    <div class="field"><label>Start date *</label><div class="inp"><span class="msr" style="font-size:19px;color:var(--muted)">event</span><input type="date" id="htDate" onchange="htPreview()"/></div></div>
+    <div class="field"><label>Start date *</label><div class="inp dateinp" onclick="openPicker('htDate')"><span class="msr" style="font-size:19px;color:var(--muted)">event</span><input type="date" id="htDate" onchange="htEndFromStart();htPreview()"/></div></div>
+    <div class="field"><label>End date *</label><div class="inp dateinp" onclick="openPicker('htEnd')"><span class="msr" style="font-size:19px;color:var(--muted)">event_available</span><input type="date" id="htEnd" onchange="htDaysFromRange();htPreview()"/></div></div>
     <div class="trow2" style="margin-bottom:14px">
-      <div class="field"><label>Days *</label><div class="inp"><input type="number" id="htDays" min="1" max="60" placeholder="5" oninput="htPreview()"/></div></div>
+      <div class="field"><label>Days (auto)</label><div class="inp"><input type="number" id="htDays" min="1" max="60" placeholder="—" readonly style="opacity:.7"/></div></div>
       <div class="field"><label>Max people *</label><div class="inp"><input type="number" id="htMax" min="1" max="50" placeholder="12" oninput="htPreview()"/></div></div>
     </div>
     <div class="field"><label>Difficulty</label><div class="chiprow" id="htDiff"></div></div>
