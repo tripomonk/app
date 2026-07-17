@@ -324,6 +324,13 @@ let photoByName={},hostByName={};
    host-trip functions at the bottom of this file. Declaring it next to them
    put it in the temporal dead zone and killed the rest of the script. */
 let liveHostTrips=[];
+/* All host-module state lives up here, ABOVE the boot sequence.
+   restoreNav() can send a user straight back to becomeHost / hostDash / hostTrip
+   on load, and those renderers read these. Declared beside their functions at the
+   bottom of the file, they'd be in the temporal dead zone and kill the script. */
+let _hostApp=null,_hostLoaded=false;
+let hdTab='Trips',_hdTrips=[],_editTripId=null;
+let _htDiff='Moderate',_htFile=null,_htImgData='';
 /* a verified host gets a tick next to their name — public trust signal, admin-set only */
 function hostBadge(n){return hostByName[n]?'<span class="vbadge" title="Verified Host"><span class="msr">check</span></span>':'';}
 function photoFor(n){
@@ -2304,6 +2311,15 @@ function renderProfile(){document.getElementById('pCover').style.backgroundImage
     else{pav.style.backgroundImage='';pav.textContent=(uname[0]||'E').toUpperCase();}
   }
   const pname=document.getElementById('profileName');if(pname)pname.textContent=isLoggedIn()?uname:'Guest';
+  /* verified hosts get a direct dashboard entry in the profile menu */
+  loadHostApp().then(()=>{
+    const m=document.getElementById('menu');
+    if(m&&isVerifiedHost()&&!m.querySelector('[data-hostdash]')){
+      m.insertAdjacentHTML('afterbegin',
+        '<div class="mrow" data-hostdash="1" onclick="openHostDash()"><span class="ic"><span class="msr" style="font-size:20px">dashboard</span></span>'
+        +'<span class="t">Host dashboard</span><span class="ch" style="transform:scaleX(-1)">'+ic('back',16)+'</span></div>');
+    }
+  }).catch(()=>{});
   const psub=document.getElementById('profileSub');
   if(psub){
     const un=getSavedUsername();
@@ -3492,6 +3508,8 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='cart')renderCart();
   if(id==='becomeHost')renderBecomeHost();
   if(id==='hostTrip')renderHostTrip();
+  if(id==='hostDash')renderHostDash();
+  if(id==='hostProfile')renderHostProfile();
   if(id==='community')renderFeed();
   if(id==='peopleSearch'){_peoplePool=null;setTimeout(()=>{const i=document.getElementById('peopleSearchInput');if(i){i.value='';i.focus();}searchPeople('');},80);}
   if(id==='news')renderNews();
@@ -3724,7 +3742,6 @@ function sfx(kind){
    Storing those turns this database into a KYC breach target. Take them
    on the verification call; let Razorpay Route hold KYC for payouts.
    ============================================================ */
-let _hostApp=null,_hostLoaded=false;
 
 async function loadHostApp(){
   const sb=getSupaClient();const uid=sb?await authUid():null;
@@ -3776,7 +3793,9 @@ async function renderBecomeHost(){
     body.innerHTML='<div class="hstat '+esc(s)+'"><span class="msr" style="font-size:15px">'+icon+'</span> '+label+'</div>'
       +'<div class="host-hero"><h2>'+esc(_hostApp.full_name||'')+'</h2><p>'+esc(msg)+'</p></div>'
       +(_hostApp.admin_note?'<p class="host-note"><b>Note from Tripomonk:</b> '+esc(_hostApp.admin_note)+'</p>':'')
-      +(s==='approved'?'<button class="btn" onclick="openHostTrip()">Create a trip</button><div id="myTripsBox" style="margin-top:18px"></div>':'')
+      +(s==='approved'?'<button class="btn" onclick="openHostDash()">Open host dashboard</button>'
+        +'<button class="btn ghost" style="margin-top:10px" onclick="openHostTrip()">Create a trip</button>'
+        +'<div id="myTripsBox" style="margin-top:18px"></div>':'')
       +(s==='pending'?'<p class="host-note">Applied '+timeAgo(_hostApp.created_at)+'. We collect ID and payout details on the verification call — never in the app.</p>':'');
     hydrate(body);
     if(s==='approved')renderMyTrips();
@@ -3896,7 +3915,6 @@ async function reviewHost(id,status,name){
    that rule is enforced by RLS, not by this screen.
    ============================================================ */
 const HT_DIFF=['Easy','Moderate','Difficult'];
-let _htDiff='Moderate',_htFile=null,_htImgData='';
 
 function renderHostTrip(){
   const d=document.getElementById('htDiff');
@@ -3919,13 +3937,30 @@ function htPickImg(input){
   r.onload=e=>{_htImgData=e.target.result;renderHostTrip();};
   r.readAsDataURL(f);
 }
-async function openHostTrip(){
+/* no id = create. id = edit that trip (drafts/rejected only; live is locked). */
+async function openHostTrip(id){
   await loadHostApp();
   if(!isVerifiedHost()){note('Only verified hosts can create trips.','Not yet approved');return;}
-  _htDiff='Moderate';_htFile=null;_htImgData='';
-  ['htTitle','htDest','htDate','htDays','htMax','htPrice','htDesc','htInc','htExc']
-    .forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  _editTripId=id||null;_htFile=null;
+  const set=(k,v)=>{const el=document.getElementById(k);if(el)el.value=v==null?'':v;};
+  if(id){
+    const sb=getSupaClient();const uid=sb?await authUid():null;
+    if(!sb||!uid)return;
+    const r=await sb.from('host_trips').select('*').eq('id',id).eq('host_id',uid).maybeSingle();
+    const t=r.data;
+    if(!t){note('Trip not found.','Error');_editTripId=null;return;}
+    if(t.status==='live'){note('Live trips are locked — message us to change them.','Locked');_editTripId=null;return;}
+    _htDiff=t.difficulty||'Moderate';_htImgData=t.img||'';
+    set('htTitle',t.title);set('htDest',t.destination);set('htDate',t.start_date);
+    set('htDays',t.days);set('htMax',t.max_people);set('htPrice',t.price);
+    set('htDesc',t.description);set('htInc',t.inclusions);set('htExc',t.exclusions);
+  }else{
+    _htDiff='Moderate';_htImgData='';
+    ['htTitle','htDest','htDate','htDays','htMax','htPrice','htDesc','htInc','htExc'].forEach(k=>set(k,''));
+  }
   go('hostTrip');renderHostTrip();
+  const h=document.querySelector('#hostTrip .bar h1');if(h)h.textContent=id?'Edit trip':'Create a trip';
+  const b=document.getElementById('htSubmit');if(b)b.textContent=id?'Save changes':'Submit for review';
 }
 async function submitHostTrip(){
   const v=id=>((document.getElementById(id)||{}).value||'').trim();
@@ -3956,16 +3991,25 @@ async function submitHostTrip(){
       if(up.error)throw new Error(up.error.message);
       imgUrl=sb.storage.from('community').getPublicUrl(path).data.publicUrl;
     }
-    const r=await sb.from('host_trips').insert({
-      host_id:uid,host_name:myName(),title:title,destination:dest,start_date:date,
-      days:days,max_people:max,difficulty:_htDiff,price:price,img:imgUrl||null,
-      description:v('htDesc'),inclusions:v('htInc'),exclusions:v('htExc'),status:'draft'
-    }).select('id');
+    const row={host_id:uid,host_name:myName(),title:title,destination:dest,start_date:date,
+      days:days,max_people:max,difficulty:_htDiff,price:price,
+      description:v('htDesc'),inclusions:v('htInc'),exclusions:v('htExc')};
+    /* keep the existing photo on edit unless a new one was picked */
+    if(imgUrl)row.img=imgUrl; else if(!_editTripId)row.img=null;
+    let r;
+    if(_editTripId){
+      /* status deliberately not sent — the DB trigger pins it regardless */
+      r=await sb.from('host_trips').update(row).eq('id',_editTripId).eq('host_id',uid).select('id');
+    }else{
+      row.status='draft';
+      r=await sb.from('host_trips').insert(row).select('id');
+    }
     if(r.error)throw new Error(r.error.message);
-    if(!r.data||!r.data.length)throw new Error('Not saved — your host approval may have changed.');
+    if(!r.data||!r.data.length)throw new Error(_editTripId?'Nothing saved — you can only edit your own trips.':'Not saved — your host approval may have changed.');
     sfx('repost');
-    await note('Trip submitted. We review it before it goes live.','Submitted ✓');
-    go('becomeHost');
+    await note(_editTripId?'Trip updated. We review changes before they go live.':'Trip submitted. We review it before it goes live.','Saved ✓');
+    const wasEdit=_editTripId;_editTripId=null;
+    if(wasEdit)openHostDash();else go('becomeHost');
   }catch(e){
     note('Could not submit: '+e.message,'Error');
   }finally{
@@ -4075,4 +4119,148 @@ function openHostTripDetail(id){
   lines.push('Price: '+INR(t.price||0)+' per person');
   lines.push('Hosted by '+t.host_name+'. Operations by Tripomonk.');
   note(lines.join('\n'),t.title);
+}
+
+/* ============================================================
+   HOST DASHBOARD — for approved hosts only.
+   Hosts edit their own profile and their own trips. They can never
+   change status: that is pinned by a DB trigger, not by this screen.
+   ============================================================ */
+
+async function openHostDash(){
+  await loadHostApp();
+  if(!isVerifiedHost()){note('Only verified hosts have a dashboard.','Not yet approved');return;}
+  hdTab='Trips';go('hostDash');renderHostDash();
+}
+async function renderHostDash(){
+  const head=document.getElementById('hdHead');if(!head)return;
+  if(!_hostApp)await loadHostApp();
+  if(!isVerifiedHost()){go('becomeHost');return;}
+  const a=_hostApp;
+  head.innerHTML='<div class="hdhead"><div class="hdtop">'
+    +avatar(myName(),46)
+    /* we already know they're approved to be on this screen — don't depend on the
+       hostByName cache, which is only filled by the community feed */
+    +'<div class="hdwho"><b>'+esc(a.full_name||myName())
+    +'<span class="vbadge" title="Verified Host"><span class="msr">check</span></span></b>'
+    +'<small>Verified Host'+(a.city?' · '+esc(a.city):'')+'</small></div>'
+    +'<button class="hdedit" onclick="openHostProfile()">Edit profile</button>'
+    +'</div><div class="hdstats" id="hdStats"></div></div>';
+  document.getElementById('hdTabs').innerHTML=['Trips','Profile'].map(t=>
+    '<div class="chip pill '+(hdTab===t?'on':'')+'" onclick="setHdTab(\''+t+'\')">'+t+'</div>').join('');
+  hydrate(head);
+  _hdTrips=await myHostTrips();
+  const live=_hdTrips.filter(t=>t.status==='live').length;
+  const draft=_hdTrips.filter(t=>t.status==='draft').length;
+  const seats=_hdTrips.filter(t=>t.status==='live').reduce((s,t)=>s+(t.max_people||0),0);
+  const st=document.getElementById('hdStats');
+  if(st)st.innerHTML='<div><b>'+_hdTrips.length+'</b><small>Trips</small></div>'
+    +'<div><b>'+live+'</b><small>Live</small></div>'
+    +'<div><b>'+seats+'</b><small>Seats open</small></div>';
+  renderHdBody();
+}
+function setHdTab(t){hdTab=t;renderHostDash();}
+function renderHdBody(){
+  const box=document.getElementById('hdBody');if(!box)return;
+  if(hdTab==='Profile'){renderHdProfileSummary(box);return;}
+  if(!_hdTrips.length){
+    box.innerHTML='<div class="hdempty"><span class="msr">landscape</span>'
+      +'<p>No trips yet. Create your first one — we handle the operations once it is approved.</p>'
+      +'<button class="btn" style="max-width:230px;margin:0 auto" onclick="openHostTrip()">Create a trip</button></div>';
+    return;
+  }
+  const draft=_hdTrips.filter(t=>t.status==='draft').length;
+  box.innerHTML=(draft?'<p class="host-note" style="margin:0 0 12px">'+draft+' awaiting Tripomonk review</p>':'')
+    +_hdTrips.map(hdTripRow).join('');
+  hydrate(box);
+}
+function hdTripRow(t){
+  const chip='<span class="hstat '+(t.status==='live'?'approved':t.status==='rejected'?'rejected':'pending')
+    +'" style="margin:0;padding:3px 8px;font-size:10px">'+esc(t.status)+'</span>';
+  const editable=t.status!=='live';
+  return '<div class="htrip">'
+    +'<div class="tph" style="background-image:url(\''+esc(t.img||'')+'\')"></div>'
+    +'<div class="tbd"><b>'+esc(t.title)+'</b>'
+    +'<small>'+esc(t.destination)+' · '+esc(String(t.start_date||''))+' · '+esc(String(t.days||''))+'d · max '+esc(String(t.max_people||''))+'</small>'
+    +'<div style="margin-top:6px">'+chip+'</div>'
+    +(editable
+       ? '<div class="tact"><button onclick="openHostTrip(\''+jsq(t.id)+'\')">Edit</button>'
+         +'<button class="dz" onclick="deleteHostTrip(\''+jsq(t.id)+'\',\''+jsq(t.title)+'\')">Delete</button></div>'
+       : '<span class="tlock">Live trips are locked — message us to change dates, price or seats.</span>'
+         +'<div class="tact"><button onclick="wa(\'Hi Tripomonk, I need to update my live trip: '+jsq(t.title)+'\')">Message us</button></div>')
+    +'</div>'
+    +'<div class="tpr">'+INR(t.price||0)+'</div></div>';
+}
+async function deleteHostTrip(id,title){
+  const t=_hdTrips.find(x=>String(x.id)===String(id));
+  if(t&&t.status==='live'){note('Live trips cannot be deleted here — message us.','Locked');return;}
+  if(!(await askConfirm('Delete "'+title+'"? This cannot be undone.','Delete trip')))return;
+  const sb=getSupaClient();const uid=sb?await authUid():null;
+  if(!sb||!uid)return;
+  const r=await sb.from('host_trips').delete().eq('id',id).eq('host_id',uid).select('id');
+  if(r.error||!r.data||!r.data.length){note('Could not delete that trip.','Error');return;}
+  note('Trip deleted.','Done');
+  renderHostDash();
+}
+/* ---- host profile (public-facing details) ---- */
+function renderHdProfileSummary(box){
+  const a=_hostApp||{};
+  const row=(l,v)=>v?'<div class="br"><span>'+l+'</span><b style="max-width:58%;text-align:right;white-space:normal">'+esc(v)+'</b></div>':'';
+  box.innerHTML='<div class="bill">'
+    +row('Name',a.full_name)+row('City',a.city)+row('Mobile',a.mobile)
+    +row('Instagram',a.instagram)+row('YouTube',a.youtube)+row('Website',a.website)
+    +row('Followers',a.followers)+row('Languages',a.languages)
+    +row('Experience',a.experience)+row('Trip types',a.trip_types)+row('Destinations',a.destinations)
+    +'</div>'
+    +(a.bio?'<p class="host-note" style="margin:0 0 14px">'+esc(a.bio)+'</p>':'')
+    +'<button class="btn" onclick="openHostProfile()">Edit profile</button>'
+    +'<p class="host-note">ID and payout details are handled on your verification call — never in the app.</p>';
+  hydrate(box);
+}
+const HP_FIELDS=[
+  ['hpName','Full name','text'],['hpCity','City','text'],['hpMobile','Mobile','tel'],
+  ['hpInsta','Instagram','text'],['hpYt','YouTube','text'],['hpSite','Website','text'],
+  ['hpFollowers','Total followers','text'],['hpLangs','Languages spoken','text']
+];
+async function openHostProfile(){
+  await loadHostApp();
+  if(!_hostApp){note('Apply as a host first.','No application');return;}
+  go('hostProfile');renderHostProfile();
+}
+function renderHostProfile(){
+  const box=document.getElementById('hpBody');if(!box)return;
+  const a=_hostApp||{};
+  const val={hpName:a.full_name,hpCity:a.city,hpMobile:a.mobile,hpInsta:a.instagram,hpYt:a.youtube,
+             hpSite:a.website,hpFollowers:a.followers,hpLangs:a.languages};
+  box.innerHTML=HP_FIELDS.map(f=>'<div class="field"><label>'+f[1]+'</label>'
+      +'<div class="inp"><input id="'+f[0]+'" type="'+f[2]+'" value="'+esc(val[f[0]]||'')+'"/></div></div>').join('')
+    +'<div class="field"><label>Short bio</label><textarea id="hpBio" rows="3" placeholder="Shown on your host page">'+esc(a.bio||'')+'</textarea></div>'
+    +'<div class="field"><label>Travel experience</label><div class="inp"><input id="hpExp" value="'+esc(a.experience||'')+'"/></div></div>'
+    +'<div class="field"><label>Trips you host</label><div class="inp"><input id="hpTypes" value="'+esc(a.trip_types||'')+'"/></div></div>'
+    +'<div class="field"><label>Preferred destinations</label><div class="inp"><input id="hpDests" value="'+esc(a.destinations||'')+'"/></div></div>'
+    +'<button class="btn" id="hpSave" onclick="saveHostProfile()">Save changes</button>'
+    +'<p class="host-note">Your verified status is set by Tripomonk and cannot be changed here.</p>';
+  hydrate(box);
+}
+async function saveHostProfile(){
+  const v=id=>((document.getElementById(id)||{}).value||'').trim();
+  const name=v('hpName'),mobile=v('hpMobile');
+  if(!name){note('Name cannot be empty.','Name required');return;}
+  if(!/^[+\d][\d\s-]{7,}$/.test(mobile)){note('Please enter a valid mobile number.','Check your number');return;}
+  const sb=getSupaClient();const uid=sb?await authUid():null;
+  if(!sb||!uid){note('Please sign in.','Sign in required');return;}
+  const btn=document.getElementById('hpSave');
+  if(btn){btn.disabled=true;btn.textContent='Saving…';}
+  /* status is deliberately NOT sent — the DB trigger pins it anyway */
+  const r=await sb.from('host_applications').update({
+    full_name:name,city:v('hpCity'),mobile:mobile,instagram:v('hpInsta'),youtube:v('hpYt'),
+    website:v('hpSite'),followers:v('hpFollowers'),languages:v('hpLangs'),bio:v('hpBio'),
+    experience:v('hpExp'),trip_types:v('hpTypes'),destinations:v('hpDests')
+  }).eq('id',_hostApp.id).eq('user_id',uid).select('id');
+  if(btn){btn.disabled=false;btn.textContent='Save changes';}
+  if(r.error){note('Could not save: '+r.error.message,'Error');return;}
+  if(!r.data||!r.data.length){note('Nothing was saved — you can only edit your own profile.','Not saved');return;}
+  await loadHostApp();
+  await note('Profile updated.','Saved ✓');
+  back();
 }
