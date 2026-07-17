@@ -816,6 +816,42 @@
     background:rgba(0,0,0,.45);color:#fff;font-family:var(--font);font-size:12.5px;font-weight:600;cursor:pointer}
   .sv-del.show{display:block}
 
+  /* ---- home: host trips rail ---- */
+  .hostrail{display:flex;gap:13px;overflow-x:auto;scrollbar-width:none;scroll-snap-type:x mandatory;
+    margin:0 -18px;padding:2px 18px 6px}
+  .hostrail::-webkit-scrollbar{display:none}
+  .htcard{flex:none;width:238px;scroll-snap-align:start;border-radius:22px;overflow:hidden;cursor:pointer;
+    position:relative;background:var(--card);border:1px solid var(--stroke);
+    box-shadow:0 20px 42px -34px rgba(0,0,0,.9);transition:transform .14s}
+  .htcard:active{transform:scale(.97)}
+  .htcard .htph{height:132px;background-size:cover;background-position:center;background-color:var(--card2);position:relative}
+  .htcard .htph::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 45%,rgba(4,10,20,.7))}
+  /* host chip floats over the photo — the person IS the product here */
+  .htcard .hthost{position:absolute;left:10px;bottom:9px;z-index:1;display:flex;align-items:center;gap:7px;
+    padding:4px 10px 4px 4px;border-radius:999px;background:rgba(4,10,20,.55);backdrop-filter:blur(10px);
+    border:1px solid rgba(255,255,255,.18)}
+  .htcard .hthost small{font-size:10.5px;font-weight:700;color:#fff;white-space:nowrap;max-width:104px;overflow:hidden;text-overflow:ellipsis}
+  .htcard .htpr{position:absolute;top:9px;right:9px;z-index:1;font-size:11px;font-weight:700;color:#fff;
+    padding:5px 10px;border-radius:999px;background:rgba(4,10,20,.55);backdrop-filter:blur(10px);
+    border:1px solid rgba(255,255,255,.18)}
+  .htcard .htbd{padding:11px 12px 13px}
+  .htcard .htbd b{display:block;font-size:13.5px;line-height:1.3;margin-bottom:5px;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .htcard .htmeta{display:flex;flex-wrap:wrap;gap:5px}
+  .htcard .htmeta i{font-style:normal;font-size:9.5px;font-weight:600;color:var(--muted);
+    background:var(--card2);border:1px solid var(--stroke);padding:3px 7px;border-radius:7px}
+  /* recruitment card — shown when no host trips are live yet */
+  .hostcta{border-radius:22px;padding:18px;position:relative;overflow:hidden;cursor:pointer;
+    background:linear-gradient(135deg,rgba(47,107,255,.2),rgba(255,206,31,.12));
+    border:1px solid rgba(47,107,255,.28);transition:transform .14s}
+  .hostcta:active{transform:scale(.98)}
+  .hostcta b{display:block;font-size:15.5px;line-height:1.3;margin-bottom:6px}
+  .hostcta p{margin:0 0 12px;font-size:12px;line-height:1.55;color:var(--muted-strong);max-width:82%}
+  .hostcta .hcgo{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#fff;
+    background:var(--accent);border-radius:999px;padding:9px 14px;min-height:40px;box-sizing:border-box}
+  .hostcta .hcglow{position:absolute;right:-26px;top:-26px;width:120px;height:120px;border-radius:50%;
+    background:radial-gradient(circle,rgba(47,107,255,.5),transparent 70%);pointer-events:none}
+
   /* ---- onboarding role picker ---- */
   .rolerow{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:18px}
   .rolecard{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:14px 12px;
@@ -1270,6 +1306,8 @@
     <div class="chips" id="homeChips"></div>
     <div class="sec"><h2>Popular Treks</h2><a onclick="go('explore')">View all</a></div>
     <div class="hrow" id="homeList"></div>
+    <!-- host trips: a rail when hosts are live, a recruitment card when they aren't -->
+    <div id="homeHosts"></div>
     <div class="sec" style="margin-top:20px"><h2>Trek News &amp; Alerts</h2><a onclick="go('news')">View all</a></div>
     <div id="homeNews"></div>
   </section>

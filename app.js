@@ -320,6 +320,10 @@ function initials(n){return n.split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').
 function avHash(n){let h=0;for(let i=0;i<n.length;i++)h=(h*31+n.charCodeAt(i))|0;return Math.abs(h);}
 /* other people's profile photos, keyed by display name (filled from `profiles`) */
 let photoByName={},hostByName={};
+/* declared up here on purpose: renderHome() runs during boot, far above the
+   host-trip functions at the bottom of this file. Declaring it next to them
+   put it in the temporal dead zone and killed the rest of the script. */
+let liveHostTrips=[];
 /* a verified host gets a tick next to their name — public trust signal, admin-set only */
 function hostBadge(n){return hostByName[n]?'<span class="vbadge" title="Verified Host"><span class="msr">check</span></span>':'';}
 function photoFor(n){
@@ -1015,6 +1019,13 @@ function renderHome(){
   const el=document.getElementById('homeList');el.className='hrow';
   el.innerHTML=list.length?list.map(trekCardH).join(''):'<div class="empty">No treks at this level yet.</div>';
   hydrate(el);
+  /* paint the host slot now (CTA), then swap in the rail if any trips are live */
+  renderHomeHosts();
+  loadLiveHostTrips().then(async()=>{
+    /* await the photos, or the rail paints before the host avatars exist */
+    try{await loadAuthorPhotos(liveHostTrips.map(t=>t.host_name));}catch(e){}
+    renderHomeHosts();
+  }).catch(()=>{});
 }
 
 function renderExplore(){
@@ -4001,4 +4012,67 @@ async function reviewTrip(id,status,title){
   }
   note(title+(status==='live'?' is live.':' was rejected.'),'Done');
   renderAdminHosts();
+}
+
+/* ============================================================
+   HOME · HOST TRIPS
+   A rail of live host trips. Until any exist, the same slot recruits
+   hosts instead — an empty section on the home screen is dead space.
+   ============================================================ */
+async function loadLiveHostTrips(){
+  const sb=getSupaClient();if(!sb){liveHostTrips=[];return;}
+  try{
+    const r=await sb.from('host_trips').select('*').eq('status','live')
+      .gte('start_date',todayISO(0)).order('start_date',{ascending:true}).limit(10);
+    liveHostTrips=r.data||[];
+  }catch(e){liveHostTrips=[];}   /* table missing = no rail, not a crash */
+}
+function hostTripCard(t){
+  const when=t.start_date?new Date(t.start_date+'T00:00:00')
+    .toLocaleDateString('en-IN',{day:'numeric',month:'short'}):'';
+  return '<div class="htcard" onclick="openHostTripDetail(\''+jsq(t.id)+'\')">'
+    +'<div class="htph" style="background-image:url(\''+esc(t.img||'')+'\')">'
+      +'<span class="htpr">'+INR(t.price||0)+'</span>'
+      +'<div class="hthost">'+avatar(t.host_name,22)+'<small>'+esc(t.host_name)+'</small>'+hostBadge(t.host_name)+'</div>'
+    +'</div>'
+    +'<div class="htbd"><b>'+esc(t.title)+'</b>'
+      +'<div class="htmeta">'
+        +'<i>'+ic('pin',9)+' '+esc(t.destination)+'</i>'
+        +(when?'<i>'+esc(when)+'</i>':'')
+        +(t.days?'<i>'+esc(String(t.days))+'d</i>':'')
+        +(t.difficulty?'<i>'+esc(t.difficulty)+'</i>':'')
+      +'</div></div></div>';
+}
+function renderHomeHosts(){
+  const box=document.getElementById('homeHosts');if(!box)return;
+  if(liveHostTrips.length){
+    box.innerHTML='<div class="sec" style="margin-top:20px"><h2>Hosted Trips</h2>'
+      +'<a onclick="go(\'becomeHost\')">Host one</a></div>'
+      +'<div class="hostrail">'+liveHostTrips.map(hostTripCard).join('')+'</div>';
+  }else{
+    /* no live trips yet — recruit instead of showing an empty shelf */
+    box.innerHTML='<div class="sec" style="margin-top:20px"><h2>Host a Trip</h2></div>'
+      +'<div class="hostcta" onclick="go(\'becomeHost\')">'
+        +'<div class="hcglow"></div>'
+        +'<b>Bring your community.<br>We run the mountain.</b>'
+        +'<p>Creators, clubs and experienced trekkers host under Tripomonk — we handle stays, transport, guides and permits.</p>'
+        +'<span class="hcgo">Become a host '+ic('back',13)+'</span>'
+      +'</div>';
+    const go2=box.querySelector('.hcgo .msr,.hcgo .ic');
+    if(go2)go2.style.transform='scaleX(-1)';   /* reuse the back chevron, flipped */
+  }
+  hydrate(box);
+}
+function openHostTripDetail(id){
+  const t=liveHostTrips.find(x=>String(x.id)===String(id));
+  if(!t){note('That trip is no longer available.','Not found');return;}
+  const lines=[];
+  if(t.description)lines.push(t.description);
+  lines.push('Destination: '+t.destination);
+  if(t.start_date)lines.push('Starts: '+t.start_date+(t.days?' · '+t.days+' days':''));
+  if(t.max_people)lines.push('Group size: up to '+t.max_people);
+  if(t.difficulty)lines.push('Difficulty: '+t.difficulty);
+  lines.push('Price: '+INR(t.price||0)+' per person');
+  lines.push('Hosted by '+t.host_name+'. Operations by Tripomonk.');
+  note(lines.join('\n'),t.title);
 }
