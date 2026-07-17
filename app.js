@@ -3790,13 +3790,26 @@ async function renderBecomeHost(){
       : s==='rejected'
       ? 'Your application was not approved this time.'
       : 'We review applications within a few days. We may reach out on WhatsApp to verify details.';
+    /* a visible 3-step tracker — "under review" with no sense of progress is
+       the main reason applicants message you asking what happened */
+    const step=s==='approved'?3:s==='rejected'?2:2;
+    const steps=[['Applied','done'],
+                 ['Tripomonk review',s==='pending'?'now':'done'],
+                 [s==='rejected'?'Not approved':'Verified Host',s==='approved'?'done':s==='rejected'?'bad':'wait']];
     body.innerHTML='<div class="hstat '+esc(s)+'"><span class="msr" style="font-size:15px">'+icon+'</span> '+label+'</div>'
       +'<div class="host-hero"><h2>'+esc(_hostApp.full_name||'')+'</h2><p>'+esc(msg)+'</p></div>'
+      +'<div class="hsteps">'+steps.map(function(x,i){
+          return '<div class="hstep '+x[1]+'"><span class="hsdot">'+(x[1]==='done'?'✓':x[1]==='bad'?'×':(i+1))+'</span>'
+            +'<small>'+esc(x[0])+'</small></div>';
+        }).join('<span class="hsline"></span>')+'</div>'
       +(_hostApp.admin_note?'<p class="host-note"><b>Note from Tripomonk:</b> '+esc(_hostApp.admin_note)+'</p>':'')
       +(s==='approved'?'<button class="btn" onclick="openHostDash()">Open host dashboard</button>'
         +'<button class="btn ghost" style="margin-top:10px" onclick="openHostTrip()">Create a trip</button>'
         +'<div id="myTripsBox" style="margin-top:18px"></div>':'')
-      +(s==='pending'?'<p class="host-note">Applied '+timeAgo(_hostApp.created_at)+'. We collect ID and payout details on the verification call — never in the app.</p>':'');
+      +(s==='pending'?'<p class="host-note">Applied '+timeAgo(_hostApp.created_at)+'. We collect ID and payout details on the verification call — never in the app.</p>'
+        +'<button class="btn ghost" onclick="openHostProfile()">Edit my application</button>'
+        +'<button class="btn ghost" style="margin-top:10px" onclick="wa(\'Hi Tripomonk, checking on my host application.\')">Ask about my application</button>':'')
+      +(s==='rejected'?'<button class="btn ghost" onclick="wa(\'Hi Tripomonk, about my host application —\')">Talk to us</button>':'');
     hydrate(body);
     if(s==='approved')renderMyTrips();
     return;
@@ -3842,7 +3855,10 @@ async function submitHostApp(){
     return;
   }
   sfx('repost');
-  note('Application received. We review within a few days.','Submitted ✓');
+  /* await, then re-render — otherwise the status screen paints behind the modal
+     and the applicant never sees that their application actually landed */
+  await note('Application received. We usually review within 2–3 days and may message you on WhatsApp.','Submitted ✓');
+  await loadHostApp();     /* pull the row back so the status screen is real, not assumed */
   renderBecomeHost();
 }
 
@@ -3873,9 +3889,16 @@ async function renderAdminHosts(){
         +(a.destinations?'<b>Destinations:</b> '+esc(a.destinations)+'<br>':'')
         +(a.about?esc(a.about):'')
         +'</div>'
+        /* only offer the action that makes sense for the current status —
+           an approved host showing an "Approve" button is just confusing */
         +'<div class="hact">'
-        +'<button class="ok" onclick="reviewHost(\''+esc(a.id)+'\',\'approved\',\''+jsq(a.full_name)+'\')">Approve</button>'
-        +'<button class="no" onclick="reviewHost(\''+esc(a.id)+'\',\'rejected\',\''+jsq(a.full_name)+'\')">Reject</button>'
+        +(a.status!=='approved'
+          ? '<button class="ok" onclick="reviewHost(\''+esc(a.id)+'\',\'approved\',\''+jsq(a.full_name)+'\')">'
+            +(a.status==='rejected'?'Approve anyway':'Approve')+'</button>' : '')
+        +(a.status==='pending'
+          ? '<button class="no" onclick="reviewHost(\''+esc(a.id)+'\',\'rejected\',\''+jsq(a.full_name)+'\')">Reject</button>' : '')
+        +(a.status==='approved'
+          ? '<button class="no" onclick="reviewHost(\''+esc(a.id)+'\',\'rejected\',\''+jsq(a.full_name)+'\')">Revoke access</button>' : '')
         +'<button onclick="wa(\'Hi '+jsq(a.full_name)+', about your Tripomonk host application —\')">WhatsApp</button>'
         +'</div></div>';
     }).join('');
@@ -3903,9 +3926,9 @@ async function reviewHost(id,status,name){
   if(r.error||!r.data||!r.data.length){
     note('Could not update: '+((r.error&&r.error.message)||'no rows changed — check the admin policy.'),'Error');return;
   }
-  /* flip the public badge so travellers can see who is verified */
-  try{await sb.from('profiles').update({is_host:status==='approved'}).eq('id',r.data[0].user_id);}catch(e){}
-  note(name+(status==='approved'?' is now a Verified Host.':' was rejected.'),'Done');
+  /* the public badge is synced by the host_status_sync DB trigger — doing it from
+     here silently updated 0 rows, because the admin does not own that profile row */
+  await note(name+(status==='approved'?' is now a Verified Host.':' was rejected.'),'Done');
   renderAdminHosts();
 }
 
@@ -3921,11 +3944,38 @@ function renderHostTrip(){
   if(d)d.innerHTML=HT_DIFF.map(x=>'<span class="tap '+(_htDiff===x?'sel':'')+'" onclick="pickHtDiff(\''+x+'\')">'+x+'</span>').join('');
   const img=document.getElementById('htImg');
   if(img){
-    if(_htImgData){img.style.backgroundImage="url('"+_htImgData+"')";img.innerHTML='';}
-    else{img.style.backgroundImage='';img.innerHTML='<span class="msr">add_photo_alternate</span>';}
+    if(_htImgData){
+      img.style.backgroundImage="url('"+_htImgData+"')";
+      img.classList.add('has');
+      img.innerHTML='<span class="tphint">Tap to change photo</span>';
+    }else{
+      img.style.backgroundImage='';
+      img.classList.remove('has');
+      img.innerHTML='<span class="msr">add_photo_alternate</span><span class="tphint">Add a cover photo</span>';
+    }
   }
   const dt=document.getElementById('htDate');if(dt)dt.min=todayISO(0);
+  htPreview();
   hydrate(document.getElementById('hostTrip'));
+}
+/* live preview so a host sees the card travellers will see, before submitting */
+function htPreview(){
+  const box=document.getElementById('htPrev');if(!box)return;
+  const v=id=>((document.getElementById(id)||{}).value||'').trim();
+  const title=v('htTitle')||'Your trip title';
+  const dest=v('htDest')||'Destination';
+  const date=v('htDate'), days=v('htDays'), max=v('htMax'), price=parseFloat(v('htPrice'));
+  const when=date?new Date(date+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'Date not set';
+  const bits=[when];
+  if(days)bits.push(days+' days');
+  if(max)bits.push('max '+max);
+  if(_htDiff)bits.push(_htDiff);
+  box.innerHTML='<div class="tpl">Preview</div>'
+    +'<b>'+esc(title)+'</b>'
+    +'<small>'+ic('pin',10)+' '+esc(dest)+'</small>'
+    +'<small style="margin-top:3px">'+esc(bits.join(' · '))+'</small>'
+    +'<span class="tpp">'+(price>=0&&!isNaN(price)?INR(price)+' <span style="font-size:11px;color:var(--muted2);font-weight:400">per person</span>':'<span style="font-size:12px;color:var(--muted2);font-weight:400">Price not set</span>')+'</span>';
+  hydrate(box);
 }
 function pickHtDiff(x){_htDiff=x;renderHostTrip();}
 function htPickImg(input){
