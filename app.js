@@ -319,7 +319,9 @@ const AVG=[['#ffd27a','#ff7a59'],['#7ad1ff','#2f6bff'],['#b7f5c0','#2fb56b'],['#
 function initials(n){return n.split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase();}
 function avHash(n){let h=0;for(let i=0;i<n.length;i++)h=(h*31+n.charCodeAt(i))|0;return Math.abs(h);}
 /* other people's profile photos, keyed by display name (filled from `profiles`) */
-let photoByName={};
+let photoByName={},hostByName={};
+/* a verified host gets a tick next to their name — public trust signal, admin-set only */
+function hostBadge(n){return hostByName[n]?'<span class="vbadge" title="Verified Host"><span class="msr">check</span></span>':'';}
 function photoFor(n){
   if(n==='You'||n===myName())return getSavedPhoto();
   return photoByName[n]||'';
@@ -395,7 +397,7 @@ function toggleFollow(n){
     uidForName(n).then(uid=>pushNotif({recipientId:uid,recipientName:uid?null:n,type:'follow'}));
   }
 }
-const menu=[['bookings','My Bookings','bookings'],['chat','Messages','messages'],['shield','Trek Passport','passport'],['like','My Preferences','onboarding'],['monitor','Trek Health','health'],['distance','Trek Navigation','navmap'],['heartmenu','My Wishlist','wishlist'],['starline','My Reviews','reviews'],['settings','Settings','settings'],['help','Help & Support','help']];
+const menu=[['bookings','My Bookings','bookings'],['chat','Messages','messages'],['community','Host with Tripomonk','becomeHost'],['shield','Trek Passport','passport'],['like','My Preferences','onboarding'],['monitor','Trek Health','health'],['distance','Trek Navigation','navmap'],['heartmenu','My Wishlist','wishlist'],['starline','My Reviews','reviews'],['settings','Settings','settings'],['help','Help & Support','help']];
 const setList=[['user','Account & security',''],['bell','Notifications',''],['globe','Language - English',''],['card','Payment methods',''],['shield','Privacy Policy','privacy'],['help','About Tripomonk','about']];
 const notis=[['check','Booking confirmed','Your seat is confirmed — view your e-ticket.','2m'],['bell','Pack your bags!','Your trek departs in 5 days. See the packing list.','1d'],['permits','Permit approved','Your forest permit is ready to download.','2d'],['heart','EARLYBIRD: 15% off','Winter trek discount ends soon.','3d']];
 const faqs=[['How do I book a trek?','Pick a trek, choose a batch on Select Date, add travellers and pay 25% to confirm your seat.'],['What is the cancellation policy?','Free cancellation up to 15 days before departure (full refund). Within 15 days, a 50% charge applies.'],['Do you provide gear on rent?','Yes — add the gear kit (jacket, boots, poles) as an add-on at checkout.'],['Are permits included?','We arrange forest / eco-zone permits for you as an assisted service.'],['What fitness level do I need?','Easy treks suit beginners; Moderate+ need regular cardio for 3–4 weeks before.']];
@@ -1434,10 +1436,10 @@ function reviewCard(r){return `<div class="panel" style="margin-bottom:12px"><di
 async function loadPeopleRemote(){
   const sb=getSupaClient();if(!sb)return[];
   /* pull registered members (with their preferences) from profiles */
-  try{const{data}=await sb.from('profiles').select('name,prefs,username,photo').limit(300);
+  try{const{data}=await sb.from('profiles').select('name,prefs,username,photo,is_host').limit(300);
     if(data&&data.length){const seen=new Set();
       /* cache photos while we're here — stories/search then show real faces */
-      data.forEach(r=>{if(r.name&&!(r.name in photoByName))photoByName[r.name]=r.photo||'';});
+      data.forEach(r=>{if(r.name){if(!(r.name in photoByName))photoByName[r.name]=r.photo||'';hostByName[r.name]=!!r.is_host;}});
       return data.filter(r=>r.name&&!seen.has(r.name)&&seen.add(r.name))
         .map(r=>({n:r.name,h:'@'+(r.username||r.name.toLowerCase().replace(/[^a-z0-9]/g,'')),prefs:r.prefs||[],bio:(r.prefs&&r.prefs.length)?r.prefs.slice(0,3).join(' · '):'Tripomonk trekker',flwr:0}));
     }
@@ -1517,7 +1519,7 @@ function postCard(p){
   return `<div class="post" data-pid="${p.id}">
    <div class="ig-head">
      <div class="ig-ava" onclick="openPerson('${sn}')">${avatar(p.n,34)}</div>
-     <div class="ig-meta"><b onclick="openPerson('${sn}')">${esc(p.n)}</b>${follow}</div>
+     <div class="ig-meta"><b onclick="openPerson('${sn}')">${esc(p.n)}${hostBadge(p.n)}</b>${follow}</div>
      ${more}
    </div>
    ${p.trek?`<div class="ig-trek" onclick="openDetailByName('${jsq(p.trek)}')">${ic('pin',13)} ${esc(p.trek)}</div>`:''}
@@ -1654,8 +1656,8 @@ async function loadAuthorPhotos(names){
   const need=[...new Set(names)].filter(n=>n&&n!==mine&&n!=='You'&&!(n in photoByName));
   if(!need.length)return;
   try{
-    const{data}=await sb.from('profiles').select('name,photo').in('name',need);
-    (data||[]).forEach(r=>{if(r.name)photoByName[r.name]=r.photo||'';});
+    const{data}=await sb.from('profiles').select('name,photo,is_host').in('name',need);
+    (data||[]).forEach(r=>{if(r.name){photoByName[r.name]=r.photo||'';hostByName[r.name]=!!r.is_host;}});
   }catch(e){}
   /* remember the misses too, so we don't re-query every render */
   need.forEach(n=>{if(!(n in photoByName))photoByName[n]='';});
@@ -2180,7 +2182,7 @@ async function renderPerson(){if(!curPerson){go('community');return;}const p=get
   const base=p.flwr||0;const flwr=base+(isFollowing(p.n)?1:0);
   body.innerHTML=`
     <div class="prof-top">${avatar(p.n,84)}
-      <h2>${esc(p.n)}</h2><div class="handle">${esc(p.h)}</div>
+      <h2>${esc(p.n)}${hostBadge(p.n)}</h2><div class="handle">${esc(p.h)}</div>
       <p class="pbio">${p.bio||''}</p>
       <div class="pstats"><div><b>${posts.length}</b><small>Posts</small></div><div><b id="pFlwr" data-person="${esc(p.n)}" data-base="${base}">${flwr.toLocaleString()}</b><small>Followers</small></div><div><b>${me?followCount():'—'}</b><small>Following</small></div></div>
       ${me?'':`<div class="profile-actions" style="margin:14px 0 0"><button class="${isFollowing(p.n)?'on':''}" data-follow="${esc(p.n)}" onclick="toggleFollow('${jsq(p.n)}')">${isFollowing(p.n)?'Following':'Follow'}</button><button onclick="openChat('${jsq(p.n)}')">Message</button></div>`}
@@ -2529,12 +2531,13 @@ async function sbWriteChecked(method,path,body){
 function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null};}
 let editIdx=-1, adminTab='Treks', depTrek=null;
 function renderAdmin(){
-  document.getElementById('adminTabs').innerHTML=['Bookings','Treks','Departures','Packing','Staff','Settings'].map(x=>`<div class="chip pill ${x===adminTab?'on':''}" onclick="setAdminTab('${x}')">${x}</div>`).join('');
+  document.getElementById('adminTabs').innerHTML=['Bookings','Treks','Departures','Packing','Hosts','Staff','Settings'].map(x=>`<div class="chip pill ${x===adminTab?'on':''}" onclick="setAdminTab('${x}')">${x}</div>`).join('');
   const f=document.getElementById('adminForm'); if(f){f.style.display='none';f.innerHTML='';}
   if(adminTab==='Bookings')renderAdminBookings();
   else if(adminTab==='Treks')renderAdminTreks();
   else if(adminTab==='Departures')renderDepartures();
   else if(adminTab==='Packing')renderAdminPacking();
+  else if(adminTab==='Hosts')renderAdminHosts();
   else if(adminTab==='Staff')renderAdminStaff();
   else renderAdminSettings();
 }
@@ -3449,6 +3452,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='dest')renderDest();
   if(id==='act')renderAct();
   if(id==='cart')renderCart();
+  if(id==='becomeHost')renderBecomeHost();
   if(id==='community')renderFeed();
   if(id==='peopleSearch'){_peoplePool=null;setTimeout(()=>{const i=document.getElementById('peopleSearchInput');if(i){i.value='';i.focus();}searchPeople('');},80);}
   if(id==='news')renderNews();
@@ -3672,4 +3676,163 @@ function sfx(kind){
       o.start(t0+at);o.stop(t0+at+s.dur+.02);
     });
   }catch(e){}
+}
+
+/* ============================================================
+   HOST YOUR OWN TRIP — stage 1: apply -> admin review -> verified host
+   ------------------------------------------------------------
+   Not collected here on purpose: government ID, bank details, GST.
+   Storing those turns this database into a KYC breach target. Take them
+   on the verification call; let Razorpay Route hold KYC for payouts.
+   ============================================================ */
+let _hostApp=null,_hostLoaded=false;
+
+async function loadHostApp(){
+  const sb=getSupaClient();const uid=sb?await authUid():null;
+  if(!sb||!uid){_hostApp=null;_hostLoaded=true;return null;}
+  try{
+    const{data}=await sb.from('host_applications').select('*').eq('user_id',uid).maybeSingle();
+    _hostApp=data||null;
+  }catch(e){_hostApp=null;}
+  _hostLoaded=true;
+  return _hostApp;
+}
+function isVerifiedHost(){return !!(_hostApp&&_hostApp.status==='approved');}
+
+const HOST_FIELDS=[
+  ['hfName','Full name','text','Your full name',true],
+  ['hfMobile','Mobile','tel','+91 XXXXX XXXXX',true],
+  ['hfCity','City','text','Where are you based?',false],
+  ['hfInsta','Instagram','text','@yourhandle or link',false],
+  ['hfYt','YouTube','text','Channel link (optional)',false],
+  ['hfSite','Website','text','Optional',false],
+  ['hfFollowers','Total followers','text','e.g. 12k across platforms',false],
+  ['hfLangs','Languages spoken','text','e.g. Hindi, English',false]
+];
+function hostField(f){
+  const id=f[0],label=f[1],type=f[2],ph=f[3],req=f[4];
+  return '<div class="field"><label>'+label+(req?' *':'')+'</label>'
+    +'<div class="inp"><input id="'+id+'" type="'+type+'" placeholder="'+ph+'"/></div></div>';
+}
+async function renderBecomeHost(){
+  const body=document.getElementById('hostBody');if(!body)return;
+  if(!isLoggedIn()){
+    body.innerHTML='<div class="empty" style="padding:36px 0"><p style="font-size:13px;color:var(--muted);margin-bottom:16px">Sign in to apply as a host.</p>'
+      +'<button class="btn" style="max-width:220px;margin:0 auto" onclick="_loginReturn=\'becomeHost\';go(\'login\')">Sign in</button></div>';
+    return;
+  }
+  body.innerHTML='<div class="skel skel-card" style="height:140px"></div>';
+  await loadHostApp();
+
+  /* already applied — show status, not the form again */
+  if(_hostApp){
+    const s=_hostApp.status;
+    const label=s==='approved'?'Verified Host':s==='rejected'?'Not approved':'Under review';
+    const icon=s==='approved'?'verified':s==='rejected'?'cancel':'schedule';
+    const msg=s==='approved'
+      ? 'You can now create trips. Tripomonk handles operations — you focus on your community.'
+      : s==='rejected'
+      ? 'Your application was not approved this time.'
+      : 'We review applications within a few days. We may reach out on WhatsApp to verify details.';
+    body.innerHTML='<div class="hstat '+esc(s)+'"><span class="msr" style="font-size:15px">'+icon+'</span> '+label+'</div>'
+      +'<div class="host-hero"><h2>'+esc(_hostApp.full_name||'')+'</h2><p>'+esc(msg)+'</p></div>'
+      +(_hostApp.admin_note?'<p class="host-note"><b>Note from Tripomonk:</b> '+esc(_hostApp.admin_note)+'</p>':'')
+      +(s==='approved'?'<button class="btn" onclick="note(\'Trip creation is the next step we are building.\',\'Coming next\')">Create a trip</button>':'')
+      +(s==='pending'?'<p class="host-note">Applied '+timeAgo(_hostApp.created_at)+'. We collect ID and payout details on the verification call — never in the app.</p>':'');
+    hydrate(body);return;
+  }
+
+  /* the application form */
+  body.innerHTML='<div class="host-hero">'
+    +'<h2>Host trips. We run the operations.</h2>'
+    +'<p>Bring your community. Tripomonk handles stays, transport, guides, permits, payments and support — so you can focus on leading the trip.</p></div>'
+    +'<div class="host-perks">'
+    +'<div><span class="msr">check_circle</span>We arrange operators, leaders, permits and gear.</div>'
+    +'<div><span class="msr">check_circle</span>Payments, invoices and customer support are ours.</div>'
+    +'<div><span class="msr">check_circle</span>You get a public host page and a Verified Host badge.</div>'
+    +'<div><span class="msr">check_circle</span>Commercials are agreed with you before your first trip goes live.</div>'
+    +'</div>'
+    +HOST_FIELDS.map(hostField).join('')
+    +'<div class="field"><label>Travel experience</label><div class="inp"><input id="hfExp" placeholder="Trips led, years travelling…"/></div></div>'
+    +'<div class="field"><label>Trips you want to host</label><div class="inp"><input id="hfTypes" placeholder="Treks, road trips, photo tours…"/></div></div>'
+    +'<div class="field"><label>Preferred destinations</label><div class="inp"><input id="hfDests" placeholder="Spiti, Rishikesh, Meghalaya…"/></div></div>'
+    +'<div class="field"><label>Anything else</label><div class="inp"><input id="hfAbout" placeholder="Tell us about your community"/></div></div>'
+    +'<button class="btn" id="hfSubmit" onclick="submitHostApp()">Submit application</button>'
+    +'<p class="host-note">We never ask for your government ID, bank details or GST in the app. Those are collected on the verification call once your application is approved.</p>';
+  hydrate(body);
+}
+async function submitHostApp(){
+  const v=id=>((document.getElementById(id)||{}).value||'').trim();
+  const name=v('hfName'),mobile=v('hfMobile');
+  if(!name){note('Please enter your full name.','Name required');return;}
+  if(!/^[+\d][\d\s-]{7,}$/.test(mobile)){note('Please enter a valid mobile number.','Check your number');return;}
+  const sb=getSupaClient();const uid=sb?await authUid():null;
+  if(!sb||!uid){note('Please sign in to apply.','Sign in required');return;}
+  const btn=document.getElementById('hfSubmit');
+  if(btn){btn.disabled=true;btn.textContent='Submitting…';}
+  const row={user_id:uid,full_name:name,mobile:mobile,city:v('hfCity'),instagram:v('hfInsta'),youtube:v('hfYt'),
+    website:v('hfSite'),followers:v('hfFollowers'),languages:v('hfLangs'),experience:v('hfExp'),
+    trip_types:v('hfTypes'),destinations:v('hfDests'),about:v('hfAbout'),status:'pending'};
+  const r=await sb.from('host_applications').insert(row);
+  if(btn){btn.disabled=false;btn.textContent='Submit application';}
+  if(r.error){
+    const dup=r.error.code==='23505';
+    note(dup?'You have already applied — we are reviewing it.':'Could not submit: '+r.error.message,dup?'Already applied':'Error');
+    if(dup)renderBecomeHost();
+    return;
+  }
+  sfx('repost');
+  note('Application received. We review within a few days.','Submitted ✓');
+  renderBecomeHost();
+}
+
+/* ---- admin: review host applications ---- */
+const instaUrl=h=>{h=String(h||'').trim();if(/^https?:/i.test(h))return h;return 'https://instagram.com/'+h.replace(/^@/,'');};
+
+async function renderAdminHosts(){
+  const box=document.getElementById('adminBody');if(!box)return;
+  box.innerHTML='<div class="skel skel-card" style="height:90px"></div>';
+  const sb=getSupaClient();if(!sb)return;
+  const r=await sb.from('host_applications').select('*').order('created_at',{ascending:false});
+  if(r.error){box.innerHTML='<div class="empty"><p>Could not load applications: '+esc(r.error.message)+'</p></div>';return;}
+  const apps=r.data||[];
+  if(!apps.length){box.innerHTML='<div class="empty"><p>No host applications yet.</p></div>';return;}
+  const pending=apps.filter(a=>a.status==='pending');
+  box.innerHTML=(pending.length?'<p class="host-note" style="margin:0 0 12px">'+pending.length+' awaiting review</p>':'')
+    +apps.map(a=>{
+      const links=[a.instagram?'<a href="'+esc(instaUrl(a.instagram))+'" target="_blank" rel="noopener">Instagram</a>':'',
+                   a.youtube?'<a href="'+esc(a.youtube)+'" target="_blank" rel="noopener">YouTube</a>':'',
+                   a.website?'<a href="'+esc(a.website)+'" target="_blank" rel="noopener">Website</a>':''].filter(Boolean).join(' · ');
+      return '<div class="happ">'
+        +'<b>'+esc(a.full_name)+'</b> <span class="hstat '+esc(a.status)+'" style="margin:0 0 0 6px;padding:3px 8px;font-size:10px">'+esc(a.status)+'</span>'
+        +'<div class="hmeta">'
+        +esc(a.mobile||'')+(a.city?' · '+esc(a.city):'')+(a.followers?' · '+esc(a.followers)+' followers':'')+'<br>'
+        +(links||'<i style="color:var(--muted2)">no links given</i>')+'<br>'
+        +(a.experience?esc(a.experience)+'<br>':'')
+        +(a.trip_types?'<b>Wants to host:</b> '+esc(a.trip_types)+'<br>':'')
+        +(a.destinations?'<b>Destinations:</b> '+esc(a.destinations)+'<br>':'')
+        +(a.about?esc(a.about):'')
+        +'</div>'
+        +'<div class="hact">'
+        +'<button class="ok" onclick="reviewHost(\''+esc(a.id)+'\',\'approved\',\''+jsq(a.full_name)+'\')">Approve</button>'
+        +'<button class="no" onclick="reviewHost(\''+esc(a.id)+'\',\'rejected\',\''+jsq(a.full_name)+'\')">Reject</button>'
+        +'<button onclick="wa(\'Hi '+jsq(a.full_name)+', about your Tripomonk host application —\')">WhatsApp</button>'
+        +'</div></div>';
+    }).join('');
+  hydrate(box);
+}
+async function reviewHost(id,status,name){
+  if(!isAdminUser()){note('Admins only.','Not allowed');return;}
+  if(!(await askConfirm((status==='approved'?'Approve ':'Reject ')+name+'?',status==='approved'?'Approve host':'Reject host')))return;
+  const sb=getSupaClient();if(!sb)return;
+  /* .select() matters: an RLS-blocked update returns 0 rows and NO error */
+  const r=await sb.from('host_applications')
+    .update({status:status,reviewed_at:new Date().toISOString()}).eq('id',id).select('user_id');
+  if(r.error||!r.data||!r.data.length){
+    note('Could not update: '+((r.error&&r.error.message)||'no rows changed — check the admin policy.'),'Error');return;
+  }
+  /* flip the public badge so travellers can see who is verified */
+  try{await sb.from('profiles').update({is_host:status==='approved'}).eq('id',r.data[0].user_id);}catch(e){}
+  note(name+(status==='approved'?' is now a Verified Host.':' was rejected.'),'Done');
+  renderAdminHosts();
 }

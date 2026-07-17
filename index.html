@@ -816,6 +816,39 @@
     background:rgba(0,0,0,.45);color:#fff;font-family:var(--font);font-size:12.5px;font-weight:600;cursor:pointer}
   .sv-del.show{display:block}
 
+  /* ---- host marketplace ---- */
+  .host-hero{border-radius:20px;padding:20px 18px;margin-bottom:16px;
+    background:linear-gradient(135deg,rgba(47,107,255,.22),rgba(255,206,31,.14));
+    border:1px solid rgba(47,107,255,.28)}
+  .host-hero h2{margin:0 0 8px;font-size:19px;line-height:1.25}
+  .host-hero p{margin:0;font-size:12.5px;line-height:1.6;color:var(--muted-strong)}
+  .host-perks{display:flex;flex-direction:column;gap:9px;margin:16px 0 18px}
+  .host-perks div{display:flex;gap:9px;align-items:flex-start;font-size:12.5px;line-height:1.5;color:var(--muted)}
+  .host-perks .msr{font-size:16px;color:#0f9d58;flex:none;margin-top:1px}
+  html.light .host-perks .msr{color:#0b7a44}
+  .host-note{font-size:11.5px;line-height:1.55;color:var(--muted2);margin:14px 2px 0}
+  .hstat{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;
+    padding:7px 12px;border-radius:999px;margin-bottom:14px}
+  .hstat.pending{background:rgba(255,206,31,.14);border:1px solid rgba(255,206,31,.3);color:#ffce1f}
+  html.light .hstat.pending{color:#8a6100;background:rgba(217,152,0,.12);border-color:rgba(217,152,0,.3)}
+  .hstat.approved{background:rgba(15,157,88,.14);border:1px solid rgba(15,157,88,.32);color:#0f9d58}
+  html.light .hstat.approved{color:#0b7a44}
+  .hstat.rejected{background:rgba(255,90,110,.12);border:1px solid rgba(255,90,110,.3);color:#ff5a6e}
+  /* verified badge next to a host's name */
+  .vbadge{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;
+    background:var(--accent);color:#fff;font-size:10px;margin-left:4px;vertical-align:middle;flex:none}
+  .vbadge .msr{font-size:10px}
+  /* admin review row */
+  .happ{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:13px;margin-bottom:11px}
+  .happ b{font-size:13.5px}
+  .happ .hmeta{font-size:11.5px;color:var(--muted);margin:4px 0 9px;line-height:1.6}
+  .happ .hmeta a{color:var(--accent2);text-decoration:none}
+  .happ .hact{display:flex;gap:8px;flex-wrap:wrap}
+  .happ .hact button{flex:1;min-width:96px;min-height:44px;border-radius:11px;border:1px solid var(--stroke);
+    background:var(--card2);color:var(--text);font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer}
+  .happ .hact button.ok{background:var(--accent);border-color:var(--accent);color:#fff}
+  .happ .hact button.no{background:rgba(255,90,110,.12);border-color:rgba(255,90,110,.3);color:#ff5a6e}
+
   /* ---- settings toggle switch ---- */
   .tgl{flex:none;width:44px;height:26px;border-radius:999px;background:var(--card2);border:1px solid var(--stroke2);
     position:relative;transition:background .2s,border-color .2s;cursor:pointer}
@@ -1792,6 +1825,13 @@
   <section class="view flow" id="activities" data-nonav>
     <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Adventure Activities</h1></div>
     <div class="grid2" id="actList"></div>
+  </section>
+
+  <!-- BECOME A HOST -->
+  <section class="view flow" id="becomeHost" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Host with Tripomonk</h1></div>
+    <div id="hostBody"></div>
+    <div style="height:calc(var(--safe-bottom) + 20px)"></div>
   </section>
 
   <!-- ADMIN · MANAGE TREKS -->
