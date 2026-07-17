@@ -463,6 +463,8 @@ async function initAuth(){
   }
   sb.auth.onAuthStateChange(async(evt,session)=>{
     currentUser=session?session.user:null;
+    /* arrived via a password-reset link — let them set a new password now */
+    if(evt==='PASSWORD_RECOVERY'){promptNewPassword();return;}
     if(!session){_profileLoadedFor=null;}
     /* reload whenever a DIFFERENT account is in play — keyed on the user id, not on
        "was anyone logged in", so switching accounts swaps identity properly.
@@ -508,17 +510,131 @@ function authTab(mode){
   const si=document.getElementById('tabSignin');
   const su=document.getElementById('tabSignup');
   const nameRow=document.getElementById('signupName');
-  if(si&&su){
-    if(mode==='signup'){
-      su.style.background='var(--accent)';su.style.color='#fff';
-      si.style.background='transparent';si.style.color='rgba(255,255,255,.75)';
-      if(nameRow)nameRow.style.display='block';
-    } else {
-      si.style.background='var(--accent)';si.style.color='#fff';
-      su.style.background='transparent';su.style.color='rgba(255,255,255,.75)';
-      if(nameRow)nameRow.style.display='none';
-    }
+  const idIn=document.getElementById('emailInput');
+  const idIcon=document.getElementById('emailIcon');
+  const pw=document.getElementById('authPassword');
+  const pwBtn=document.getElementById('pwBtn');
+  const pwHint=document.getElementById('pwHint');
+  const on=(el)=>{if(el){el.style.background='var(--accent)';el.style.color='#fff';}};
+  const off=(el)=>{if(el){el.style.background='transparent';el.style.color='rgba(255,255,255,.75)';}};
+  if(mode==='signup'){
+    on(su);off(si);
+    if(nameRow)nameRow.style.display='block';
+    /* signup must use a real email (that's where the verify link goes) */
+    if(idIn){idIn.placeholder='your@email.com';idIn.type='email';idIn.setAttribute('autocomplete','email');}
+    if(idIcon)idIcon.textContent='mail';
+    if(pw)pw.setAttribute('autocomplete','new-password');
+    if(pwBtn)pwBtn.textContent='Create account';
+    if(pwHint)pwHint.textContent='At least 6 characters. We’ll email you a link to verify.';
+  }else{
+    on(si);off(su);
+    if(nameRow)nameRow.style.display='none';
+    if(idIn){idIn.placeholder='Email or username';idIn.type='text';idIn.setAttribute('autocomplete','username');}
+    if(idIcon)idIcon.textContent='alternate_email';
+    if(pw)pw.setAttribute('autocomplete','current-password');
+    if(pwBtn)pwBtn.textContent='Sign in';
+    if(pwHint)pwHint.textContent='';
   }
+}
+function togglePw(){
+  const p=document.getElementById('authPassword'),t=document.getElementById('pwToggle');
+  if(!p)return;const show=p.type==='password';p.type=show?'text':'password';
+  if(t)t.textContent=show?'visibility_off':'visibility';
+}
+/* email + password signup, or username/email + password login */
+async function passwordAuth(){
+  const id=(document.getElementById('emailInput').value||'').trim();
+  const pass=(document.getElementById('authPassword').value||'');
+  const sb=getSupaClient();
+  if(!sb){note('Backend not connected.','Error');return;}
+  const btn=document.getElementById('pwBtn');
+  const busy=(t)=>{if(btn){btn.disabled=true;btn.textContent=t;}};
+  const done=()=>{if(btn){btn.disabled=false;btn.textContent=_authMode==='signup'?'Create account':'Sign in';}};
+
+  if(_authMode==='signup'){
+    if(!id.includes('@')){note('Enter a valid email address to sign up.','Invalid email');return;}
+    if(pass.length<6){note('Password must be at least 6 characters.','Weak password');return;}
+    busy('Creating…');
+    const{data,error}=await sb.auth.signUp({email:id,password:pass});
+    done();
+    if(error){note(error.message,'Could not sign up');return;}
+    const n=(document.getElementById('authName').value||'').trim();if(n)saveUserName(n);
+    /* Supabase emails a verification link. If confirmations are ON, there's no
+       session yet; if OFF, the user is already signed in. Handle both. */
+    if(data&&data.session){
+      currentUser=data.session.user;await loadProfileFromServer();upsertProfile();
+      note('Account created!','Welcome to Tripomonk').then(()=>{const r=_loginReturn;_loginReturn=null;go(r||lastTab||'home');setTimeout(maybeOnboard,500);});
+    }else{
+      note('Account created. Check '+id+' for a verification link, then sign in.','Verify your email')
+        .then(()=>authTab('signin'));
+    }
+    return;
+  }
+
+  /* sign in */
+  if(!id){note('Enter your email or username.','Missing details');return;}
+  if(!pass){note('Enter your password.','Missing password');return;}
+  busy('Signing in…');
+  try{
+    if(id.includes('@')){
+      /* plain email login — no lookup, no enumeration risk */
+      const{data,error}=await sb.auth.signInWithPassword({email:id,password:pass});
+      if(error)throw error;
+      await afterPasswordLogin(data.user);
+    }else{
+      /* username login — resolve + authenticate SERVER-SIDE so the browser
+         never sees anyone's email. The edge function returns a session. */
+      const res=await authByUsername(id,pass);
+      if(res.error)throw new Error(res.error);
+      if(!res.access_token)throw new Error('Login failed.');
+      const{data,error}=await sb.auth.setSession({access_token:res.access_token,refresh_token:res.refresh_token});
+      if(error)throw error;
+      await afterPasswordLogin(data.user||(data.session&&data.session.user));
+    }
+  }catch(e){
+    done();
+    const m=(e&&e.message)||'Login failed.';
+    note(/invalid login|credentials|not found/i.test(m)?'Wrong username/email or password.':m,'Could not sign in');
+    return;
+  }
+  done();
+}
+async function afterPasswordLogin(user){
+  if(user)currentUser=user;
+  await loadProfileFromServer();upsertProfile();loadStaff();
+  const r=_loginReturn;_loginReturn=null;
+  go(r||lastTab||'home');
+  setTimeout(maybeOnboard,500);
+}
+/* call the authlogin edge function (username -> email resolved server-side) */
+async function authByUsername(username,password){
+  try{
+    const r=await fetch(SB.SUPABASE_URL+'/functions/v1/authlogin',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',apikey:SB.SUPABASE_ANON_KEY,Authorization:'Bearer '+SB.SUPABASE_ANON_KEY},
+      body:JSON.stringify({username:username,password:password})
+    });
+    return await r.json();
+  }catch(e){return{error:'Could not reach the login service.'};}
+}
+/* fired when the user opens a reset link — collect a new password and set it */
+async function promptNewPassword(){
+  const pw=await askCode('Set a new password',{password:true,placeholder:'New password (min 6)'});
+  if(pw==null)return;
+  if(pw.length<6){note('Password must be at least 6 characters.','Too short').then(promptNewPassword);return;}
+  const sb=getSupaClient();if(!sb)return;
+  const{error}=await sb.auth.updateUser({password:pw});
+  if(error){note(error.message,'Error');return;}
+  try{history.replaceState(null,'',window.location.pathname);}catch(e){}
+  note('Password updated. You are signed in.','Done').then(()=>go(lastTab||'home'));
+}
+async function forgotPassword(){
+  const id=(document.getElementById('emailInput').value||'').trim();
+  if(!id.includes('@')){note('Enter the email address for your account, then tap Forgot password.','Enter your email');return;}
+  const sb=getSupaClient();if(!sb)return;
+  const{error}=await sb.auth.resetPasswordForEmail(id,{redirectTo:window.location.origin+window.location.pathname});
+  if(error){note(error.message,'Error');return;}
+  note('Password reset link sent to '+id+'.','Check your email');
 }
 
 function otpBoxInput(el,idx){
@@ -1498,6 +1614,50 @@ async function loadPeopleRemote(){
   return (d2||[]).filter(r=>r.author_name&&!seen2.has(r.author_name)&&seen2.add(r.author_name))
     .map(r=>({n:r.author_name,h:'@'+r.author_name.toLowerCase().replace(/[^a-z0-9]/g,''),prefs:[],bio:'Tripomonk trekker',flwr:0}));
 }
+/* Like-minded suggestions: trekkers who share your onboarding interests.
+   Ranked by shared prefs, most in common first. Only shows people you don't
+   already follow, and hides itself entirely when there's no good match. */
+async function renderSuggestions(){
+  const box=document.getElementById('commSuggest');if(!box)return;
+  const mine=getPrefs()||[];
+  /* nothing to match on yet — nudge them to complete onboarding instead */
+  if(!mine.length){
+    if(isLoggedIn()&&!isPrefsDone()){
+      box.innerHTML='<div class="suggest-wrap"><div class="pref-prompt" onclick="go(\'onboarding\')">'
+        +'<span class="msr">interests</span><div><b>Find your people</b><small>Pick a few interests and we\'ll suggest like-minded trekkers.</small></div>'
+        +'<span class="msr" style="margin-left:auto">chevron_right</span></div></div>';
+    }else box.innerHTML='';
+    return;
+  }
+  const pool=await ensurePeople();
+  const ranked=pool
+    .map(p=>({p,s:sharedPrefs(p.prefs)}))
+    .filter(x=>x.s>0 && !isFollowing(x.p.n))
+    .sort((a,b)=>b.s-a.s)
+    .slice(0,10);
+  if(!ranked.length){box.innerHTML='';return;}
+  /* fetch faces before rendering so avatars aren't blank on first paint */
+  try{await loadAuthorPhotos(ranked.map(x=>x.p.n));}catch(e){}
+  box.innerHTML='<div class="suggest-wrap"><div class="suggest-head"><b>Trekkers like you</b>'
+    +'<span onclick="go(\'peopleSearch\')">See all</span></div>'
+    +'<div class="suggest-rail">'+ranked.map(x=>suggestCard(x.p,x.s)).join('')+'</div></div>';
+  hydrate(box);
+}
+function suggestCard(p,shared){
+  const sn=jsq(p.n);const on=isFollowing(p.n);
+  return '<div class="scard" data-sg="'+esc(p.n)+'">'
+    +'<div class="sav" onclick="openPerson(\''+sn+'\')">'+avatar(p.n,52)+'</div>'
+    +'<b onclick="openPerson(\''+sn+'\')">'+esc(p.n)+'</b>'
+    +'<span class="smatch">'+ic('like',10)+' '+shared+' shared</span>'
+    +'<button class="sfollow'+(on?' on':'')+'" onclick="suggestFollow(\''+sn+'\',this)">'+(on?'Following':'Follow')+'</button>'
+    +'</div>';
+}
+/* follow from a suggestion card without re-rendering the whole strip */
+function suggestFollow(n,btn){
+  toggleFollow(n);
+  const now=isFollowing(n);
+  if(btn){btn.classList.toggle('on',now);btn.textContent=now?'Following':'Follow';}
+}
 function personRow(p){
   const sn=jsq(p.n);
   const shared=sharedPrefs(p.prefs);
@@ -1675,8 +1835,9 @@ async function deletePost(id){
 }
 async function renderFeed(){
   renderCommTabs();renderStories();
-  /* stories + member list load alongside the feed, then the tray re-renders */
-  Promise.all([loadStories(),ensurePeople()]).then(()=>renderStories()).catch(()=>{});
+  /* stories + member list load alongside the feed, then the tray + suggestions re-render */
+  Promise.all([loadStories(),ensurePeople()]).then(()=>{renderStories();renderSuggestions();}).catch(()=>{});
+  renderSuggestions();   /* paint immediately from cache; refreshes when the pool loads */
   const box=document.getElementById('feed');
   box.innerHTML=`<div class="skel skel-post"></div><div class="skel skel-post"></div>`;
   /* try remote first; null = error, [] = genuinely empty */
@@ -3477,7 +3638,7 @@ function genItineraryPDF(t){
 /* ---------- router ---------- */
 function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='captain'&&!isStaffUser()){note('Trip Captain access is for staff only.','Restricted');return;}
-  if(id==='admin'&&!isAdminUser()){note('Admin access is restricted to the account owner.','Restricted');return;}
+  if((id==='admin'||id==='adminTrip')&&!isAdminUser()){note('Admin access is restricted to the account owner.','Restricted');return;}
   if(id!==cur){hist.push(cur);try{history.pushState({s:id},'');}catch(e){}}cur=id;if(el.dataset.tab)lastTab=el.dataset.tab;
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));el.classList.add('active');
   const nav=document.getElementById('nav');nav.classList.toggle('hide',el.hasAttribute('data-nonav'));
@@ -3558,7 +3719,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,searchPeople,renderPeopleResults,openPerson,toggleFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections,addStaff,removeStaff,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections,addStaff,removeStaff,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab});
 
 /* init */
 applyTheme();   /* dark / light / system theme */
@@ -3875,9 +4036,9 @@ async function renderAdminHosts(){
   const r=await sb.from('host_applications').select('*').order('created_at',{ascending:false});
   if(r.error){box.innerHTML='<div class="empty"><p>Could not load applications: '+esc(r.error.message)+'</p></div>';return;}
   const apps=r.data||[];
-  if(!apps.length){box.innerHTML='<div class="empty"><p>No host applications yet.</p></div>';return;}
   const pending=apps.filter(a=>a.status==='pending');
-  box.innerHTML=(pending.length?'<p class="host-note" style="margin:0 0 12px">'+pending.length+' awaiting review</p>':'')
+  box.innerHTML=(!apps.length?'<div class="empty" style="padding:20px 0"><p>No host applications yet.</p></div>':'')
+    +(pending.length?'<p class="host-note" style="margin:0 0 12px">'+pending.length+' awaiting review</p>':'')
     +apps.map(a=>{
       const links=[a.instagram?'<a href="'+esc(instaUrl(a.instagram))+'" target="_blank" rel="noopener">Instagram</a>':'',
                    a.youtube?'<a href="'+esc(a.youtube)+'" target="_blank" rel="noopener">YouTube</a>':'',
@@ -4104,17 +4265,61 @@ async function myHostTrips(){
 function tripRow(t,admin){
   const chip='<span class="hstat '+(t.status==='live'?'approved':t.status==='rejected'?'rejected':'pending')
     +'" style="margin:0;padding:3px 8px;font-size:10px">'+esc(t.status)+'</span>';
+  const id=esc(t.id),ttl=jsq(t.title);
+  /* every status gets an action so a trip is never a dead end:
+     draft/rejected -> Publish, live -> Unpublish. Reject always available. */
+  let actions='';
+  if(admin){
+    actions='<div class="hact" style="margin-top:8px">'
+      +'<button onclick="openAdminTrip(\''+id+'\')">Review</button>'
+      +(t.status!=='live'
+        ? '<button class="ok" onclick="reviewTrip(\''+id+'\',\'live\',\''+ttl+'\')">Publish</button>'
+        : '<button onclick="reviewTrip(\''+id+'\',\'draft\',\''+ttl+'\')">Unpublish</button>')
+      +(t.status!=='rejected'?'<button class="no" onclick="reviewTrip(\''+id+'\',\'rejected\',\''+ttl+'\')">Reject</button>':'')
+      +'</div>';
+  }
+  const tap=admin?' onclick="openAdminTrip(\''+id+'\')" style="cursor:pointer"':'';
   return '<div class="htrip">'
-    +'<div class="tph" style="background-image:url(\''+esc(t.img||'')+'\')"></div>'
-    +'<div class="tbd"><b>'+esc(t.title)+'</b>'
-    +'<small>'+esc(t.destination)+' · '+esc(String(t.start_date||''))+' · '+esc(String(t.days||''))+'d · max '+esc(String(t.max_people||''))+'</small>'
+    +'<div class="tph"'+tap+' style="background-image:url(\''+esc(t.img||'')+'\')'+(admin?';cursor:pointer':'')+'"></div>'
+    +'<div class="tbd"><b'+tap+'>'+esc(t.title)+'</b>'
+    +'<small>'+esc(t.destination)+' · '+esc(String(t.start_date||''))+(t.end_date?' → '+esc(String(t.end_date)):'')+' · '+esc(String(t.days||''))+'d · max '+esc(String(t.max_people||''))+'</small>'
     +(admin?'<small>by '+esc(t.host_name)+'</small>':'')
     +'<div style="margin-top:6px">'+chip+'</div>'
-    +(admin&&t.status!=='live'?'<div class="hact" style="margin-top:8px">'
-       +'<button class="ok" onclick="reviewTrip(\''+esc(t.id)+'\',\'live\',\''+jsq(t.title)+'\')">Publish</button>'
-       +'<button class="no" onclick="reviewTrip(\''+esc(t.id)+'\',\'rejected\',\''+jsq(t.title)+'\')">Reject</button></div>':'')
+    +actions
     +'</div>'
     +'<div class="tpr">'+INR(t.price||0)+'</div></div>';
+}
+/* open a submitted trip full-screen so the admin can actually read it before deciding */
+async function openAdminTrip(id){
+  if(!isAdminUser()){note('Admins only.','Not allowed');return;}
+  go('adminTrip');
+  const box=document.getElementById('adminTripBody');
+  if(box)box.innerHTML='<div class="skel skel-card" style="height:160px"></div>';
+  const sb=getSupaClient();if(!sb)return;
+  const r=await sb.from('host_trips').select('*').eq('id',id).maybeSingle();
+  const t=r.data;
+  if(!box)return;
+  if(r.error||!t){box.innerHTML='<div class="empty"><p>Could not load this trip.</p></div>';return;}
+  const line=(l,v)=>v?'<div class="br"><span>'+l+'</span><b style="max-width:60%;text-align:right;white-space:normal">'+esc(String(v))+'</b></div>':'';
+  box.innerHTML=(t.img?'<div class="atrip-img" style="background-image:url(\''+esc(t.img)+'\')"></div>':'')
+    +'<h2 style="margin:14px 0 4px;font-size:20px">'+esc(t.title)+'</h2>'
+    +'<div class="hstat '+(t.status==='live'?'approved':t.status==='rejected'?'rejected':'pending')+'" style="margin:0 0 14px">'+esc(t.status)+'</div>'
+    +'<div class="bill">'
+      +line('Host',t.host_name)+line('Destination',t.destination)
+      +line('Dates',(t.start_date||'')+(t.end_date?' → '+t.end_date:''))
+      +line('Duration',t.days?t.days+' days':'')+line('Max people',t.max_people)
+      +line('Difficulty',t.difficulty)+line('Price',INR(t.price||0)+' / person')
+    +'</div>'
+    +(t.description?'<div class="blk" style="padding:0"><h2>About</h2><p>'+esc(t.description)+'</p></div>':'')
+    +(t.inclusions?'<div class="blk" style="padding:0"><h2>Inclusions</h2><p style="white-space:pre-line">'+esc(t.inclusions)+'</p></div>':'')
+    +(t.exclusions?'<div class="blk" style="padding:0"><h2>Exclusions</h2><p style="white-space:pre-line">'+esc(t.exclusions)+'</p></div>':'')
+    +'<div class="hact" style="margin-top:18px">'
+      +(t.status!=='live'?'<button class="ok" onclick="reviewTrip(\''+esc(t.id)+'\',\'live\',\''+jsq(t.title)+'\',1)">Publish</button>'
+                         :'<button onclick="reviewTrip(\''+esc(t.id)+'\',\'draft\',\''+jsq(t.title)+'\',1)">Unpublish</button>')
+      +(t.status!=='rejected'?'<button class="no" onclick="reviewTrip(\''+esc(t.id)+'\',\'rejected\',\''+jsq(t.title)+'\',1)">Reject</button>':'')
+      +'<button onclick="wa(\'Hi '+jsq(t.host_name)+', about your trip '+jsq(t.title)+' —\')">Message host</button>'
+    +'</div>';
+  hydrate(box);
 }
 async function renderMyTrips(){
   const box=document.getElementById('myTripsBox');if(!box)return;
@@ -4124,15 +4329,25 @@ async function renderMyTrips(){
     +trips.map(t=>tripRow(t,false)).join('');
   hydrate(box);
 }
-async function reviewTrip(id,status,title){
+async function reviewTrip(id,status,title,fromDetail){
   if(!isAdminUser()){note('Admins only.','Not allowed');return;}
-  if(!(await askConfirm((status==='live'?'Publish ':'Reject ')+title+'?',status==='live'?'Publish trip':'Reject trip')))return;
-  const sb=getSupaClient();if(!sb)return;
+  const verb=status==='live'?'Publish':status==='draft'?'Unpublish':'Reject';
+  if(!(await askConfirm(verb+' "'+title+'"?',verb+' trip')))return;
+  const sb=getSupaClient();const uid=sb?await authUid():null;
+  if(!sb){note('Backend not connected.','Error');return;}
   const r=await sb.from('host_trips').update({status:status}).eq('id',id).select('id');
-  if(r.error||!r.data||!r.data.length){
-    note('Could not update: '+((r.error&&r.error.message)||'no rows changed — check the admin policy.'),'Error');return;
+  if(r.error){note('Could not update: '+r.error.message,'Error');return;}
+  if(!r.data||!r.data.length){
+    /* the update ran but changed nothing — almost always the admin RLS policy:
+       the DB checks the JWT email, which must equal the owner email exactly. */
+    note('The database rejected this change. It only allows the owner account ('
+      +'vikasupadhyay9@gmail.com) to publish trips. You are signed in as '
+      +(getUserEmail()||'an unknown account')+'. Sign in with the owner email and try again.','Not allowed by server');
+    return;
   }
-  note(title+(status==='live'?' is live.':' was rejected.'),'Done');
+  const done={live:'is now live.',draft:'moved back to draft.',rejected:'was rejected.'}[status]||'updated.';
+  await note('"'+title+'" '+done,'Done');
+  if(fromDetail)go('admin');   /* back to the list after acting from the detail view */
   renderAdminHosts();
 }
 

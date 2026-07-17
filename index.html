@@ -853,6 +853,14 @@
   .tprev small{font-size:11.5px;color:var(--muted);display:block}
   .tprev .tpp{font-size:16px;font-weight:600;margin-top:8px;display:block}
 
+  /* ---- admin trip review ---- */
+  .atrip-img{width:100%;aspect-ratio:16/9;border-radius:18px;background-size:cover;background-position:center;background-color:var(--card2)}
+  #adminTrip .hact{display:flex;gap:8px;flex-wrap:wrap}
+  #adminTrip .hact button{flex:1;min-width:96px;min-height:46px;border-radius:12px;border:1px solid var(--stroke);
+    background:var(--card2);color:var(--text);font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer}
+  #adminTrip .hact button.ok{background:var(--accent);border-color:var(--accent);color:#fff}
+  #adminTrip .hact button.no{background:rgba(255,90,110,.12);border-color:rgba(255,90,110,.3);color:#ff5a6e}
+
   /* ---- host dashboard ---- */
   .hdhead{border-radius:22px;padding:16px;position:relative;overflow:hidden;
     background:linear-gradient(135deg,rgba(47,107,255,.2),rgba(255,206,31,.1));
@@ -1285,6 +1293,23 @@
   #community .ctabs .ctab{padding:10px 6px;text-align:center;border-radius:13px;font-size:12px;color:var(--muted);font-weight:700}
   #community .ctabs .ctab:after{display:none}
   #community .ctabs .ctab.on{background:var(--accent);color:#fff;box-shadow:0 12px 22px -16px rgba(47,107,255,.95)}
+  /* like-minded suggestions — ranked by shared onboarding interests */
+  .suggest-wrap{margin:2px 0 16px}
+  .suggest-head{display:flex;align-items:center;justify-content:space-between;margin:0 2px 10px}
+  .suggest-head b{font-size:14px}
+  .suggest-head span{font-size:11.5px;color:var(--accent2);font-weight:700;cursor:pointer}
+  .suggest-rail{display:flex;gap:11px;overflow-x:auto;scrollbar-width:none;margin:0 -18px;padding:2px 18px 4px}
+  .suggest-rail::-webkit-scrollbar{display:none}
+  .scard{flex:none;width:150px;background:var(--card);border:1px solid var(--stroke);border-radius:18px;
+    padding:14px 12px 12px;text-align:center;box-shadow:0 16px 34px -30px rgba(0,0,0,.9)}
+  .scard .sav{margin:0 auto 8px;cursor:pointer}
+  .scard b{font-size:12.5px;display:block;line-height:1.25;cursor:pointer;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .scard .smatch{display:inline-flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;color:var(--accent2);
+    background:rgba(47,107,255,.12);border:1px solid rgba(47,107,255,.2);border-radius:999px;padding:2px 7px;margin:5px 0 9px}
+  .scard .sfollow{width:100%;min-height:34px;border:1px solid var(--accent);border-radius:999px;
+    background:var(--accent);color:#fff;font-family:var(--font);font-size:11.5px;font-weight:700;cursor:pointer}
+  .scard .sfollow.on{background:transparent;color:var(--muted);border-color:var(--stroke2)}
   .comm-section-head{display:flex;align-items:center;justify-content:space-between;margin:4px 2px 12px}
   .comm-section-head b{font-size:15px}
   .comm-section-head span{font-size:12px;color:var(--accent2);font-weight:700;cursor:pointer}
@@ -1568,6 +1593,7 @@
       <button onclick="go('peopleSearch')"><span class="msr">travel_explore</span> Search Partners</button>
     </div>
     <div class="ctabs" id="commTabs"></div>
+    <div id="commSuggest"></div>
     <div class="comm-section-head"><b>Recently Posted</b><span onclick="go('peopleSearch')">Find trekkers</span></div>
     <div id="feed"></div>
   </section>
@@ -1743,11 +1769,20 @@
             <input id="authName" type="text" placeholder="Your full name" autocomplete="name" style="all:unset;flex:1;color:#fff;font-size:14px;font-family:inherit"/>
           </div>
         </div>
-        <!-- email field -->
+        <!-- email / username field -->
         <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:14px 15px;margin-bottom:13px">
-          <span class="msr" style="font-size:20px;color:rgba(255,255,255,.6)">mail</span>
-          <input id="emailInput" type="email" inputmode="email" placeholder="your@email.com" autocomplete="email" style="all:unset;flex:1;color:#fff;font-size:14px;font-family:inherit"/>
+          <span class="msr" style="font-size:20px;color:rgba(255,255,255,.6)" id="emailIcon">alternate_email</span>
+          <input id="emailInput" type="text" inputmode="email" placeholder="Email or username" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="username" style="all:unset;flex:1;color:#fff;font-size:14px;font-family:inherit"/>
         </div>
+        <!-- password field -->
+        <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:14px 15px;margin-bottom:8px">
+          <span class="msr" style="font-size:20px;color:rgba(255,255,255,.6)">lock</span>
+          <input id="authPassword" type="password" placeholder="Password" autocomplete="current-password" style="all:unset;flex:1;color:#fff;font-size:14px;font-family:inherit"/>
+          <span class="msr" id="pwToggle" onclick="togglePw()" style="font-size:19px;color:rgba(255,255,255,.55);cursor:pointer">visibility</span>
+        </div>
+        <div id="pwHint" style="font-size:11px;color:rgba(255,255,255,.5);margin:0 2px 13px;min-height:14px"></div>
+        <button class="btn" id="pwBtn" onclick="passwordAuth()" style="margin-bottom:12px">Sign in</button>
+        <div style="text-align:right;margin:-4px 2px 14px"><span onclick="forgotPassword()" style="font-size:12px;color:rgba(255,255,255,.6);cursor:pointer">Forgot password?</span></div>
         <!-- social login buttons -->
         <button onclick="socialLogin('google')" style="all:unset;width:100%;display:flex;align-items:center;gap:12px;background:#fff;border-radius:14px;padding:13px 16px;cursor:pointer;margin-bottom:10px;box-sizing:border-box">
           <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.29-8.16 2.29-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
@@ -2025,6 +2060,13 @@
 
     <button class="btn" id="htSubmit" onclick="submitHostTrip()">Submit for review</button>
     <p class="host-note">Tripomonk reviews every trip before it goes live. We'll confirm operations and commercials with you first.</p>
+    <div style="height:calc(var(--safe-bottom) + 20px)"></div>
+  </section>
+
+  <!-- ADMIN · REVIEW A HOST TRIP -->
+  <section class="view flow" id="adminTrip" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Review trip</h1></div>
+    <div id="adminTripBody"></div>
     <div style="height:calc(var(--safe-bottom) + 20px)"></div>
   </section>
 
