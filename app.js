@@ -323,7 +323,7 @@ let photoByName={},hostByName={};
 /* declared up here on purpose: renderHome() runs during boot, far above the
    host-trip functions at the bottom of this file. Declaring it next to them
    put it in the temporal dead zone and killed the rest of the script. */
-let liveHostTrips=[];
+let liveHostTrips=[],verifiedHosts=[];
 /* All host-module state lives up here, ABOVE the boot sequence.
    restoreNav() can send a user straight back to becomeHost / hostDash / hostTrip
    on load, and those renderers read these. Declared beside their functions at the
@@ -1028,9 +1028,10 @@ function renderHome(){
   hydrate(el);
   /* paint the host slot now (CTA), then swap in the rail if any trips are live */
   renderHomeHosts();
-  loadLiveHostTrips().then(async()=>{
-    /* await the photos, or the rail paints before the host avatars exist */
-    try{await loadAuthorPhotos(liveHostTrips.map(t=>t.host_name));}catch(e){}
+  Promise.all([loadLiveHostTrips(),loadVerifiedHosts()]).then(async()=>{
+    /* await the photos, or the rails paint before the host avatars exist */
+    const names=liveHostTrips.map(t=>t.host_name).concat(verifiedHosts.map(h=>h.name));
+    try{await loadAuthorPhotos(names);}catch(e){}
     renderHomeHosts();
   }).catch(()=>{});
 }
@@ -1481,10 +1482,12 @@ function reviewCard(r){return `<div class="panel" style="margin-bottom:12px"><di
 async function loadPeopleRemote(){
   const sb=getSupaClient();if(!sb)return[];
   /* pull registered members (with their preferences) from profiles */
-  try{const{data}=await sb.from('profiles').select('name,prefs,username,photo,is_host').limit(300);
+  /* photo is deliberately NOT selected here. It holds base64 (some rows are >1.5MB),
+     so pulling it for 300 profiles shipped ~3MB on every community open. Photos come
+     from loadAuthorPhotos(), which fetches only the handful actually on screen. */
+  try{const{data}=await sb.from('profiles').select('name,prefs,username,is_host').limit(300);
     if(data&&data.length){const seen=new Set();
-      /* cache photos while we're here — stories/search then show real faces */
-      data.forEach(r=>{if(r.name){if(!(r.name in photoByName))photoByName[r.name]=r.photo||'';hostByName[r.name]=!!r.is_host;}});
+      data.forEach(r=>{if(r.name)hostByName[r.name]=!!r.is_host;});
       return data.filter(r=>r.name&&!seen.has(r.name)&&seen.add(r.name))
         .map(r=>({n:r.name,h:'@'+(r.username||r.name.toLowerCase().replace(/[^a-z0-9]/g,'')),prefs:r.prefs||[],bio:(r.prefs&&r.prefs.length)?r.prefs.slice(0,3).join(' · '):'Tripomonk trekker',flwr:0}));
     }
@@ -4113,6 +4116,17 @@ async function reviewTrip(id,status,title){
    A rail of live host trips. Until any exist, the same slot recruits
    hosts instead — an empty section on the home screen is dead space.
    ============================================================ */
+/* verified hosts for the home rail. name is required — a badged profile with a
+   null name cannot be rendered or opened, so it is excluded rather than shown blank. */
+async function loadVerifiedHosts(){
+  const sb=getSupaClient();if(!sb){verifiedHosts=[];return;}
+  try{
+    const r=await sb.from('profiles').select('name,username,is_host')
+      .eq('is_host',true).not('name','is',null).limit(12);
+    verifiedHosts=(r.data||[]).filter(h=>String(h.name||'').trim());
+    verifiedHosts.forEach(h=>{hostByName[h.name]=true;});
+  }catch(e){verifiedHosts=[];}
+}
 async function loadLiveHostTrips(){
   const sb=getSupaClient();if(!sb){liveHostTrips=[];return;}
   try{
@@ -4137,12 +4151,39 @@ function hostTripCard(t){
         +(t.difficulty?'<i>'+esc(t.difficulty)+'</i>':'')
       +'</div></div></div>';
 }
+/* a face + name + verified tick — tapping opens their community profile */
+function verifiedHostChip(h){
+  return '<div class="vhost" onclick="openPerson(\''+jsq(h.name)+'\')">'
+    +'<div class="vhring">'+avatar(h.name,54)+'</div>'
+    +'<small>'+esc(String(h.name).split(' ')[0])+'</small>'
+    +'<span class="vhtick"><span class="msr">check</span></span></div>';
+}
+function renderVerifiedHostsRail(){
+  if(!verifiedHosts.length)return '';
+  return '<div class="sec" style="margin-top:20px"><h2>Verified Hosts</h2>'
+    +'<a onclick="go(\'becomeHost\')">Become one</a></div>'
+    +'<div class="vhostrail">'+verifiedHosts.map(verifiedHostChip).join('')+'</div>';
+}
 function renderHomeHosts(){
   const box=document.getElementById('homeHosts');if(!box)return;
+  const hostsRail=renderVerifiedHostsRail();
   if(liveHostTrips.length){
-    box.innerHTML='<div class="sec" style="margin-top:20px"><h2>Hosted Trips</h2>'
+    box.innerHTML=hostsRail
+      +'<div class="sec" style="margin-top:20px"><h2>Hosted Trips</h2>'
       +'<a onclick="go(\'becomeHost\')">Host one</a></div>'
       +'<div class="hostrail">'+liveHostTrips.map(hostTripCard).join('')+'</div>';
+  }else if(hostsRail){
+    /* hosts exist but none have a live trip yet — show the faces, still recruit */
+    box.innerHTML=hostsRail
+      +'<div class="sec" style="margin-top:20px"><h2>Host a Trip</h2></div>'
+      +'<div class="hostcta" onclick="go(\'becomeHost\')">'
+        +'<div class="hcglow"></div>'
+        +'<b>Bring your community.<br>We run the mountain.</b>'
+        +'<p>Creators, clubs and experienced trekkers host under Tripomonk — we handle stays, transport, guides and permits.</p>'
+        +'<span class="hcgo">Become a host '+ic('back',13)+'</span>'
+      +'</div>';
+    const g=box.querySelector('.hcgo .msr,.hcgo .ic');if(g)g.style.transform='scaleX(-1)';
+    hydrate(box);return;
   }else{
     /* no live trips yet — recruit instead of showing an empty shelf */
     box.innerHTML='<div class="sec" style="margin-top:20px"><h2>Host a Trip</h2></div>'
