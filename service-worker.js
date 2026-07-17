@@ -1,7 +1,7 @@
 /* Tripomonk service worker — caches the app shell so it loads instantly
    and works offline. Bump CACHE when you change index.html / app.js so
    users get the new version. */
-const CACHE = 'tripomonk-v138';
+const CACHE = 'tripomonk-v139';
 const ASSETS = [
   './',
   './index.html',

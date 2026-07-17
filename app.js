@@ -843,10 +843,14 @@ async function renderProfileGallery(){
 const PREF_GROUPS=[
   ['Regions you love',['Uttarakhand','Himachal','Ladakh','Kashmir','Northeast','Spiritual']],
   ['Trek style',['Trekking','Backpacking','Spiritual tours','Family trips','Solo','Group departures']],
-  ['Interests',['Photography','Camping','Adventure sports','Wildlife','Culture & food','Fitness & endurance']],
-  ['Experience level',['Beginner','Intermediate','Advanced']]
+  ['Interests',['Photography','Camping','Road trips','Bike expeditions','Adventure sports','Wildlife','Culture & food','Fitness & endurance']],
+  ['Experience level',['Beginner','Intermediate','Advanced']],
+  ['Budget per trip',['Under ₹5k','₹5k – ₹10k','₹10k – ₹20k','₹20k+']],
+  /* literal, not DEP_CITIES — that const is declared further down this file and
+     referencing it here would throw a temporal-dead-zone error before the app boots */
+  ['Departure city',['Delhi','Rishikesh','Dehradun','Other']]
 ];
-let _prefSel=[],_prefSkippedSession=false;
+let _prefSel=[],_prefSkippedSession=false,_prefRole='';
 /* per-ACCOUNT storage key — different accounts on the same device stay independent */
 function prefKey(){return currentUser?('tmk_prefs_'+currentUser.id):'tmk_prefs_guest';}
 function getPrefs(){try{return JSON.parse(localStorage.getItem(prefKey())||'null');}catch(e){return null;}}
@@ -859,19 +863,42 @@ async function loadPrefsFromProfile(){
   }catch(e){}
 }
 /* called when the screen opens — loads current selection once */
-function initPrefs(){_prefSel=(getPrefs()||[]).slice();renderPrefs();}
+function initPrefs(){
+  const saved=(getPrefs()||[]).slice();
+  /* role is stored in the same prefs array, prefixed, so no schema change */
+  const r=saved.find(x=>String(x).startsWith('role:'));
+  _prefRole=r?r.slice(5):'';
+  _prefSel=saved.filter(x=>!String(x).startsWith('role:'));
+  renderPrefs();
+}
 function renderPrefs(){
   const box=document.getElementById('prefBody');if(!box)return;
-  box.innerHTML=PREF_GROUPS.map(g=>`<div class="sec" style="margin:6px 2px 10px"><h2 style="font-size:14.5px">${g[0]}</h2></div>
-    <div class="chips" style="flex-wrap:wrap;margin-bottom:14px">${g[1].map(o=>`<div class="chip pill ${_prefSel.includes(o)?'on':''}" onclick="togglePref('${o.replace(/'/g,'')}')">${o}</div>`).join('')}</div>`).join('');
+  /* Role first — it changes what the rest of the app offers you.
+     Choosing Host does NOT make you one; it just routes you to the application. */
+  const roleCards=`<div class="sec" style="margin:6px 2px 10px"><h2 style="font-size:14.5px">How will you use Tripomonk?</h2></div>
+    <div class="rolerow">
+      <div class="rolecard ${_prefRole==='Explorer'?'on':''}" onclick="pickRole('Explorer')">
+        <span class="msr">explore</span><b>Explorer</b><small>Book adventures and join trips</small></div>
+      <div class="rolecard ${_prefRole==='Host'?'on':''}" onclick="pickRole('Host')">
+        <span class="msr">landscape</span><b>Host</b><small>Run trips — we handle operations</small></div>
+    </div>
+    ${_prefRole==='Host'?`<p class="host-note" style="margin:-4px 2px 16px">We'll take you to the host application after this.</p>`:''}`;
+  box.innerHTML=roleCards+PREF_GROUPS.map(g=>`<div class="sec" style="margin:6px 2px 10px"><h2 style="font-size:14.5px">${g[0]}</h2></div>
+    <div class="chips" style="flex-wrap:wrap;margin-bottom:14px">${g[1].map(o=>`<div class="chip pill ${_prefSel.includes(o)?'on':''}" onclick="togglePref('${jsq(o)}')">${esc(o)}</div>`).join('')}</div>`).join('');
   hydrate(box);
 }
+function pickRole(r){_prefRole=_prefRole===r?'':r;renderPrefs();}
 function togglePref(o){const i=_prefSel.indexOf(o);if(i>=0)_prefSel.splice(i,1);else _prefSel.push(o);renderPrefs();}
 async function savePrefs(){
-  if(!_prefSel.length){note('Pick at least one preference, or tap back to skip for now.','Add a preference');return;}
-  try{localStorage.setItem(prefKey(),JSON.stringify(_prefSel));}catch(e){}
-  const sb=getSupaClient();if(sb&&currentUser){try{await sb.from('profiles').update({prefs:_prefSel}).eq('id',currentUser.id);}catch(e){}}
-  note('Preferences saved! We\'ll suggest trekkers who share your vibe.','Saved ✓');
+  if(!_prefSel.length&&!_prefRole){note('Pick your role or at least one preference — or skip for now.','Add a preference');return;}
+  /* role rides along in the same prefs array, prefixed — no schema change needed */
+  const out=_prefRole?['role:'+_prefRole].concat(_prefSel):_prefSel.slice();
+  try{localStorage.setItem(prefKey(),JSON.stringify(out));}catch(e){}
+  const sb=getSupaClient();const uid=sb?await authUid():null;
+  if(sb&&uid){try{await sb.from('profiles').update({prefs:out}).eq('id',uid);}catch(e){}}
+  const wantsHost=_prefRole==='Host';
+  await note(wantsHost?'Saved. Let\'s get your host application started.':'Preferences saved! We\'ll suggest trekkers who share your vibe.','Saved ✓');
+  if(wantsHost){go('becomeHost');return;}
   if(cur==='onboarding')go(lastTab||'community');else back();
 }
 /* skip = don't complete; not marked done, so it keeps being offered next login (per account) */
@@ -3453,6 +3480,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='act')renderAct();
   if(id==='cart')renderCart();
   if(id==='becomeHost')renderBecomeHost();
+  if(id==='hostTrip')renderHostTrip();
   if(id==='community')renderFeed();
   if(id==='peopleSearch'){_peoplePool=null;setTimeout(()=>{const i=document.getElementById('peopleSearchInput');if(i){i.value='';i.focus();}searchPeople('');},80);}
   if(id==='news')renderNews();
@@ -3737,9 +3765,11 @@ async function renderBecomeHost(){
     body.innerHTML='<div class="hstat '+esc(s)+'"><span class="msr" style="font-size:15px">'+icon+'</span> '+label+'</div>'
       +'<div class="host-hero"><h2>'+esc(_hostApp.full_name||'')+'</h2><p>'+esc(msg)+'</p></div>'
       +(_hostApp.admin_note?'<p class="host-note"><b>Note from Tripomonk:</b> '+esc(_hostApp.admin_note)+'</p>':'')
-      +(s==='approved'?'<button class="btn" onclick="note(\'Trip creation is the next step we are building.\',\'Coming next\')">Create a trip</button>':'')
+      +(s==='approved'?'<button class="btn" onclick="openHostTrip()">Create a trip</button><div id="myTripsBox" style="margin-top:18px"></div>':'')
       +(s==='pending'?'<p class="host-note">Applied '+timeAgo(_hostApp.created_at)+'. We collect ID and payout details on the verification call — never in the app.</p>':'');
-    hydrate(body);return;
+    hydrate(body);
+    if(s==='approved')renderMyTrips();
+    return;
   }
 
   /* the application form */
@@ -3819,7 +3849,19 @@ async function renderAdminHosts(){
         +'<button onclick="wa(\'Hi '+jsq(a.full_name)+', about your Tripomonk host application —\')">WhatsApp</button>'
         +'</div></div>';
     }).join('');
+  await renderAdminTrips(box);
   hydrate(box);
+}
+/* trips submitted by hosts, newest first — drafts get Publish/Reject */
+async function renderAdminTrips(box){
+  const sb=getSupaClient();if(!sb)return;
+  const r=await sb.from('host_trips').select('*').order('created_at',{ascending:false});
+  if(r.error||!r.data||!r.data.length)return;
+  const drafts=r.data.filter(t=>t.status==='draft').length;
+  box.insertAdjacentHTML('beforeend',
+    '<div class="sec" style="margin:22px 2px 10px"><h2 style="font-size:15px">Host trips'
+    +(drafts?' · '+drafts+' to review':'')+'</h2></div>'
+    +r.data.map(t=>tripRow(t,true)).join(''));
 }
 async function reviewHost(id,status,name){
   if(!isAdminUser()){note('Admins only.','Not allowed');return;}
@@ -3834,5 +3876,129 @@ async function reviewHost(id,status,name){
   /* flip the public badge so travellers can see who is verified */
   try{await sb.from('profiles').update({is_host:status==='approved'}).eq('id',r.data[0].user_id);}catch(e){}
   note(name+(status==='approved'?' is now a Verified Host.':' was rejected.'),'Done');
+  renderAdminHosts();
+}
+
+/* ============================================================
+   HOST · CREATE A TRIP
+   Drafts only. Nothing a host submits can go live without admin review —
+   that rule is enforced by RLS, not by this screen.
+   ============================================================ */
+const HT_DIFF=['Easy','Moderate','Difficult'];
+let _htDiff='Moderate',_htFile=null,_htImgData='';
+
+function renderHostTrip(){
+  const d=document.getElementById('htDiff');
+  if(d)d.innerHTML=HT_DIFF.map(x=>'<span class="tap '+(_htDiff===x?'sel':'')+'" onclick="pickHtDiff(\''+x+'\')">'+x+'</span>').join('');
+  const img=document.getElementById('htImg');
+  if(img){
+    if(_htImgData){img.style.backgroundImage="url('"+_htImgData+"')";img.innerHTML='';}
+    else{img.style.backgroundImage='';img.innerHTML='<span class="msr">add_photo_alternate</span>';}
+  }
+  const dt=document.getElementById('htDate');if(dt)dt.min=todayISO(0);
+  hydrate(document.getElementById('hostTrip'));
+}
+function pickHtDiff(x){_htDiff=x;renderHostTrip();}
+function htPickImg(input){
+  const f=input.files&&input.files[0];if(!f)return;
+  input.value='';
+  if(!/^image\//.test(f.type)){note('Please choose an image.','Not an image');return;}
+  _htFile=f;
+  const r=new FileReader();
+  r.onload=e=>{_htImgData=e.target.result;renderHostTrip();};
+  r.readAsDataURL(f);
+}
+async function openHostTrip(){
+  await loadHostApp();
+  if(!isVerifiedHost()){note('Only verified hosts can create trips.','Not yet approved');return;}
+  _htDiff='Moderate';_htFile=null;_htImgData='';
+  ['htTitle','htDest','htDate','htDays','htMax','htPrice','htDesc','htInc','htExc']
+    .forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  go('hostTrip');renderHostTrip();
+}
+async function submitHostTrip(){
+  const v=id=>((document.getElementById(id)||{}).value||'').trim();
+  const title=v('htTitle'),dest=v('htDest'),date=v('htDate');
+  const days=parseInt(v('htDays'),10),max=parseInt(v('htMax'),10),price=parseFloat(v('htPrice'));
+  if(!title){note('Give your trip a title.','Title required');return;}
+  if(!dest){note('Where does this trip go?','Destination required');return;}
+  if(!date){note('Pick a start date.','Date required');return;}
+  if(date<todayISO(0)){note('Start date cannot be in the past.','Check the date');return;}
+  if(!days||days<1){note('How many days is the trip?','Duration required');return;}
+  if(!max||max<1){note('How many people can join?','Group size required');return;}
+  if(!(price>=0)||isNaN(price)){note('Set a price per person.','Price required');return;}
+
+  const sb=getSupaClient();const uid=sb?await authUid():null;
+  if(!sb||!uid){note('Please sign in.','Sign in required');return;}
+  await loadHostApp();
+  if(!isVerifiedHost()){note('Only verified hosts can create trips.','Not approved');return;}
+
+  const btn=document.getElementById('htSubmit');
+  if(btn){btn.disabled=true;btn.textContent='Submitting…';}
+  let imgUrl='';
+  try{
+    if(_htFile){
+      /* compress before upload — hosts will pick straight off their camera roll */
+      const small=await compressImage(_htFile,{maxW:1440,quality:.82});
+      const path='trips/'+Date.now()+'_'+Math.random().toString(36).slice(2)+'.jpg';
+      const up=await sb.storage.from('community').upload(path,small,{cacheControl:'3600',upsert:false});
+      if(up.error)throw new Error(up.error.message);
+      imgUrl=sb.storage.from('community').getPublicUrl(path).data.publicUrl;
+    }
+    const r=await sb.from('host_trips').insert({
+      host_id:uid,host_name:myName(),title:title,destination:dest,start_date:date,
+      days:days,max_people:max,difficulty:_htDiff,price:price,img:imgUrl||null,
+      description:v('htDesc'),inclusions:v('htInc'),exclusions:v('htExc'),status:'draft'
+    }).select('id');
+    if(r.error)throw new Error(r.error.message);
+    if(!r.data||!r.data.length)throw new Error('Not saved — your host approval may have changed.');
+    sfx('repost');
+    await note('Trip submitted. We review it before it goes live.','Submitted ✓');
+    go('becomeHost');
+  }catch(e){
+    note('Could not submit: '+e.message,'Error');
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Submit for review';}
+  }
+}
+/* a host's own trips, any status */
+async function myHostTrips(){
+  const sb=getSupaClient();const uid=sb?await authUid():null;
+  if(!sb||!uid)return [];
+  try{const r=await sb.from('host_trips').select('*').eq('host_id',uid).order('created_at',{ascending:false});
+    return r.data||[];}catch(e){return [];}
+}
+function tripRow(t,admin){
+  const chip='<span class="hstat '+(t.status==='live'?'approved':t.status==='rejected'?'rejected':'pending')
+    +'" style="margin:0;padding:3px 8px;font-size:10px">'+esc(t.status)+'</span>';
+  return '<div class="htrip">'
+    +'<div class="tph" style="background-image:url(\''+esc(t.img||'')+'\')"></div>'
+    +'<div class="tbd"><b>'+esc(t.title)+'</b>'
+    +'<small>'+esc(t.destination)+' · '+esc(String(t.start_date||''))+' · '+esc(String(t.days||''))+'d · max '+esc(String(t.max_people||''))+'</small>'
+    +(admin?'<small>by '+esc(t.host_name)+'</small>':'')
+    +'<div style="margin-top:6px">'+chip+'</div>'
+    +(admin&&t.status!=='live'?'<div class="hact" style="margin-top:8px">'
+       +'<button class="ok" onclick="reviewTrip(\''+esc(t.id)+'\',\'live\',\''+jsq(t.title)+'\')">Publish</button>'
+       +'<button class="no" onclick="reviewTrip(\''+esc(t.id)+'\',\'rejected\',\''+jsq(t.title)+'\')">Reject</button></div>':'')
+    +'</div>'
+    +'<div class="tpr">'+INR(t.price||0)+'</div></div>';
+}
+async function renderMyTrips(){
+  const box=document.getElementById('myTripsBox');if(!box)return;
+  const trips=await myHostTrips();
+  if(!trips.length){box.innerHTML='<p class="host-note">No trips yet. Create your first one above.</p>';return;}
+  box.innerHTML='<div class="sec" style="margin:4px 2px 10px"><h2 style="font-size:15px">Your trips</h2></div>'
+    +trips.map(t=>tripRow(t,false)).join('');
+  hydrate(box);
+}
+async function reviewTrip(id,status,title){
+  if(!isAdminUser()){note('Admins only.','Not allowed');return;}
+  if(!(await askConfirm((status==='live'?'Publish ':'Reject ')+title+'?',status==='live'?'Publish trip':'Reject trip')))return;
+  const sb=getSupaClient();if(!sb)return;
+  const r=await sb.from('host_trips').update({status:status}).eq('id',id).select('id');
+  if(r.error||!r.data||!r.data.length){
+    note('Could not update: '+((r.error&&r.error.message)||'no rows changed — check the admin policy.'),'Error');return;
+  }
+  note(title+(status==='live'?' is live.':' was rejected.'),'Done');
   renderAdminHosts();
 }

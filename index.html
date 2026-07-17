@@ -816,6 +816,31 @@
     background:rgba(0,0,0,.45);color:#fff;font-family:var(--font);font-size:12.5px;font-weight:600;cursor:pointer}
   .sv-del.show{display:block}
 
+  /* ---- onboarding role picker ---- */
+  .rolerow{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:18px}
+  .rolecard{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:14px 12px;
+    cursor:pointer;text-align:center;transition:.15s}
+  .rolecard:active{transform:scale(.97)}
+  .rolecard .msr{font-size:26px;color:var(--accent2);display:block;margin-bottom:7px}
+  .rolecard b{display:block;font-size:13.5px;margin-bottom:3px}
+  .rolecard small{font-size:10.5px;color:var(--muted);line-height:1.4;display:block}
+  .rolecard.on{border-color:var(--accent);background:rgba(47,107,255,.12)}
+  .rolecard.on .msr{color:var(--accent)}
+
+  /* ---- host trip form ---- */
+  .htrip{display:flex;gap:11px;background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:11px;margin-bottom:11px}
+  .htrip .tph{width:64px;height:64px;flex:none;border-radius:12px;background-size:cover;background-position:center;background-color:var(--card2)}
+  .htrip .tbd{flex:1;min-width:0}
+  .htrip .tbd b{display:block;font-size:13px;line-height:1.3;margin-bottom:3px}
+  .htrip .tbd small{font-size:11px;color:var(--muted);display:block}
+  .htrip .tpr{font-size:13px;font-weight:600;white-space:nowrap}
+  #hostTrip textarea{width:100%;box-sizing:border-box;background:var(--card);border:1px solid var(--stroke);
+    border-radius:14px;padding:12px;color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;resize:vertical;outline:none}
+  #hostTrip textarea:focus{border-color:var(--accent)}
+  .tpick{width:100%;aspect-ratio:16/9;border-radius:16px;border:2px dashed var(--stroke2);display:grid;place-items:center;
+    cursor:pointer;color:var(--muted);background-size:cover;background-position:center;margin-bottom:14px}
+  .tpick .msr{font-size:28px}
+
   /* ---- host marketplace ---- */
   .host-hero{border-radius:20px;padding:20px 18px;margin-bottom:16px;
     background:linear-gradient(135deg,rgba(47,107,255,.22),rgba(255,206,31,.14));
@@ -1831,6 +1856,26 @@
   <section class="view flow" id="becomeHost" data-nonav>
     <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Host with Tripomonk</h1></div>
     <div id="hostBody"></div>
+    <div style="height:calc(var(--safe-bottom) + 20px)"></div>
+  </section>
+
+  <!-- HOST · CREATE A TRIP -->
+  <section class="view flow" id="hostTrip" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Create a trip</h1></div>
+    <div class="tpick" id="htImg" onclick="document.getElementById('htFile').click()"><span class="msr">add_photo_alternate</span></div>
+    <input type="file" id="htFile" accept="image/*" hidden onchange="htPickImg(this)"/>
+    <div class="field"><label>Trip title *</label><div class="inp"><input id="htTitle" placeholder="e.g. Spiti Winter Expedition"/></div></div>
+    <div class="field"><label>Destination *</label><div class="inp"><input id="htDest" placeholder="e.g. Spiti Valley"/></div></div>
+    <div class="field"><label>Start date *</label><div class="inp"><span class="msr" style="font-size:19px;color:var(--muted)">event</span><input type="date" id="htDate"/></div></div>
+    <div class="field"><label>Duration (days) *</label><div class="inp"><input type="number" id="htDays" min="1" max="60" placeholder="5"/></div></div>
+    <div class="field"><label>Max participants *</label><div class="inp"><input type="number" id="htMax" min="1" max="50" placeholder="12"/></div></div>
+    <div class="field"><label>Difficulty</label><div class="chiprow" id="htDiff"></div></div>
+    <div class="field"><label>Price per person (₹) *</label><div class="inp"><input type="number" id="htPrice" min="0" placeholder="14999"/></div></div>
+    <div class="field"><label>Description</label><textarea id="htDesc" rows="4" placeholder="What makes this trip special?"></textarea></div>
+    <div class="field"><label>Inclusions</label><textarea id="htInc" rows="3" placeholder="One per line"></textarea></div>
+    <div class="field"><label>Exclusions</label><textarea id="htExc" rows="3" placeholder="One per line"></textarea></div>
+    <button class="btn" id="htSubmit" onclick="submitHostTrip()">Submit for review</button>
+    <p class="host-note">Tripomonk reviews every trip before it goes live. We'll confirm operations and commercials with you first.</p>
     <div style="height:calc(var(--safe-bottom) + 20px)"></div>
   </section>
 
