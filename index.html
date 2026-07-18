@@ -853,6 +853,58 @@
   .tprev small{font-size:11.5px;color:var(--muted);display:block}
   .tprev .tpp{font-size:16px;font-weight:600;margin-top:8px;display:block}
 
+  /* ---- admin dashboard polish ---- */
+  .admin-hero{display:flex;align-items:center;gap:13px;border-radius:20px;padding:15px;margin-bottom:14px;
+    background:linear-gradient(135deg,rgba(47,107,255,.2),rgba(255,206,31,.1));border:1px solid rgba(47,107,255,.26)}
+  .admin-hero .ah-ic{width:44px;height:44px;flex:none;border-radius:13px;display:grid;place-items:center;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
+  .admin-hero .ah-ic .msr{font-size:24px}
+  .admin-hero b{display:block;font-size:15.5px;line-height:1.2}
+  .admin-hero small{font-size:11.5px;color:var(--muted-strong)}
+  /* segmented tab bar */
+  .adm-tabs{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;margin:0 -18px 16px;padding:2px 18px}
+  .adm-tabs::-webkit-scrollbar{display:none}
+  .adm-tab{flex:none;min-height:38px;padding:0 15px;display:inline-flex;align-items:center;gap:6px;border-radius:999px;
+    font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;transition:.15s;
+    background:var(--card);border:1px solid var(--stroke);color:var(--muted)}
+  .adm-tab .msr{font-size:15px}
+  .adm-tab.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  /* rows inside admin get a touch more life */
+  #admin .mrow{border-radius:16px}
+  #admin .mrow .t b{font-size:13.5px}
+  #admin .mrow .t small{color:var(--muted)}
+  /* summary stat card (bookings) */
+  .adm-stat{display:flex;gap:11px;margin-bottom:14px}
+  .adm-stat>div{flex:1;background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:13px 14px}
+  .adm-stat b{font-size:19px;display:block;line-height:1.1}
+  .adm-stat small{font-size:10.5px;color:var(--muted);display:block;margin-top:3px}
+
+  /* ---- trip captain polish ---- */
+  .cap-hero{position:relative;overflow:hidden;border-radius:22px;padding:26px 20px;text-align:center;cursor:pointer;
+    background:linear-gradient(160deg,rgba(47,107,255,.24),rgba(47,107,255,.06));border:1px solid rgba(47,107,255,.3);
+    transition:transform .14s}
+  .cap-hero:active{transform:scale(.98)}
+  .cap-hero .ch-glow{position:absolute;top:-40px;left:50%;transform:translateX(-50%);width:180px;height:180px;border-radius:50%;
+    background:radial-gradient(circle,rgba(47,107,255,.45),transparent 70%);pointer-events:none}
+  .cap-hero .ch-ic{position:relative;width:64px;height:64px;margin:0 auto 12px;border-radius:20px;display:grid;place-items:center;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 14px 30px -12px rgba(47,107,255,.8)}
+  .cap-hero .ch-ic .msr{font-size:34px}
+  .cap-hero b{position:relative;display:block;font-size:17px;margin-bottom:6px}
+  .cap-hero small{position:relative;display:block;font-size:12px;color:var(--muted-strong);line-height:1.5;max-width:88%;margin:0 auto 14px}
+  .cap-hero .ch-go{position:relative;display:inline-flex;align-items:center;min-height:40px;padding:0 20px;border-radius:999px;
+    background:var(--accent);color:#fff;font-size:12.5px;font-weight:700}
+  .cap-or{display:flex;align-items:center;gap:12px;margin:18px 2px}
+  .cap-or::before,.cap-or::after{content:'';flex:1;height:1px;background:var(--stroke)}
+  .cap-or span{font-size:11.5px;color:var(--muted2)}
+  /* verify result — icon-led card */
+  .verify b .msr,.verify b .ic{flex:none}
+  .verify.good b{color:#0f9d58}
+  html.light .verify.good b{color:#0b7a44}
+  .verify.bad b{color:#ff5a6e}
+  .verify.good{background:rgba(15,157,88,.12);border-color:rgba(15,157,88,.4)}
+  .verify.bad{background:rgba(255,90,110,.1);border-color:rgba(255,90,110,.4)}
+  .verify b{font-size:15px}
+
   /* ---- admin trip review ---- */
   .atrip-img{width:100%;aspect-ratio:16/9;border-radius:18px;background-size:cover;background-position:center;background-color:var(--card2)}
   #adminTrip .hact{display:flex;gap:8px;flex-wrap:wrap}
@@ -1842,14 +1894,20 @@
 
   <!-- CAPTAIN -->
   <section class="view flow" id="captain" data-nonav>
-    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Captain Check-in</h1></div>
-    <div class="panel" style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:14px">Scan or paste a trekker's e-ticket QR to verify it. Works offline — every ticket is digitally signed.</div>
-    <button class="btn" onclick="capScan()"><span class="ic" data-i="camera"></span> Scan QR ticket</button>
-    <div id="capCam" style="display:none;margin:12px 0"><video id="capVideo" playsinline muted style="width:100%;border-radius:14px;background:#000;aspect-ratio:1/1;object-fit:cover"></video><button class="btn ghost sm" style="margin-top:8px;width:100%" onclick="capStopScan()">Stop scanning</button></div>
-    <div class="sec" style="margin:16px 2px 8px"><h2 style="font-size:13px;color:var(--muted)">or enter manually</h2></div>
-    <div class="field"><label>Paste ticket code</label><div class="inp"><span class="ic" data-i="ticket"></span><input id="capInput" placeholder="TMK1|..."/></div></div>
-    <div style="display:flex;gap:10px"><button class="btn ghost" style="flex:1" onclick="captainVerify(document.getElementById('capInput').value)">Verify</button><button class="btn ghost" style="flex:1" onclick="captainTestLast()">Test last ticket</button></div>
-    <div id="capResult" style="margin-top:16px"></div>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Trip Captain</h1></div>
+    <!-- scan hero -->
+    <div class="cap-hero" onclick="capScan()">
+      <div class="ch-glow"></div>
+      <div class="ch-ic"><span class="msr">qr_code_scanner</span></div>
+      <b>Scan e-ticket QR</b>
+      <small>Point the camera at a trekker's ticket. Works offline — every ticket is digitally signed.</small>
+      <span class="ch-go">Open scanner</span>
+    </div>
+    <div id="capCam" style="display:none;margin:14px 0"><video id="capVideo" playsinline muted style="width:100%;border-radius:16px;background:#000;aspect-ratio:1/1;object-fit:cover"></video><button class="btn ghost sm" style="margin-top:8px;width:100%" onclick="capStopScan()">Stop scanning</button></div>
+    <div class="cap-or"><span>or enter the code manually</span></div>
+    <div class="field"><label>Ticket code</label><div class="inp"><span class="ic" data-i="ticket"></span><input id="capInput" placeholder="TMK2|..."/></div></div>
+    <div style="display:flex;gap:10px"><button class="btn" style="flex:1" onclick="captainVerify(document.getElementById('capInput').value)">Verify ticket</button><button class="btn ghost" style="flex:1" onclick="captainTestLast()">Test last</button></div>
+    <div id="capResult" style="margin-top:18px"></div>
   </section>
 
   <!-- NAV -->
@@ -2072,8 +2130,12 @@
 
   <!-- ADMIN · MANAGE TREKS -->
   <section class="view flow" id="admin" data-nonav>
-    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Admin · Treks</h1><div class="rb round" onclick="newTrek()"><span class="ic" data-i="plus"></span></div></div>
-    <div class="chips" id="adminTabs" style="margin-bottom:14px"></div>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Admin</h1><div class="rb round" onclick="newTrek()"><span class="ic" data-i="plus"></span></div></div>
+    <div class="admin-hero">
+      <div class="ah-ic"><span class="msr">admin_panel_settings</span></div>
+      <div><b>Control centre</b><small>Manage treks, bookings, hosts &amp; staff</small></div>
+    </div>
+    <div class="adm-tabs" id="adminTabs"></div>
     <div id="adminForm" style="display:none"></div>
     <div id="adminBody"></div>
     <div style="height:calc(var(--safe-bottom) + 20px)"></div>

@@ -2748,8 +2748,9 @@ async function sbWriteChecked(method,path,body){
 }
 function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null};}
 let editIdx=-1, adminTab='Treks', depTrek=null;
+const ADM_TAB_IC={Bookings:'receipt_long',Treks:'landscape',Departures:'event',Packing:'checklist',Hosts:'groups',Staff:'badge',Settings:'settings'};
 function renderAdmin(){
-  document.getElementById('adminTabs').innerHTML=['Bookings','Treks','Departures','Packing','Hosts','Staff','Settings'].map(x=>`<div class="chip pill ${x===adminTab?'on':''}" onclick="setAdminTab('${x}')">${x}</div>`).join('');
+  document.getElementById('adminTabs').innerHTML=['Bookings','Treks','Departures','Packing','Hosts','Staff','Settings'].map(x=>`<div class="adm-tab ${x===adminTab?'on':''}" onclick="setAdminTab('${x}')"><span class="msr">${ADM_TAB_IC[x]||'circle'}</span>${x}</div>`).join('');
   const f=document.getElementById('adminForm'); if(f){f.style.display='none';f.innerHTML='';}
   if(adminTab==='Bookings')renderAdminBookings();
   else if(adminTab==='Treks')renderAdminTreks();
@@ -2828,7 +2829,8 @@ async function renderAdminBookings(){
   const rows=res.rows||[];
   if(!rows.length){box.innerHTML='<div class="empty"><p>No bookings yet.</p></div>';return;}
   const total=rows.reduce((s,b)=>s+(Number(b.paid)||0),0);
-  box.innerHTML=`<div class="panel" style="margin-bottom:12px;display:flex;justify-content:space-between"><div><b style="font-size:18px">${rows.length}</b><small style="display:block;color:var(--muted)">bookings</small></div><div style="text-align:right"><b style="font-size:18px">${INR(total)}</b><small style="display:block;color:var(--muted)">collected</small></div></div>`+
+  const pax=rows.reduce((s,b)=>s+(Number(b.pax)||1),0);
+  box.innerHTML=`<div class="adm-stat"><div><b>${rows.length}</b><small>Bookings</small></div><div><b>${pax}</b><small>Trekkers</small></div><div><b>${INR(total)}</b><small>Collected</small></div></div>`+
     rows.map(b=>`<div class="mrow" style="cursor:default;align-items:flex-start"><div class="t"><b>${esc(b.trek||'-')}</b><small>${esc(b.name||'')} · ${esc(b.date||'')} · ${b.pax||1} pax</small><small style="display:block;color:var(--muted2)">${esc(b.payment_id||b.id||'')}</small></div><div style="text-align:right"><b style="font-size:13px">${INR(b.paid||0)}</b><small style="display:block;color:#6ee7a0">${esc(b.status||'Confirmed')}</small></div></div>`).join('');
   hydrate(box);
 }
@@ -3551,6 +3553,7 @@ async function captainVerify(txt){const t=parseTicket(txt),r=document.getElement
   const res=await adminCall('verify_booking',{id:t.id});
   if(!res||!res.ok){r.innerHTML=`<div class="verify bad"><b>${ic('alert',20)} Not verified</b><div style="font-size:13px;color:var(--muted)">${esc((res&&res.error)||'Booking not found')}</div></div>`;hydrate(r);return;}
   const b=res.booking||{};
+  sfx('like');
   r.innerHTML=`<div class="verify good"><b>${ic('check',20)} Valid booking</b>
     <div class="vrow"><span>Trekker</span><b>${esc(b.name)}</b></div><div class="vrow"><span>Trek</span><b>${esc(b.trek)}</b></div>
     <div class="vrow"><span>Date</span><b>${esc(b.date)}</b></div><div class="vrow"><span>Trekkers</span><b>${esc(b.pax)}</b></div>
