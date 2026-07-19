@@ -476,7 +476,7 @@ function toggleFollow(n){
     }
   });
 }
-const menu=[['bookings','My Bookings','bookings'],['chat','Messages','messages'],['community','Host with Tripomonk','becomeHost'],['shield','Trek Passport','passport'],['like','My Preferences','onboarding'],['monitor','Trek Health','health'],['distance','Trek Navigation','navmap'],['heartmenu','My Wishlist','wishlist'],['starline','My Reviews','reviews'],['settings','Settings','settings'],['help','Help & Support','help']];
+const menu=[['bookings','My Bookings','bookings'],['chat','Messages','messages'],['shield','Trek Passport','passport'],['like','My Preferences','onboarding'],['monitor','Trek Health','health'],['distance','Trek Navigation','navmap'],['heartmenu','My Wishlist','wishlist'],['starline','My Reviews','reviews'],['settings','Settings','settings'],['help','Help & Support','help']];
 const setList=[['user','Account & security',''],['bell','Notifications',''],['globe','Language - English',''],['card','Payment methods',''],['shield','Privacy Policy','privacy'],['help','About Tripomonk','about']];
 /* demo notifications removed — the notifications screen shows only real activity now */
 const faqs=[['How do I book a trek?','Pick a trek, choose a batch on Select Date, add travellers and pay 25% to confirm your seat.'],['What is the cancellation policy?','Free cancellation up to 15 days before departure (full refund). Within 15 days, a 50% charge applies.'],['Do you provide gear on rent?','Yes — add the gear kit (jacket, boots, poles) as an add-on at checkout.'],['Are permits included?','We arrange forest / eco-zone permits for you as an assisted service.'],['What fitness level do I need?','Easy treks suit beginners; Moderate+ need regular cardio for 3–4 weeks before.']];
@@ -2759,6 +2759,28 @@ async function coverPickPhoto(input){
     note('Cover updated.','Saved ✓');
   }catch(e){document.getElementById('modal').classList.remove('show');note('Could not update cover: '+e.message,'Error');}
 }
+/* one adaptive Hosting hub for the profile — apply / under-review / dashboard */
+function hostHubCard(){
+  if(!isLoggedIn())return '';
+  const st=_hostApp&&_hostApp.status;
+  const chev='<span class="ch">'+ic('back',16)+'</span>';
+  if(st==='approved'){
+    return '<div class="host-hub verified" onclick="openHostDash()">'
+      +'<div class="hh-ic">'+ic('landscape',22)+'</div>'
+      +'<div class="hh-tx"><b>Host Dashboard <span class="hh-badge">Verified</span></b>'
+      +'<small>Manage your trips, create new ones & track bookings</small></div>'+chev+'</div>';
+  }
+  if(st==='pending'){
+    return '<div class="host-hub pending" onclick="go(\'becomeHost\')">'
+      +'<div class="hh-ic">'+ic('clock',22)+'</div>'
+      +'<div class="hh-tx"><b>Host application <span class="hh-badge pend">Under review</span></b>'
+      +'<small>We’re reviewing your application — tap to view</small></div>'+chev+'</div>';
+  }
+  return '<div class="host-hub" onclick="go(\'becomeHost\')">'
+    +'<div class="hh-ic">'+ic('landscape',22)+'</div>'
+    +'<div class="hh-tx"><b>Host with Tripomonk</b>'
+    +'<small>Lead treks & earn — we handle operations, safety & payments</small></div>'+chev+'</div>';
+}
 function renderProfile(){document.getElementById('pCover').style.backgroundImage=`url('${getSavedCover()||treks[0].img}')`;
   const ce=document.getElementById('coverEdit');if(ce)ce.classList.toggle('on',isLoggedIn());
   const uname=getSavedName()||'Explorer';const photo=getSavedPhoto();
@@ -2768,15 +2790,8 @@ function renderProfile(){document.getElementById('pCover').style.backgroundImage
     else{pav.style.backgroundImage='';pav.textContent=(uname[0]||'E').toUpperCase();}
   }
   const pname=document.getElementById('profileName');if(pname)pname.textContent=isLoggedIn()?uname:'Guest';
-  /* verified hosts get a direct dashboard entry in the profile menu */
-  loadHostApp().then(()=>{
-    const m=document.getElementById('menu');
-    if(m&&isVerifiedHost()&&!m.querySelector('[data-hostdash]')){
-      m.insertAdjacentHTML('afterbegin',
-        '<div class="mrow" data-hostdash="1" onclick="openHostDash()"><span class="ic"><span class="msr" style="font-size:20px">dashboard</span></span>'
-        +'<span class="t">Host dashboard</span><span class="ch" style="transform:scaleX(-1)">'+ic('back',16)+'</span></div>');
-    }
-  }).catch(()=>{});
+  /* the Hosting hub card adapts to host status once the application loads */
+  if(isLoggedIn())loadHostApp().then(()=>{const h=document.getElementById('hostHub');if(h)h.innerHTML=hostHubCard();}).catch(()=>{});
   const psub=document.getElementById('profileSub');
   if(psub){
     const un=getSavedUsername();
@@ -2795,7 +2810,7 @@ function renderProfile(){document.getElementById('pCover').style.backgroundImage
   ].map(s=>`<div class="pstat" onclick="${s[3]}"><b${s[4]?` id="${s[4]}"`:''}>${s[1]}</b><small>${s[2]}</small></div>`).join('');hydrate(ps);}
   if(isLoggedIn())loadMyCounts();
   renderProfileGallery();
-  let rows='';
+  let rows='<div id="hostHub">'+hostHubCard()+'</div>';
   if(isLoggedIn()&&!isPrefsDone())rows+=`<div class="pref-prompt" onclick="go('onboarding')"><span class="msr">interests</span><div><b>Complete your preferences</b><small>Help us connect you with like-minded trekkers</small></div><span class="msr" style="margin-left:auto">chevron_right</span></div>`;
   rows+=menu.map(m=>`<div class="mrow" onclick="${m[2]?`go('${m[2]}')`:'void 0'}"><span class="ic">${ic(m[0],20)}</span><span class="t">${m[1]}</span><span class="ch">${ic('back',16)}</span></div>`).join('');
   rows+=isLoggedIn()
