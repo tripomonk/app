@@ -1667,13 +1667,44 @@ function openTicket(id){const b=getBookings().find(x=>x.id===id);if(!b)return;ca
 function buildQR(p){const el=document.getElementById('qr');try{if(typeof qrcode==='undefined')throw 0;const q=qrcode(0,'M');q.addData(p||'TMK');q.make();el.innerHTML=q.createSvgTag({cellSize:4,margin:1,scalable:true});}catch(e){el.innerHTML='<div style="color:#0a1626;text-align:center;padding-top:60px;font-weight:600">'+(cart.booking?cart.booking.id:'QR')+'</div>';}}
 
 /* bookings + wishlist */
-function renderBookings(){const bs=getBookings();
-  document.getElementById('bookList').innerHTML=bs.length?bs.map(b=>`<div class="tcard" style="flex-direction:column;align-items:stretch"><div style="display:flex;gap:13px;cursor:pointer" onclick="openTicket('${b.id}')"><div class="ph" style="background-image:url('${b.img}')"></div>
-    <div class="bd"><h3>${esc(b.trek)}</h3><div class="rt"><span class="ic" style="color:var(--muted)">${ic('calendar',13)}</span> <span class="g">${esc(b.date)}</span></div>
-    <div class="ft"><span class="tag" style="color:${b.checkedIn?'#7dd3fc':'#6ee7a0'}">${b.checkedIn?'Checked in':b.status}</span><span class="tag">${b.id}</span></div></div></div>
-    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn ghost sm" style="flex:1" onclick="openTicket('${b.id}')">${ic('ticket',15)} E-Ticket</button><button class="btn ghost sm" style="flex:1" onclick="openPackingFor('${jsq((b.trek||'').replace(' (Activity)',''))}')">${ic('list',15)} Packing</button></div></div>`).join('')
-    :'<div class="empty"><img src="illustrations/hiker-mountains.svg" alt=""/>No bookings yet. Find a trek and book your spot!<div style="text-align:center;margin-top:16px"><button class="btn sm" onclick="go(\'explore\')">Browse Treks</button></div></div>';
-  hydrate(document.getElementById('bookList'));
+function bookingCard(b){
+  const st=b.checkedIn?'in':String(b.status||'').toLowerCase();
+  const label=b.checkedIn?'Checked in':(b.status||'Confirmed');
+  const trekName=jsq(String(b.trek||'').replace(' (Activity)',''));
+  return `<div class="bkcard">
+    <div class="bk-hero" onclick="openTicket('${b.id}')" style="background-image:url('${esc(b.img||'')}')">
+      <span class="bk-status ${st}">${esc(label)}</span>
+      <div class="bk-hero-t">${esc(b.trek)}</div>
+    </div>
+    <div class="bk-body">
+      <div class="bk-meta"><span>${ic('calendar',13)} ${esc(b.date)}</span><span>${ic('ticket',13)} ${esc(b.id)}</span></div>
+      <div class="bk-actions">
+        <button class="bk-btn primary" onclick="openTicket('${b.id}')">${ic('ticket',15)} E-Ticket</button>
+        <button class="bk-btn" onclick="openPackingFor('${trekName}')">${ic('list',15)} Packing</button>
+      </div>
+    </div></div>`;
+}
+function bkPopCard(t,i){
+  return `<div class="bk-pop-c" onclick="openDetail(${i})">
+    <div class="bk-pop-img" style="background-image:url('${esc(t.img||'')}')"></div>
+    <div class="bk-pop-tx"><b>${esc(t.n)}</b><small>${esc(t.region||'')} · ${INR(t.price||0)}</small></div></div>`;
+}
+function renderBookings(){
+  const bs=getBookings();const box=document.getElementById('bookList');
+  if(bs.length){
+    box.innerHTML='<div class="bk-list">'+bs.map(bookingCard).join('')+'</div>';
+  }else{
+    const pop=treks.slice(0,6).map((t,i)=>bkPopCard(t,i)).join('');
+    box.innerHTML=`<div class="bk-empty">
+      <div class="bk-empty-ill"><img src="illustrations/hiker-mountains.svg" alt=""/></div>
+      <b>No bookings yet</b>
+      <small>Your booked treks and e-tickets will show up here. Your next Himalayan adventure is one tap away.</small>
+      <button class="bk-cta" onclick="go('explore')"><span class="msr">hiking</span> Browse Treks</button>
+      <div class="bk-pop-h">🔥 Popular right now</div>
+      <div class="bk-pop-row">${pop}</div>
+    </div>`;
+  }
+  hydrate(box);
 }
 let _pkForce='';
 function openPackingFor(trekName){_pkForce=trekName||'';go('packing');}
