@@ -2141,10 +2141,11 @@ async function upsertProfile(){
   const nm=getSavedName();if(nm)row.name=nm;
   const ph=getSavedPhoto();if(ph)row.photo=ph;
   const un=getSavedUsername();if(un)row.username=un;
+  const cv=getSavedCover();if(cv)row.cover=cv;
   try{await sb.from('profiles').upsert(row);}catch(e){}
 }
 /* everything that identifies ONE person on this device */
-const IDENTITY_KEYS=['tmk_uname','tmk_uhandle','tmk_uphoto','tmk_umobile','tmk_follows','tmk_posts','tmk_likes','tmk_comments','tmk_bookings','tmk_notif_seen','tmk_admin','tmk_admin_key','tmk_captain'];
+const IDENTITY_KEYS=['tmk_uname','tmk_uhandle','tmk_uphoto','tmk_ucover','tmk_umobile','tmk_follows','tmk_posts','tmk_likes','tmk_comments','tmk_bookings','tmk_notif_seen','tmk_admin','tmk_admin_key','tmk_captain'];
 function clearLocalIdentity(){
   try{IDENTITY_KEYS.forEach(k=>localStorage.removeItem(k));}catch(e){}
   followState={};staffSet=new Set();_prefSkippedSession=false;
@@ -2159,11 +2160,12 @@ async function loadProfileFromServer(){
   if(prev&&prev!==currentUser.id)clearLocalIdentity();
   try{localStorage.setItem('tmk_uid',currentUser.id);}catch(e){}
   try{
-    const{data}=await sb.from('profiles').select('name,photo,prefs,username').eq('id',currentUser.id).maybeSingle();
+    const{data}=await sb.from('profiles').select('name,photo,prefs,username,cover').eq('id',currentUser.id).maybeSingle();
     if(data){
       if(data.name)try{localStorage.setItem('tmk_uname',data.name);}catch(e){}
       if(data.photo)try{localStorage.setItem('tmk_uphoto',data.photo);}catch(e){}
       if(data.username)try{localStorage.setItem('tmk_uhandle',data.username);}catch(e){}
+      if(data.cover)try{localStorage.setItem('tmk_ucover',data.cover);}catch(e){}
     }
   }catch(e){}
   await loadFollowsFromServer();
@@ -2566,7 +2568,30 @@ function renderPassport(){
     <div style="height:20px"></div>`;
   hydrate(box);
 }
-function renderProfile(){document.getElementById('pCover').style.backgroundImage=`url('${treks[0].img}')`;
+function getSavedCover(){try{return localStorage.getItem('tmk_ucover')||'';}catch(e){return'';}}
+/* upload a wide cover image (URL in storage, never base64 — keeps profiles light) */
+async function coverPickPhoto(input){
+  const file=input.files&&input.files[0];if(!file)return;input.value='';
+  if(!/^image\//.test(file.type)){note('Please choose an image file.','Not an image');return;}
+  if(!isLoggedIn()){note('Please sign in to set a cover.','Sign in required');return;}
+  const sb=getSupaClient();const uid=sb?await authUid():null;
+  if(!sb||!uid){note('Please sign in to set a cover.','Sign in required');return;}
+  note('Updating your cover…','Just a moment');
+  try{
+    const small=await compressImage(file,{maxW:1280,quality:.8});
+    const path='covers/'+Date.now()+'_'+Math.random().toString(36).slice(2)+'.jpg';
+    const up=await sb.storage.from('community').upload(path,small,{cacheControl:'3600',upsert:false});
+    if(up.error)throw new Error(up.error.message);
+    const url=sb.storage.from('community').getPublicUrl(path).data.publicUrl;
+    try{localStorage.setItem('tmk_ucover',url);}catch(e){}
+    await sb.from('profiles').update({cover:url}).eq('id',uid);
+    document.getElementById('modal').classList.remove('show');
+    renderProfile();
+    note('Cover updated.','Saved ✓');
+  }catch(e){document.getElementById('modal').classList.remove('show');note('Could not update cover: '+e.message,'Error');}
+}
+function renderProfile(){document.getElementById('pCover').style.backgroundImage=`url('${getSavedCover()||treks[0].img}')`;
+  const ce=document.getElementById('coverEdit');if(ce)ce.classList.toggle('on',isLoggedIn());
   const uname=getSavedName()||'Explorer';const photo=getSavedPhoto();
   const pav=document.getElementById('profileAv');
   if(pav){
