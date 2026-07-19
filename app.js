@@ -1158,14 +1158,13 @@ async function renderProfileGallery(){
 }
 
 /* ---------- preferences (onboarding) — used to connect like-minded trekkers ---------- */
+/* options in a single-select group — picking one clears the others in the group */
+const EXP_OPTIONS=['Beginner','Intermediate','Advanced'];
 const PREF_GROUPS=[
   ['🏔️','Regions you love',['Uttarakhand','Himachal','Ladakh','Kashmir','Northeast','Spiritual']],
   ['🥾','Trek style',['Trekking','Backpacking','Spiritual tours','Family trips','Solo','Group departures']],
   ['✨','Interests',['Photography','Camping','Road trips','Bike expeditions','Adventure sports','Wildlife','Culture & food','Fitness & endurance']],
-  ['📈','Experience level',['Beginner','Intermediate','Advanced']],
-  /* literal, not DEP_CITIES — that const is declared further down this file and
-     referencing it here would throw a temporal-dead-zone error before the app boots */
-  ['🚌','Departure city',['Delhi','Rishikesh','Dehradun','Other']]
+  ['📈','Experience level',EXP_OPTIONS]
 ];
 let _prefSel=[],_prefSkippedSession=false,_prefRole='';
 /* per-ACCOUNT storage key — different accounts on the same device stay independent */
@@ -1211,7 +1210,16 @@ function renderPrefs(){
   hydrate(box);
 }
 function pickRole(r){_prefRole=_prefRole===r?'':r;renderPrefs();}
-function togglePref(o){const i=_prefSel.indexOf(o);if(i>=0)_prefSel.splice(i,1);else _prefSel.push(o);renderPrefs();}
+function togglePref(o){
+  const i=_prefSel.indexOf(o);
+  if(i>=0){_prefSel.splice(i,1);}
+  else{
+    /* experience level is single-select — clear any other level first */
+    if(EXP_OPTIONS.includes(o))_prefSel=_prefSel.filter(x=>!EXP_OPTIONS.includes(x));
+    _prefSel.push(o);
+  }
+  renderPrefs();
+}
 async function savePrefs(){
   if(!_prefSel.length&&!_prefRole){note('Pick your role or at least one preference — or skip for now.','Add a preference');return;}
   /* role rides along in the same prefs array, prefixed — no schema change needed */
