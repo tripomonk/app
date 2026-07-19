@@ -1411,7 +1411,10 @@ async function shareTrek(){
 function handleDeepLink(){
   const h=window.location.hash||'';
   const m=h.match(/#trek=([^&]+)/);
-  if(m){const name=decodeURIComponent(m[1]);setTimeout(()=>{try{openDetailByName(name);}catch(e){}},400);}
+  if(m){const name=decodeURIComponent(m[1]);setTimeout(()=>{try{openDetailByName(name);}catch(e){}},400);return;}
+  /* host trip shared link: #htrip=<id> opens the public host-trip page */
+  const mh=h.match(/#htrip=([^&]+)/);
+  if(mh){const id=decodeURIComponent(mh[1]);setTimeout(()=>{try{openHostTripDetail(id);}catch(e){}},400);}
 }
 function toggleFav(el){el.classList.toggle('on');el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop');}
 
@@ -4873,7 +4876,8 @@ async function openHostTripDetail(id){
   box.innerHTML=
     (t.img?`<div class="htv-img" style="background-image:url('${esc(t.img)}')"></div>`:'')
     +`<h1 style="margin:2px 0 2px;font-size:22px">${esc(t.title)}</h1>`
-    +`<div class="reg" style="color:var(--muted);font-size:13px;margin-bottom:6px">${ic('pin',13)} ${esc(t.destination)}</div>`
+    +`<div class="reg" style="color:var(--muted);font-size:13px;margin-bottom:8px">${ic('pin',13)} ${esc(t.destination)}</div>`
+    +`<button class="htv-share" onclick="shareHostTrip('${jsq(t.id)}','${jsq(t.title)}')">${ic('share',14)} Share this trip</button>`
     +`<div class="htv-host">${avatar(t.host_name,38)}<div class="hn"><b>${esc(t.host_name)}</b><small>Trip host</small></div><span class="hbadge">Verified</span></div>`
     +`<div class="stats">${stat('calendar',dateRange,'Dates')}${stat('clock',t.days?t.days+' days':'','Duration')}${stat('altitude',t.difficulty,'Level')}${stat('community',t.max_people?'Max '+t.max_people:'','Group')}</div>`
     +(t.description?`<div class="blk" style="padding:0"><h2>About this trip</h2><p>${esc(t.description)}</p></div>`:'')
@@ -5005,7 +5009,10 @@ function hdTripRow(t){
        ? '<div class="tact"><button onclick="openHostTrip(\''+jsq(t.id)+'\')">Edit</button>'
          +'<button class="dz" onclick="deleteHostTrip(\''+jsq(t.id)+'\',\''+jsq(t.title)+'\')">Delete</button></div>'
        : '<span class="tlock">Live trips are locked — message us to change dates, price or seats.</span>'
-         +'<div class="tact"><button onclick="wa(\'Hi Tripomonk, I need to update my live trip: '+jsq(t.title)+'\')">Message us</button></div>')
+         +'<div class="tact">'
+         +'<button class="mk" onclick="shareHostTrip(\''+jsq(t.id)+'\',\''+jsq(t.title)+'\')">'+ic('share',14)+' Share</button>'
+         +'<button class="mk" onclick="postTripToCommunity(\''+jsq(t.id)+'\')">'+ic('community',14)+' Post to feed</button>'
+         +'<button onclick="wa(\'Hi Tripomonk, I need to update my live trip: '+jsq(t.title)+'\')">Message us</button></div>')
     +'</div>'
     +'<div class="tpr">'+INR(t.price||0)+'</div></div>';
 }
@@ -5019,6 +5026,35 @@ async function deleteHostTrip(id,title){
   if(r.error||!r.data||!r.data.length){note('Could not delete that trip.','Error');return;}
   note('Trip deleted.','Done');
   renderHostDash();
+}
+/* public shareable link to a host trip */
+function hostTripUrl(id){return window.location.origin+window.location.pathname+'#htrip='+encodeURIComponent(id);}
+function findHostTrip(id){return (_hdTrips||[]).find(x=>String(x.id)===String(id))||(liveHostTrips||[]).find(x=>String(x.id)===String(id));}
+/* share a trip to OTHER platforms — native share sheet, or copy the link */
+async function shareHostTrip(id,title){
+  const url=hostTripUrl(id);
+  const data={title:'Tripomonk — '+title,text:'Join my trek “'+title+'” on Tripomonk 🏔️',url};
+  if(navigator.share){try{await navigator.share(data);return;}catch(e){if(e&&e.name==='AbortError')return;}}
+  try{await navigator.clipboard.writeText(url);toast('Trip link copied — share it anywhere');}
+  catch(e){note(url,'Share this trip');}
+}
+/* share a trip INSIDE the community as a post, so it markets itself in the feed */
+async function postTripToCommunity(id){
+  if(!isLoggedIn()){note('Please sign in to post.','Sign in required').then(()=>{_loginReturn='community';go('login');});return;}
+  const t=findHostTrip(id);
+  if(!t){note('Trip not found.','Error');return;}
+  if(t.status!=='live'){note('Only published (live) trips can be shared to the community.','Not live yet');return;}
+  if(!(await askConfirm('Share “'+t.title+'” to the community feed as a post?','Post to feed')))return;
+  const dates=t.start_date?new Date(t.start_date+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'';
+  const txt='🏔️ Now hosting: '+t.title
+    +'\n📍 '+t.destination+(dates?' · '+dates:'')+(t.days?' · '+t.days+' days':'')
+    +'\n💰 '+INR(t.price||0)+' / person'+(t.max_people?' · max '+t.max_people:'')
+    +'\n\nAll operations & safety by Tripomonk. Book your seat 👉 '+hostTripUrl(id);
+  const authorName=getSavedName()||myName();
+  const post={id:'p'+Date.now(),uid:currentUser?currentUser.id:null,n:authorName,when:'just now',txt,imgs:t.img?[t.img]:[],likes:0,comments:[],trek:'',tagged:[]};
+  userPosts.unshift(post);savePosts();
+  await savePostRemote(post);
+  note('Shared to the community feed! 🎉 It will help trekkers discover your trip.','Posted');
 }
 /* ---- host profile (public-facing details) ---- */
 function renderHdProfileSummary(box){
