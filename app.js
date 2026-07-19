@@ -227,28 +227,57 @@ async function renderHomeNews(){
   box.innerHTML=show.map(newsCard).join('');hydrate(box);
   checkAlerts(list);
 }
+let _newsQuery='';
 async function renderNews(){
   const box=document.getElementById('newsList');if(!box)return;
   box.innerHTML=`<div class="skel skel-card" style="height:54px"></div><div class="skel skel-card" style="height:54px"></div>`;
   const list=await loadNews();
-  if(!list||!list.length){box.innerHTML=`<div class="empty"><p>No trek updates right now. Fresh alerts arrive a few times a day.</p></div>`;return;}
-  const alerts=list.filter(isAlert),news=list.filter(n=>!isAlert(n));
+  /* opening the news screen clears the "new news" bell dot */
+  markNewsSeen();
+  _newsQuery='';const si=document.getElementById('newsSearch');if(si)si.value='';
+  paintNews(list||[]);
+}
+/* filter the loaded news by the search box and render */
+function paintNews(list){
+  const box=document.getElementById('newsList');if(!box)return;
+  const q=_newsQuery.trim().toLowerCase();
+  const match=n=>!q||((n.title||'')+' '+(n.summary||'')+' '+(n.source||'')).toLowerCase().includes(q);
+  const filtered=list.filter(match);
+  if(!list.length){box.innerHTML=`<div class="empty"><p>No trek updates right now. Fresh alerts arrive a few times a day.</p></div>`;return;}
+  if(!filtered.length){box.innerHTML=`<div class="empty"><p>No news matches “${esc(_newsQuery)}”.</p></div>`;return;}
+  const alerts=filtered.filter(isAlert),news=filtered.filter(n=>!isAlert(n));
   let html='';
   if(alerts.length)html+=`<div class="nsec">⚠ Alerts</div>`+alerts.map(newsCard).join('');
-  if(news.length)html+=`<div class="nsec" style="margin-top:18px">Trek News</div>`+news.map(newsCard).join('');
+  if(news.length)html+=`<div class="nsec"${alerts.length?' style="margin-top:18px"':''}>Trek News</div>`+news.map(newsCard).join('');
   box.innerHTML=html;hydrate(box);
 }
+function searchNews(q){_newsQuery=q||'';paintNews(_newsCache||[]);}
 /* serious-alert notification: banner + chime when a NEW alert appears */
+/* screens where a popup banner is intrusive — pre-login / auth flow */
+const NO_BANNER_SCREENS=['login','otp','splash','onboarding'];
+/* is there fresh news the user hasn't opened yet? drives the bell dot.
+   "seen" = the newest news url the last time they opened the News screen. */
+function newestNewsUrl(){const l=_newsCache||[];return l.length?(l[0].url||''):'';}
+function hasUnseenNews(){
+  const top=newestNewsUrl();if(!top)return false;
+  return top!==(localStorage.getItem('tmk_news_seen')||'');
+}
+function markNewsSeen(){try{localStorage.setItem('tmk_news_seen',newestNewsUrl());}catch(e){}
+  const d=document.getElementById('notifDot');if(d&&_lastUnread<=0)d.style.display='none';}
 function checkAlerts(list){
-  const alerts=(list||_newsCache||[]).filter(isAlert);
+  const items=(list||_newsCache||[]);
+  const alerts=items.filter(isAlert);
+  /* light the bell if any news is newer than what was last opened */
+  refreshNotifBadge();
   if(!alerts.length)return;
   const newest=alerts[0];const seen=localStorage.getItem('tmk_alert_seen')||'';
   if(newest.url&&newest.url!==seen){
-    showAlertBanner(newest);
-    try{playNotifSound();}catch(e){}
+    /* no banner on the login/signup flow — the bell dot is the only indicator there */
+    if(!NO_BANNER_SCREENS.includes(cur))showAlertBanner(newest);
   }
 }
 function showAlertBanner(n){
+  if(NO_BANNER_SCREENS.includes(cur))return;   /* never on auth screens */
   let b=document.getElementById('alertBanner');
   if(!b){b=document.createElement('div');b.id='alertBanner';document.querySelector('.screen').appendChild(b);}
   b.innerHTML=`<span class="msr" style="font-size:20px">warning</span><div class="ab-tx"><b>Trek Alert</b><span>${esc(n.title||'')}</span></div><button onclick="dismissAlert('${(n.url||'').replace(/'/g,'')}')">${ic('close',16)}</button>`;
@@ -2178,7 +2207,8 @@ async function refreshNotifBadge(){
   const remote=await loadNotifsRemote();
   const lastSeen=+(localStorage.getItem('tmk_notif_seen')||0);
   const unread=(remote||[]).filter(n=>new Date(n.created_at).getTime()>lastSeen).length;
-  dot.style.display=unread>0?'block':'none';
+  /* bell lights for community activity OR fresh news */
+  dot.style.display=(unread>0||hasUnseenNews())?'block':'none';
   /* play a chime when NEW activity arrives (not on first load) */
   if(_lastUnread>=0&&unread>_lastUnread)playNotifSound();
   _lastUnread=unread;
@@ -3706,6 +3736,8 @@ function genItineraryPDF(t){
 function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='captain'&&!isStaffUser()){note('Trip Captain access is for staff only.','Restricted');return;}
   if((id==='admin'||id==='adminTrip')&&!isAdminUser()){note('Admin access is restricted to the account owner.','Restricted');return;}
+  /* hide any live news banner when entering the login/signup flow */
+  if(NO_BANNER_SCREENS.includes(id)){const b=document.getElementById('alertBanner');if(b)b.className='';}
   if(id!==cur){hist.push(cur);try{history.pushState({s:id},'');}catch(e){}}cur=id;if(el.dataset.tab)lastTab=el.dataset.tab;
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));el.classList.add('active');
   const nav=document.getElementById('nav');nav.classList.toggle('hide',el.hasAttribute('data-nonav'));
