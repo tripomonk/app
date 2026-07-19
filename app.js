@@ -4392,9 +4392,42 @@ async function renderAdminTrips(box){
   await resolveHostNames(r.data);
   const drafts=r.data.filter(t=>t.status==='draft').length;
   box.insertAdjacentHTML('beforeend',
-    '<div class="sec" style="margin:22px 2px 10px"><h2 style="font-size:15px">Host trips'
-    +(drafts?' · '+drafts+' to review':'')+'</h2></div>'
-    +r.data.map(t=>tripRow(t,true)).join(''));
+    '<div class="rv-sec"><h2>Host trips</h2>'
+    +(drafts?'<span class="rv-count">'+drafts+' to review</span>':'')
+    +'</div>'
+    +r.data.map(adminTripCard).join(''));
+}
+/* rich review card for a host-submitted trip — hero image, status, key facts, clear actions */
+function adminTripCard(t){
+  const id=esc(t.id),ttl=jsq(t.title);
+  const st=t.status==='live'?'approved':t.status==='rejected'?'rejected':'pending';
+  const label=t.status==='live'?'Live':t.status==='rejected'?'Rejected':'Pending review';
+  const dates=esc(String(t.start_date||''))+(t.end_date?' → '+esc(String(t.end_date)):'');
+  const chip=(icon,txt)=>txt?'<span class="rvchip">'+ic(icon,12)+esc(String(txt))+'</span>':'';
+  return '<div class="rvcard status-'+esc(t.status||'draft')+'">'
+    +'<div class="rvhero" onclick="openAdminTrip(\''+id+'\')" style="background-image:url(\''+esc(t.img||'')+'\')">'
+      +'<span class="rvbadge '+st+'">'+esc(label)+'</span>'
+      +'<span class="rvprice">'+INR(t.price||0)+'</span>'
+    +'</div>'
+    +'<div class="rvbody">'
+      +'<div class="rvtitle" onclick="openAdminTrip(\''+id+'\')">'+esc(t.title)+'</div>'
+      +'<div class="rvhost">'+ic('user',13)+'by <b style="color:var(--text);font-weight:600;margin-left:2px">'+esc(t.host_name||'Host')+'</b></div>'
+      +'<div class="rvmeta">'
+        +chip('pin',t.destination)
+        +chip('calendar',dates)
+        +chip('clock',t.days?t.days+' days':'')
+        +chip('community',t.max_people?'max '+t.max_people:'')
+        +chip('altitude',t.difficulty)
+      +'</div>'
+      +'<div class="rvactions">'
+        +'<button class="rv-review" onclick="openAdminTrip(\''+id+'\')">'+ic('search',15)+'Review</button>'
+        +(t.status!=='live'
+          ? '<button class="rv-ok" onclick="reviewTrip(\''+id+'\',\'live\',\''+ttl+'\')">Publish</button>'
+          : '<button onclick="reviewTrip(\''+id+'\',\'draft\',\''+ttl+'\')">Unpublish</button>')
+        +(t.status!=='rejected'?'<button class="rv-no" onclick="reviewTrip(\''+id+'\',\'rejected\',\''+ttl+'\')">Reject</button>':'')
+      +'</div>'
+    +'</div>'
+  +'</div>';
 }
 async function reviewHost(id,status,name){
   if(!isAdminUser()){note('Admins only.','Not allowed');return;}
