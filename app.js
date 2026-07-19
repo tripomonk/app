@@ -348,7 +348,9 @@ const AVG=[['#ffd27a','#ff7a59'],['#7ad1ff','#2f6bff'],['#b7f5c0','#2fb56b'],['#
 function initials(n){return n.split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase();}
 function avHash(n){let h=0;for(let i=0;i<n.length;i++)h=(h*31+n.charCodeAt(i))|0;return Math.abs(h);}
 /* other people's profile photos, keyed by display name (filled from `profiles`) */
-let photoByName={},hostByName={};
+let photoByName={},hostByName={},unameByName={};
+/* profile header counts — declared up here (renderProfile can run early); -1 = not loaded yet */
+let _myPostCount=-1,_myFollowerCount=-1;
 /* declared up here on purpose: renderHome() runs during boot, far above the
    host-trip functions at the bottom of this file. Declaring it next to them
    put it in the temporal dead zone and killed the rest of the script. */
@@ -369,6 +371,15 @@ function photoFor(n){
   if(n==='You'||n===myName())return getSavedPhoto();
   return photoByName[n]||'';
 }
+/* the username to SHOW for an author (kept internal data keyed by name).
+   Real @handle when we know it, else the person's name as a fallback. */
+function handleFor(n){
+  if(!n)return '';
+  if(n==='You'||n===myName()){const u=getSavedUsername();return u||getSavedName()||'You';}
+  return unameByName[n]||n;
+}
+/* same, always @-prefixed for the muted sub-line under a name */
+function atHandle(n){const h=handleFor(n);return h?('@'+String(h).replace(/^@/,'')):'';}
 function avatar(n,size){size=size||38;const g=AVG[avHash(n)%AVG.length];const fs=Math.round(size*.4);
   const photo=photoFor(n);
   const bg=photo?`background-image:url('${photo}');background-size:cover;background-position:center`:`background:linear-gradient(135deg,${g[0]},${g[1]})`;
@@ -1584,7 +1595,7 @@ function renderStories(){
   box.innerHTML=yours+others.map(g=>{
     const seen=groupSeen(g);
     return `<div class="story ${seen?'seen':'unseen'}" onclick="openStory('${jsq(g.n)}')">
-      <div class="ring">${avatar(g.n,57)}</div><small>${esc(g.n.split(' ')[0])}</small></div>`;}).join('');
+      <div class="ring">${avatar(g.n,57)}</div><small>${esc(handleFor(g.n))}</small></div>`;}).join('');
   hydrate(box);
 }
 /* ---- add a story ---- */
@@ -1731,7 +1742,7 @@ function suggestCard(p,shared){
   const sn=jsq(p.n);const on=isFollowing(p.n);
   return '<div class="scard" data-sg="'+esc(p.n)+'">'
     +'<div class="sav" onclick="openPerson(\''+sn+'\')">'+avatar(p.n,52)+'</div>'
-    +'<b onclick="openPerson(\''+sn+'\')">'+esc(p.n)+'</b>'
+    +'<b onclick="openPerson(\''+sn+'\')">'+esc(handleFor(p.n))+'</b>'
     +'<span class="smatch">'+ic('like',10)+' '+shared+' shared</span>'
     +'<button class="sfollow'+(on?' on':'')+'" onclick="suggestFollow(\''+sn+'\',this)">'+(on?'Following':'Follow')+'</button>'
     +'</div>';
@@ -1811,7 +1822,7 @@ function postCard(p){
   return `<div class="post" data-pid="${p.id}">
    <div class="ig-head">
      <div class="ig-ava" onclick="openPerson('${sn}')">${avatar(p.n,34)}</div>
-     <div class="ig-meta"><b onclick="openPerson('${sn}')">${esc(p.n)}${hostBadge(p.n)}</b>${follow}</div>
+     <div class="ig-meta"><b onclick="openPerson('${sn}')">${esc(handleFor(p.n))}${hostBadge(p.n)}</b>${follow}</div>
      ${more}
    </div>
    ${p.trek?`<div class="ig-trek" onclick="openDetailByName('${jsq(p.trek)}')">${ic('pin',13)} ${esc(p.trek)}</div>`:''}
@@ -1825,7 +1836,7 @@ function postCard(p){
        <span class="ig-ic" onclick="repostPost('${p.id}')" title="Repost to your feed">${ic('repeat',22)}</span>
      </div>
    </div>
-   ${(!textOnly&&p.txt)?`<div class="ig-cap ${p.txt.length>120?'clamp':''}" onclick="this.classList.remove('clamp')"><b onclick="event.stopPropagation();openPerson('${sn}')">${p.n}</b> ${linkifyMentions(esc(p.txt))}</div>`:''}
+   ${(!textOnly&&p.txt)?`<div class="ig-cap ${p.txt.length>120?'clamp':''}" onclick="this.classList.remove('clamp')"><b onclick="event.stopPropagation();openPerson('${sn}')">${esc(handleFor(p.n))}</b> ${linkifyMentions(esc(p.txt))}</div>`:''}
    <div class="ig-comments" onclick="openComments('${p.id}')">${nc?`View all ${nc} comment${nc>1?'s':''}`:'Add a comment…'}</div>
    <div class="ig-time">${p.when}</div>
   </div>`;}
@@ -1961,8 +1972,8 @@ async function loadAuthorPhotos(names){
   const need=[...new Set(names)].filter(n=>n&&n!==mine&&n!=='You'&&!(n in photoByName));
   if(!need.length)return;
   try{
-    const{data}=await sb.from('profiles').select('name,photo,is_host').in('name',need);
-    (data||[]).forEach(r=>{if(r.name){photoByName[r.name]=r.photo||'';hostByName[r.name]=!!r.is_host;}});
+    const{data}=await sb.from('profiles').select('name,photo,is_host,username').in('name',need);
+    (data||[]).forEach(r=>{if(r.name){photoByName[r.name]=r.photo||'';hostByName[r.name]=!!r.is_host;if(r.username)unameByName[r.name]=r.username;}});
   }catch(e){}
   /* remember the misses too, so we don't re-query every render */
   need.forEach(n=>{if(!(n in photoByName))photoByName[n]='';});
@@ -2191,11 +2202,12 @@ async function loadNotifsRemote(){
 }
 const NOTIF_ICON={like:'favorite',comment:'chat_bubble',follow:'person_add',mention:'alternate_email'};
 function notifText(n){
-  if(n.type==='like')return `<b>${n.actor_name}</b> liked your post`;
-  if(n.type==='comment')return `<b>${n.actor_name}</b> commented: ${n.preview?'“'+n.preview+'”':''}`;
-  if(n.type==='follow')return `<b>${n.actor_name}</b> started following you`;
-  if(n.type==='mention')return `<b>${n.actor_name}</b> mentioned you: ${n.preview?'“'+n.preview+'”':''}`;
-  return `<b>${n.actor_name}</b> interacted with you`;
+  const who=esc(handleFor(n.actor_name));
+  if(n.type==='like')return `<b>${who}</b> liked your post`;
+  if(n.type==='comment')return `<b>${who}</b> commented: ${n.preview?'“'+esc(n.preview)+'”':''}`;
+  if(n.type==='follow')return `<b>${who}</b> started following you`;
+  if(n.type==='mention')return `<b>${who}</b> mentioned you: ${n.preview?'“'+esc(n.preview)+'”':''}`;
+  return `<b>${who}</b> interacted with you`;
 }
 let _lastUnread=-1;
 function playNotifSound(){
@@ -2411,7 +2423,7 @@ async function loadComments(id){
   renderComments();
 }
 function commentHTML(c,isNew){
-  return `<div class="cm${isNew?' new':''}" data-cid="${esc(c.id)}"><div class="cm-h">${avatar(c.author_name||'Trekker',30)}<div><b>${esc(c.author_name||'Trekker')}</b> <small>${timeAgo(c.created_at)}</small></div></div><p>${linkifyMentions(esc(c.txt))}</p></div>`;
+  return `<div class="cm${isNew?' new':''}" data-cid="${esc(c.id)}"><div class="cm-h">${avatar(c.author_name||'Trekker',30)}<div><b>${esc(handleFor(c.author_name||'Trekker'))}</b> <small>${timeAgo(c.created_at)}</small></div></div><p>${linkifyMentions(esc(c.txt))}</p></div>`;
 }
 function updateCmHeader(){
   const h=document.getElementById('cmCount');if(!h)return;
@@ -2489,10 +2501,11 @@ async function renderPerson(){if(!curPerson){go('community');return;}const p=get
   body.innerHTML=`<div class="prof-top">${avatar(p.n,84)}<h2>${esc(p.n)}</h2><div class="handle">${esc(p.h)}</div></div><div class="skel skel-card" style="height:120px;margin:16px 0"></div>`;
   const posts=await loadUserPosts(p.n);
   await Promise.all([loadEngagement(posts.map(x=>x.id)),loadAuthorPhotos([p.n])]);
+  const disp=handleFor(p.n),at=atHandle(p.n);
   const base=p.flwr||0;const flwr=base+(isFollowing(p.n)?1:0);
   body.innerHTML=`
     <div class="prof-top">${avatar(p.n,84)}
-      <h2>${esc(p.n)}${hostBadge(p.n)}</h2><div class="handle">${esc(p.h)}</div>
+      <h2>${esc(disp)}${hostBadge(p.n)}</h2><div class="handle">${esc(at||p.h)}</div>
       <p class="pbio">${p.bio||''}</p>
       <div class="pstats"><div><b>${posts.length}</b><small>Posts</small></div><div><b id="pFlwr" data-person="${esc(p.n)}" data-base="${base}">${flwr.toLocaleString()}</b><small>Followers</small></div><div><b>${me?followCount():'—'}</b><small>Following</small></div></div>
       ${me?'':`<div class="profile-actions" style="margin:14px 0 0"><button class="${isFollowing(p.n)?'on':''}" data-follow="${esc(p.n)}" onclick="toggleFollow('${jsq(p.n)}')">${isFollowing(p.n)?'Following':'Follow'}</button><button onclick="openChat('${jsq(p.n)}')">Message</button></div>`}
@@ -2613,19 +2626,18 @@ function renderProfile(){document.getElementById('pCover').style.backgroundImage
     const un=getSavedUsername();
     psub.textContent=isLoggedIn()?(un?'@'+un:(getUserEmail()||'Trekker')):'Sign in to track your treks';
   }
-  /* dynamic, tappable stat tiles */
+  /* dynamic, tappable stat tiles — social first (posts / followers / following), trek count kept */
   const bs=getBookings();
-  const upcoming=bs.filter(b=>!b.checkedIn).length;
-  const completed=bs.filter(b=>b.checkedIn).length;
   const trekCount=new Set(bs.map(b=>b.trek)).size;
-  const badges=computePassport().earned; /* match the Trek Passport badge count */
+  const following=followCount();
   const ps=document.getElementById('pStats');
   if(ps){ps.innerHTML=[
-    ['landscape',trekCount,'Treks',"go('bookings')"],
-    ['calendar',upcoming,'Upcoming',"go('bookings')"],
-    ['check',completed,'Completed',"go('bookings')"],
-    ['shield',badges,'Badges',"go('passport')"]
-  ].map(s=>`<div class="pstat" onclick="${s[3]}"><b>${s[1]}</b><small>${s[2]}</small></div>`).join('');hydrate(ps);}
+    ['grid_view',(_myPostCount>=0?_myPostCount:'…'),'Posts',"go('profile')",'pStatPosts'],
+    ['group',(_myFollowerCount>=0?_myFollowerCount.toLocaleString('en-IN'):'…'),'Followers',"go('profile')",'pStatFlwr'],
+    ['person_add',following,'Following',"go('profile')",'pStatFollowing'],
+    ['landscape',trekCount,'Treks',"go('bookings')",'']
+  ].map(s=>`<div class="pstat" onclick="${s[3]}"><b${s[4]?` id="${s[4]}"`:''}>${s[1]}</b><small>${s[2]}</small></div>`).join('');hydrate(ps);}
+  if(isLoggedIn())loadMyCounts();
   renderProfileGallery();
   let rows='';
   if(isLoggedIn()&&!isPrefsDone())rows+=`<div class="pref-prompt" onclick="go('onboarding')"><span class="msr">interests</span><div><b>Complete your preferences</b><small>Help us connect you with like-minded trekkers</small></div><span class="msr" style="margin-left:auto">chevron_right</span></div>`;
@@ -2642,6 +2654,24 @@ function renderProfile(){document.getElementById('pCover').style.backgroundImage
   document.querySelectorAll('#menu .ch svg').forEach(s=>s.style.transform='scaleX(-1)');
   hydrate(document.getElementById('profile'));
   document.querySelectorAll('#menu .ch svg').forEach(s=>s.style.transform='scaleX(-1)');
+}
+/* my Posts + Followers counts for the profile header (Following is local state) */
+async function loadMyCounts(){
+  const sb=getSupaClient();const mine=myName();
+  try{
+    if(sb&&currentUser){
+      /* how many people follow me — rows in follows where following_name = me */
+      const{count:fc}=await sb.from('follows').select('*',{count:'exact',head:true}).eq('following_name',mine);
+      if(typeof fc==='number')_myFollowerCount=fc;
+      /* my posts */
+      const{count:pc}=await sb.from('posts').select('*',{count:'exact',head:true}).eq('author_name',mine);
+      if(typeof pc==='number')_myPostCount=pc;
+    }
+  }catch(e){}
+  if(_myPostCount<0)_myPostCount=userPosts.filter(p=>p.n===mine||p.n==='You').length;
+  if(_myFollowerCount<0)_myFollowerCount=0;
+  const pe=document.getElementById('pStatPosts');if(pe)pe.textContent=_myPostCount;
+  const fe=document.getElementById('pStatFlwr');if(fe)fe.textContent=_myFollowerCount.toLocaleString('en-IN');
 }
 
 
@@ -2722,6 +2752,8 @@ async function renderNotifications(){
   const remote=await loadNotifsRemote();
   let activity='';
   if(remote&&remote.length){
+    /* pull each actor's photo + username so their face and @handle show, not just initials */
+    try{await loadAuthorPhotos(remote.map(n=>n.actor_name));}catch(e){}
     activity=remote.map(n=>{
       const unread=new Date(n.created_at).getTime()>lastSeen;
       const clr=n.type==='like'?'#ff5a7a':n.type==='follow'?'#6ee7a0':'var(--accent2)';
