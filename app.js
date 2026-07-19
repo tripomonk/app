@@ -468,6 +468,41 @@ function getSupaClient(){
   _supa=window.supabase.createClient(SB.SUPABASE_URL,SB.SUPABASE_ANON_KEY);
   return _supa;
 }
+/* --- Circuit breaker for the Supabase read path ---
+   A slow or dead backend must not leave every screen stuck on skeletons. Each
+   remote read runs through breaker(): it races the query against a TIMEOUT and
+   caps how many run at once (MAXINFLIGHT). After THRESH consecutive failures the
+   breaker OPENS and reads fast-fail to their fallback INSTANTLY — no network wait
+   — for COOLDOWN ms. It then HALF-OPENS to let a single probe test recovery: the
+   probe succeeding closes it, failing re-opens it. Callers already treat the
+   fallback (null) as "use cached / demo data", so a degraded dependency simply
+   makes the app serve stale content instead of hanging. */
+const CB={fails:0,open:false,openedAt:0,inflight:0,
+  THRESH:3, COOLDOWN:15000, TIMEOUT:8000, MAXINFLIGHT:6};
+function cbState(){                       /* 'closed' | 'open' | 'half' */
+  if(!CB.open)return 'closed';
+  return (Date.now()-CB.openedAt>=CB.COOLDOWN)?'half':'open';
+}
+async function breaker(run,fallback){
+  if(fallback===undefined)fallback=null;
+  const st=cbState();
+  if(st==='open')return fallback;                    /* fast-fail: no network wait */
+  if(CB.inflight>=CB.MAXINFLIGHT)return fallback;    /* shed load past the concurrency cap */
+  CB.inflight++;
+  let timer;
+  try{
+    const out=await Promise.race([
+      Promise.resolve().then(run),
+      new Promise((_,rej)=>{timer=setTimeout(()=>rej(new Error('cb-timeout')),CB.TIMEOUT);})
+    ]);
+    CB.open=false;CB.fails=0;                         /* success (incl. a half-open probe) closes it */
+    return out;
+  }catch(e){
+    CB.fails++;
+    if(st==='half'||CB.fails>=CB.THRESH){CB.open=true;CB.openedAt=Date.now();}  /* trip / re-open */
+    return fallback;
+  }finally{clearTimeout(timer);CB.inflight--;}
+}
 function isLoggedIn(){return!!currentUser;}
 function renderFeedIfOpen(){if(cur==='community')renderFeed();else if(cur==='person')renderPerson();}
 /* The live session's user id — never trust a cached currentUser for writes. If the
@@ -2110,9 +2145,11 @@ async function loadPostsRemote(){
   const sb=getSupaClient();if(!sb)return null;
   /* older posts stored images as base64 inline (huge). New posts use storage URLs
      (tiny). Keep the window small so one legacy base64 post doesn't bloat the feed. */
-  const{data,error}=await sb.from('community_posts').select('*').order('created_at',{ascending:false}).limit(30);
-  if(error){console.error('loadPostsRemote:',error.message);return null;}
-  return(data||[]).map(p=>({id:p.id,uid:p.user_id||null,n:p.author_name||'Trekker',when:timeAgo(p.created_at),txt:p.txt||'',imgs:p.imgs||[],likes:p.likes||0,comments:[],trek:p.trek_tag||'',tagged:p.tagged||[]}));
+  return await breaker(async()=>{
+    const{data,error}=await sb.from('community_posts').select('*').order('created_at',{ascending:false}).limit(30);
+    if(error)throw error;
+    return(data||[]).map(p=>({id:p.id,uid:p.user_id||null,n:p.author_name||'Trekker',when:timeAgo(p.created_at),txt:p.txt||'',imgs:p.imgs||[],likes:p.likes||0,comments:[],trek:p.trek_tag||'',tagged:p.tagged||[]}));
+  });
 }
 function timeAgo(ts){
   const s=Math.floor((Date.now()-new Date(ts))/1000);
@@ -2193,12 +2230,14 @@ async function uidForName(name){
 async function loadNotifsRemote(){
   const sb=getSupaClient();if(!sb)return null;
   const name=myName();
-  let q=sb.from('notifications').select('*').order('created_at',{ascending:false}).limit(60);
-  if(currentUser)q=q.or(`recipient_id.eq.${currentUser.id},recipient_name.eq.${name}`);
-  else q=q.eq('recipient_name',name);
-  const{data,error}=await q;
-  if(error){console.warn('loadNotifsRemote:',error.message);return null;}
-  return data||[];
+  return await breaker(async()=>{
+    let q=sb.from('notifications').select('*').order('created_at',{ascending:false}).limit(60);
+    if(currentUser)q=q.or(`recipient_id.eq.${currentUser.id},recipient_name.eq.${name}`);
+    else q=q.eq('recipient_name',name);
+    const{data,error}=await q;
+    if(error)throw error;
+    return data||[];
+  });
 }
 const NOTIF_ICON={like:'favorite',comment:'chat_bubble',follow:'person_add',mention:'alternate_email'};
 function notifText(n){
