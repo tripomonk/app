@@ -4141,6 +4141,7 @@ async function renderAdminTrips(box){
   const sb=getSupaClient();if(!sb)return;
   const r=await sb.from('host_trips').select('*').order('created_at',{ascending:false});
   if(r.error||!r.data||!r.data.length)return;
+  await resolveHostNames(r.data);
   const drafts=r.data.filter(t=>t.status==='draft').length;
   box.insertAdjacentHTML('beforeend',
     '<div class="sec" style="margin:22px 2px 10px"><h2 style="font-size:15px">Host trips'
@@ -4434,12 +4435,26 @@ async function loadVerifiedHosts(){
     verifiedHosts.forEach(h=>{hostByName[h.name]=true;});
   }catch(e){verifiedHosts=[];}
 }
+/* host_name is a snapshot frozen when each trip was created, so the same host can
+   show different names across trips. Fix at display time: replace it with the host's
+   CURRENT profile name (public, one source of truth), keyed by host_id. */
+async function resolveHostNames(trips){
+  const sb=getSupaClient();if(!sb||!trips||!trips.length)return trips;
+  const ids=[...new Set(trips.map(t=>t.host_id).filter(Boolean))];
+  if(!ids.length)return trips;
+  try{
+    const{data}=await sb.from('profiles').select('id,name').in('id',ids);
+    const nameById={};(data||[]).forEach(r=>{if(r.id&&r.name)nameById[r.id]=r.name;});
+    trips.forEach(t=>{if(nameById[t.host_id])t.host_name=nameById[t.host_id];});
+  }catch(e){}
+  return trips;
+}
 async function loadLiveHostTrips(){
   const sb=getSupaClient();if(!sb){liveHostTrips=[];return;}
   try{
     const r=await sb.from('host_trips').select('*').eq('status','live')
       .gte('start_date',todayISO(0)).order('start_date',{ascending:true}).limit(10);
-    liveHostTrips=r.data||[];
+    liveHostTrips=await resolveHostNames(r.data||[]);
   }catch(e){liveHostTrips=[];}   /* table missing = no rail, not a crash */
 }
 function hostTripCard(t){
@@ -4517,6 +4532,7 @@ async function openHostTripDetail(id){
   if(!t){if(box)box.innerHTML='<div class="empty"><p>This trip is no longer available.</p></div>';return;}
   if(t.status&&t.status!=='live'){if(box)box.innerHTML='<div class="empty"><p>This trip isn’t open for booking right now.</p></div>';
     document.getElementById('htvBook').style.display='none';return;}
+  await resolveHostNames([t]);   /* show the host's current name, not the frozen snapshot */
   _htvTrip=t;_htvPax=1;
   await loadAuthorPhotos([t.host_name]).catch(()=>{});
   const when=t.start_date?new Date(t.start_date+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'';
