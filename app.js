@@ -136,6 +136,17 @@ deriveTreks();
 const SB = window.TMK_CONFIG || {};
 const sbOn = !!(SB.SUPABASE_URL && SB.SUPABASE_ANON_KEY);
 function sbHeaders(extra){return Object.assign({apikey:SB.SUPABASE_ANON_KEY,Authorization:'Bearer '+SB.SUPABASE_ANON_KEY},extra||{});}
+/* ---- stale-while-revalidate cache for shared, rarely-changing data ----
+   News, the live-host rail and the verified-host list are identical for every
+   user and change only occasionally, but the service worker deliberately
+   bypasses Supabase, so each of these views waited on a network round trip.
+   These helpers stash the last result in localStorage: callers paint from it
+   INSTANTLY, then revalidate in the background and repaint only if it actually
+   changed. There is no locale/currency variation in this app, so the cache key
+   is just the dataset name — add a suffix here if that ever changes. */
+function swrGet(key){try{const v=JSON.parse(localStorage.getItem('tmk_swr_'+key)||'null');return (v&&'data'in v)?v:null;}catch(e){return null;}}
+function swrSet(key,data){try{localStorage.setItem('tmk_swr_'+key,JSON.stringify({t:Date.now(),data}));}catch(e){}}
+function swrFresh(key,ttl){const v=swrGet(key);return !!(v&&ttl&&(Date.now()-v.t<ttl));}
 async function loadTreks(){ if(!sbOn) return;
   try{let r=await fetch(SB.SUPABASE_URL+'/rest/v1/treks?select=*&order=sort.asc',{headers:sbHeaders()});
     /* table may not have a `sort` column — retry ordering by id */
@@ -230,12 +241,20 @@ async function renderHomeNews(){
 let _newsQuery='';
 async function renderNews(){
   const box=document.getElementById('newsList');if(!box)return;
-  box.innerHTML=`<div class="skel skel-card" style="height:54px"></div><div class="skel skel-card" style="height:54px"></div>`;
-  const list=await loadNews();
   /* opening the news screen clears the "new news" bell dot */
   markNewsSeen();
   _newsQuery='';const si=document.getElementById('newsSearch');if(si)si.value='';
-  paintNews(list||[]);
+  /* paint the last cached news INSTANTLY — no skeleton, no network wait */
+  const cached=swrGet('news');
+  const hadCache=!!(cached&&cached.data&&cached.data.length);
+  if(hadCache){_newsCache=cached.data;paintNews(cached.data);}
+  else box.innerHTML=`<div class="skel skel-card" style="height:54px"></div><div class="skel skel-card" style="height:54px"></div>`;
+  /* opened news moments ago? cache is fresh — skip the refetch entirely */
+  if(swrFresh('news',120000))return;
+  /* revalidate in the background; repaint only if it changed and the user hasn't started searching */
+  const list=await loadNews();
+  if(list&&list.length){swrSet('news',list);if(!_newsQuery)paintNews(list);}
+  else if(!hadCache&&!_newsQuery)paintNews(list||[]);   /* keep good cache if revalidation came back empty (likely transient) */
 }
 /* filter the loaded news by the search box and render */
 function paintNews(list){
@@ -1284,7 +1303,16 @@ function renderHome(){
   hydrate(el);
   /* paint the host slot now (CTA), then swap in the rail if any trips are live */
   renderHomeHosts();
+  /* seed the rail from the last cached copy so it appears instantly on repeat visits */
+  const cLt=swrGet('livehosttrips'),cVh=swrGet('verifiedhosts');
+  if(cLt&&Array.isArray(cLt.data))liveHostTrips=cLt.data;
+  if(cVh&&Array.isArray(cVh.data)){verifiedHosts=cVh.data;verifiedHosts.forEach(h=>{if(h&&h.name)hostByName[h.name]=true;});}
+  if(liveHostTrips.length||verifiedHosts.length){
+    loadAuthorPhotos(liveHostTrips.map(t=>t.host_name).concat(verifiedHosts.map(h=>h.name))).catch(()=>{}).then(()=>renderHomeHosts());
+  }
   Promise.all([loadLiveHostTrips(),loadVerifiedHosts()]).then(async()=>{
+    /* refresh the cache with what the server just returned */
+    swrSet('livehosttrips',liveHostTrips);swrSet('verifiedhosts',verifiedHosts);
     /* await the photos, or the rails paint before the host avatars exist */
     const names=liveHostTrips.map(t=>t.host_name).concat(verifiedHosts.map(h=>h.name));
     try{await loadAuthorPhotos(names);}catch(e){}
@@ -3979,7 +4007,9 @@ handleDeepLink();     /* open a trek directly from a shared link */
 async function refreshCurrent(){
   try{
     await loadTreks();
-    _newsCache=null;await loadNews();
+    /* pull-to-refresh is authoritative: refetch news and overwrite the SWR cache
+       so renderNews() paints the just-fetched copy instead of a stale one */
+    _newsCache=null;const freshNews=await loadNews();if(freshNews&&freshNews.length)swrSet('news',freshNews);
     if(cur==='community'){_lastFeed=[];await renderFeed();}
     else if(cur==='home'){renderHome();renderHomeNews();}
     else if(cur==='news')renderNews();
