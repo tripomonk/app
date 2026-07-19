@@ -1664,7 +1664,7 @@ function renderStories(){
   const myGroup=storyGroups.find(g=>g.n===mine);
   const others=storyGroups.filter(g=>g.n!==mine);
   const yours=`<div class="story ${myGroup?'mine-has':'add'}" onclick="${myGroup?`openStory('${jsq(mine)}')`:'addStory()'}">
-      <div class="ring">${myGroup?avatar(mine,57):`<div class="plus">${avatar(mine,57)}</div>`}<span class="sadd" onclick="event.stopPropagation();addStory()">+</span></div>
+      <div class="ring">${avatar(mine,57)}<span class="sadd" onclick="event.stopPropagation();addStory()">+</span></div>
       <small>Your story</small></div>`;
   box.innerHTML=yours+others.map(g=>{
     const seen=groupSeen(g);

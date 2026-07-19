@@ -1261,7 +1261,7 @@
   .story .ring{position:relative}
   .story .sadd{position:absolute;right:-2px;bottom:-2px;width:20px;height:20px;border-radius:50%;
     background:var(--accent);border:2px solid var(--bg);display:grid;place-items:center;color:#fff;font-size:13px;line-height:1;z-index:2}
-  .story.add .ring{background:none;border:2px dashed rgba(255,255,255,.25);padding:0;position:relative}
+  .story.add .ring{background:linear-gradient(45deg,var(--accent),var(--accent2),var(--yellow));border:0;padding:2px;position:relative}
   .story.add .ring .plus{width:100%;height:100%;border-radius:50%;display:grid;place-items:center;color:var(--accent2);background:rgba(47,107,255,.12);border:0}
   .story small{font-size:10.5px;color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   /* — community tabs (Discover / Following) — */
@@ -1431,7 +1431,7 @@
   #community .stories{margin:0 -16px 13px;padding:2px 16px 8px;gap:12px}
   #community .story{width:62px}
   #community .story .ring{width:60px;height:60px;padding:3px;background:linear-gradient(140deg,var(--accent),var(--accent2) 54%,var(--yellow));box-shadow:0 10px 24px -16px rgba(47,107,255,.9)}
-  #community .story.add .ring{background:linear-gradient(140deg,rgba(47,107,255,.35),rgba(79,139,255,.12));border:1px dashed rgba(79,139,255,.72)}
+  #community .story.add .ring{background:linear-gradient(140deg,var(--accent),var(--accent2) 54%,var(--yellow));border:0}
   #community .story small{font-size:10px;color:var(--muted);font-weight:600}
   .comm-pills{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 14px}
   .comm-pills button{height:44px;border:none;border-radius:15px;background:rgba(255,255,255,.92);color:#102038;font-family:var(--font);font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;box-shadow:0 12px 26px -22px rgba(0,0,0,.85)}
