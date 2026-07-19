@@ -284,16 +284,9 @@ function hasUnseenNews(){
 function markNewsSeen(){try{localStorage.setItem('tmk_news_seen',newestNewsUrl());}catch(e){}
   const d=document.getElementById('notifDot');if(d&&_lastUnread<=0)d.style.display='none';}
 function checkAlerts(list){
-  const items=(list||_newsCache||[]);
-  const alerts=items.filter(isAlert);
-  /* light the bell if any news is newer than what was last opened */
+  /* new / alert news no longer floats a banner over the app — it only lights the
+     bell (notification icon). Tap the bell to see it in the News section. */
   refreshNotifBadge();
-  if(!alerts.length)return;
-  const newest=alerts[0];const seen=localStorage.getItem('tmk_alert_seen')||'';
-  if(newest.url&&newest.url!==seen){
-    /* no banner on the login/signup flow — the bell dot is the only indicator there */
-    if(!NO_BANNER_SCREENS.includes(cur))showAlertBanner(newest);
-  }
 }
 function showAlertBanner(n){
   if(NO_BANNER_SCREENS.includes(cur))return;   /* never on auth screens */
@@ -2825,11 +2818,15 @@ async function loadMyCounts(){
 /* ---------- messages / chat UI ---------- */
 let chatWith='Tripomonk Team';
 function chatKey(n){return 'tmk_chat_'+String(n||'team').toLowerCase().replace(/[^a-z0-9]+/g,'_');}
-function chatSeed(n){return [
-  {who:'them',txt:(getSavedName()?'Hi '+getSavedName()+', ready':'Hi, ready')+' for your next trek?'},
-  {who:'me',txt:'I am checking the batches.'},
-  {who:'them',txt:'Send me your preferred dates and I will help.'}
-];}
+/* Only the Tripomonk Team chat is pre-seeded — with a single welcome message.
+   Every other conversation starts empty (no fake demo thread). */
+function chatSeed(n){
+  if(n==='Tripomonk Team'){
+    const nm=getSavedName();
+    return [{who:'them',txt:'Welcome to Tripomonk'+(nm?', '+nm:'')+'! 🏔️ We’re glad to have you. Message us anytime for help with bookings, payments or picking your next trek.'}];
+  }
+  return [];
+}
 function getChat(n){try{const raw=localStorage.getItem(chatKey(n));return raw?JSON.parse(raw):chatSeed(n);}catch(e){return chatSeed(n);}}
 function saveChat(n,rows){try{localStorage.setItem(chatKey(n),JSON.stringify(rows));}catch(e){}}
 function chatContacts(){return [{n:'Tripomonk Team',h:'Official support',bio:'Bookings, payments and trek help',flwr:0}].concat(people.slice(0,8));}
