@@ -4997,6 +4997,9 @@ function hdTripRow(t){
   const chip='<span class="hstat '+(t.status==='live'?'approved':t.status==='rejected'?'rejected':'pending')
     +'" style="margin:0;padding:3px 8px;font-size:10px">'+esc(t.status)+'</span>';
   const editable=t.status!=='live';
+  /* marketing buttons on EVERY trip so a host can always share/promote it */
+  const mk='<button class="mk" onclick="shareHostTrip(\''+jsq(t.id)+'\',\''+jsq(t.title)+'\')">'+ic('share',14)+' Share</button>'
+          +'<button class="mk" onclick="postTripToCommunity(\''+jsq(t.id)+'\')">'+ic('community',14)+' Post to feed</button>';
   return '<div class="htrip">'
     +'<div class="tph" style="background-image:url(\''+esc(t.img||'')+'\')"></div>'
     +'<div class="tbd"><b>'+esc(t.title)+'</b>'
@@ -5004,11 +5007,9 @@ function hdTripRow(t){
     +'<div style="margin-top:6px">'+chip+'</div>'
     +(editable
        ? '<div class="tact"><button onclick="openHostTrip(\''+jsq(t.id)+'\')">Edit</button>'
-         +'<button class="dz" onclick="deleteHostTrip(\''+jsq(t.id)+'\',\''+jsq(t.title)+'\')">Delete</button></div>'
+         +'<button class="dz" onclick="deleteHostTrip(\''+jsq(t.id)+'\',\''+jsq(t.title)+'\')">Delete</button>'+mk+'</div>'
        : '<span class="tlock">Live trips are locked — message us to change dates, price or seats.</span>'
-         +'<div class="tact">'
-         +'<button class="mk" onclick="shareHostTrip(\''+jsq(t.id)+'\',\''+jsq(t.title)+'\')">'+ic('share',14)+' Share</button>'
-         +'<button class="mk" onclick="postTripToCommunity(\''+jsq(t.id)+'\')">'+ic('community',14)+' Post to feed</button>'
+         +'<div class="tact">'+mk
          +'<button onclick="wa(\'Hi Tripomonk, I need to update my live trip: '+jsq(t.title)+'\')">Message us</button></div>')
     +'</div>'
     +'<div class="tpr">'+INR(t.price||0)+'</div></div>';
@@ -5029,6 +5030,8 @@ function hostTripUrl(id){return window.location.origin+window.location.pathname+
 function findHostTrip(id){return (_hdTrips||[]).find(x=>String(x.id)===String(id))||(liveHostTrips||[]).find(x=>String(x.id)===String(id));}
 /* share a trip to OTHER platforms — native share sheet, or copy the link */
 async function shareHostTrip(id,title){
+  const t=findHostTrip(id);
+  if(t&&t.status&&t.status!=='live'){note('This trip goes public once Tripomonk publishes it. You can share it then to get bookings.','Not live yet');return;}
   const url=hostTripUrl(id);
   const data={title:'Tripomonk — '+title,text:'Join my trek “'+title+'” on Tripomonk 🏔️',url};
   if(navigator.share){try{await navigator.share(data);return;}catch(e){if(e&&e.name==='AbortError')return;}}
