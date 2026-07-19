@@ -1125,14 +1125,13 @@ async function renderProfileGallery(){
 
 /* ---------- preferences (onboarding) — used to connect like-minded trekkers ---------- */
 const PREF_GROUPS=[
-  ['Regions you love',['Uttarakhand','Himachal','Ladakh','Kashmir','Northeast','Spiritual']],
-  ['Trek style',['Trekking','Backpacking','Spiritual tours','Family trips','Solo','Group departures']],
-  ['Interests',['Photography','Camping','Road trips','Bike expeditions','Adventure sports','Wildlife','Culture & food','Fitness & endurance']],
-  ['Experience level',['Beginner','Intermediate','Advanced']],
-  ['Budget per trip',['Under ₹5k','₹5k – ₹10k','₹10k – ₹20k','₹20k+']],
+  ['🏔️','Regions you love',['Uttarakhand','Himachal','Ladakh','Kashmir','Northeast','Spiritual']],
+  ['🥾','Trek style',['Trekking','Backpacking','Spiritual tours','Family trips','Solo','Group departures']],
+  ['✨','Interests',['Photography','Camping','Road trips','Bike expeditions','Adventure sports','Wildlife','Culture & food','Fitness & endurance']],
+  ['📈','Experience level',['Beginner','Intermediate','Advanced']],
   /* literal, not DEP_CITIES — that const is declared further down this file and
      referencing it here would throw a temporal-dead-zone error before the app boots */
-  ['Departure city',['Delhi','Rishikesh','Dehradun','Other']]
+  ['🚌','Departure city',['Delhi','Rishikesh','Dehradun','Other']]
 ];
 let _prefSel=[],_prefSkippedSession=false,_prefRole='';
 /* per-ACCOUNT storage key — different accounts on the same device stay independent */
@@ -1167,8 +1166,14 @@ function renderPrefs(){
         <span class="msr">landscape</span><b>Host</b><small>Run trips — we handle operations</small></div>
     </div>
     ${_prefRole==='Host'?`<p class="host-note" style="margin:-4px 2px 16px">We'll take you to the host application after this.</p>`:''}`;
-  box.innerHTML=roleCards+PREF_GROUPS.map(g=>`<div class="sec" style="margin:6px 2px 10px"><h2 style="font-size:14.5px">${g[0]}</h2></div>
-    <div class="chips" style="flex-wrap:wrap;margin-bottom:14px">${g[1].map(o=>`<div class="chip pill ${_prefSel.includes(o)?'on':''}" onclick="togglePref('${jsq(o)}')">${esc(o)}</div>`).join('')}</div>`).join('');
+  const intro=`<div class="pref-intro"><b>🧭 Your trek vibe</b><small>Pick what excites you — we use it to match you with like-minded trekkers and trips.</small></div>`;
+  const groups=PREF_GROUPS.map(g=>{
+    const n=g[2].filter(o=>_prefSel.includes(o)).length;
+    return `<div class="pref-group">
+      <div class="pref-group-h"><span class="pgi">${g[0]}</span>${esc(g[1])}${n?`<span class="pgn">${n}</span>`:''}</div>
+      <div class="chips" style="flex-wrap:wrap">${g[2].map(o=>`<div class="chip pill ${_prefSel.includes(o)?'on':''}" onclick="togglePref('${jsq(o)}')">${esc(o)}</div>`).join('')}</div>
+    </div>`;}).join('');
+  box.innerHTML=roleCards+intro+groups;
   hydrate(box);
 }
 function pickRole(r){_prefRole=_prefRole===r?'':r;renderPrefs();}
