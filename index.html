@@ -818,6 +818,23 @@
     border:1px solid rgba(255,255,255,.14);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  /* --- notifications: swipe-to-delete, tap-to-open --- */
+  .noti-sw{position:relative;overflow:hidden;border-radius:14px;margin-bottom:8px}
+  .noti-del{position:absolute;inset:0;display:flex;align-items:center;justify-content:flex-end;
+    padding-right:22px;background:linear-gradient(90deg,rgba(255,90,110,.25),#ff5a6e);color:#fff}
+  .noti-del .msr{font-size:22px;transition:transform .15s}
+  .noti-sw.arm .noti-del .msr{transform:scale(1.25)}
+  .noti-card{position:relative;display:flex;align-items:flex-start;gap:11px;padding:12px 13px;
+    background:var(--bg);border:1px solid var(--stroke);border-radius:14px;cursor:pointer;
+    touch-action:pan-y;will-change:transform;transition:transform .18s,filter .15s}
+  /* opaque base (the red delete layer must NOT show through at rest) — unread = accent stripe */
+  .noti-card.unread{border-color:rgba(47,107,255,.32);box-shadow:inset 3px 0 0 var(--accent)}
+  .noti-card:active{filter:brightness(1.08)}
+  .noti-card .av-i{flex:none}
+  .noti-t{flex:1;min-width:0;font-size:13px;line-height:1.45;color:var(--text)}
+  .noti-t small{display:block;font-size:10.5px;color:var(--muted2);margin-top:3px}
+  .noti-t b{font-weight:600}
+  .noti-ty{font-size:17px;flex:none;margin-top:1px}
   .sv-bars{display:flex;gap:4px;padding:calc(var(--safe-top) + 10px) 12px 0;flex:none}
   .sv-bars .sb{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.28);overflow:hidden}
   .sv-bars .sb i{display:block;height:100%;width:0;background:#fff;border-radius:2px}

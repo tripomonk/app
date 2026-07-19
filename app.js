@@ -485,7 +485,7 @@ function toggleFollow(n){
 }
 const menu=[['bookings','My Bookings','bookings'],['chat','Messages','messages'],['community','Host with Tripomonk','becomeHost'],['shield','Trek Passport','passport'],['like','My Preferences','onboarding'],['monitor','Trek Health','health'],['distance','Trek Navigation','navmap'],['heartmenu','My Wishlist','wishlist'],['starline','My Reviews','reviews'],['settings','Settings','settings'],['help','Help & Support','help']];
 const setList=[['user','Account & security',''],['bell','Notifications',''],['globe','Language - English',''],['card','Payment methods',''],['shield','Privacy Policy','privacy'],['help','About Tripomonk','about']];
-const notis=[['check','Booking confirmed','Your seat is confirmed — view your e-ticket.','2m'],['bell','Pack your bags!','Your trek departs in 5 days. See the packing list.','1d'],['permits','Permit approved','Your forest permit is ready to download.','2d'],['heart','EARLYBIRD: 15% off','Winter trek discount ends soon.','3d']];
+/* demo notifications removed — the notifications screen shows only real activity now */
 const faqs=[['How do I book a trek?','Pick a trek, choose a batch on Select Date, add travellers and pay 25% to confirm your seat.'],['What is the cancellation policy?','Free cancellation up to 15 days before departure (full refund). Within 15 days, a 50% charge applies.'],['Do you provide gear on rent?','Yes — add the gear kit (jacket, boots, poles) as an add-on at checkout.'],['Are permits included?','We arrange forest / eco-zone permits for you as an assisted service.'],['What fitness level do I need?','Easy treks suit beginners; Moderate+ need regular cardio for 3–4 weeks before.']];
 const reviewsData=[];  /* real reviews only — demo reviews removed */
 const KNOW=[['community','8–15','Group size'],['user','10+ yrs','Min age'],['altitude','Moderate','Fitness']];
@@ -2889,9 +2889,7 @@ function doSearch(q){const inp=document.getElementById('searchInput');if(inp&&q&
 async function renderNotifications(){
   const box=document.getElementById('notiList');
   const lastSeen=+(localStorage.getItem('tmk_notif_seen')||0);
-  /* demo / system notifications */
-  const sysRows=notis.map(n=>`<div class="mrow" style="align-items:flex-start;cursor:default"><span class="ic" style="color:var(--accent2);margin-top:1px">${ic(n[0],20)}</span><div class="t" style="font-weight:400"><b style="font-size:13.5px;display:block">${n[1]}</b><span style="font-size:12px;color:var(--muted)">${n[2]}</span></div><span style="font-size:10px;color:var(--muted2)">${n[3]}</span></div>`).join('');
-  box.innerHTML=`<div style="color:var(--muted);font-size:12px;margin:0 2px 8px">Activity</div><div class="skel-row"><div class="skel sk-av" style="width:38px;height:38px;border-radius:50%"></div><div class="sk-l"><div class="skel" style="width:70%"></div><div class="skel" style="width:40%"></div></div></div><div class="skel-row"><div class="skel sk-av" style="width:38px;height:38px;border-radius:50%"></div><div class="sk-l"><div class="skel" style="width:60%"></div><div class="skel" style="width:35%"></div></div></div>`+( sysRows?`<div style="color:var(--muted);font-size:12px;margin:14px 2px 8px">Updates</div>`+sysRows:'');
+  box.innerHTML=`<div style="color:var(--muted);font-size:12px;margin:0 2px 10px">Activity</div><div class="skel-row"><div class="skel sk-av" style="width:38px;height:38px;border-radius:50%"></div><div class="sk-l"><div class="skel" style="width:70%"></div><div class="skel" style="width:40%"></div></div></div><div class="skel-row"><div class="skel sk-av" style="width:38px;height:38px;border-radius:50%"></div><div class="sk-l"><div class="skel" style="width:60%"></div><div class="skel" style="width:35%"></div></div></div>`;
   hydrate(box);
   const remote=await loadNotifsRemote();
   let activity='';
@@ -2901,23 +2899,63 @@ async function renderNotifications(){
     activity=remote.map(n=>{
       const unread=new Date(n.created_at).getTime()>lastSeen;
       const clr=n.type==='like'?'#ff5a7a':n.type==='follow'?'#6ee7a0':'var(--accent2)';
-      return `<div class="mrow" style="align-items:flex-start;cursor:default;${unread?'background:rgba(47,107,255,.07);border-radius:12px;':''}">
-        ${avatar(n.actor_name,38)}
-        <div class="t" style="font-weight:400;flex:1"><span style="font-size:13px;line-height:1.4">${notifText(n)}</span></div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-          <span class="msr" style="font-size:16px;color:${clr}">${NOTIF_ICON[n.type]||'notifications'}</span>
-          <span style="font-size:10px;color:var(--muted2)">${timeAgo(n.created_at)}</span>
+      return `<div class="noti-sw" data-nid="${esc(n.id)}">
+        <div class="noti-del">${ic('trash',20)}</div>
+        <div class="noti-card ${unread?'unread':''}" data-type="${esc(n.type||'')}" data-post="${esc(n.post_id||'')}" data-actor="${esc(n.actor_name||'')}">
+          ${avatar(n.actor_name,40)}
+          <div class="noti-t"><span>${notifText(n)}</span><small>${timeAgo(n.created_at)}</small></div>
+          <span class="msr noti-ty" style="color:${clr}">${NOTIF_ICON[n.type]||'notifications'}</span>
         </div>
       </div>`;
     }).join('');
   } else {
-    activity=`<div class="empty" style="padding:24px 0;font-size:13px"><span class="msr" style="font-size:30px;display:block;opacity:.35;margin-bottom:6px">notifications_none</span>No activity yet. Likes, comments and follows will show here.</div>`;
+    activity=`<div class="empty" style="padding:30px 0;font-size:13px"><span class="msr" style="font-size:32px;display:block;opacity:.35;margin-bottom:8px">notifications_none</span>No activity yet. Likes, comments and follows will show here.</div>`;
   }
-  box.innerHTML=`<div style="color:var(--muted);font-size:12px;margin:0 2px 8px">Activity</div>${activity}`+( sysRows?`<div style="color:var(--muted);font-size:12px;margin:18px 2px 8px">Updates</div>${sysRows}`:'');
+  box.innerHTML=`<div style="color:var(--muted);font-size:12px;margin:0 2px 10px">Activity</div>${activity}`;
   hydrate(box);
+  wireNotifSwipe();
   /* mark all as seen */
   localStorage.setItem('tmk_notif_seen',String(Date.now()));
   const dot=document.getElementById('notifDot');if(dot)dot.style.display='none';
+}
+/* tap a notification -> open what it's about (the post, or the person who followed you) */
+async function openNotif(nid,type,postId,actor){
+  if(type==='follow'){if(actor)openPerson(actor);return;}
+  if(postId){
+    go('community');
+    /* make sure the post is in memory so the comments/detail sheet can open */
+    if(!postById(postId)){
+      const sb=getSupaClient();
+      if(sb){try{const{data}=await sb.from('community_posts').select('*').eq('id',postId).maybeSingle();
+        if(data)_lastFeed.unshift({id:data.id,uid:data.user_id||null,n:data.author_name||'Trekker',when:timeAgo(data.created_at),txt:data.txt||'',imgs:data.imgs||[],likes:0,comments:[],trek:data.trek_tag||'',tagged:data.tagged||[]});
+      }catch(e){}}
+    }
+    if(postById(postId))openComments(postId);
+    return;
+  }
+  go('community');
+}
+/* remove one notification (swipe or the reveal button) — optimistic, server delete after */
+async function deleteNotif(nid,sw){
+  if(sw)sw.remove();
+  const sb=getSupaClient();const uid=await authUid();
+  if(sb&&uid){try{await sb.from('notifications').delete().eq('id',nid);}catch(e){}}
+  const list=document.getElementById('notiList');
+  if(list&&!list.querySelector('.noti-sw'))renderNotifications();   /* last one gone -> show empty state */
+}
+/* swipe-left to delete, tap to open — wired after each render */
+function wireNotifSwipe(){
+  document.querySelectorAll('#notiList .noti-card').forEach(card=>{
+    const sw=card.closest('.noti-sw');let x0=0,dx=0,drag=false;
+    card.addEventListener('pointerdown',e=>{drag=true;x0=e.clientX;dx=0;card.style.transition='none';try{card.setPointerCapture(e.pointerId);}catch(_){}});
+    card.addEventListener('pointermove',e=>{if(!drag)return;dx=Math.min(0,e.clientX-x0);card.style.transform='translateX('+dx+'px)';sw.classList.toggle('arm',dx<-90);});
+    const end=()=>{if(!drag)return;drag=false;card.style.transition='transform .18s';
+      if(dx<-90){card.style.transform='translateX(-100%)';setTimeout(()=>deleteNotif(sw.dataset.nid,sw),160);}
+      else card.style.transform='';sw.classList.remove('arm');};
+    card.addEventListener('pointerup',end);card.addEventListener('pointercancel',end);
+    card.addEventListener('click',()=>{if(Math.abs(dx)>8)return;   /* was a swipe, not a tap */
+      openNotif(sw.dataset.nid,card.dataset.type,card.dataset.post,card.dataset.actor);});
+  });
 }
 function renderReviews(){document.getElementById('reviewList').innerHTML=reviewsData.length?reviewsData.map(reviewCard).join(''):'<div class="empty"><p>No reviews yet. Be the first to review after your trek!</p></div>';hydrate(document.getElementById('reviewList'));}
 function renderHelp(){document.getElementById('faqList').innerHTML=faqs.map(f=>`<div class="panel" style="margin-bottom:10px"><b style="font-size:13.5px;display:block;margin-bottom:6px">${f[0]}</b><span style="font-size:12.5px;color:var(--muted);line-height:1.55">${f[1]}</span></div>`).join('');hydrate(document.getElementById('help'));}
