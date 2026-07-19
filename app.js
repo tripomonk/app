@@ -2735,12 +2735,25 @@ async function renderPerson(){if(!curPerson){go('community');return;}const p=get
   const posts=await loadUserPosts(p.n);
   await Promise.all([loadEngagement(posts.map(x=>x.id)),loadAuthorPhotos([p.n])]);
   const disp=handleFor(p.n),at=atHandle(p.n);
-  const base=p.flwr||0;const flwr=base+(isFollowing(p.n)?1:0);
+  /* real follower / following counts for THIS person from the follows table */
+  let followers=0,following=me?followCount():0;
+  const sb=getSupaClient();
+  if(sb){try{
+    const uid=await uidForName(p.n);
+    const[fr,fg]=await Promise.all([
+      sb.from('follows').select('*',{count:'exact',head:true}).eq('following_name',p.n),
+      uid?sb.from('follows').select('*',{count:'exact',head:true}).eq('follower_id',uid):Promise.resolve({count:me?followCount():0})
+    ]);
+    followers=fr.count||0; following=fg.count||0;
+  }catch(e){}}
+  /* base excludes my own optimistic follow so toggling adds/removes cleanly */
+  const base=Math.max(0,followers-(isFollowing(p.n)?1:0));
+  const flwr=base+(isFollowing(p.n)?1:0);
   body.innerHTML=`
     <div class="prof-top">${avatar(p.n,84)}
       <h2>${esc(disp)}${hostBadge(p.n)}</h2><div class="handle">${esc(at||p.h)}</div>
       <p class="pbio">${p.bio||''}</p>
-      <div class="pstats"><div><b>${posts.length}</b><small>Posts</small></div><div><b id="pFlwr" data-person="${esc(p.n)}" data-base="${base}">${flwr.toLocaleString()}</b><small>Followers</small></div><div><b>${me?followCount():'—'}</b><small>Following</small></div></div>
+      <div class="pstats"><div><b>${posts.length}</b><small>Posts</small></div><div><b id="pFlwr" data-person="${esc(p.n)}" data-base="${base}">${flwr.toLocaleString()}</b><small>Followers</small></div><div><b>${Number(following).toLocaleString()}</b><small>Following</small></div></div>
       ${me?'':`<div class="profile-actions" style="margin:14px 0 0"><button class="${isFollowing(p.n)?'on':''}" data-follow="${esc(p.n)}" onclick="toggleFollow('${jsq(p.n)}')">${isFollowing(p.n)?'Following':'Follow'}</button><button onclick="openChat('${jsq(p.n)}')">Message</button></div>`}
       <div style="margin-top:12px">${socialLinks(me?getSavedSocials():socialsByName[p.n])}</div>
     </div>
