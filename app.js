@@ -4505,18 +4505,90 @@ function renderHomeHosts(){
   }
   hydrate(box);
 }
-function openHostTripDetail(id){
-  const t=liveHostTrips.find(x=>String(x.id)===String(id));
-  if(!t){note('That trip is no longer available.','Not found');return;}
-  const lines=[];
-  if(t.description)lines.push(t.description);
-  lines.push('Destination: '+t.destination);
-  if(t.start_date)lines.push('Starts: '+t.start_date+(t.days?' · '+t.days+' days':''));
-  if(t.max_people)lines.push('Group size: up to '+t.max_people);
-  if(t.difficulty)lines.push('Difficulty: '+t.difficulty);
-  lines.push('Price: '+INR(t.price||0)+' per person');
-  lines.push('Hosted by '+t.host_name+'. Operations by Tripomonk.');
-  note(lines.join('\n'),t.title);
+let _htvTrip=null,_htvPax=1;
+async function openHostTripDetail(id){
+  go('hostTripView');
+  const box=document.getElementById('htvBody');
+  if(box)box.innerHTML='<div class="skel skel-card" style="height:200px"></div>';
+  /* fetch fresh so price/status are current — a cached rail item could be stale */
+  const sb=getSupaClient();
+  let t=liveHostTrips.find(x=>String(x.id)===String(id));
+  if(sb){try{const r=await sb.from('host_trips').select('*').eq('id',id).maybeSingle();if(r.data)t=r.data;}catch(e){}}
+  if(!t){if(box)box.innerHTML='<div class="empty"><p>This trip is no longer available.</p></div>';return;}
+  if(t.status&&t.status!=='live'){if(box)box.innerHTML='<div class="empty"><p>This trip isn’t open for booking right now.</p></div>';
+    document.getElementById('htvBook').style.display='none';return;}
+  _htvTrip=t;_htvPax=1;
+  await loadAuthorPhotos([t.host_name]).catch(()=>{});
+  const when=t.start_date?new Date(t.start_date+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'';
+  const dateRange=when+(t.end_date?' → '+new Date(t.end_date+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'}):'');
+  const stat=(ic2,v,l)=>v?`<div class="stat"><div class="ic" style="display:grid;place-items:center">${ic(ic2,20)}</div><b style="font-size:12px">${esc(String(v))}</b><small>${l}</small></div>`:'';
+  box.innerHTML=
+    (t.img?`<div class="htv-img" style="background-image:url('${esc(t.img)}')"></div>`:'')
+    +`<h1 style="margin:2px 0 2px;font-size:22px">${esc(t.title)}</h1>`
+    +`<div class="reg" style="color:var(--muted);font-size:13px;margin-bottom:6px">${ic('pin',13)} ${esc(t.destination)}</div>`
+    +`<div class="htv-host">${avatar(t.host_name,38)}<div class="hn"><b>${esc(t.host_name)}</b><small>Trip host</small></div><span class="hbadge">Verified</span></div>`
+    +`<div class="stats">${stat('calendar',dateRange,'Dates')}${stat('clock',t.days?t.days+' days':'','Duration')}${stat('altitude',t.difficulty,'Level')}${stat('community',t.max_people?'Max '+t.max_people:'','Group')}</div>`
+    +(t.description?`<div class="blk" style="padding:0"><h2>About this trip</h2><p>${esc(t.description)}</p></div>`:'')
+    +(t.inclusions?`<div class="blk" style="padding:0"><h2>What's included</h2><p style="white-space:pre-line">${esc(t.inclusions)}</p></div>`:'')
+    +(t.exclusions?`<div class="blk" style="padding:0"><h2>Not included</h2><p style="white-space:pre-line">${esc(t.exclusions)}</p></div>`:'')
+    +`<div class="htv-ops"><span class="msr">verified_user</span>Hosted by ${esc(t.host_name)} · <b>all operations, safety and support handled by Tripomonk</b>. You pay a 25% advance to confirm; the rest before departure.</div>`
+    +`<div class="lbl">Travellers</div>`
+    +`<div class="paxrow"><div class="paxi"><div><b>People</b><small id="htvMax"></small></div>`
+    +`<div class="stepper"><button onclick="htvStep(-1)">−</button><b id="htvPeople">1</b><button onclick="htvStep(1)">+</button></div></div></div>`;
+  document.getElementById('htvBook').style.display='';
+  const mx=document.getElementById('htvMax');if(mx&&t.max_people)mx.textContent='up to '+t.max_people;
+  htvRecalc();
+  hydrate(box);
+}
+function htvStep(d){
+  const t=_htvTrip;if(!t)return;
+  _htvPax=Math.max(1,_htvPax+d);
+  if(t.max_people&&_htvPax>t.max_people){_htvPax=t.max_people;note('This trip allows up to '+t.max_people+' people.','Group limit');}
+  document.getElementById('htvPeople').textContent=_htvPax;
+  htvRecalc();
+}
+function htvRecalc(){
+  const t=_htvTrip;if(!t)return;
+  const total=(t.price||0)*_htvPax;
+  document.getElementById('htvPrice').textContent=INR(total);
+  document.getElementById('htvPriceSub').textContent=_htvPax+(_htvPax===1?' person · ':' people · ')+INR(t.price||0)+' each · 25% advance';
+}
+/* book a hosted trip — priced server-side (kind:hosttrip), 25% advance via Razorpay */
+async function bookHostTrip(){
+  const t=_htvTrip;if(!t){note('Please reopen this trip.','Nothing selected');return;}
+  if(!isLoggedIn()){note('Please sign in to book.','Sign in required').then(()=>{_loginReturn='home';go('login');});return;}
+  if(!window.Razorpay){note('Payment is still loading — wait a moment and tap Book again.','Please wait');return;}
+  if(!sbOn){note('Payment service not configured. Please contact Tripomonk.','Payment error');return;}
+  /* real multi-day trip: collect the same details a trek booking needs */
+  const name=(await askCode('Your full name',{value:getSavedName()||'',placeholder:'As per ID'}));if(name==null)return;
+  if(!name.trim()){note('Name is required.','Missing');return;}
+  const phone=(await askCode('Your mobile number',{value:getSavedMobile()||'',placeholder:'+91…'}));if(phone==null)return;
+  const emgName=(await askCode('Emergency contact name',{placeholder:'Family / friend'}));if(emgName==null)return;
+  const emgPhone=(await askCode('Emergency contact number',{placeholder:'Different from yours'}));if(emgPhone==null)return;
+  const email=getUserEmail()||'';
+  if(!email){note('Your account has no email. Please sign in with email.','Cannot book');return;}
+  const booking={kind:'hosttrip',hosttrip_id:t.id,trek:t.title,pax:_htvPax,name:name.trim(),email,
+                 phone:phone.trim(),emergency_name:emgName.trim(),emergency_phone:emgPhone.trim()};
+  let order;
+  try{order=await rzpCall('create',{booking});}
+  catch(e){note('Could not reach payment service: '+e,'Payment error');return;}
+  if(!order||!order.order_id){note('Could not start payment — '+((order&&order.error)?order.error:'no order returned'),'Payment error');return;}
+  saveUserName(name.trim());
+  const rzp=new window.Razorpay({
+    key:order.key_id, order_id:order.order_id, amount:order.amount, currency:order.currency||'INR',
+    name:'Tripomonk', description:t.title+' — hosted trip', image:'icons/icon-192.png',
+    prefill:{name:name.trim(),email,contact:phone.trim()}, notes:{hosttrip:t.id}, theme:{color:'#2f6bff'},
+    handler:async function(response){
+      let res;try{res=await rzpCall('verify',{razorpay_order_id:response.razorpay_order_id,razorpay_payment_id:response.razorpay_payment_id,razorpay_signature:response.razorpay_signature,booking});}catch(e){res=null;}
+      if(!res||!res.ok){note('Payment received but we could not verify it instantly. Our team will confirm shortly — payment ID: '+(response.razorpay_payment_id||'—'),'Verification pending');return;}
+      const sbk=(res&&res.booking)||{};
+      const b={id:response.razorpay_payment_id,name:name.trim(),trek:sbk.trek||t.title,img:t.img||'',date:sbk.date||t.start_date||'As scheduled',pax:_htvPax,total:sbk.total||(t.price*_htvPax),paid:sbk.paid,ts:Date.now(),status:'Confirmed (advance paid)',checkedIn:false,paymentId:response.razorpay_payment_id};
+      const all=getBookings();all.unshift(b);saveBookings(all);
+      note('Advance paid! '+t.title+' is confirmed. Tripomonk will contact you with the rest.','Booked ✓').then(()=>go('bookings'));
+    },
+    modal:{ondismiss:function(){note('Payment cancelled — the trip is not booked yet.','Cancelled');}}
+  });
+  rzp.open();
 }
 
 /* ============================================================

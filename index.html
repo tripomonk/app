@@ -905,6 +905,21 @@
   .verify.bad{background:rgba(255,90,110,.1);border-color:rgba(255,90,110,.4)}
   .verify b{font-size:15px}
 
+  /* ---- hosted trip detail ---- */
+  .htv-img{width:100%;aspect-ratio:16/10;border-radius:20px;background-size:cover;background-position:center;background-color:var(--card2);margin-bottom:14px}
+  .htv-host{display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:10px 12px;margin:12px 0}
+  .htv-host .hn{flex:1;min-width:0}
+  .htv-host .hn b{font-size:13px;display:block}
+  .htv-host .hn small{font-size:11px;color:var(--muted)}
+  .htv-host .hbadge{font-size:10px;font-weight:700;color:#0f9d58;background:rgba(15,157,88,.12);border:1px solid rgba(15,157,88,.3);border-radius:999px;padding:3px 9px}
+  html.light .htv-host .hbadge{color:#0b7a44}
+  .htv-ops{display:flex;gap:9px;align-items:flex-start;font-size:11.5px;line-height:1.5;color:var(--muted);
+    background:rgba(47,107,255,.08);border:1px solid rgba(47,107,255,.2);border-radius:14px;padding:11px 12px;margin:14px 0}
+  .htv-ops .msr{font-size:16px;color:var(--accent2);flex:none;margin-top:1px}
+  #hostTripView .paxrow{margin:8px 0 14px}
+  /* inline padding:0 on the Book button collapsed its height — keep it tappable */
+  #hostTripView .cta .btn{min-height:48px}
+
   /* ---- admin trip review ---- */
   .atrip-img{width:100%;aspect-ratio:16/9;border-radius:18px;background-size:cover;background-position:center;background-color:var(--card2)}
   #adminTrip .hact{display:flex;gap:8px;flex-wrap:wrap}
@@ -2130,6 +2145,16 @@
     <button class="btn" id="htSubmit" onclick="submitHostTrip()">Submit for review</button>
     <p class="host-note">Tripomonk reviews every trip before it goes live. We'll confirm operations and commercials with you first.</p>
     <div style="height:calc(var(--safe-bottom) + 20px)"></div>
+  </section>
+
+  <!-- HOSTED TRIP · DETAIL + BOOK -->
+  <section class="view flow" id="hostTripView" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Hosted trip</h1></div>
+    <div id="htvBody"></div>
+    <div class="cta">
+      <div class="ctarow"><div><small id="htvPriceSub"></small><b id="htvPrice">₹0</b></div>
+        <button class="btn" id="htvBook" onclick="bookHostTrip()" style="width:auto;padding:0 22px">Book this trip</button></div>
+    </div>
   </section>
 
   <!-- ADMIN · REVIEW A HOST TRIP -->
