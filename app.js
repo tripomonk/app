@@ -2805,8 +2805,8 @@ async function loadMyCounts(){
       /* how many people follow me — rows in follows where following_name = me */
       const{count:fc}=await sb.from('follows').select('*',{count:'exact',head:true}).eq('following_name',mine);
       if(typeof fc==='number')_myFollowerCount=fc;
-      /* my posts */
-      const{count:pc}=await sb.from('posts').select('*',{count:'exact',head:true}).eq('author_name',mine);
+      /* my posts — count by the stable user_id (rename-proof), table is community_posts */
+      const{count:pc}=await sb.from('community_posts').select('*',{count:'exact',head:true}).eq('user_id',currentUser.id);
       if(typeof pc==='number')_myPostCount=pc;
     }
   }catch(e){}
