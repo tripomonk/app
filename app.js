@@ -3993,12 +3993,34 @@ function genItineraryPDF(t){
 }
 
 /* ---------- router ---------- */
+/* ---------- lightweight, privacy-friendly screen-time analytics ----------
+   Records how long each screen is viewed and batches it to Supabase (app_events).
+   No third party, data stays in your DB. Query which screens hold attention with:
+     select screen, count(*) views, round(avg(seconds),1) avg_sec, sum(seconds) total
+     from app_events group by screen order by total desc; */
+let _screenEnter=Date.now(),_evBuf=[];
+const _sessId=(function(){try{let s=sessionStorage.getItem('tmk_sess');if(!s){s=Math.random().toString(36).slice(2)+Date.now().toString(36);sessionStorage.setItem('tmk_sess',s);}return s;}catch(e){return 'na';}})();
+function trackScreenLeave(){
+  const secs=Math.round((Date.now()-_screenEnter)/1000);
+  _screenEnter=Date.now();
+  /* ignore <1s bounces and absurd >1h idle tabs */
+  if(cur&&secs>=1&&secs<3600)_evBuf.push({session_id:_sessId,user_id:currentUser?currentUser.id:null,screen:cur,seconds:secs});
+  if(_evBuf.length>=6)flushEvents();
+}
+async function flushEvents(){
+  if(!_evBuf.length)return;
+  const sb=getSupaClient();if(!sb){_evBuf=[];return;}
+  const rows=_evBuf.splice(0,_evBuf.length);
+  try{await sb.from('app_events').insert(rows);}catch(e){}
+}
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'){trackScreenLeave();flushEvents();}});
+window.addEventListener('pagehide',function(){trackScreenLeave();flushEvents();});
 function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='captain'&&!isStaffUser()){note('Trip Captain access is for staff only.','Restricted');return;}
   if((id==='admin'||id==='adminTrip')&&!isAdminUser()){note('Admin access is restricted to the account owner.','Restricted');return;}
   /* hide any live news banner when entering the login/signup flow */
   if(NO_BANNER_SCREENS.includes(id)){const b=document.getElementById('alertBanner');if(b)b.className='';}
-  if(id!==cur){hist.push(cur);try{history.pushState({s:id},'');}catch(e){}}cur=id;if(el.dataset.tab)lastTab=el.dataset.tab;
+  if(id!==cur){trackScreenLeave();hist.push(cur);try{history.pushState({s:id},'');}catch(e){}}cur=id;if(el.dataset.tab)lastTab=el.dataset.tab;
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));el.classList.add('active');
   const nav=document.getElementById('nav');nav.classList.toggle('hide',el.hasAttribute('data-nonav'));
   if(el.dataset.tab)document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===el.dataset.tab));
