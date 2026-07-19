@@ -857,6 +857,15 @@
   .host-hub .hh-badge.pend{background:rgba(255,206,31,.92);color:#3a2c00}
   .host-hub .ch{flex:none;opacity:.6}
   .host-hub .ch svg{transform:scaleX(-1)}
+  /* --- social links --- */
+  .socinputs{display:flex;flex-direction:column;gap:9px}
+  .soc-inp{display:flex;align-items:center;gap:10px}
+  .soc-inp .soc-dot{width:12px;height:12px;flex:none;border-radius:50%}
+  .socrow{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+  .prof-top .socrow{justify-content:center;margin:0}
+  .socchip{display:inline-flex;align-items:center;padding:7px 14px;border-radius:999px;font-size:12px;font-weight:700;
+    text-decoration:none;color:#fff;background:var(--sc);box-shadow:0 5px 14px -7px var(--sc)}
+  .socchip:active{filter:brightness(.9)}
   /* --- notifications: swipe-to-delete, tap-to-open --- */
   .noti-sw{position:relative;overflow:hidden;border-radius:14px;margin-bottom:8px}
   .noti-del{position:absolute;inset:0;display:flex;align-items:center;justify-content:flex-end;
@@ -1866,6 +1875,9 @@
     </div>
     <div class="field"><label>Mobile</label><div class="inp"><span class="msr" style="font-size:20px;color:var(--muted)">call</span><input id="epMobile" type="tel" placeholder="+91 XXXXX XXXXX"/></div></div>
     <div class="field"><label>Email</label><div class="inp"><span class="msr" style="font-size:20px;color:var(--muted)">mail</span><input id="epEmail" type="email" placeholder="you@email.com" readonly style="opacity:.6"/></div></div>
+    <div class="field"><label>Social links <small style="color:var(--muted2);font-weight:400">— add any you like</small></label>
+      <div id="epSocials" class="socinputs"></div>
+    </div>
     <button class="btn" id="epSaveBtn" style="margin-top:8px" onclick="saveProfile()">Save Changes</button>
   </section>
 

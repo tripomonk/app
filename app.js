@@ -360,7 +360,7 @@ const AVG=[['#ffd27a','#ff7a59'],['#7ad1ff','#2f6bff'],['#b7f5c0','#2fb56b'],['#
 function initials(n){return n.split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase();}
 function avHash(n){let h=0;for(let i=0;i<n.length;i++)h=(h*31+n.charCodeAt(i))|0;return Math.abs(h);}
 /* other people's profile photos, keyed by display name (filled from `profiles`) */
-let photoByName={},hostByName={},unameByName={};
+let photoByName={},hostByName={},unameByName={},socialsByName={};
 /* when each name was last fetched — so a changed DP/username refreshes instead of
    sticking on the first cached copy for the whole session */
 let _authorFetchedAt={};
@@ -932,8 +932,39 @@ function onUsernameInput(v){
   },450);
 }
 
+/* social links a user can add to their profile — [key, label, brand colour] */
+const SOCIALS=[['instagram','Instagram','#E1306C'],['facebook','Facebook','#1877F2'],['youtube','YouTube','#FF0000'],
+  ['linkedin','LinkedIn','#0A66C2'],['x','X (Twitter)','#111827'],['reddit','Reddit','#FF4500'],['website','Website','#2f6bff']];
+function getSavedSocials(){try{return JSON.parse(localStorage.getItem('tmk_socials')||'{}')||{};}catch(e){return{};}}
+/* turn a handle or partial into a full https link */
+function socialUrl(key,val){
+  val=String(val||'').trim();if(!val)return '';
+  if(/^https?:\/\//i.test(val))return val;
+  const h=val.replace(/^@/,'').replace(/^u\//i,'');
+  switch(key){
+    case 'instagram':return 'https://instagram.com/'+h;
+    case 'facebook': return 'https://facebook.com/'+h;
+    case 'youtube':  return 'https://youtube.com/'+(val[0]==='@'?val:'@'+h);
+    case 'linkedin': return 'https://linkedin.com/in/'+h;
+    case 'x':        return 'https://x.com/'+h;
+    case 'reddit':   return 'https://reddit.com/user/'+h;
+    default:         return 'https://'+val.replace(/^\/+/,'');
+  }
+}
+/* tappable brand chips for a socials object (used on own + others' profiles) */
+function socialLinks(soc){
+  soc=soc||{};
+  const items=SOCIALS.filter(s=>soc[s[0]]&&String(soc[s[0]]).trim());
+  if(!items.length)return '';
+  return '<div class="socrow">'+items.map(s=>
+    '<a class="socchip" style="--sc:'+s[2]+'" href="'+esc(socialUrl(s[0],soc[s[0]]))+'" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">'+esc(s[1].split(' ')[0])+'</a>'
+  ).join('')+'</div>';
+}
 function renderEditProfile(){
   const name=getSavedName();const mobile=getSavedMobile();const email=getUserEmail()||'';const photo=getSavedPhoto();
+  /* build the social-link inputs from SOCIALS and fill saved values */
+  const soc=getSavedSocials();const sc=document.getElementById('epSocials');
+  if(sc)sc.innerHTML=SOCIALS.map(s=>`<div class="inp soc-inp"><span class="soc-dot" style="background:${s[2]}"></span><input id="epSoc_${s[0]}" placeholder="${esc(s[1])} — handle or link" autocapitalize="none" autocorrect="off" spellcheck="false" value="${esc(soc[s[0]]||'')}"/></div>`).join('');
   const inp=id=>document.getElementById(id);
   if(inp('epName'))inp('epName').value=name;
   if(inp('epMobile'))inp('epMobile').value=mobile;
@@ -1093,11 +1124,14 @@ async function saveProfile(){
     }
     try{localStorage.setItem('tmk_uhandle',uname);}catch(e){}
   }
+  /* collect social links */
+  const soc={};SOCIALS.forEach(s=>{const el=document.getElementById('epSoc_'+s[0]);const v=el?el.value.trim():'';if(v)soc[s[0]]=v;});
   try{
     if(name)localStorage.setItem('tmk_uname',name);
     if(mobile)localStorage.setItem('tmk_umobile',mobile);
+    localStorage.setItem('tmk_socials',JSON.stringify(soc));
   }catch(e){}
-  await upsertProfile();   /* keep the public profile (name/photo/username) in sync for follows & notifications */
+  await upsertProfile();   /* keep the public profile (name/photo/username/socials) in sync */
   restore();
   renderProfile();
   note('Profile saved successfully!','Saved ✓');
@@ -2067,8 +2101,8 @@ async function loadAuthorPhotos(names){
   const need=[...new Set(names)].filter(n=>n&&n!==mine&&n!=='You'&&(!(n in photoByName)||now-(_authorFetchedAt[n]||0)>AUTHOR_TTL));
   if(!need.length)return;
   try{
-    const{data}=await sb.from('profiles').select('name,photo,is_host,username').in('name',need);
-    (data||[]).forEach(r=>{if(r.name){photoByName[r.name]=r.photo||'';hostByName[r.name]=!!r.is_host;unameByName[r.name]=r.username||'';_authorFetchedAt[r.name]=now;}});
+    const{data}=await sb.from('profiles').select('name,photo,is_host,username,socials').in('name',need);
+    (data||[]).forEach(r=>{if(r.name){photoByName[r.name]=r.photo||'';hostByName[r.name]=!!r.is_host;unameByName[r.name]=r.username||'';socialsByName[r.name]=r.socials||null;_authorFetchedAt[r.name]=now;}});
   }catch(e){}
   /* remember the misses too, so we don't re-query every render */
   need.forEach(n=>{if(!(n in photoByName))photoByName[n]='';_authorFetchedAt[n]=now;});
@@ -2085,7 +2119,7 @@ async function resolveAuthors(rows,idKey,nameKey){
   const byId={};
   if(ids.length){
     try{
-      const{data}=await sb.from('profiles').select('id,name,username,photo,is_host').in('id',ids);
+      const{data}=await sb.from('profiles').select('id,name,username,photo,is_host,socials').in('id',ids);
       (data||[]).forEach(p=>{if(p.id)byId[p.id]=p;});
     }catch(e){}
   }
@@ -2096,6 +2130,7 @@ async function resolveAuthors(rows,idKey,nameKey){
     photoByName[p.name]=p.photo||'';
     hostByName[p.name]=!!p.is_host;
     unameByName[p.name]=p.username||'';
+    socialsByName[p.name]=p.socials||null;
     _authorFetchedAt[p.name]=now;
   });
   const noId=rows.filter(r=>!r[idKey]).map(r=>r[nameKey]);
@@ -2300,10 +2335,11 @@ async function upsertProfile(){
   const ph=getSavedPhoto();if(ph)row.photo=ph;
   const un=getSavedUsername();if(un)row.username=un;
   const cv=getSavedCover();if(cv)row.cover=cv;
+  const soc=getSavedSocials();if(soc&&Object.keys(soc).length)row.socials=soc;
   try{await sb.from('profiles').upsert(row);}catch(e){}
 }
 /* everything that identifies ONE person on this device */
-const IDENTITY_KEYS=['tmk_uname','tmk_uhandle','tmk_uphoto','tmk_ucover','tmk_umobile','tmk_follows','tmk_posts','tmk_likes','tmk_comments','tmk_bookings','tmk_notif_seen','tmk_admin','tmk_admin_key','tmk_captain'];
+const IDENTITY_KEYS=['tmk_uname','tmk_uhandle','tmk_uphoto','tmk_ucover','tmk_socials','tmk_umobile','tmk_follows','tmk_posts','tmk_likes','tmk_comments','tmk_bookings','tmk_notif_seen','tmk_admin','tmk_admin_key','tmk_captain'];
 function clearLocalIdentity(){
   try{IDENTITY_KEYS.forEach(k=>localStorage.removeItem(k));}catch(e){}
   followState={};staffSet=new Set();_prefSkippedSession=false;
@@ -2318,12 +2354,13 @@ async function loadProfileFromServer(){
   if(prev&&prev!==currentUser.id)clearLocalIdentity();
   try{localStorage.setItem('tmk_uid',currentUser.id);}catch(e){}
   try{
-    const{data}=await sb.from('profiles').select('name,photo,prefs,username,cover').eq('id',currentUser.id).maybeSingle();
+    const{data}=await sb.from('profiles').select('name,photo,prefs,username,cover,socials').eq('id',currentUser.id).maybeSingle();
     if(data){
       if(data.name)try{localStorage.setItem('tmk_uname',data.name);}catch(e){}
       if(data.photo)try{localStorage.setItem('tmk_uphoto',data.photo);}catch(e){}
       if(data.username)try{localStorage.setItem('tmk_uhandle',data.username);}catch(e){}
       if(data.cover)try{localStorage.setItem('tmk_ucover',data.cover);}catch(e){}
+      if(data.socials)try{localStorage.setItem('tmk_socials',JSON.stringify(data.socials));}catch(e){}
     }
   }catch(e){}
   await loadFollowsFromServer();
@@ -2665,6 +2702,7 @@ async function renderPerson(){if(!curPerson){go('community');return;}const p=get
       <p class="pbio">${p.bio||''}</p>
       <div class="pstats"><div><b>${posts.length}</b><small>Posts</small></div><div><b id="pFlwr" data-person="${esc(p.n)}" data-base="${base}">${flwr.toLocaleString()}</b><small>Followers</small></div><div><b>${me?followCount():'—'}</b><small>Following</small></div></div>
       ${me?'':`<div class="profile-actions" style="margin:14px 0 0"><button class="${isFollowing(p.n)?'on':''}" data-follow="${esc(p.n)}" onclick="toggleFollow('${jsq(p.n)}')">${isFollowing(p.n)?'Following':'Follow'}</button><button onclick="openChat('${jsq(p.n)}')">Message</button></div>`}
+      <div style="margin-top:12px">${socialLinks(me?getSavedSocials():socialsByName[p.n])}</div>
     </div>
     <div class="sec-h" style="margin:18px 4px 8px"><b>Posts</b></div>
     ${posts.length?`<div class="pgrid">${posts.map(gridCell).join('')}</div>`:`<div class="empty"><p>${me?'You have not posted yet.':'No posts yet.'}</p></div>`}`;
@@ -2810,7 +2848,7 @@ function renderProfile(){document.getElementById('pCover').style.backgroundImage
   ].map(s=>`<div class="pstat" onclick="${s[3]}"><b${s[4]?` id="${s[4]}"`:''}>${s[1]}</b><small>${s[2]}</small></div>`).join('');hydrate(ps);}
   if(isLoggedIn())loadMyCounts();
   renderProfileGallery();
-  let rows='<div id="hostHub">'+hostHubCard()+'</div>';
+  let rows=socialLinks(getSavedSocials())+'<div id="hostHub">'+hostHubCard()+'</div>';
   if(isLoggedIn()&&!isPrefsDone())rows+=`<div class="pref-prompt" onclick="go('onboarding')"><span class="msr">interests</span><div><b>Complete your preferences</b><small>Help us connect you with like-minded trekkers</small></div><span class="msr" style="margin-left:auto">chevron_right</span></div>`;
   rows+=menu.map(m=>`<div class="mrow" onclick="${m[2]?`go('${m[2]}')`:'void 0'}"><span class="ic">${ic(m[0],20)}</span><span class="t">${m[1]}</span><span class="ch">${ic('back',16)}</span></div>`).join('');
   rows+=isLoggedIn()
