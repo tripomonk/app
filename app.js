@@ -3937,12 +3937,27 @@ function renderDest(){
 }
 let gearSel={};
 function renderQuick(){const q=[['pin','Destinations','dests'],['backpack','Rent Gear','gear'],['permits','Permits','permits'],['para','Activities','activities']];const el=document.getElementById('quick');if(!el)return;el.style.gridTemplateColumns='repeat(4,1fr)';el.innerHTML=q.map(a=>`<div class="qa" onclick="go('${a[2]}')"><div class="qi">${ic(a[0],20)}</div><span>${a[1]}</span></div>`).join('');hydrate(el);}
-function renderGear(){document.getElementById('gearList').innerHTML=gearItems.map((g,i)=>`<div class="gitem ${gearSel[i]?'sel':''}" onclick="togGear(${i})"><span class="gi ic">${ic(g[0],22)}</span><div class="t"><b>${g[1]}</b><small>${g[2]}</small></div><span class="rate">${g[3]}</span><span class="chk">${ic('check',14)}</span></div>`).join('');hydrate(document.getElementById('gear'));}
+function renderGear(){
+  const n=Object.values(gearSel).filter(Boolean).length;
+  document.getElementById('gearList').innerHTML='<div class="gear-grid">'+gearItems.map((g,i)=>
+    `<div class="gcard ${gearSel[i]?'sel':''}" onclick="togGear(${i})"><span class="g-chk">${ic('check',13)}</span><div class="g-ic">${ic(g[0],22)}</div><b>${esc(g[1])}</b><small>${esc(g[2])}</small><div class="g-rate">${esc(g[3])}</div></div>`
+  ).join('')+'</div>';
+  const btn=document.querySelector('#gear .cta .btn');
+  if(btn)btn.innerHTML='<span class="ic" data-i="chat"></span> '+(n?('Enquire to rent ('+n+')'):'Enquire to rent');
+  hydrate(document.getElementById('gear'));}
 function togGear(i){gearSel[i]=!gearSel[i];renderGear();}
 function gearEnquire(){const picked=gearItems.filter((g,i)=>gearSel[i]).map(g=>g[1]);wa(picked.length?('I want to rent: '+picked.join(', ')):'I want to rent trek gear.');}
+function permitIcon(name){name=String(name||'').toLowerCase();
+  if(name.includes('forest'))return 'pine';
+  if(name.includes('national'))return 'altitude';
+  if(name.includes('eco')||name.includes('camp'))return 'tent';
+  if(name.includes('foreign'))return 'globe';
+  return 'permits';}
 function renderPermits(q){const lq=(q||'').toLowerCase().trim();
   const list=lq?permitTypes.filter(p=>(p[0]+' '+p[1]).toLowerCase().includes(lq)):permitTypes;
-  document.getElementById('permitList').innerHTML=list.length?list.map(p=>`<div class="perm"><b>${p[0]}</b><p>${p[1]}</p><div class="pf"><span class="badge">${ic('clock',12)} ${p[2]} · ${p[3]}</span><button class="pa" onclick="wa('I need the ${p[0]} — please assist.')">Apply</button></div></div>`).join(''):'<div class="empty"><p>No permits match your search.</p></div>';
+  document.getElementById('permitList').innerHTML=list.length?list.map(p=>
+    `<div class="pcard"><div class="p-ic">${ic(permitIcon(p[0]),22)}</div><div class="p-bd"><b>${esc(p[0])}</b><p>${esc(p[1])}</p><div class="p-ft"><span class="p-badge">${ic('clock',12)} ${esc(p[2])} · ${esc(p[3])}</span><button class="p-apply" onclick="wa('I need the ${jsq(p[0])} — please assist.')">Apply</button></div></div></div>`
+  ).join(''):'<div class="empty"><p>No permits match your search.</p></div>';
   hydrate(document.getElementById('permits'));}
 const ACT_GRAD=['linear-gradient(135deg,#2f6bff,#0a3aa0)','linear-gradient(135deg,#1f9e6b,#0c6b48)','linear-gradient(135deg,#ff7a59,#c43b1b)','linear-gradient(135deg,#5a8cff,#2f4fd0)','linear-gradient(135deg,#e0a200,#b06b00)','linear-gradient(135deg,#16b3c9,#0a6b88)'];
 function renderActivities(){const el=document.getElementById('actList');el.className='';el.innerHTML=activitiesData.map((a,i)=>`<div class="atile"><div class="ai-banner" style="background:${ACT_GRAD[i%ACT_GRAD.length]}"><span class="msr">${IMAP[a[0]]||'sports'}</span></div><b>${a[1]}</b><small>${a[2]}</small><div class="ap">${a[3]}<button class="bk" onclick="bookActivity('${a[1].replace(/'/g,'')}','${a[3]}')">Book</button></div></div>`).join('');hydrate(document.getElementById('activities'));}

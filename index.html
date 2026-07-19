@@ -172,6 +172,32 @@
   .perm b{font-size:14px}.perm p{font-size:12px;color:var(--muted);margin:5px 0 0;line-height:1.5}
   .perm .pf{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
   .perm .pa{background:var(--accent);color:#fff;border:0;font-size:12px;font-weight:600;padding:8px 14px;border-radius:10px;cursor:pointer}
+  /* --- Rent Gear: card grid --- */
+  .gear-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .gcard{position:relative;background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:14px;cursor:pointer;transition:border-color .15s,background .15s,transform .1s}
+  .gcard:active{transform:scale(.98)}
+  .gcard.sel{border-color:var(--accent);background:rgba(47,107,255,.09)}
+  .gcard .g-ic{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:rgba(47,107,255,.14);color:var(--accent2);margin-bottom:11px}
+  .gcard.sel .g-ic{background:rgba(47,107,255,.22)}
+  .gcard b{font-size:13.5px;display:block;line-height:1.25}
+  .gcard small{font-size:11px;color:var(--muted);display:block;margin-top:3px;line-height:1.4}
+  .gcard .g-rate{margin-top:11px;font-size:13.5px;font-weight:700;color:var(--accent2)}
+  .gcard .g-chk{position:absolute;top:12px;right:12px;width:22px;height:22px;border-radius:50%;border:2px solid var(--stroke2);display:grid;place-items:center;color:transparent;transition:.15s}
+  .gcard.sel .g-chk{background:var(--accent);border-color:var(--accent);color:#fff}
+  /* --- Permits: icon cards --- */
+  .pcard{display:flex;gap:13px;background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:15px;margin-bottom:12px}
+  .pcard .p-ic{width:44px;height:44px;flex:none;border-radius:12px;display:grid;place-items:center;background:rgba(15,157,88,.16);color:#0f9d58}
+  .pcard .p-bd{flex:1;min-width:0}
+  .pcard .p-bd b{font-size:14px}
+  .pcard .p-bd p{font-size:12px;color:var(--muted);margin:4px 0 0;line-height:1.5}
+  .pcard .p-ft{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:13px;flex-wrap:wrap}
+  .pcard .p-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);background:var(--card2);border:1px solid var(--stroke);border-radius:999px;padding:5px 11px}
+  .pcard .p-apply{background:var(--accent);color:#fff;border:0;font-size:12.5px;font-weight:700;padding:9px 18px;border-radius:11px;cursor:pointer;transition:transform .1s}
+  .pcard .p-apply:active{transform:scale(.96)}
+  /* --- Activities: card polish --- */
+  .atile{box-shadow:0 8px 22px -18px rgba(0,0,0,.6)}
+  .atile .bk{padding:7px 15px;transition:transform .1s}
+  .atile .bk:active{transform:scale(.95)}
   .badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;color:var(--muted);background:rgba(255,255,255,.06);border:1px solid var(--stroke);padding:4px 8px;border-radius:8px}
   .msr{font-family:'Material Symbols Rounded';font-weight:400;font-style:normal;line-height:1;white-space:nowrap;direction:ltr;display:inline-block;vertical-align:middle;overflow:hidden;max-width:1.4em;
     font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24;-webkit-font-smoothing:antialiased}
