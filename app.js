@@ -1952,6 +1952,7 @@ function postCard(p){
    ${p.trek?`<div class="ig-trek" onclick="openDetailByName('${jsq(p.trek)}')">${ic('pin',13)} ${esc(p.trek)}</div>`:''}
    ${media.length?`<div class="car" ondblclick="dblLike('${p.id}',this)"><div class="car-track" onscroll="carScroll(this)">${media.map(mediaItem).join('')}</div>${dots}<div class="heart-burst">${ic('like',96)}</div></div>`:''}
    ${textOnly?`<div class="ig-textpost">${linkifyMentions(esc(p.txt))}</div>`:''}
+   ${p.trek?`<div class="ig-book" onclick="openDetailByName('${jsq(p.trek)}')"><span class="msr">confirmation_number</span><span>View trip &amp; book</span><span class="ig-book-go">${ic('back',15)}</span></div>`:''}
    ${tagged}
    <div class="ig-actions">
      <div class="ig-left">

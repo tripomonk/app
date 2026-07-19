@@ -866,6 +866,14 @@
   .socchip{display:inline-flex;align-items:center;padding:7px 14px;border-radius:999px;font-size:12px;font-weight:700;
     text-decoration:none;color:#fff;background:var(--sc);box-shadow:0 5px 14px -7px var(--sc)}
   .socchip:active{filter:brightness(.9)}
+  /* --- booking CTA on trip posts --- */
+  .post .ig-book{display:flex;align-items:center;gap:9px;margin:10px 12px 2px;padding:12px 15px;border-radius:13px;
+    background:linear-gradient(135deg,var(--accent),#1f5be0);color:#fff;font-weight:700;font-size:13.5px;cursor:pointer;
+    box-shadow:0 9px 22px -11px var(--accent);transition:filter .15s,transform .1s}
+  .post .ig-book:active{transform:scale(.99);filter:brightness(1.05)}
+  .post .ig-book .msr{font-size:19px}
+  .post .ig-book .ig-book-go{margin-left:auto;display:inline-flex;opacity:.9}
+  .post .ig-book .ig-book-go svg{transform:scaleX(-1)}
   /* --- notifications: swipe-to-delete, tap-to-open --- */
   .noti-sw{position:relative;overflow:hidden;border-radius:14px;margin-bottom:8px}
   .noti-del{position:absolute;inset:0;display:flex;align-items:center;justify-content:flex-end;
