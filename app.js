@@ -378,7 +378,7 @@ function saveLikes(){try{localStorage.setItem('tmk_likes',JSON.stringify(likeSta
 function savePosts(){try{localStorage.setItem('tmk_posts',JSON.stringify(userPosts));}catch(e){}}
 function saveComments(){try{const cm={};allPosts().forEach(p=>{if(p.comments&&p.comments.length)cm[p.id]=p.comments;});localStorage.setItem('tmk_comments',JSON.stringify(cm));}catch(e){}}
 function allPosts(){return userPosts.concat(feed);}
-let _lastFeed=[];
+let _lastFeed=[],_feedToken=0;
 function postById(id){return _lastFeed.find(p=>p.id===id)||allPosts().find(p=>p.id===id);}
 function isFollowing(n){return !!followState[n];}
 function followCount(){return Object.values(followState).filter(Boolean).length;}
@@ -418,6 +418,7 @@ const EXCL=['Personal expenses','Travel to the base city','Anything not in inclu
 
 /* ---------- Auth ---------- */
 let _supa=null,currentUser=null,_loginReturn=null,_loginEmail='',_profileLoadedFor=null;
+let _loginChannel='email',_loginPhone='';   /* which OTP the verify screen is checking */
 function getSupaClient(){
   if(_supa)return _supa;
   if(!sbOn||!window.supabase)return null;
@@ -671,7 +672,48 @@ function initLoginBg(){
   if(img){if(bg)bg.style.backgroundImage=`url('${img}')`;if(obg)obg.style.backgroundImage=`url('${img}')`;}
 }
 
+/* set the OTP screen's heading/icon for whichever channel we used */
+function setOtpScreen(channel,dest){
+  const h=document.querySelector('#otp h2');
+  const sub=document.querySelector('#otp p');
+  const icon=document.querySelector('#otp .msr');
+  if(channel==='sms'){
+    if(h)h.textContent='Check your phone';
+    if(icon)icon.textContent='sms';
+  }else{
+    if(h)h.textContent='Check your email';
+    if(icon)icon.textContent='mark_email_read';
+  }
+  if(sub)sub.innerHTML='We sent a 6-digit code to<br><b id="otpPhone" style="color:#fff">'+esc(dest)+'</b>';
+}
+/* Phone + SMS OTP — the fast, India-first login.
+   Needs an SMS provider set up in Supabase (Auth → Providers → Phone). */
+async function sendPhoneOtp(){
+  const cc=((document.getElementById('ccInput')||{}).value||'+91').trim();
+  let num=((document.getElementById('phoneInput')||{}).value||'').replace(/\D/g,'');
+  if(!num||num.length<7){note('Enter a valid phone number.','Invalid number');return;}
+  /* E.164: +<country><number>, digits only */
+  const phone=(cc.startsWith('+')?cc:'+'+cc).replace(/[^\d+]/g,'')+num;
+  _loginPhone=phone;_loginChannel='sms';
+  const sb=getSupaClient();if(!sb){note('Backend not connected.','Error');return;}
+  const btn=document.getElementById('sendPhoneBtn');if(btn){btn.textContent='Sending…';btn.disabled=true;}
+  const{error}=await sb.auth.signInWithOtp({phone});
+  if(btn){btn.textContent='Continue with Phone →';btn.disabled=false;}
+  if(error){
+    /* the usual cause is no SMS provider configured yet */
+    note(/provider|not enabled|unsupported/i.test(error.message)
+      ? 'Phone login isn’t switched on yet. Use email or Google for now.'
+      : error.message,'Could not send OTP');
+    return;
+  }
+  if(_authMode==='signup'){const n=(document.getElementById('authName').value||'').trim();if(n)saveUserName(n);}
+  setOtpScreen('sms',phone);
+  document.querySelectorAll('.otp-box').forEach(b=>{b.value='';b.classList.remove('filled');});
+  go('otp');
+  setTimeout(()=>{const b=document.querySelector('.otp-box');if(b)b.focus();},350);
+}
 async function sendOtp(){
+  _loginChannel='email';
   const email=(document.getElementById('emailInput').value||'').trim();
   if(!email||!email.includes('@')){note('Enter a valid email address.','Invalid email');return;}
   _loginEmail=email;
@@ -683,24 +725,32 @@ async function sendOtp(){
   if(error){note(error.message,'Error');return;}
   /* save name early if signup mode */
   if(_authMode==='signup'){const n=(document.getElementById('authName').value||'').trim();if(n)saveUserName(n);}
-  const ph=document.getElementById('otpPhone');if(ph)ph.textContent=email;
+  setOtpScreen('email',email);
   /* clear otp boxes */
   document.querySelectorAll('.otp-box').forEach(b=>{b.value='';b.classList.remove('filled');});
   go('otp');
   setTimeout(()=>{const b=document.querySelector('.otp-box');if(b)b.focus();},350);
 }
 async function resendOtp(){
-  const sb=getSupaClient();if(!sb||!_loginEmail)return;
-  const btn=document.getElementById('sendOtpBtn');
-  await sb.auth.signInWithOtp({email:_loginEmail,options:{shouldCreateUser:true}});
-  note('OTP resent to '+_loginEmail,'Sent');
+  const sb=getSupaClient();if(!sb)return;
+  if(_loginChannel==='sms'){
+    if(!_loginPhone)return;
+    await sb.auth.signInWithOtp({phone:_loginPhone});
+    note('OTP resent to '+_loginPhone,'Sent');
+  }else{
+    if(!_loginEmail)return;
+    await sb.auth.signInWithOtp({email:_loginEmail,options:{shouldCreateUser:true}});
+    note('OTP resent to '+_loginEmail,'Sent');
+  }
 }
 async function verifyOtp(){
   const token=getOtpValue().trim();
   if(token.length<6){note('Enter the 6-digit OTP.','Invalid OTP');return;}
   const sb=getSupaClient();if(!sb)return;
   const btn=document.getElementById('verifyOtpBtn');if(btn){btn.textContent='Verifying…';btn.disabled=true;}
-  const{data,error}=await sb.auth.verifyOtp({email:_loginEmail,token,type:'email'});
+  /* verify against the channel the code was sent on */
+  const args=_loginChannel==='sms'?{phone:_loginPhone,token,type:'sms'}:{email:_loginEmail,token,type:'email'};
+  const{data,error}=await sb.auth.verifyOtp(args);
   if(btn){btn.textContent='Verify & Continue';btn.disabled=false;}
   if(error){note('Incorrect OTP. Please try again.','Wrong OTP');return;}
   currentUser=data.user;
@@ -1854,9 +1904,21 @@ async function renderFeed(){
   if(commTab==='Following')list=list.filter(p=>isFollowing(p.n)||(p.n===(getSavedName()||'You')));
   if(commTab==='Recent')list=[...list].sort((a,b)=>b.id.localeCompare(a.id));
   _lastFeed=list;
-  await Promise.all([loadEngagement(list.map(p=>p.id)),loadAuthorPhotos(list.map(p=>p.n))]);
-  box.innerHTML=list.length?list.map(postCard).join(''):`<div class="empty"><p>No posts yet. Share your trek story!</p></div>`;
+  /* Show posts IMMEDIATELY. Waiting on like/comment counts + author photos before
+     the first paint added ~1s of blank feed — the app felt broken. Paint now,
+     then enrich (counts, avatars) and re-render once when they arrive. */
+  const empty='<div class="empty"><p>No posts yet. Share your trek story!</p></div>';
+  box.innerHTML=list.length?list.map(postCard).join(''):empty;
   hydrate(box);
+  if(list.length){
+    const token=++_feedToken;
+    Promise.all([loadEngagement(list.map(p=>p.id)),loadAuthorPhotos(list.map(p=>p.n))]).then(()=>{
+      /* another render started meanwhile — don't clobber it */
+      if(token!==_feedToken||cur!=='community')return;
+      box.innerHTML=list.map(postCard).join('');
+      hydrate(box);
+    }).catch(()=>{});
+  }
 }
 /* pull profile photos for the authors on screen — one query, cached, skips names we already have */
 async function loadAuthorPhotos(names){
@@ -2001,7 +2063,9 @@ async function savePostRemote(post){
 }
 async function loadPostsRemote(){
   const sb=getSupaClient();if(!sb)return null;
-  const{data,error}=await sb.from('community_posts').select('*').order('created_at',{ascending:false}).limit(60);
+  /* older posts stored images as base64 inline (huge). New posts use storage URLs
+     (tiny). Keep the window small so one legacy base64 post doesn't bloat the feed. */
+  const{data,error}=await sb.from('community_posts').select('*').order('created_at',{ascending:false}).limit(30);
   if(error){console.error('loadPostsRemote:',error.message);return null;}
   return(data||[]).map(p=>({id:p.id,uid:p.user_id||null,n:p.author_name||'Trekker',when:timeAgo(p.created_at),txt:p.txt||'',imgs:p.imgs||[],likes:p.likes||0,comments:[],trek:p.trek_tag||'',tagged:p.tagged||[]}));
 }
@@ -3722,7 +3786,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections,addStaff,removeStaff,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections,addStaff,removeStaff,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab});
 
 /* init */
 applyTheme();   /* dark / light / system theme */

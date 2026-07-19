@@ -1846,10 +1846,21 @@
         </button>
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
           <div style="flex:1;height:1px;background:rgba(255,255,255,.15)"></div>
-          <span style="font-size:12px;color:rgba(255,255,255,.45)">or use email OTP</span>
+          <span style="font-size:12px;color:rgba(255,255,255,.45)">or get an OTP</span>
           <div style="flex:1;height:1px;background:rgba(255,255,255,.15)"></div>
         </div>
-        <button class="btn" id="sendOtpBtn" onclick="sendOtp()" style="margin-bottom:14px">Continue with Email →</button>
+        <!-- phone OTP: fastest for India -->
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:14px 12px;flex:none">
+            <span class="msr" style="font-size:18px;color:rgba(255,255,255,.6)">call</span>
+            <input id="ccInput" type="tel" inputmode="numeric" value="+91" maxlength="4" style="all:unset;width:34px;color:#fff;font-size:14px;font-family:inherit"/>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:14px 15px;flex:1;min-width:0">
+            <input id="phoneInput" type="tel" inputmode="numeric" placeholder="Phone number" autocomplete="tel" style="all:unset;flex:1;min-width:0;width:100%;color:#fff;font-size:14px;font-family:inherit"/>
+          </div>
+        </div>
+        <button class="btn" id="sendPhoneBtn" onclick="sendPhoneOtp()" style="margin-bottom:10px">Continue with Phone →</button>
+        <button class="btn ghost" id="sendOtpBtn" onclick="sendOtp()" style="margin-bottom:14px">Email me a code instead</button>
         <button onclick="continueAsGuest()" style="all:unset;width:100%;text-align:center;color:rgba(255,255,255,.55);font-size:13px;font-weight:500;cursor:pointer;padding:10px 0;display:block">Browse without account →</button>
         <p style="color:rgba(255,255,255,.3);font-size:11px;text-align:center;margin:14px 0 0;line-height:1.5">By continuing you agree to our Terms & Privacy Policy</p>
       </div>
