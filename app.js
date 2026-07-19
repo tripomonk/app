@@ -368,6 +368,9 @@ function initials(n){return n.split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').
 function avHash(n){let h=0;for(let i=0;i<n.length;i++)h=(h*31+n.charCodeAt(i))|0;return Math.abs(h);}
 /* other people's profile photos, keyed by display name (filled from `profiles`) */
 let photoByName={},hostByName={},unameByName={};
+/* when each name was last fetched — so a changed DP/username refreshes instead of
+   sticking on the first cached copy for the whole session */
+let _authorFetchedAt={};
 /* profile header counts — declared up here (renderProfile can run early); -1 = not loaded yet */
 let _myPostCount=-1,_myFollowerCount=-1;
 /* declared up here on purpose: renderHome() runs during boot, far above the
@@ -2030,7 +2033,9 @@ async function renderFeed(){
   hydrate(box);
   if(list.length){
     const token=++_feedToken;
-    Promise.all([loadEngagement(list.map(p=>p.id)),loadAuthorPhotos(list.map(p=>p.n))]).then(()=>{
+    /* resolveAuthors rewrites each post's name to the author's CURRENT identity
+       (by user id), so a renamed / re-photo'd / re-usernamed author shows fresh */
+    Promise.all([loadEngagement(list.map(p=>p.id)),resolveAuthors(list,'uid','n')]).then(()=>{
       /* another render started meanwhile — don't clobber it */
       if(token!==_feedToken||cur!=='community')return;
       box.innerHTML=list.map(postCard).join('');
@@ -2039,17 +2044,49 @@ async function renderFeed(){
   }
 }
 /* pull profile photos for the authors on screen — one query, cached, skips names we already have */
+const AUTHOR_TTL=30000;   /* re-check a name at most this often — fresh enough to feel instant, cheap enough */
 async function loadAuthorPhotos(names){
   const sb=getSupaClient();if(!sb)return;
-  const mine=myName();
-  const need=[...new Set(names)].filter(n=>n&&n!==mine&&n!=='You'&&!(n in photoByName));
+  const mine=myName();const now=Date.now();
+  /* refresh names we haven't fetched in the last TTL, so a changed DP/username
+     shows up instead of the stale first copy sticking for the whole session */
+  const need=[...new Set(names)].filter(n=>n&&n!==mine&&n!=='You'&&(!(n in photoByName)||now-(_authorFetchedAt[n]||0)>AUTHOR_TTL));
   if(!need.length)return;
   try{
     const{data}=await sb.from('profiles').select('name,photo,is_host,username').in('name',need);
-    (data||[]).forEach(r=>{if(r.name){photoByName[r.name]=r.photo||'';hostByName[r.name]=!!r.is_host;if(r.username)unameByName[r.name]=r.username;}});
+    (data||[]).forEach(r=>{if(r.name){photoByName[r.name]=r.photo||'';hostByName[r.name]=!!r.is_host;unameByName[r.name]=r.username||'';_authorFetchedAt[r.name]=now;}});
   }catch(e){}
   /* remember the misses too, so we don't re-query every render */
-  need.forEach(n=>{if(!(n in photoByName))photoByName[n]='';});
+  need.forEach(n=>{if(!(n in photoByName))photoByName[n]='';_authorFetchedAt[n]=now;});
+}
+/* Resolve display identity by the STABLE user id, not the name snapshot. Rewrites
+   each row's name field to the author's CURRENT profile name and fills the
+   name-keyed display maps — so an old post/comment shows the current name,
+   username and photo even after the author renames. Mirrors resolveHostNames().
+   Rows without a uid (legacy/demo) fall back to name-based lookup. */
+async function resolveAuthors(rows,idKey,nameKey){
+  const sb=getSupaClient();if(!sb||!rows||!rows.length)return rows;
+  const now=Date.now();
+  const ids=[...new Set(rows.map(r=>r[idKey]).filter(Boolean))];
+  const byId={};
+  if(ids.length){
+    try{
+      const{data}=await sb.from('profiles').select('id,name,username,photo,is_host').in('id',ids);
+      (data||[]).forEach(p=>{if(p.id)byId[p.id]=p;});
+    }catch(e){}
+  }
+  rows.forEach(r=>{
+    const p=byId[r[idKey]];
+    if(!p||!p.name)return;
+    r[nameKey]=p.name;                               /* show the current name */
+    photoByName[p.name]=p.photo||'';
+    hostByName[p.name]=!!p.is_host;
+    unameByName[p.name]=p.username||'';
+    _authorFetchedAt[p.name]=now;
+  });
+  const noId=rows.filter(r=>!r[idKey]).map(r=>r[nameKey]);
+  if(noId.length)await loadAuthorPhotos(noId);
+  return rows;
 }
 /* fetch shared like + comment counts for the visible posts (one query each) */
 async function loadEngagement(ids){
@@ -2523,7 +2560,8 @@ async function loadComments(id){
   const sb=getSupaClient();
   if(sb){try{const{data}=await sb.from('post_comments').select('*').eq('post_id',id).order('created_at',{ascending:true});cmList=data||[];}catch(e){cmList=[];}}
   commentCounts[id]=cmList.length;
-  await loadAuthorPhotos(cmList.map(c=>c.author_name));   /* so commenters show their photo too */
+  /* resolve each commenter's CURRENT name/username/photo by user id (falls back to name) */
+  await resolveAuthors(cmList,'user_id','author_name');
   renderComments();
 }
 function commentHTML(c,isNew){
