@@ -1072,7 +1072,9 @@ function openCropper(src){
 async function saveProfile(){
   const name=(document.getElementById('epName').value||'').trim();
   const mobile=(document.getElementById('epMobile').value||'').trim();
-  const uname=((document.getElementById('epUser')||{}).value||'').trim().toLowerCase();
+  /* usernames never contain spaces (or any char outside a-z0-9._) — strip before saving,
+     so nothing can slip through even if the live field somehow held one */
+  const uname=((document.getElementById('epUser')||{}).value||'').toLowerCase().replace(/[^a-z0-9._]/g,'');
   if(!name){note('Please enter your full name.','Name required');document.getElementById('epName').focus();return;}
   if(uname){
     const err=usernameError(uname);
