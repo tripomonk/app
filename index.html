@@ -1030,6 +1030,18 @@
     cursor:pointer;color:var(--muted);background-size:cover;background-position:center;margin-bottom:14px}
   .tpick .msr{font-size:28px}
 
+  /* ---- host commission disclosure + consent ---- */
+  .commission-box{background:linear-gradient(135deg,rgba(15,157,88,.12),rgba(47,107,255,.08));
+    border:1px solid rgba(15,157,88,.3);border-radius:16px;padding:14px;margin:6px 0 16px}
+  .commission-box .cb-row{display:flex;gap:10px;align-items:flex-start;margin-bottom:12px}
+  .commission-box .cb-row .msr{font-size:22px;color:#0f9d58;flex:none;margin-top:1px}
+  html.light .commission-box .cb-row .msr{color:#0b7a44}
+  .commission-box b{font-size:13.5px;display:block;margin-bottom:3px}
+  .commission-box small{font-size:12px;color:var(--muted-strong);line-height:1.55}
+  .commission-box small b{display:inline;color:var(--text)}
+  .cb-consent{display:flex;align-items:flex-start;gap:9px;font-size:12px;line-height:1.45;color:var(--muted-strong);cursor:pointer}
+  .cb-consent input{width:20px;height:20px;flex:none;accent-color:var(--accent);margin-top:1px;cursor:pointer}
+
   /* ---- host marketplace ---- */
   .host-hero{border-radius:20px;padding:20px 18px;margin-bottom:16px;
     background:linear-gradient(135deg,rgba(47,107,255,.22),rgba(255,206,31,.14));
@@ -2120,7 +2132,7 @@
 
     <div class="tform-sec"><span class="msr">edit</span><b>The basics</b></div>
     <div class="field"><label>Trip title *</label><div class="inp"><input id="htTitle" placeholder="e.g. Spiti Winter Expedition" oninput="htPreview()"/></div></div>
-    <div class="field"><label>Destination *</label><div class="inp"><span class="msr" style="font-size:18px;color:var(--muted)">pin_drop</span><input id="htDest" placeholder="e.g. Spiti Valley" oninput="htPreview()"/></div></div>
+    <div class="field"><label>Destination *</label><div class="inp"><span class="msr" style="font-size:18px;color:var(--muted)">pin_drop</span><input id="htDest" list="htDestList" placeholder="Pick or type a place" oninput="htPreview()"/></div><datalist id="htDestList"></datalist></div>
 
     <div class="tform-sec"><span class="msr">event</span><b>When &amp; who</b></div>
     <div class="field"><label>Start date *</label><div class="inp dateinp" onclick="openPicker('htDate')"><span class="msr" style="font-size:19px;color:var(--muted)">event</span><input type="date" id="htDate" onchange="htEndFromStart();htPreview()"/></div></div>
@@ -2139,8 +2151,8 @@
 
     <div class="tform-sec"><span class="msr">description</span><b>Details</b><small>optional</small></div>
     <div class="field"><label>Description</label><textarea id="htDesc" rows="4" placeholder="What makes this trip special?"></textarea></div>
-    <div class="field"><label>Inclusions</label><textarea id="htInc" rows="3" placeholder="One per line — stays, permits, meals…"></textarea></div>
-    <div class="field"><label>Exclusions</label><textarea id="htExc" rows="3" placeholder="One per line — flights, personal expenses…"></textarea></div>
+    <div class="field"><label>Inclusions — tap what's included</label><div class="chiprow" id="htIncChips"></div></div>
+    <div class="field"><label>Exclusions — tap what's NOT included</label><div class="chiprow" id="htExcChips"></div></div>
 
     <button class="btn" id="htSubmit" onclick="submitHostTrip()">Submit for review</button>
     <p class="host-note">Tripomonk reviews every trip before it goes live. We'll confirm operations and commercials with you first.</p>

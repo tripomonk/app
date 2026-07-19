@@ -359,7 +359,10 @@ let liveHostTrips=[],verifiedHosts=[];
    bottom of the file, they'd be in the temporal dead zone and kill the script. */
 let _hostApp=null,_hostLoaded=false;
 let hdTab='Trips',_hdTrips=[],_editTripId=null;
-let _htDiff='Moderate',_htFile=null,_htImgData='';
+let _htDiff='Moderate',_htFile=null,_htImgData='',_htInc=[],_htExc=[];
+/* common options so hosts tap instead of typing */
+const INC_OPTIONS=['Accommodation','All meals','Transport','Trek guide','Permits','Camping equipment','First aid','Porter support','Bonfire','Sightseeing'];
+const EXC_OPTIONS=['Travel to base city','Personal expenses','Insurance','Tips','Gear rental','Meals en route','Anything not listed'];
 /* a verified host gets a tick next to their name — public trust signal, admin-set only */
 function hostBadge(n){return hostByName[n]?'<span class="vbadge" title="Verified Host"><span class="msr">check</span></span>':'';}
 function photoFor(n){
@@ -983,6 +986,8 @@ function openCropper(src){
     renderEditProfile();
     upsertProfile();          /* sync to the server so it survives sign-out / other devices */
     if(cur==='profile')renderProfile();
+    if(cur==='hostProfile')renderHostProfile();   /* hosts change their photo here too */
+    if(cur==='hostDash')renderHostDash();
   };
 }
 
@@ -4093,6 +4098,12 @@ async function renderBecomeHost(){
     +'<div class="field"><label>Trips you want to host</label><div class="inp"><input id="hfTypes" placeholder="Treks, road trips, photo tours…"/></div></div>'
     +'<div class="field"><label>Preferred destinations</label><div class="inp"><input id="hfDests" placeholder="Spiti, Rishikesh, Meghalaya…"/></div></div>'
     +'<div class="field"><label>Anything else</label><div class="inp"><input id="hfAbout" placeholder="Tell us about your community"/></div></div>'
+    /* commission — must be crystal clear and consented before applying */
+    +'<div class="commission-box">'
+      +'<div class="cb-row"><span class="msr">payments</span><div><b>How you earn</b>'
+      +'<small>Tripomonk keeps a <b>10% platform fee</b> on each confirmed booking. You keep <b>90%</b>. We run all operations, payments and support; your payout is settled after the trip.</small></div></div>'
+      +'<label class="cb-consent"><input type="checkbox" id="hfConsent"/> <span>I understand and agree that Tripomonk charges a 10% commission on my hosted trips.</span></label>'
+    +'</div>'
     +'<button class="btn" id="hfSubmit" onclick="submitHostApp()">Submit application</button>'
     +'<p class="host-note">We never ask for your government ID, bank details or GST in the app. Those are collected on the verification call once your application is approved.</p>';
   hydrate(body);
@@ -4102,13 +4113,15 @@ async function submitHostApp(){
   const name=v('hfName'),mobile=v('hfMobile');
   if(!name){note('Please enter your full name.','Name required');return;}
   if(!/^[+\d][\d\s-]{7,}$/.test(mobile)){note('Please enter a valid mobile number.','Check your number');return;}
+  if(!(document.getElementById('hfConsent')||{}).checked){note('Please agree to the 10% commission to continue.','Consent needed');return;}
   const sb=getSupaClient();const uid=sb?await authUid():null;
   if(!sb||!uid){note('Please sign in to apply.','Sign in required');return;}
   const btn=document.getElementById('hfSubmit');
   if(btn){btn.disabled=true;btn.textContent='Submitting…';}
   const row={user_id:uid,full_name:name,mobile:mobile,city:v('hfCity'),instagram:v('hfInsta'),youtube:v('hfYt'),
     website:v('hfSite'),followers:v('hfFollowers'),languages:v('hfLangs'),experience:v('hfExp'),
-    trip_types:v('hfTypes'),destinations:v('hfDests'),about:v('hfAbout'),status:'pending'};
+    trip_types:v('hfTypes'),destinations:v('hfDests'),about:v('hfAbout'),status:'pending',
+    commission_pct:10,commission_consent:true,consent_at:new Date().toISOString()};
   const r=await sb.from('host_applications').insert(row);
   if(btn){btn.disabled=false;btn.textContent='Submit application';}
   if(r.error){
@@ -4203,9 +4216,19 @@ async function reviewHost(id,status,name){
    ============================================================ */
 const HT_DIFF=['Easy','Moderate','Difficult'];
 
+function htChip(list,sel,fn){
+  return list.map(o=>'<span class="tap '+(sel.includes(o)?'sel':'')+'" onclick="'+fn+'(\''+jsq(o)+'\')">'+esc(o)+'</span>').join('');
+}
+function toggleInc(o){const i=_htInc.indexOf(o);i>=0?_htInc.splice(i,1):_htInc.push(o);renderHostTrip();}
+function toggleExc(o){const i=_htExc.indexOf(o);i>=0?_htExc.splice(i,1):_htExc.push(o);renderHostTrip();}
 function renderHostTrip(){
   const d=document.getElementById('htDiff');
   if(d)d.innerHTML=HT_DIFF.map(x=>'<span class="tap '+(_htDiff===x?'sel':'')+'" onclick="pickHtDiff(\''+x+'\')">'+x+'</span>').join('');
+  /* destination suggestions + inclusion/exclusion pickers */
+  const dl=document.getElementById('htDestList');
+  if(dl&&typeof DESTS!=='undefined')dl.innerHTML=DESTS.map(x=>'<option value="'+esc(x.n)+'">').join('');
+  const ic2=document.getElementById('htIncChips');if(ic2)ic2.innerHTML=htChip(INC_OPTIONS,_htInc,'toggleInc');
+  const ec=document.getElementById('htExcChips');if(ec)ec.innerHTML=htChip(EXC_OPTIONS,_htExc,'toggleExc');
   const img=document.getElementById('htImg');
   if(img){
     if(_htImgData){
@@ -4286,11 +4309,14 @@ async function openHostTrip(id){
     _htDiff=t.difficulty||'Moderate';_htImgData=t.img||'';
     set('htTitle',t.title);set('htDest',t.destination);set('htDate',t.start_date);set('htEnd',t.end_date);
     set('htDays',t.days);set('htMax',t.max_people);set('htPrice',t.price);
-    set('htDesc',t.description);set('htInc',t.inclusions);set('htExc',t.exclusions);
+    set('htDesc',t.description);
+    /* stored inclusions/exclusions are newline/comma text — split back into chips */
+    const splt=s=>String(s||'').split(/[\n,]+/).map(x=>x.trim()).filter(Boolean);
+    _htInc=splt(t.inclusions);_htExc=splt(t.exclusions);
     htDaysFromRange();
   }else{
-    _htDiff='Moderate';_htImgData='';
-    ['htTitle','htDest','htDate','htEnd','htDays','htMax','htPrice','htDesc','htInc','htExc'].forEach(k=>set(k,''));
+    _htDiff='Moderate';_htImgData='';_htInc=[];_htExc=[];
+    ['htTitle','htDest','htDate','htEnd','htDays','htMax','htPrice','htDesc'].forEach(k=>set(k,''));
   }
   go('hostTrip');renderHostTrip();
   const h=document.querySelector('#hostTrip .bar h1');if(h)h.textContent=id?'Edit trip':'Create a trip';
@@ -4332,7 +4358,7 @@ async function submitHostTrip(){
     const hostName=(_hostApp&&_hostApp.full_name)||myName();
     const row={host_id:uid,host_name:hostName,title:title,destination:dest,start_date:date,end_date:end,
       days:days,max_people:max,difficulty:_htDiff,price:price,
-      description:v('htDesc'),inclusions:v('htInc'),exclusions:v('htExc')};
+      description:v('htDesc'),inclusions:_htInc.join('\n'),exclusions:_htExc.join('\n')};
     /* keep the existing photo on edit unless a new one was picked */
     if(imgUrl)row.img=imgUrl; else if(!_editTripId)row.img=null;
     let r;
@@ -4750,7 +4776,15 @@ function renderHostProfile(){
   const a=_hostApp||{};
   const val={hpName:a.full_name,hpCity:a.city,hpMobile:a.mobile,hpInsta:a.instagram,hpYt:a.youtube,
              hpSite:a.website,hpFollowers:a.followers,hpLangs:a.languages};
-  box.innerHTML=HP_FIELDS.map(f=>'<div class="field"><label>'+f[1]+'</label>'
+  const photo=getSavedPhoto();
+  box.innerHTML='<div style="text-align:center;margin-bottom:20px">'
+      +'<div id="hpAv" class="pav" style="margin:0 auto;cursor:pointer;position:relative;'
+      +(photo?'background-image:url(\''+esc(photo)+'\')':'')+'" onclick="document.getElementById(\'hpPhoto\').click()">'
+      +(photo?'':esc((myName()[0]||'H').toUpperCase()))
+      +'<span style="position:absolute;bottom:0;right:0;width:26px;height:26px;border-radius:50%;background:var(--accent);display:grid;place-items:center"><span class="msr" style="font-size:14px;color:#fff">photo_camera</span></span></div>'
+      +'<div style="font-size:12px;color:var(--muted);margin-top:8px">Tap to change your photo</div>'
+      +'<input type="file" id="hpPhoto" accept="image/*" hidden onchange="epPickPhoto(this)"/></div>'
+    +HP_FIELDS.map(f=>'<div class="field"><label>'+f[1]+'</label>'
       +'<div class="inp"><input id="'+f[0]+'" type="'+f[2]+'" value="'+esc(val[f[0]]||'')+'"/></div></div>').join('')
     +'<div class="field"><label>Short bio</label><textarea id="hpBio" rows="3" placeholder="Shown on your host page">'+esc(a.bio||'')+'</textarea></div>'
     +'<div class="field"><label>Travel experience</label><div class="inp"><input id="hpExp" value="'+esc(a.experience||'')+'"/></div></div>'
