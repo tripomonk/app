@@ -1418,7 +1418,10 @@ function handleDeepLink(){
   const h=window.location.hash||'';
   const m=h.match(/#trek=([^&]+)/);
   if(m){const name=decodeURIComponent(m[1]);setTimeout(()=>{try{openDetailByName(name);}catch(e){}},400);return;}
-  /* host trip shared link: #htrip=<id> opens the public host-trip page */
+  /* new clean host-trip link: #trip=<slug> */
+  const mt=h.match(/#trip=([^&]+)/);
+  if(mt){const key=decodeURIComponent(mt[1]);setTimeout(()=>{try{openHostTripBySlug(key);}catch(e){}},400);return;}
+  /* legacy host-trip link: #htrip=<id> (keep working for already-shared links) */
   const mh=h.match(/#htrip=([^&]+)/);
   if(mh){const id=decodeURIComponent(mh[1]);setTimeout(()=>{try{openHostTripDetail(id);}catch(e){}},400);}
 }
@@ -5038,14 +5041,30 @@ async function deleteHostTrip(id,title){
   note('Trip deleted.','Done');
   renderHostDash();
 }
-/* public shareable link to a host trip */
-function hostTripUrl(id){return window.location.origin+window.location.pathname+'#htrip='+encodeURIComponent(id);}
+function slugify(s){return String(s||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');}
+/* clean, readable shareable link — e.g. app.tripomonk.com/#trip=kedarkantha-winter-summit
+   (no index.html, no raw UUID). Falls back to the id if the title has no usable slug. */
+function hostTripUrl(id,title){
+  const base=window.location.origin+window.location.pathname.replace(/index\.html$/,'');
+  const slug=slugify(title);
+  return base+'#trip='+(slug||encodeURIComponent(id));
+}
+/* open a host trip from a shared slug (or id) */
+async function openHostTripBySlug(key){
+  let ht=(liveHostTrips||[]).find(t=>slugify(t.title)===key||String(t.id)===key);
+  if(!ht){const sb=getSupaClient();if(sb){try{
+    const{data}=await sb.from('host_trips').select('id,title').eq('status','live');
+    ht=(data||[]).find(t=>slugify(t.title)===key)||(data||[]).find(t=>String(t.id)===key);
+  }catch(e){}}}
+  if(ht)openHostTripDetail(ht.id);
+  else note('This trip isn’t available right now.','Not found');
+}
 function findHostTrip(id){return (_hdTrips||[]).find(x=>String(x.id)===String(id))||(liveHostTrips||[]).find(x=>String(x.id)===String(id));}
 /* share a trip to OTHER platforms — native share sheet, or copy the link */
 async function shareHostTrip(id,title){
   const t=findHostTrip(id);
   if(t&&t.status&&t.status!=='live'){note('This trip goes public once Tripomonk publishes it. You can share it then to get bookings.','Not live yet');return;}
-  const url=hostTripUrl(id);
+  const url=hostTripUrl(id,title);
   const data={title:'Tripomonk — '+title,text:'Join my trek “'+title+'” on Tripomonk 🏔️',url};
   if(navigator.share){try{await navigator.share(data);return;}catch(e){if(e&&e.name==='AbortError')return;}}
   try{await navigator.clipboard.writeText(url);toast('Trip link copied — share it anywhere');}
