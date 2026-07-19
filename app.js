@@ -409,13 +409,17 @@ async function loadFollowsFromServer(){
     }
   }catch(e){}
 }
+/* returns true on success, false if the server rejected the change (so the
+   caller can roll the optimistic UI back). No backend = demo mode = local-only
+   = treat as success (nothing to reconcile against). */
 async function syncFollow(n,on){
-  const sb=getSupaClient();if(!sb)return;
-  const uid=await authUid();if(!uid)return;
+  const sb=getSupaClient();if(!sb)return true;
+  const uid=await authUid();if(!uid)return false;
   try{
-    if(on)await sb.from('follows').upsert({follower_id:uid,following_name:n},{onConflict:'follower_id,following_name'});
-    else await sb.from('follows').delete().eq('follower_id',uid).eq('following_name',n);
-  }catch(e){}
+    if(on){const{error}=await sb.from('follows').upsert({follower_id:uid,following_name:n},{onConflict:'follower_id,following_name'});if(error)throw error;}
+    else{const{error}=await sb.from('follows').delete().eq('follower_id',uid).eq('following_name',n);if(error)throw error;}
+    return true;
+  }catch(e){return false;}
 }
 function saveLikes(){try{localStorage.setItem('tmk_likes',JSON.stringify(likeState));}catch(e){}}
 function savePosts(){try{localStorage.setItem('tmk_posts',JSON.stringify(userPosts));}catch(e){}}
@@ -443,13 +447,19 @@ function updateFollowUI(n){
 }
 function toggleFollow(n){
   const wasFollowing=!!followState[n];
-  followState[n]=!followState[n];saveFollows();
+  /* optimistic: flip the button now, reconcile with the server after */
+  followState[n]=!wasFollowing;saveFollows();
   updateFollowUI(n);
-  syncFollow(n,!wasFollowing);
   /* notify the user when newly followed */
   if(!wasFollowing){
     uidForName(n).then(uid=>pushNotif({recipientId:uid,recipientName:uid?null:n,type:'follow'}));
   }
+  syncFollow(n,!wasFollowing).then(okr=>{
+    if(okr===false){                 /* server rejected — roll the button back */
+      followState[n]=wasFollowing;saveFollows();updateFollowUI(n);
+      toast(wasFollowing?'Could not unfollow — try again':'Could not follow — check your connection');
+    }
+  });
 }
 const menu=[['bookings','My Bookings','bookings'],['chat','Messages','messages'],['community','Host with Tripomonk','becomeHost'],['shield','Trek Passport','passport'],['like','My Preferences','onboarding'],['monitor','Trek Health','health'],['distance','Trek Navigation','navmap'],['heartmenu','My Wishlist','wishlist'],['starline','My Reviews','reviews'],['settings','Settings','settings'],['help','Help & Support','help']];
 const setList=[['user','Account & security',''],['bell','Notifications',''],['globe','Language - English',''],['card','Payment methods',''],['shield','Privacy Policy','privacy'],['help','About Tripomonk','about']];
@@ -2045,17 +2055,28 @@ async function likePost(id){
   if(!isLoggedIn()){note('Please sign in to like posts.','Sign in required').then(()=>{_loginReturn='community';go('login');});return;}
   const sb=getSupaClient();if(!sb)return;
   const wasLiked=!!likedByMe[id];
+  const prevCount=likeCounts[id]||0;
   /* optimistic UI — update just the tapped heart in place so the pop animation plays */
   likedByMe[id]=!wasLiked;
-  likeCounts[id]=(likeCounts[id]||0)+(wasLiked?-1:1);if(likeCounts[id]<0)likeCounts[id]=0;
+  likeCounts[id]=prevCount+(wasLiked?-1:1);if(likeCounts[id]<0)likeCounts[id]=0;
   updateLikeUI(id);
   sfx(wasLiked?'unlike':'like');
-  const uid=await authUid();if(!uid)return;
-  if(wasLiked){
-    await sb.from('post_likes').delete().eq('post_id',id).eq('user_id',uid);
-  }else{
-    const{error}=await sb.from('post_likes').insert({post_id:id,user_id:uid});
-    if(!error){const p=postById(id);if(p&&(p.uid||p.n))pushNotif({recipientId:p.uid,recipientName:p.uid?null:p.n,type:'like',postId:id});}
+  /* reconcile: any failure restores the exact pre-tap heart + count so the UI never lies */
+  const rollback=()=>{likedByMe[id]=wasLiked;likeCounts[id]=prevCount;updateLikeUI(id);};
+  const uid=await authUid();
+  if(!uid){rollback();return;}
+  try{
+    if(wasLiked){
+      const{error}=await sb.from('post_likes').delete().eq('post_id',id).eq('user_id',uid);
+      if(error)throw error;
+    }else{
+      const{error}=await sb.from('post_likes').insert({post_id:id,user_id:uid});
+      if(error)throw error;
+      const p=postById(id);if(p&&(p.uid||p.n))pushNotif({recipientId:p.uid,recipientName:p.uid?null:p.n,type:'like',postId:id});
+    }
+  }catch(e){
+    rollback();
+    toast(wasLiked?'Could not remove like — try again':'Could not like — check your connection');
   }
 }
 /* custom centered glass modal — replaces native prompt() */
@@ -2070,6 +2091,16 @@ function askCode(title,opts){opts=opts||{};return new Promise(res=>{
   m.onclick=e=>{if(e.target===m)done(null);};
   i.onkeydown=e=>{if(e.key==='Enter')done(i.value);else if(e.key==='Escape')done(null);};
 });}
+/* lightweight auto-dismiss toast — used to explain optimistic-action rollbacks
+   (a failed like/follow) where a full modal would be far too heavy. */
+let _toastTimer=null;
+function toast(msg,ms){
+  let t=document.getElementById('toast');
+  if(!t){t=document.createElement('div');t.id='toast';t.className='toast';document.body.appendChild(t);}
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(()=>{t.classList.remove('show');},ms||2600);
+}
 /* styled message (replaces alert) */
 function note(msg,title){return new Promise(res=>{
   const m=document.getElementById('modal'),t=document.getElementById('modalTitle'),sub=document.getElementById('modalSub'),i=document.getElementById('modalInput'),ok=document.getElementById('modalOk'),cn=document.getElementById('modalCancel');

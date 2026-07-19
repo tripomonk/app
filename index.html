@@ -811,6 +811,13 @@
   /* ---- story viewer ---- */
   .story-viewer{position:absolute;inset:0;z-index:300;background:#050c16;display:none;flex-direction:column}
   .story-viewer.show{display:flex}
+  /* toast — auto-dismiss pill for optimistic-action rollbacks (failed like/follow) */
+  .toast{position:fixed;left:50%;bottom:calc(var(--safe-bottom) + 88px);transform:translateX(-50%) translateY(12px);
+    z-index:400;max-width:88%;padding:11px 16px;border-radius:12px;background:rgba(18,28,44,.94);color:#fff;
+    font-size:13px;font-weight:600;line-height:1.4;text-align:center;box-shadow:0 12px 34px rgba(0,0,0,.4);
+    border:1px solid rgba(255,255,255,.14);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;
+    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .sv-bars{display:flex;gap:4px;padding:calc(var(--safe-top) + 10px) 12px 0;flex:none}
   .sv-bars .sb{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.28);overflow:hidden}
   .sv-bars .sb i{display:block;height:100%;width:0;background:#fff;border-radius:2px}
