@@ -2122,21 +2122,21 @@ function timeAgo(ts){
 
 /* ===== Community notifications (Instagram-style, cross-user via Supabase) ===== */
 function myName(){return getSavedName()||(currentUser&&currentUser.email?currentUser.email.split('@')[0]:'You');}
+/* shape one notification row — shared by the single + batched inserts so they can't drift */
+function notifRow({recipientId,recipientName,type,postId,preview}){
+  return {recipient_id:recipientId||null,recipient_name:recipientName||null,
+    actor_name:myName(),type:type,post_id:postId||null,preview:preview||null,read:false};
+}
+/* drop rows that would notify the actor themselves */
+function notNotifSelf(r){
+  return !(r.recipient_id&&currentUser&&r.recipient_id===currentUser.id)
+      && !(!r.recipient_id&&r.recipient_name&&r.recipient_name===myName());
+}
 async function pushNotif({recipientId,recipientName,type,postId,preview}){
   const sb=getSupaClient();if(!sb)return;
-  const actor=myName();
-  /* never notify yourself */
-  if(recipientId&&currentUser&&recipientId===currentUser.id)return;
-  if(!recipientId&&recipientName&&recipientName===actor)return;
-  const{error}=await sb.from('notifications').insert({
-    recipient_id:recipientId||null,
-    recipient_name:recipientName||null,
-    actor_name:actor,
-    type:type,
-    post_id:postId||null,
-    preview:preview||null,
-    read:false
-  });
+  const row=notifRow({recipientId,recipientName,type,postId,preview});
+  if(!notNotifSelf(row))return;   /* never notify yourself */
+  const{error}=await sb.from('notifications').insert(row);
   if(error)console.warn('pushNotif:',error.message);
 }
 /* resolve a display name to a user_id via their posts (best-effort) */
@@ -2260,13 +2260,19 @@ function mentionsIn(txt){
 }
 /* tell the people who were mentioned */
 async function notifyMentions(txt,postId){
+  const sb=getSupaClient();if(!sb)return;
   const mine=(getSavedUsername()||'').toLowerCase();
-  for(const u of mentionsIn(txt)){
-    if(u===mine)continue;                 /* never ping yourself */
-    const p=personByUsername(u);if(!p)continue;
-    const uid=await uidForName(p.n);
-    pushNotif({recipientId:uid,recipientName:uid?null:p.n,type:'mention',postId,preview:String(txt||'').slice(0,60)});
-  }
+  const people=mentionsIn(txt).filter(u=>u!==mine).map(personByUsername).filter(Boolean);
+  if(!people.length)return;
+  const preview=String(txt||'').slice(0,60);
+  /* resolve every recipient id in parallel, then write all mention notifications in ONE insert */
+  const uids=await Promise.all(people.map(p=>uidForName(p.n)));
+  const rows=people
+    .map((p,i)=>notifRow({recipientId:uids[i],recipientName:uids[i]?null:p.n,type:'mention',postId,preview}))
+    .filter(notNotifSelf);
+  if(!rows.length)return;
+  const{error}=await sb.from('notifications').insert(rows);
+  if(error)console.warn('notifyMentions:',error.message);
 }
 
 /* ---- Post composer ---- */
