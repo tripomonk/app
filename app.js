@@ -1362,7 +1362,15 @@ function applyFilters(){exploreView=computeF();renderExplore();go('explore');}
 /* detail */
 let cur='splash',hist=[],lastTab='home',exploreInit=false;
 let cart={trek:treks[0],date:'',pax:1,gear:false,permit:false,total:0,booking:null};
-function openDetailByName(n){const i=treks.findIndex(t=>t.n===n);if(i>=0)openDetail(i);else note('This trek isn’t available right now.','Not found');}
+async function openDetailByName(n){
+  const i=treks.findIndex(t=>t.n===n);
+  if(i>=0){openDetail(i);return;}
+  /* host-led trips aren't in the static list — match a live host trip by title and open it */
+  let ht=(liveHostTrips||[]).find(t=>String(t.title||'').toLowerCase()===String(n||'').toLowerCase());
+  if(!ht){const sb=getSupaClient();if(sb){try{const{data}=await sb.from('host_trips').select('id').eq('status','live').ilike('title',n).limit(1);if(data&&data[0])ht=data[0];}catch(e){}}}
+  if(ht){openHostTripDetail(ht.id);return;}
+  note('This trek isn’t available right now.','Not found');
+}
 function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
   const hh=document.getElementById('dHero');hh.style.backgroundImage=`url('${t.img}')`;hh.style.transform='';
   document.getElementById('dName').textContent=t.n;
@@ -5046,12 +5054,17 @@ async function postTripToCommunity(id){
   if(t.status!=='live'){note('Only published (live) trips can be shared to the community.','Not live yet');return;}
   if(!(await askConfirm('Share “'+t.title+'” to the community feed as a post?','Post to feed')))return;
   const dates=t.start_date?new Date(t.start_date+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'';
-  const txt='🏔️ Now hosting: '+t.title
-    +'\n📍 '+t.destination+(dates?' · '+dates:'')+(t.days?' · '+t.days+' days':'')
-    +'\n💰 '+INR(t.price||0)+' / person'+(t.max_people?' · max '+t.max_people:'')
-    +'\n\nAll operations & safety by Tripomonk. Book your seat 👉 '+hostTripUrl(id);
+  /* clean, trek-themed caption — no raw link (looks like spam). The trek tag on the
+     post is the tappable CTA that opens the full trip page. */
+  const txt='🏔️ Trekking together — '+t.title
+    +'\n\n📍 '+t.destination
+    +(dates?'\n🗓️ '+dates:'')
+    +(t.days?'\n⛺ '+t.days+' days on the trail':'')
+    +(t.max_people?'\n👥 Small group · max '+t.max_people:'')
+    +'\n💰 ₹'+Number(t.price||0).toLocaleString('en-IN')+' per person'
+    +'\n\nLed by me, with all logistics, permits & safety handled by Tripomonk. Tap the trek below to see the full itinerary and grab your spot 🎒';
   const authorName=getSavedName()||myName();
-  const post={id:'p'+Date.now(),uid:currentUser?currentUser.id:null,n:authorName,when:'just now',txt,imgs:t.img?[t.img]:[],likes:0,comments:[],trek:'',tagged:[]};
+  const post={id:'p'+Date.now(),uid:currentUser?currentUser.id:null,n:authorName,when:'just now',txt,imgs:t.img?[t.img]:[],likes:0,comments:[],trek:t.title,tagged:[]};
   userPosts.unshift(post);savePosts();
   await savePostRemote(post);
   note('Shared to the community feed! 🎉 It will help trekkers discover your trip.','Posted');
