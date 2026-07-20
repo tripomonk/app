@@ -1569,7 +1569,8 @@
   .suggest-rail::-webkit-scrollbar{display:none}
   .scard{flex:none;width:150px;scroll-snap-align:start;background:var(--card);border:1px solid var(--stroke);border-radius:18px;
     padding:14px 12px 12px;text-align:center;box-shadow:0 16px 34px -30px rgba(0,0,0,.9)}
-  .scard .sav{margin:0 auto 8px;cursor:pointer}
+  /* .sav is a full-width block, so auto margins can't centre it — centre its avatar child */
+  .scard .sav{display:flex;justify-content:center;margin:0 0 8px;cursor:pointer}
   .scard b{font-size:12.5px;display:block;line-height:1.25;cursor:pointer;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .scard .smatch{display:inline-flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;color:var(--accent2);
