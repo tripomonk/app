@@ -1311,7 +1311,7 @@ function trekCardH(t){return `<div class="hcard" onclick="openDetail(${t.idx})">
 /* ===== Reusable dynamic 3D coverflow stack (index-based, swipe/drag, infinite, virtualized) ===== */
 let _cfMoved=false;
 /* card builders */
-function trekCardCF(t,i){return `<div class="fcx" data-i="${i}" onclick="cfTapCard(this)">
+function trekCardCF(t,i){return `<div class="fcx" data-cf="${i}" onclick="cfTapCard(this)">
   <div class="fcx-img" style="background-image:url('${t.img}')">${t.soon?'<span class="soon">Coming Soon</span>':''}</div>
   <div class="fcx-bd">
     <h3>${esc(t.n)}</h3>
@@ -1323,19 +1323,19 @@ function trekCardCF(t,i){return `<div class="fcx" data-i="${i}" onclick="cfTapCa
       <div><small>Rating</small><b>★ ${t.r}</b></div>
     </div>
     <div class="fcx-foot"><div><small>Total Price</small><div class="fcx-price">₹${Number(t.price).toLocaleString('en-IN')}</div></div>
-      <button class="fcx-go" onclick="event.stopPropagation();cfOpenCard(this)"><span class="msr">flight</span></button></div>
+      <button class="fcx-go" onclick="event.stopPropagation();cfOpenCard(this)"><span class="msr">hiking</span> View trek</button></div>
   </div></div>`;}
-function actCardCF(a,i){return `<div class="fcx" data-i="${i}" onclick="cfTapCard(this)">
+function actCardCF(a,i){return `<div class="fcx" data-cf="${i}" onclick="cfTapCard(this)">
   <div class="fcx-img act" style="background:linear-gradient(150deg,#0b5cff,#0a3aa0)"><span class="msr act-ic">${IMAP[a[0]]||'sports'}</span></div>
   <div class="fcx-bd">
     <h3>${esc(a[1])}</h3>
     <div class="fcx-loc">${ic('pin',13)} ${esc(a[2])}</div>
     <div class="fcx-desc">Adventure activity — pay in-app, our team coordinates your slot.</div>
     <div class="fcx-foot"><div><small>Price</small><div class="fcx-price">${esc(a[3])}</div></div>
-      <button class="fcx-go" onclick="event.stopPropagation();cfOpenCard(this)"><span class="msr">flight</span></button></div>
+      <button class="fcx-go" onclick="event.stopPropagation();cfOpenCard(this)"><span class="msr">confirmation_number</span> Book now</button></div>
   </div></div>`;}
-function cfTapCard(card){const el=card.closest('.coverflow');if(!el||!el._cf)return;const i=+card.dataset.i;el._cf.open(el._cf.list[i],i);}
-function cfOpenCard(btn){const card=btn.closest('.fcx'),el=card.closest('.coverflow'),i=+card.dataset.i;el._cf.open(el._cf.list[i],i);}
+function cfTapCard(card){const el=card.closest('.coverflow');if(!el||!el._cf)return;const i=+card.dataset.cf;el._cf.open(el._cf.list[i],i);}
+function cfOpenCard(btn){const card=btn.closest('.fcx'),el=card.closest('.coverflow'),i=+card.dataset.cf;el._cf.open(el._cf.list[i],i);}
 function makeCoverflow(elId,list,cardFn,openFn){
   const el=document.getElementById(elId);if(!el)return;
   if(!list.length){el.className='';el.innerHTML='<div class="empty"><p>Nothing here yet.</p></div>';return;}
@@ -1343,6 +1343,29 @@ function makeCoverflow(elId,list,cardFn,openFn){
   el.className='coverflow';
   el.innerHTML=list.map((it,i)=>cardFn(it,i)).join('');
   hydrate(el);
+  wireCoverflowFocus(el);
+}
+/* center-focus: the centred card is full size, neighbours scale down, fade + tilt in */
+function wireCoverflowFocus(el){
+  const cards=[...el.querySelectorAll('.fcx')];if(!cards.length)return;
+  let raf=0;
+  const update=()=>{raf=0;
+    const mid=el.scrollLeft+el.clientWidth/2;
+    cards.forEach(c=>{
+      const cc=c.offsetLeft+c.offsetWidth/2;
+      const d=Math.min(1.4,Math.abs(cc-mid)/(c.offsetWidth||1));   /* 0 = centre */
+      const scale=1-Math.min(d,1)*0.15;
+      const op=1-Math.min(d,1)*0.4;
+      const rot=Math.max(-10,Math.min(10,(cc<mid?1:-1)*d*9));
+      c.style.transform='scale('+scale.toFixed(3)+') rotateY('+rot.toFixed(1)+'deg)';
+      c.style.opacity=op.toFixed(2);
+      c.style.zIndex=String(100-Math.round(Math.min(d,1)*100));
+    });
+  };
+  if(el._cfScroll)el.removeEventListener('scroll',el._cfScroll);
+  el._cfScroll=()=>{if(!raf)raf=requestAnimationFrame(update);};
+  el.addEventListener('scroll',el._cfScroll,{passive:true});
+  update();setTimeout(update,80);setTimeout(update,320);   /* re-run after images size */
 }
 function renderHomeHero(){
   const box=document.getElementById('homeHero');if(!box)return;
@@ -1465,9 +1488,8 @@ function renderHome(){
   const hg=document.getElementById('homeGreet');if(hg){const nm=getSavedName();hg.textContent=nm?'Hello, '+nm:'Hello there';}
   renderHomeHero();
   const list=homeFilter==='All'?treks:treks.filter(t=>t.lvl===homeFilter);
-  const el=document.getElementById('homeList');el.className='hrow';
-  el.innerHTML=list.length?list.map(trekCardH).join(''):'<div class="empty">No treks at this level yet.</div>';
-  hydrate(el);
+  /* Popular Treks as a centre-focus coverflow (big swipeable cards) */
+  makeCoverflow('homeList',list,trekCardCF,(t)=>openDetail(t.idx));
   /* paint the host slot now (CTA), then swap in the rail if any trips are live */
   renderHomeHosts();
   /* seed the rail from the last cached copy so it appears instantly on repeat visits */
