@@ -477,7 +477,7 @@ function toggleFollow(n){
   });
 }
 const menu=[['bookings','My Bookings','bookings'],['chat','Messages','messages'],['shield','Trek Passport','passport'],['like','My Preferences','onboarding'],['monitor','Trek Health','health'],['distance','Trek Navigation','navmap'],['heartmenu','My Wishlist','wishlist'],['starline','My Reviews','reviews'],['settings','Settings','settings'],['help','Help & Support','help']];
-const setList=[['user','Account & security',''],['bell','Notifications',''],['globe','Language - English',''],['card','Payment methods',''],['shield','Privacy Policy','privacy'],['help','About Tripomonk','about']];
+const setList=[['user','Account & security','account'],['bell','Notifications','notifPrefs'],['globe','Language','language'],['card','Payment methods','payments'],['shield','Privacy Policy','privacy'],['help','About Tripomonk','about']];
 /* demo notifications removed — the notifications screen shows only real activity now */
 const faqs=[['How do I book a trek?','Pick a trek, choose a batch on Select Date, add travellers and pay 25% to confirm your seat.'],['What is the cancellation policy?','Free cancellation up to 15 days before departure (full refund). Within 15 days, a 50% charge applies.'],['Do you provide gear on rent?','Yes — add the gear kit (jacket, boots, poles) as an add-on at checkout.'],['Are permits included?','We arrange forest / eco-zone permits for you as an assisted service.'],['What fitness level do I need?','Easy treks suit beginners; Moderate+ need regular cardio for 3–4 weeks before.']];
 const reviewsData=[];  /* real reviews only — demo reviews removed */
@@ -2449,11 +2449,12 @@ function playNotifSound(){
 }
 async function refreshNotifBadge(){
   const dot=document.getElementById('notifDot');if(!dot)return;
+  const np=getNotifPrefs();
   const remote=await loadNotifsRemote();
   const lastSeen=+(localStorage.getItem('tmk_notif_seen')||0);
-  const unread=(remote||[]).filter(n=>new Date(n.created_at).getTime()>lastSeen).length;
-  /* bell lights for community activity OR fresh news */
-  dot.style.display=(unread>0||hasUnseenNews())?'block':'none';
+  const unread=(remote||[]).filter(n=>np[n.type]!==false&&new Date(n.created_at).getTime()>lastSeen).length;
+  /* bell lights for community activity OR fresh news — both respect preferences */
+  dot.style.display=(unread>0||(np.news!==false&&hasUnseenNews()))?'block':'none';
   /* play a chime when NEW activity arrives (not on first load) */
   if(_lastUnread>=0&&unread>_lastUnread)playNotifSound();
   _lastUnread=unread;
@@ -2987,6 +2988,98 @@ function applyTheme(mode){
   }
 }
 function setTheme(mode){try{localStorage.setItem('tmk_theme',mode);}catch(e){}applyTheme(mode);if(cur==='settings')renderSettings();}
+/* ---------- Account & security ---------- */
+function renderAccount(){
+  const box=document.getElementById('accountBody');if(!box)return;
+  if(!isLoggedIn()){
+    box.innerHTML=`<div class="empty" style="padding:26px 0"><p>Sign in to manage your account.</p><div style="text-align:center;margin-top:14px"><button class="btn sm" onclick="_loginReturn='account';go('login')">Sign in</button></div></div>`;
+    hydrate(box);return;
+  }
+  const row=(l,v)=>`<div class="br"><span>${l}</span><b style="max-width:60%;text-align:right;word-break:break-word">${esc(v)}</b></div>`;
+  const un=getSavedUsername();
+  box.innerHTML=`<div class="bill">
+      ${row('Name',getSavedName()||'Not set')}
+      ${row('Username',un?'@'+un:'Not set')}
+      ${row('Email',getUserEmail()||'Not set')}
+      ${row('Mobile',getSavedMobile()||'Not set')}
+    </div>
+    <div class="mrow" onclick="go('editProfile')"><span class="ic">${ic('user',20)}</span><span class="t">Edit profile</span><span class="ch">${ic('back',16)}</span></div>
+    <div class="mrow" onclick="sendPasswordReset()"><span class="ic"><span class="msr" style="font-size:20px">lock_reset</span></span><span class="t">Change password<small style="display:block;color:var(--muted2);font-size:10.5px">We email you a secure reset link</small></span><span class="ch">${ic('back',16)}</span></div>
+    <div class="mrow" onclick="signOut()"><span class="ic">${ic('logout',20)}</span><span class="t" style="color:#ff7a7a">Sign out</span></div>
+    <div class="mrow" onclick="requestAccountDeletion()"><span class="ic"><span class="msr" style="font-size:20px;color:#ff5a6e">delete_forever</span></span><span class="t" style="color:#ff5a6e">Delete my account</span><span class="ch">${ic('back',16)}</span></div>
+    <p class="host-note">Tripomonk never stores your card details — payments are handled by Razorpay. Your email is never shown publicly.</p>`;
+  hydrate(box);
+}
+async function sendPasswordReset(){
+  const email=getUserEmail();
+  if(!email){note('There is no email on this account, so we cannot send a reset link.','Not available');return;}
+  const sb=getSupaClient();if(!sb){note('Cannot reach the server right now.','Try again');return;}
+  if(!(await askConfirm('Send a password reset link to '+email+'?','Change password')))return;
+  try{
+    const{error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+window.location.pathname});
+    if(error)throw error;
+    note('Reset link sent to '+email+'. Check your inbox (and spam).','Email sent ✓');
+  }catch(e){note('Could not send the reset link: '+(e.message||e),'Error');}
+}
+async function requestAccountDeletion(){
+  if(!(await askConfirm('This sends a deletion request to our team. Your profile, posts and bookings will be removed. Continue?','Delete account')))return;
+  wa('Please delete my Tripomonk account ('+(getUserEmail()||getSavedName()||'')+'). I understand my profile, posts and bookings will be removed.');
+}
+/* ---------- Notification preferences ---------- */
+const NOTIF_PREFS=[['like','Likes','favorite'],['comment','Comments','chat_bubble'],['follow','New followers','person_add'],['mention','Mentions','alternate_email'],['news','Trek news & alerts','newspaper']];
+function getNotifPrefs(){
+  const d={like:true,comment:true,follow:true,mention:true,news:true};
+  try{const p=JSON.parse(localStorage.getItem('tmk_notifprefs')||'null');return p?Object.assign(d,p):d;}catch(e){return d;}
+}
+function setNotifPref(k,v){
+  const p=getNotifPrefs();p[k]=!!v;
+  try{localStorage.setItem('tmk_notifprefs',JSON.stringify(p));}catch(e){}
+  renderNotifPrefs();refreshNotifBadge();
+}
+function renderNotifPrefs(){
+  const box=document.getElementById('notifPrefsBody');if(!box)return;
+  const p=getNotifPrefs();
+  box.innerHTML='<p class="host-note" style="margin:0 0 14px">Choose what appears in your notifications. Turning one off hides it from the bell too.</p>'
+    +NOTIF_PREFS.map(n=>`<div class="mrow" onclick="setNotifPref('${n[0]}',${!p[n[0]]})"><span class="ic"><span class="msr" style="font-size:20px">${n[2]}</span></span><span class="t">${n[1]}</span><span class="tgl ${p[n[0]]?'on':''}"><i></i></span></div>`).join('');
+  hydrate(box);
+}
+/* ---------- Language ---------- */
+const LANGS=[['en','English',''],['hi','हिन्दी · Hindi','Coming soon'],['gbk','गढ़वळी · Garhwali','Coming soon']];
+function getLang(){try{return localStorage.getItem('tmk_lang')||'en';}catch(e){return 'en';}}
+function setLang(code){
+  const l=LANGS.find(x=>x[0]===code);if(!l)return;
+  if(l[2]){note(l[1].split('·').pop().trim()+' is not ready yet — we are working on it. The app stays in English for now.','Coming soon');return;}
+  try{localStorage.setItem('tmk_lang',code);}catch(e){}
+  renderLanguage();toast('Language set to '+l[1]);
+}
+function renderLanguage(){
+  const box=document.getElementById('languageBody');if(!box)return;
+  const cur=getLang();
+  box.innerHTML='<p class="host-note" style="margin:0 0 14px">Tripomonk is available in English today. We are adding more languages — turn one on here once it is ready.</p>'
+    +LANGS.map(l=>`<div class="mrow" onclick="setLang('${l[0]}')"><span class="ic">${ic('globe',20)}</span><span class="t">${esc(l[1])}${l[2]?'<small style="display:block;color:var(--muted2);font-size:10.5px">'+l[2]+'</small>':''}</span>${cur===l[0]&&!l[2]?'<span class="msr" style="color:var(--accent2);font-size:20px">check_circle</span>':''}</div>`).join('');
+  hydrate(box);
+}
+/* ---------- Payment methods ---------- */
+function renderPayments(){
+  const box=document.getElementById('paymentsBody');if(!box)return;
+  const methods=[['UPI','GPay, PhonePe, Paytm — any UPI app','account_balance_wallet'],
+    ['Cards','Credit & debit — Visa, Mastercard, RuPay','credit_card'],
+    ['Net banking','All major Indian banks','account_balance'],
+    ['Wallets','Paytm, Amazon Pay and more','wallet']];
+  box.innerHTML=`<div class="panel" style="font-size:12.5px;color:var(--muted);line-height:1.55;margin-bottom:16px">
+      Payments are processed securely by <b style="color:var(--text)">Razorpay</b>. Tripomonk never sees or stores your card details — there is nothing to save here. You choose your method at checkout.</div>
+    <div class="sec" style="margin:6px 2px 10px"><h2 style="font-size:14.5px">Accepted at checkout</h2></div>
+    ${methods.map(m=>`<div class="mrow" style="cursor:default"><span class="ic"><span class="msr" style="font-size:20px">${m[2]}</span></span><span class="t">${m[0]}<small style="display:block;color:var(--muted2);font-size:10.5px">${m[1]}</small></span></div>`).join('')}
+    <div class="sec" style="margin:20px 2px 10px"><h2 style="font-size:14.5px">How payment works</h2></div>
+    <div class="bill">
+      <div class="br"><span>To confirm a booking</span><b>25% advance</b></div>
+      <div class="br"><span>Balance</span><b>Before departure</b></div>
+      <div class="br"><span>Refunds</span><b>As per trek policy</b></div>
+    </div>
+    <div class="mrow" onclick="go('bookings')"><span class="ic">${ic('ticket',20)}</span><span class="t">Payment history &amp; e-tickets</span><span class="ch">${ic('back',16)}</span></div>
+    <button class="btn ghost" style="margin-top:12px" onclick="wa('I have a payment question about my Tripomonk booking.')"><span class="ic" data-i="chat"></span> Payment help</button>`;
+  hydrate(box);
+}
 function renderSettings(){
   const cur2=getTheme();
   const opts=[['system','brightness_auto','System'],['light','light_mode','Light'],['dark','dark_mode','Dark']];
@@ -3013,7 +3106,9 @@ async function renderNotifications(){
   const lastSeen=+(localStorage.getItem('tmk_notif_seen')||0);
   box.innerHTML=`<div style="color:var(--muted);font-size:12px;margin:0 2px 10px">Activity</div><div class="skel-row"><div class="skel sk-av" style="width:38px;height:38px;border-radius:50%"></div><div class="sk-l"><div class="skel" style="width:70%"></div><div class="skel" style="width:40%"></div></div></div><div class="skel-row"><div class="skel sk-av" style="width:38px;height:38px;border-radius:50%"></div><div class="sk-l"><div class="skel" style="width:60%"></div><div class="skel" style="width:35%"></div></div></div>`;
   hydrate(box);
-  const remote=await loadNotifsRemote();
+  const np=getNotifPrefs();
+  /* respect the user's notification preferences — a muted type never shows */
+  const remote=(await loadNotifsRemote()||[]).filter(n=>np[n.type]!==false);
   let activity='';
   if(remote&&remote.length){
     /* pull each actor's photo + username so their face and @handle show, not just initials */
@@ -4187,6 +4282,10 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='editProfile')renderEditProfile();
   if(id==='onboarding')initPrefs();
   if(id==='settings')renderSettings();
+  if(id==='account')renderAccount();
+  if(id==='notifPrefs')renderNotifPrefs();
+  if(id==='language')renderLanguage();
+  if(id==='payments')renderPayments();
   staggerActive();saveNav();
 }
 /* in-app back button → use browser history so it stays in sync with device back */
