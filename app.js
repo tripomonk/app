@@ -1442,7 +1442,7 @@ function renderCompare(){
     if(prefs.some(p=>String(best.region).toLowerCase().includes(String(p).toLowerCase())))reason.push('it matches your preferred region');
     if(best.r>=4.5)reason.push('it has one of the highest trekker ratings');
     reason.push('it offers strong value for the price');
-    compare=`<div class="cmp-table-wrap"><table class="cmp-table"><thead>${head}</thead><tbody>${rows}${ctas}</tbody></table></div>
+    compare=`<div class="cmp-table-wrap"><table class="cmp-table cmp-cols-${sel.length}"><thead>${head}</thead><tbody>${rows}${ctas}</tbody></table></div>
       <div class="cmp-rec">
         <div class="cmp-rec-h"><span class="msr">auto_awesome</span> Recommended for you</div>
         <p>Based on your fitness score (<b>${fs}</b>) and preferences, <b>${esc(best.n)}</b> is your best match — ${reason.slice(0,3).join(', ')}.</p>
@@ -2579,14 +2579,23 @@ function playNotifSound(){
     o.start();o.stop(ctx.currentTime+0.36);
   }catch(e){}
 }
+/* paint every bell badge: a NUMBER for unread activity, a plain dot for news-only */
+function setNotifBadges(count,newsOnly){
+  const badges=document.querySelectorAll('.notif-badge');
+  badges.forEach(b=>{
+    if(count>0){b.textContent=count>99?'99+':String(count);b.classList.add('show');b.classList.remove('dot');}
+    else if(newsOnly){b.textContent='';b.classList.add('show','dot');}
+    else{b.classList.remove('show','dot');b.textContent='';}
+  });
+}
 async function refreshNotifBadge(){
-  const dot=document.getElementById('notifDot');if(!dot)return;
+  if(!document.querySelector('.notif-badge'))return;
   const np=getNotifPrefs();
   const remote=await loadNotifsRemote();
   const lastSeen=+(localStorage.getItem('tmk_notif_seen')||0);
   const unread=(remote||[]).filter(n=>np[n.type]!==false&&new Date(n.created_at).getTime()>lastSeen).length;
-  /* bell lights for community activity OR fresh news — both respect preferences */
-  dot.style.display=(unread>0||(np.news!==false&&hasUnseenNews()))?'block':'none';
+  const newsOnly=unread===0&&np.news!==false&&hasUnseenNews();
+  setNotifBadges(unread,newsOnly);
   /* play a chime when NEW activity arrives (not on first load) */
   if(_lastUnread>=0&&unread>_lastUnread)playNotifSound();
   _lastUnread=unread;
@@ -3266,7 +3275,7 @@ async function renderNotifications(){
   wireNotifSwipe();
   /* mark all as seen */
   localStorage.setItem('tmk_notif_seen',String(Date.now()));
-  const dot=document.getElementById('notifDot');if(dot)dot.style.display='none';
+  setNotifBadges(0,false);_lastUnread=0;   /* opening the screen clears the count */
 }
 /* tap a notification -> open what it's about (the post, or the person who followed you) */
 async function openNotif(nid,type,postId,actor){
