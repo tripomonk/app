@@ -2529,6 +2529,16 @@ async function loadNotifsRemote(){
   });
 }
 const NOTIF_ICON={like:'favorite',comment:'chat_bubble',follow:'person_add',mention:'alternate_email'};
+/* Magic-UI style icon tiles: an emoji on a coloured rounded square per type */
+const NOTIF_STYLE={like:{e:'💗',c:'#FF3D71'},comment:{e:'💬',c:'#1E86FF'},follow:{e:'👤',c:'#FFB800'},mention:{e:'📣',c:'#00C9A7'}};
+function notifDesc(n){
+  const p=n.preview?'“'+esc(n.preview)+'”':'';
+  if(n.type==='like')return 'liked your post';
+  if(n.type==='comment')return 'commented '+p;
+  if(n.type==='follow')return 'started following you';
+  if(n.type==='mention')return 'mentioned you '+p;
+  return 'interacted with you';
+}
 function notifText(n){
   const who=esc(handleFor(n.actor_name));
   if(n.type==='like')return `<b>${who}</b> liked your post`;
@@ -3215,15 +3225,16 @@ async function renderNotifications(){
   if(remote&&remote.length){
     /* pull each actor's photo + username so their face and @handle show, not just initials */
     try{await loadAuthorPhotos(remote.map(n=>n.actor_name));}catch(e){}
-    activity=remote.map(n=>{
+    activity=remote.map((n,idx)=>{
       const unread=new Date(n.created_at).getTime()>lastSeen;
-      const clr=n.type==='like'?'#ff5a7a':n.type==='follow'?'#6ee7a0':'var(--accent2)';
-      return `<div class="noti-sw" data-nid="${esc(n.id)}">
+      const st=NOTIF_STYLE[n.type]||{e:'🔔',c:'#2f6bff'};
+      /* staggered slide-up entrance (AnimatedList feel), capped so it never drags */
+      const delay=Math.min(idx*0.06,0.55);
+      return `<div class="noti-sw" data-nid="${esc(n.id)}" style="animation-delay:${delay}s">
         <div class="noti-del">${ic('trash',20)}</div>
         <div class="noti-card ${unread?'unread':''}" data-type="${esc(n.type||'')}" data-post="${esc(n.post_id||'')}" data-actor="${esc(n.actor_name||'')}">
-          ${avatar(n.actor_name,40)}
-          <div class="noti-t"><span>${notifText(n)}</span><small>${timeAgo(n.created_at)}</small></div>
-          <span class="msr noti-ty" style="color:${clr}">${NOTIF_ICON[n.type]||'notifications'}</span>
+          <div class="noti-ico" style="background:${st.c}">${st.e}</div>
+          <div class="noti-t"><span class="noti-name">${esc(handleFor(n.actor_name))}<b class="noti-time"> · ${timeAgo(n.created_at)}</b></span><span class="noti-desc">${notifDesc(n)}</span></div>
         </div>
       </div>`;
     }).join('');
