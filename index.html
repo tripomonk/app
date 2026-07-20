@@ -1585,14 +1585,10 @@
   /* "few seats left" + news alerts pulse to create urgency */
   .batch .bd .s.few,.ncard .ntag.alert{animation:softpulse 1.8s ease-in-out infinite}
   @keyframes softpulse{0%,100%{opacity:1}50%{opacity:.55}}
-  /* numeric badge on the notification bell — small count, or a dot when 0 but there's news */
-  .notif-badge{position:absolute;top:5px;right:5px;min-width:14px;height:14px;padding:0 2px;border-radius:999px;
-    background:#ff3b5c;color:#fff;font-size:8.5px;font-weight:700;line-height:14px;text-align:center;
-    border:1.5px solid var(--bg,#0b1626);box-sizing:content-box;display:none;pointer-events:none;
-    box-shadow:0 1px 4px rgba(255,59,92,.55)}
-  .notif-badge.show{display:block;animation:badgePop .3s cubic-bezier(.34,1.56,.64,1)}
-  .notif-badge.dot{min-width:8px;height:8px;padding:0;border-radius:50%;font-size:0;top:8px;right:8px;animation:livedot 1.6s ease-in-out infinite}
-  @keyframes badgePop{from{transform:scale(0)}to{transform:scale(1)}}
+  /* simple live dot on the notification bell when there's activity */
+  .notif-badge{position:absolute;top:8px;right:8px;width:9px;height:9px;border-radius:50%;font-size:0;
+    background:#ff3b5c;border:2px solid var(--bg,#0b1626);display:none;pointer-events:none}
+  .notif-badge.show{display:block;animation:livedot 1.6s ease-in-out infinite}
   @keyframes livedot{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.35);opacity:.7}}
   /* card entrance: gentle rise already via .stagger; add a soft glow sweep on hero */
   .hero:before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(120deg,transparent 40%,rgba(255,255,255,.06) 50%,transparent 60%);background-size:250% 100%;animation:heroSheen 7s ease-in-out infinite}

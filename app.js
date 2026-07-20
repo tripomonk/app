@@ -2579,14 +2579,10 @@ function playNotifSound(){
     o.start();o.stop(ctx.currentTime+0.36);
   }catch(e){}
 }
-/* paint every bell badge: a NUMBER for unread activity, a plain dot for news-only */
+/* simple dot on every bell when there's unread activity or fresh news */
 function setNotifBadges(count,newsOnly){
-  const badges=document.querySelectorAll('.notif-badge');
-  badges.forEach(b=>{
-    if(count>0){b.textContent=count>99?'99+':String(count);b.classList.add('show');b.classList.remove('dot');}
-    else if(newsOnly){b.textContent='';b.classList.add('show','dot');}
-    else{b.classList.remove('show','dot');b.textContent='';}
-  });
+  const on=count>0||newsOnly;
+  document.querySelectorAll('.notif-badge').forEach(b=>b.classList.toggle('show',on));
 }
 async function refreshNotifBadge(){
   if(!document.querySelector('.notif-badge'))return;
