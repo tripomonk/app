@@ -2162,62 +2162,16 @@
         <b style="font-size:18px">Tripomonk</b>
       </div>
       <div class="sub" style="font-size:12px;opacity:.75">Dream. Trek. Discover.</div>
-      <!-- card -->
+      <!-- card: Google only, simple onboarding -->
       <div class="c auth-card" style="width:100%">
-        <!-- tabs -->
-        <div style="display:flex;gap:0;background:rgba(255,255,255,.1);border-radius:14px;padding:4px;margin-bottom:22px">
-          <button id="tabSignin" onclick="authTab('signin')" style="flex:1;border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;background:var(--accent);color:#fff;transition:.2s">Sign In</button>
-          <button id="tabSignup" onclick="authTab('signup')" style="flex:1;border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;background:transparent;color:rgba(255,255,255,.75);transition:.2s">Create Account</button>
-        </div>
-        <!-- name field (signup only) -->
-        <div id="signupName" style="display:none;margin-bottom:13px">
-          <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:14px 15px">
-            <span class="msr" style="font-size:20px;color:rgba(255,255,255,.6)">person</span>
-            <input id="authName" type="text" placeholder="Your full name" autocomplete="name" style="all:unset;flex:1;color:#fff;font-size:14px;font-family:inherit"/>
-          </div>
-        </div>
-        <!-- email / username field -->
-        <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:14px 15px;margin-bottom:13px">
-          <span class="msr" style="font-size:20px;color:rgba(255,255,255,.6)" id="emailIcon">alternate_email</span>
-          <input id="emailInput" type="text" inputmode="email" placeholder="Email or username" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="username" style="all:unset;flex:1;color:#fff;font-size:14px;font-family:inherit"/>
-        </div>
-        <!-- password field -->
-        <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:14px 15px;margin-bottom:8px">
-          <span class="msr" style="font-size:20px;color:rgba(255,255,255,.6)">lock</span>
-          <input id="authPassword" type="password" placeholder="Password" autocomplete="current-password" style="all:unset;flex:1;color:#fff;font-size:14px;font-family:inherit"/>
-          <span class="msr" id="pwToggle" onclick="togglePw()" style="font-size:19px;color:rgba(255,255,255,.55);cursor:pointer">visibility</span>
-        </div>
-        <div id="pwHint" style="font-size:11px;color:rgba(255,255,255,.5);margin:0 2px 13px;min-height:14px"></div>
-        <button class="btn" id="pwBtn" onclick="passwordAuth()" style="margin-bottom:12px">Sign in</button>
-        <div style="text-align:right;margin:-4px 2px 14px"><span onclick="forgotPassword()" style="font-size:12px;color:rgba(255,255,255,.6);cursor:pointer">Forgot password?</span></div>
-        <!-- social login buttons -->
-        <button onclick="socialLogin('google')" style="all:unset;width:100%;display:flex;align-items:center;gap:12px;background:#fff;border-radius:14px;padding:13px 16px;cursor:pointer;margin-bottom:10px;box-sizing:border-box">
+        <h2 style="margin:0 0 8px;font-size:26px;font-weight:600">Welcome</h2>
+        <p style="color:rgba(255,255,255,.72);font-size:14px;margin:0 0 26px;line-height:1.55">Sign in or create your Tripomonk account in one tap.</p>
+        <button onclick="socialLogin('google')" style="all:unset;width:100%;display:flex;align-items:center;justify-content:center;gap:12px;background:#fff;border-radius:14px;padding:15px 16px;cursor:pointer;margin-bottom:16px;box-sizing:border-box">
           <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.29-8.16 2.29-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-          <span style="color:#1a1a1a;font-size:14px;font-weight:600;flex:1;text-align:left">Continue with Google</span>
+          <span style="color:#1a1a1a;font-size:15px;font-weight:600">Continue with Google</span>
         </button>
-        <button onclick="socialLogin('facebook')" style="all:unset;display:none;width:100%;align-items:center;gap:12px;background:#1877F2;border-radius:14px;padding:13px 16px;cursor:pointer;margin-bottom:16px;box-sizing:border-box">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M24 12.073C24 5.404 18.627 0 12 0S0 5.404 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.93-1.956 1.886v2.285h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>
-          <span style="color:#fff;font-size:14px;font-weight:600;flex:1;text-align:left">Continue with Facebook</span>
-        </button>
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-          <div style="flex:1;height:1px;background:rgba(255,255,255,.15)"></div>
-          <span style="font-size:12px;color:rgba(255,255,255,.45)">or get an OTP</span>
-          <div style="flex:1;height:1px;background:rgba(255,255,255,.15)"></div>
-        </div>
-        <!-- phone OTP: fastest for India -->
-        <div style="display:flex;gap:8px;margin-bottom:10px">
-          <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:14px 12px;flex:none">
-            <span class="msr" style="font-size:18px;color:rgba(255,255,255,.6)">call</span>
-            <input id="ccInput" type="tel" inputmode="numeric" value="+91" maxlength="4" style="all:unset;width:34px;color:#fff;font-size:14px;font-family:inherit"/>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:14px 15px;flex:1;min-width:0">
-            <input id="phoneInput" type="tel" inputmode="numeric" placeholder="Phone number" autocomplete="tel" style="all:unset;flex:1;min-width:0;width:100%;color:#fff;font-size:14px;font-family:inherit"/>
-          </div>
-        </div>
-        <button class="btn" id="sendPhoneBtn" onclick="sendPhoneOtp()" style="margin-bottom:10px">Continue with Phone →</button>
-        <button class="btn ghost" id="sendOtpBtn" onclick="sendOtp()" style="margin-bottom:14px">Email me a code instead</button>
-        <button onclick="continueAsGuest()" style="all:unset;width:100%;text-align:center;color:rgba(255,255,255,.55);font-size:13px;font-weight:500;cursor:pointer;padding:10px 0;display:block">Browse without account →</button>
-        <p style="color:rgba(255,255,255,.3);font-size:11px;text-align:center;margin:14px 0 0;line-height:1.5">By continuing you agree to our Terms & Privacy Policy</p>
+        <button onclick="continueAsGuest()" style="all:unset;width:100%;text-align:center;color:rgba(255,255,255,.6);font-size:13px;font-weight:500;cursor:pointer;padding:10px 0;display:block">Browse without account →</button>
+        <p style="color:rgba(255,255,255,.35);font-size:11px;text-align:center;margin:16px 0 0;line-height:1.5">By continuing you agree to our <a href="terms.html" style="color:rgba(255,255,255,.55)">Terms</a> &amp; <a href="privacy.html" style="color:rgba(255,255,255,.55)">Privacy Policy</a></p>
       </div>
     </div>
   </section>
