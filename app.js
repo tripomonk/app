@@ -1337,6 +1337,108 @@ function renderHomeHero(){
   hydrate(box);
   const go=box.querySelector('.hh-go .msr');if(go)go.style.transform='scaleX(-1)';
 }
+/* ============================================================
+   COMPARE TREKS — pick up to 3 treks, side-by-side table + a
+   rules-based "best match" using the user's onboarding prefs.
+   ============================================================ */
+let _cmpSel=[],_cmpQ='';
+function cmpAvail(){return treks.filter(t=>!t.soon);}
+function fitnessOf(lvl){lvl=(lvl||'').toLowerCase();
+  if(/difficult|hard|advanced|challeng/.test(lvl))return 'High';
+  if(/moderate/.test(lvl))return 'Moderate';
+  return 'Low';}
+function isBeginnerFriendly(lvl){return /easy|beginner/i.test(lvl||'');}
+/* a soft fitness score from the user's onboarding experience level */
+function userFitnessScore(){
+  const p=getPrefs()||[];
+  if(p.includes('Advanced'))return 88;
+  if(p.includes('Intermediate'))return 75;
+  if(p.includes('Beginner'))return 60;
+  return 72;
+}
+function cmpScore(t){
+  const prefs=getPrefs()||[];let s=(t.r||0)*2;
+  if(prefs.some(p=>t.region&&String(t.region).toLowerCase().includes(String(p).toLowerCase())))s+=3;
+  const exp=prefs.find(p=>['Beginner','Intermediate','Advanced'].includes(p));
+  const lvl=(t.lvl||'').toLowerCase();
+  if(exp==='Beginner'&&/easy|beginner/.test(lvl))s+=3;
+  else if(exp==='Advanced'&&/difficult|hard|advanced/.test(lvl))s+=3;
+  else if(exp==='Intermediate'&&/moderate/.test(lvl))s+=3;
+  s-=(t.price||0)/5000;   /* nudge toward better value */
+  return s;
+}
+function toggleCmp(name){
+  const i=_cmpSel.indexOf(name);
+  if(i>=0)_cmpSel.splice(i,1);
+  else{ if(_cmpSel.length>=3){toast('You can compare up to 3 treks');return;} _cmpSel.push(name); }
+  renderCompare();
+}
+function clearCmp(){_cmpSel=[];renderCompare();}
+function cmpSearch(v){_cmpQ=v||'';renderCompare();}
+function shareTrekByName(name){
+  const url=window.location.origin+window.location.pathname.replace(/index\.html$/,'')+'#trek='+encodeURIComponent(name);
+  const data={title:'Tripomonk — '+name,text:'Check out the '+name+' trek on Tripomonk 🏔️',url};
+  if(navigator.share){navigator.share(data).catch(()=>{});return;}
+  try{navigator.clipboard.writeText(url);toast('Trek link copied');}catch(e){note(url,'Share');}
+}
+function renderCompare(){
+  const box=document.getElementById('compareBody');if(!box)return;
+  const pool=cmpAvail();
+  const sel=_cmpSel.map(n=>pool.find(t=>t.n===n)).filter(Boolean);
+  const q=_cmpQ.trim().toLowerCase();
+  const picker=pool.filter(t=>!q||(t.n+' '+t.region).toLowerCase().includes(q));
+  /* selected chips */
+  const chips=sel.length?`<div class="cmp-chips">${sel.map(t=>`<span class="cmp-chip" onclick="toggleCmp('${jsq(t.n)}')">${esc(t.n)} <span class="msr">close</span></span>`).join('')}${sel.length?`<span class="cmp-clear" onclick="clearCmp()">Clear</span>`:''}</div>`:'';
+  /* picker list */
+  const list=`<div class="cmp-pick">${picker.map(t=>{
+    const on=_cmpSel.includes(t.n);
+    return `<div class="cmp-po ${on?'on':''}" onclick="toggleCmp('${jsq(t.n)}')"><div class="cmp-po-img" style="background-image:url('${esc(t.img||'')}')"></div><div class="cmp-po-tx"><b>${esc(t.n)}</b><small>${esc(t.region||'')} · ${INR(t.price||0)}</small></div><span class="cmp-po-chk">${on?ic('check',14):'+'}</span></div>`;
+  }).join('')||'<div class="empty"><p>No treks match your search.</p></div>'}</div>`;
+
+  let compare='';
+  if(sel.length>=2){
+    /* recommended = highest score */
+    let best=sel[0];sel.forEach(t=>{if(cmpScore(t)>cmpScore(best))best=t;});
+    const ROWS=[
+      ['Price',t=>INR(t.price||0)],
+      ['Duration',t=>t.days?t.days+' days':'—'],
+      ['Distance',t=>t.dist||'—'],
+      ['Max altitude',t=>t.alt||'—'],
+      ['Difficulty',t=>t.lvl||'—'],
+      ['Fitness needed',t=>fitnessOf(t.lvl)],
+      ['Best season',t=>t.best||'—'],
+      ['Region',t=>t.region||'—'],
+      ['Rating',t=>t.r?('⭐ '+t.r):'—'],
+      ['Reviews',t=>{if(t.rev==null||t.rev==='')return '—';const n=Number(t.rev);return isNaN(n)?String(t.rev):n.toLocaleString('en-IN');}],
+      ['Beginner friendly',t=>isBeginnerFriendly(t.lvl)?'✅ Yes':'—']
+    ];
+    const head=`<tr><th class="cmp-corner"></th>${sel.map(t=>`<th class="${t.n===best.n?'best':''}"><div class="cmp-th-img" style="background-image:url('${esc(t.img||'')}')"></div><b>${esc(t.n)}</b>${t.n===best.n?'<span class="cmp-best-tag">Best match</span>':''}</th>`).join('')}</tr>`;
+    const rows=ROWS.map(r=>`<tr><td class="cmp-lbl">${r[0]}</td>${sel.map(t=>`<td class="${t.n===best.n?'best':''}">${r[1](t)}</td>`).join('')}</tr>`).join('');
+    const ctas=`<tr><td class="cmp-lbl"></td>${sel.map(t=>`<td class="cmp-cta ${t.n===best.n?'best':''}"><button onclick="openDetailByName('${jsq(t.n)}')">Book / Details</button><button class="ghost" onclick="shareTrekByName('${jsq(t.n)}')">Share</button></td>`).join('')}</tr>`;
+    const fs=userFitnessScore();
+    const prefs=getPrefs()||[];
+    const reason=[];
+    if(isBeginnerFriendly(best.lvl)||/moderate/i.test(best.lvl))reason.push('the difficulty suits your fitness level');
+    if(prefs.some(p=>String(best.region).toLowerCase().includes(String(p).toLowerCase())))reason.push('it matches your preferred region');
+    if(best.r>=4.5)reason.push('it has one of the highest trekker ratings');
+    reason.push('it offers strong value for the price');
+    compare=`<div class="cmp-table-wrap"><table class="cmp-table"><thead>${head}</thead><tbody>${rows}${ctas}</tbody></table></div>
+      <div class="cmp-rec">
+        <div class="cmp-rec-h"><span class="msr">auto_awesome</span> Recommended for you</div>
+        <p>Based on your fitness score (<b>${fs}</b>) and preferences, <b>${esc(best.n)}</b> is your best match — ${reason.slice(0,3).join(', ')}.</p>
+        <button class="btn" onclick="openDetailByName('${jsq(best.n)}')">View ${esc(best.n)}</button>
+      </div>`;
+  }else{
+    compare=`<div class="cmp-hint"><span class="msr">touch_app</span> Pick ${sel.length?'1 more trek':'2–3 treks'} to see them side by side.</div>`;
+  }
+
+  box.innerHTML=`<p class="host-note" style="margin:0 0 12px">Torn between two treks? Add up to 3 and compare every detail in one place.</p>
+    <div class="search" style="margin-bottom:12px"><span class="msr" style="font-size:20px;color:var(--muted)">search</span><input type="text" placeholder="Search treks to add…" value="${esc(_cmpQ)}" oninput="cmpSearch(this.value)" style="all:unset;flex:1;font-size:14px;color:var(--text)"/></div>
+    ${chips}${compare}
+    <div class="sec" style="margin:18px 2px 10px"><h2 style="font-size:14.5px">${sel.length?'Add or swap treks':'Choose treks to compare'}</h2></div>
+    ${list}`;
+  hydrate(box);
+}
 function renderHome(){
   const hav=document.getElementById('homeUserAv');
   if(hav){const name=getSavedName()||'Explorer',photo=getSavedPhoto();if(photo){hav.style.backgroundImage=`url('${photo}')`;hav.textContent='';}else{hav.style.backgroundImage='';hav.textContent=(name[0]||'E').toUpperCase();}}
@@ -4286,6 +4388,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='notifPrefs')renderNotifPrefs();
   if(id==='language')renderLanguage();
   if(id==='payments')renderPayments();
+  if(id==='compare')renderCompare();
   staggerActive();saveNav();
 }
 /* in-app back button → use browser history so it stays in sync with device back */
