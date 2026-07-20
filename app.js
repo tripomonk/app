@@ -2872,7 +2872,12 @@ function unsubscribeComments(){
 }
 /* ---------- person profile ---------- */
 let curPerson=null;
-function openPerson(n){curPerson=n;go('person');}
+function openPerson(n){
+  /* tapping yourself (e.g. the host of your own trip) opens YOUR real profile,
+     not the stripped public person page */
+  if(isLoggedIn()&&(n==='You'||n===myName())){go('profile');return;}
+  curPerson=n;go('person');
+}
 async function loadUserPosts(name){
   const sb=getSupaClient();let remote=[];
   if(sb){try{const{data}=await sb.from('community_posts').select('*').eq('author_name',name).order('created_at',{ascending:false});
