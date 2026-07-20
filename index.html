@@ -533,6 +533,24 @@
   .splash .top img{width:38px;height:38px;border-radius:10px}
   .splash .top b{font-size:20px;font-weight:600}
   .splash .sub{position:absolute;top:calc(var(--safe-top) + 30px);right:24px;left:auto;text-align:right;color:rgba(255,255,255,.85);font-size:13px;font-weight:600;z-index:1}
+  /* plain background behind the collage — no full-bleed photo */
+  #splash .splash{background:var(--bg)}
+  /* onboarding masonry collage of colourful trek photos (Masonry: stagger + blur-to-focus) */
+  #splash .splash-collage{position:absolute;inset:0;z-index:0;column-count:3;column-gap:7px;padding:6px;padding-top:calc(var(--safe-top) + 4px);overflow:hidden;
+    animation:collageDrift 14s ease-in-out 1.4s infinite}
+  #splash .sm-tile{break-inside:avoid;margin-bottom:7px;border-radius:14px;overflow:hidden;
+    opacity:0;transform:translateY(54px) scale(1.1);filter:blur(20px) brightness(.7);
+    animation:smIn .85s cubic-bezier(.22,1.12,.34,1) both;transition:transform .35s cubic-bezier(.2,0,0,1)}
+  #splash .sm-tile img{width:100%;display:block;object-fit:cover;background:#16263f}
+  @media(hover:hover){#splash .sm-tile:hover{transform:scale(.95)}}
+  @keyframes smIn{
+    0%{opacity:0;transform:translateY(54px) scale(1.1);filter:blur(20px) brightness(.7)}
+    50%{opacity:1}
+    100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0) brightness(1)}}
+  @keyframes collageDrift{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+  @media(prefers-reduced-motion:reduce){#splash .splash-collage{animation:none}#splash .sm-tile{animation-duration:.01s;filter:none;transform:none;opacity:1}}
+  #splash .splash-veil{position:absolute;inset:0;z-index:0;pointer-events:none;
+    background:linear-gradient(180deg,rgba(8,17,30,.30) 0%,rgba(8,17,30,.12) 26%,rgba(8,17,30,.72) 62%,var(--bg) 88%)}
   .splash .c{position:relative;z-index:1}
   .splash h1{font-size:34px;font-weight:600;line-height:1.08;margin:0 0 12px;letter-spacing:-.5px}
   .splash p{color:rgba(255,255,255,.78);font-size:14px;line-height:1.55;margin:0 0 24px}
@@ -1730,6 +1748,8 @@
   <!-- SPLASH -->
   <section class="view full active" id="splash" data-nonav>
     <div class="splash" id="splashBg">
+      <div class="splash-collage" id="splashCollage"></div>
+      <div class="splash-veil"></div>
       <div class="top"><img src="icons/logo.png" alt="Tripomonk" style="width:50px;height:50px;border-radius:13px"/></div>
       <div class="sub">Dream. Trek. Discover.</div>
       <div class="c">

@@ -768,6 +768,26 @@ function getOtpValue(){
   return Array.from(document.querySelectorAll('.otp-box')).map(b=>b.value).join('');
 }
 
+/* onboarding splash — masonry collage of colourful trek photos that stagger in
+   with a blur-to-focus rise (vanilla port of the GSAP Masonry effect) */
+function renderSplashCollage(){
+  const box=document.getElementById('splashCollage');if(!box)return;
+  const imgs=[...new Set(treks.map(t=>t.img).filter(Boolean))];
+  if(!imgs.length)return;
+  const heights=[150,210,168,238,186,160,222,178,196];   /* varied for the masonry look */
+  const N=Math.max(9,Math.min(12,imgs.length*2));
+  const perCol=Math.ceil(N/3);                            /* CSS columns fill top→bottom */
+  let html='';
+  for(let i=0;i<N;i++){
+    const src=imgs[i%imgs.length].replace(/w=\d+/,'w=420');
+    const h=heights[i%heights.length];
+    /* bottom-up diagonal wave: lower rows rise first, then up + slightly rightward */
+    const col=Math.floor(i/perCol),row=i%perCol;
+    const delay=Math.min(0.42,(((perCol-1-row)*0.9)+col*0.7)*0.06).toFixed(3);
+    html+=`<div class="sm-tile" style="animation-delay:${delay}s"><img src="${esc(src)}" alt="" loading="eager" style="height:${h}px"/></div>`;
+  }
+  box.innerHTML=html;
+}
 function initLoginBg(){
   const bg=document.getElementById('loginBg');
   const obg=document.getElementById('otpBg');
@@ -4441,7 +4461,8 @@ applyTheme();   /* dark / light / system theme */
 loadSocial();   /* follows, likes, your posts & comments */
 loadCart();     /* adventure cart (per account) */
 initAuth();     /* restore login session if user was previously signed in */
-document.getElementById('splashBg').style.backgroundImage=`url('${treks[0].img.replace('w=900','w=1200')}')`;
+/* plain background behind the photo collage (no full-bleed image) */
+renderSplashCollage();
 initLoginBg();
 renderHomeChips();renderHome();renderQuick();
 hydrate();
