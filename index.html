@@ -930,6 +930,21 @@
   .cmp-po-chk{width:26px;height:26px;flex:none;border-radius:50%;border:2px solid var(--stroke2);display:grid;place-items:center;color:var(--muted2);font-size:16px;font-weight:700}
   .cmp-po.on .cmp-po-chk{background:var(--accent);border-color:var(--accent);color:#fff}
   .cmp-po:active{transform:scale(.985)}
+  /* --- trust card + WhatsApp button (booking screens) --- */
+  .trust-card{background:linear-gradient(180deg,rgba(15,157,88,.07),rgba(47,107,255,.04));border:1px solid var(--stroke);border-radius:18px;padding:16px;margin:16px 0}
+  .trust-h{display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:800;margin-bottom:15px}
+  .trust-h .msr{color:#0f9d58;font-size:21px}
+  .trust-list{display:flex;flex-direction:column;gap:14px;margin-bottom:15px}
+  .trust-item{display:flex;gap:12px;align-items:flex-start}
+  .trust-item>.msr{font-size:20px;color:var(--accent2);flex:none;margin-top:1px;width:26px;height:26px;display:grid;place-items:center;border-radius:8px;background:rgba(47,107,255,.12)}
+  .trust-item b{font-size:13px;display:block}
+  .trust-item small{font-size:11.5px;color:var(--muted);line-height:1.5;display:block;margin-top:3px}
+  .wa-btn{width:100%;display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:48px;border:0;border-radius:13px;
+    background:#25D366;color:#fff;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;transition:transform .1s,filter .15s;
+    box-shadow:0 10px 24px -10px rgba(37,211,102,.6)}
+  .wa-btn:active{transform:scale(.98);filter:brightness(.96)}
+  .wa-ic{flex:none}
+  .wa-btn.sm{min-height:44px;font-size:13px;box-shadow:none}
   /* --- Compare Treks motion (Premium: rise+fade, signature cubic-bezier(.2,0,0,1)) --- */
   @media(prefers-reduced-motion:no-preference){
     .cmp-table-wrap{animation:cmpRise .42s cubic-bezier(.2,0,0,1) both}
@@ -1863,7 +1878,10 @@
     <div class="blk reveal"><h2 style="display:flex;justify-content:space-between;align-items:center">Itinerary <a style="font-size:12px;color:var(--accent2);cursor:pointer" onclick="go('itinerary')">View full →</a></h2><div id="dItinPrev"></div></div>
     <div class="blk reveal" id="dNewsBlk" style="display:none"><h2>News &amp; Alerts</h2><div id="dNews"></div></div>
     <div class="blk reveal"><h2 style="display:flex;justify-content:space-between;align-items:center">Reviews <a style="font-size:12px;color:var(--accent2);cursor:pointer" onclick="go('reviews')">See all →</a></h2><div id="dRevPrev"></div></div>
-    <div style="padding:10px 16px calc(var(--safe-bottom) + 28px)"><button class="btn" id="dCta" onclick="go('selectDate')">View Dates &amp; Price&nbsp; →</button></div>
+    <div style="padding:10px 16px calc(var(--safe-bottom) + 28px)">
+      <button class="btn" id="dCta" onclick="go('selectDate')">View Dates &amp; Price&nbsp; →</button>
+      <button class="wa-btn sm" style="margin-top:10px" onclick="wa('Hi Tripomonk, I have a question about this trek before I book. Can you help?')"><svg class="wa-ic" viewBox="0 0 24 24" width="18" height="18"><path fill="#fff" d="M12 2a10 10 0 0 0-8.53 15.2L2 22l4.94-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-2.93.77.78-2.86-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.14c-.25-.12-1.46-.72-1.69-.8-.22-.08-.39-.12-.55.13-.16.25-.63.8-.78.97-.14.16-.29.18-.53.06-.25-.12-1.04-.38-1.98-1.22-.73-.65-1.23-1.46-1.37-1.71-.14-.25-.02-.38.11-.5.11-.11.25-.29.37-.43.13-.14.17-.25.25-.41.08-.16.04-.31-.02-.43-.06-.12-.55-1.33-.76-1.82-.2-.48-.4-.41-.55-.42h-.47c-.16 0-.43.06-.65.31-.22.25-.86.84-.86 2.05s.88 2.38 1 2.54c.12.16 1.73 2.64 4.19 3.7.59.25 1.04.4 1.4.51.59.19 1.12.16 1.54.1.47-.07 1.46-.6 1.66-1.17.21-.58.21-1.07.14-1.17-.06-.11-.22-.17-.47-.29Z"/></svg> Have a doubt? Chat on WhatsApp</button>
+    </div>
   </section>
 
   <!-- ITINERARY -->
@@ -1883,9 +1901,12 @@
     <div id="batches"></div>
     <div class="sec" style="margin-top:8px"><h2 style="font-size:15px">Inclusions</h2></div>
     <div class="incl" id="inclusions"></div>
-    <div style="padding:18px 0 calc(var(--safe-bottom) + 28px);display:flex;gap:10px">
+    <div style="padding:18px 0 8px;display:flex;gap:10px">
       <button class="btn ghost" style="flex:1" onclick="addTrekToCart()">Add to adventure</button>
       <button class="btn" style="flex:1" onclick="go('travellers')">Book Now</button>
+    </div>
+    <div style="padding:0 0 calc(var(--safe-bottom) + 24px)">
+      <button class="wa-btn sm" onclick="wa('Hi Tripomonk, I have a doubt about this booking. Can you help before I pay?')"><svg class="wa-ic" viewBox="0 0 24 24" width="18" height="18"><path fill="#fff" d="M12 2a10 10 0 0 0-8.53 15.2L2 22l4.94-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-2.93.77.78-2.86-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.14c-.25-.12-1.46-.72-1.69-.8-.22-.08-.39-.12-.55.13-.16.25-.63.8-.78.97-.14.16-.29.18-.53.06-.25-.12-1.04-.38-1.98-1.22-.73-.65-1.23-1.46-1.37-1.71-.14-.25-.02-.38.11-.5.11-.11.25-.29.37-.43.13-.14.17-.25.25-.41.08-.16.04-.31-.02-.43-.06-.12-.55-1.33-.76-1.82-.2-.48-.4-.41-.55-.42h-.47c-.16 0-.43.06-.65.31-.22.25-.86.84-.86 2.05s.88 2.38 1 2.54c.12.16 1.73 2.64 4.19 3.7.59.25 1.04.4 1.4.51.59.19 1.12.16 1.54.1.47-.07 1.46-.6 1.66-1.17.21-.58.21-1.07.14-1.17-.06-.11-.22-.17-.47-.29Z"/></svg> Doubts before paying? Chat on WhatsApp</button>
     </div>
   </section>
 
@@ -2270,6 +2291,12 @@
   <section class="view flow" id="notifications" data-nonav>
     <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Notifications</h1></div>
     <div id="notiList"></div>
+  </section>
+
+  <!-- SINGLE POST VIEW (opened from a like notification) -->
+  <section class="view flow" id="postView" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Post</h1></div>
+    <div id="postViewBody"></div>
   </section>
 
   <!-- REVIEWS -->

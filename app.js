@@ -3296,22 +3296,40 @@ async function renderNotifications(){
   box.innerHTML=`<div style="color:var(--muted);font-size:12px;margin:0 2px 10px">Activity</div>${activity}`;
   hydrate(box);
   wireNotifSwipe();
-  /* mark all as seen */
+  /* mark all as seen — activity AND news — so the bell dot fully clears */
   localStorage.setItem('tmk_notif_seen',String(Date.now()));
-  setNotifBadges(0,false);_lastUnread=0;   /* opening the screen clears the count */
+  try{markNewsSeen();}catch(e){}
+  setNotifBadges(0,false);_lastUnread=0;
 }
 /* tap a notification -> open what it's about (the post, or the person who followed you) */
+/* fetch a single post (from memory or the server) into a usable object */
+async function ensurePost(id){
+  let p=postById(id);if(p)return p;
+  const sb=getSupaClient();if(!sb)return null;
+  try{const{data}=await sb.from('community_posts').select('*').eq('id',id).maybeSingle();
+    if(data)return {id:data.id,uid:data.user_id||null,n:data.author_name||'Trekker',when:timeAgo(data.created_at),txt:data.txt||'',imgs:data.imgs||[],likes:0,comments:[],trek:data.trek_tag||'',tagged:data.tagged||[]};
+  }catch(e){}
+  return null;
+}
+/* open ONE post full-screen (used by a like notification, or tapping a grid post) */
+async function openPostDetail(id){
+  go('postView');
+  const box=document.getElementById('postViewBody');if(box)box.innerHTML='<div class="skel skel-post"></div>';
+  const p=await ensurePost(id);
+  if(!box)return;
+  if(!p){box.innerHTML='<div class="empty" style="padding:30px 0"><p>This post is no longer available.</p></div>';return;}
+  _lastFeed=[p,..._lastFeed.filter(x=>x.id!==p.id)];   /* so like/comment/repost handlers find it */
+  const paint=()=>{box.innerHTML='<div id="postViewFeed">'+postCard(p)+'</div>';hydrate(box);};
+  paint();
+  try{await Promise.all([loadEngagement([p.id]),resolveAuthors([p],'uid','n')]);paint();}catch(e){}
+}
 async function openNotif(nid,type,postId,actor){
   if(type==='follow'){if(actor)openPerson(actor);return;}
   if(postId){
+    /* a LIKE opens the whole post; a COMMENT / MENTION opens the comment thread */
+    if(type==='like'){openPostDetail(postId);return;}
     go('community');
-    /* make sure the post is in memory so the comments/detail sheet can open */
-    if(!postById(postId)){
-      const sb=getSupaClient();
-      if(sb){try{const{data}=await sb.from('community_posts').select('*').eq('id',postId).maybeSingle();
-        if(data)_lastFeed.unshift({id:data.id,uid:data.user_id||null,n:data.author_name||'Trekker',when:timeAgo(data.created_at),txt:data.txt||'',imgs:data.imgs||[],likes:0,comments:[],trek:data.trek_tag||'',tagged:data.tagged||[]});
-      }catch(e){}}
-    }
+    if(!postById(postId)){const p=await ensurePost(postId);if(p)_lastFeed.unshift(p);}
     if(postById(postId))openComments(postId);
     return;
   }
@@ -5277,6 +5295,26 @@ function renderHomeHosts(){
   }
   hydrate(box);
 }
+/* green WhatsApp button — reused on every booking screen so doubts get answered fast */
+function waButton(msg,label){
+  return '<button class="wa-btn" onclick="wa(\''+jsq(msg)+'\')">'
+    +'<svg class="wa-ic" viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path fill="#fff" d="M12 2a10 10 0 0 0-8.53 15.2L2 22l4.94-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-2.93.77.78-2.86-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.14c-.25-.12-1.46-.72-1.69-.8-.22-.08-.39-.12-.55.13-.16.25-.63.8-.78.97-.14.16-.29.18-.53.06-.25-.12-1.04-.38-1.98-1.22-.73-.65-1.23-1.46-1.37-1.71-.14-.25-.02-.38.11-.5.11-.11.25-.29.37-.43.13-.14.17-.25.25-.41.08-.16.04-.31-.02-.43-.06-.12-.55-1.33-.76-1.82-.2-.48-.4-.41-.55-.42h-.47c-.16 0-.43.06-.65.31-.22.25-.86.84-.86 2.05s.88 2.38 1 2.54c.12.16 1.73 2.64 4.19 3.7.59.25 1.04.4 1.4.51.59.19 1.12.16 1.54.1.47-.07 1.46-.6 1.66-1.17.21-.58.21-1.07.14-1.17-.06-.11-.22-.17-.47-.29Z"/></svg>'
+    +esc(label||'Chat on WhatsApp')+'</button>';
+}
+/* trust card with icons — reassures people before they book */
+function trustCard(host,title){
+  const item=(icon,t,s)=>'<div class="trust-item"><span class="msr">'+icon+'</span><div><b>'+t+'</b><small>'+s+'</small></div></div>';
+  return '<div class="trust-card">'
+    +'<div class="trust-h"><span class="msr">verified_user</span> Book with confidence</div>'
+    +'<div class="trust-list">'
+    +item('shield','Operated by Tripomonk','All logistics, safety &amp; support handled by us'+(host?' — '+esc(host)+' leads on the ground':'')+'.')
+    +item('lock','Secure payment','Paid securely via Razorpay. 25% advance to confirm, balance before departure.')
+    +item('published_with_changes','Transparent cancellation','A clear refund policy is shown before you pay.')
+    +item('support_agent','Real human support','Our team is one message away — before and during your trek.')
+    +'</div>'
+    +waButton('Hi Tripomonk, I have a question about the '+(title||'trip')+' before booking. Can you help?','Have doubts? Chat on WhatsApp')
+    +'</div>';
+}
 let _htvTrip=null,_htvPax=1;
 async function openHostTripDetail(id){
   go('hostTripView');
@@ -5305,7 +5343,7 @@ async function openHostTripDetail(id){
     +(t.description?`<div class="blk" style="padding:0"><h2>About this trip</h2><p>${esc(t.description)}</p></div>`:'')
     +(t.inclusions?`<div class="blk" style="padding:0"><h2>What's included</h2><p style="white-space:pre-line">${esc(t.inclusions)}</p></div>`:'')
     +(t.exclusions?`<div class="blk" style="padding:0"><h2>Not included</h2><p style="white-space:pre-line">${esc(t.exclusions)}</p></div>`:'')
-    +`<div class="htv-ops"><span class="msr">verified_user</span>Hosted by ${esc(t.host_name)} · <b>all operations, safety and support handled by Tripomonk</b>. You pay a 25% advance to confirm; the rest before departure.</div>`
+    +trustCard(t.host_name,t.title)
     +`<div class="lbl">Travellers</div>`
     +`<div class="paxrow"><div class="paxi"><div><b>People</b><small id="htvMax"></small></div>`
     +`<div class="stepper"><button onclick="htvStep(-1)">−</button><b id="htvPeople">1</b><button onclick="htvStep(1)">+</button></div></div></div>`;
