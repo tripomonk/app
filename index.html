@@ -1582,8 +1582,14 @@
   /* "few seats left" + news alerts pulse to create urgency */
   .batch .bd .s.few,.ncard .ntag.alert{animation:softpulse 1.8s ease-in-out infinite}
   @keyframes softpulse{0%,100%{opacity:1}50%{opacity:.55}}
-  /* live dot on notification bell when there's activity */
-  #notifDot{animation:livedot 1.6s ease-in-out infinite}
+  /* numeric badge on the notification bell — small count, or a dot when 0 but there's news */
+  .notif-badge{position:absolute;top:5px;right:5px;min-width:14px;height:14px;padding:0 2px;border-radius:999px;
+    background:#ff3b5c;color:#fff;font-size:8.5px;font-weight:700;line-height:14px;text-align:center;
+    border:1.5px solid var(--bg,#0b1626);box-sizing:content-box;display:none;pointer-events:none;
+    box-shadow:0 1px 4px rgba(255,59,92,.55)}
+  .notif-badge.show{display:block;animation:badgePop .3s cubic-bezier(.34,1.56,.64,1)}
+  .notif-badge.dot{min-width:8px;height:8px;padding:0;border-radius:50%;font-size:0;top:8px;right:8px;animation:livedot 1.6s ease-in-out infinite}
+  @keyframes badgePop{from{transform:scale(0)}to{transform:scale(1)}}
   @keyframes livedot{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.35);opacity:.7}}
   /* card entrance: gentle rise already via .stagger; add a soft glow sweep on hero */
   .hero:before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(120deg,transparent 40%,rgba(255,255,255,.06) 50%,transparent 60%);background-size:250% 100%;animation:heroSheen 7s ease-in-out infinite}
@@ -1765,7 +1771,7 @@
     <div class="home-top-ui">
       <button class="home-avatar-btn" onclick="go('profile')" id="homeUserAv">E</button>
       <div class="home-title-block"><small>Tripomonk</small><h1>Explore</h1></div>
-      <button class="home-bell" onclick="go('notifications')" style="position:relative"><span class="ic" data-i="bell"></span><span id="notifDot" style="display:none;position:absolute;top:8px;right:8px;width:9px;height:9px;border-radius:50%;background:#ff3b5c;border:2px solid var(--bg,#0b1626)"></span></button>
+      <button class="home-bell" onclick="go('notifications')" style="position:relative"><span class="ic" data-i="bell"></span><span class="notif-badge" id="notifDot"></span></button>
     </div>
     <div class="home-intro-card">
       <div><div class="greet" id="homeGreet">Hello there</div><h2 class="htitle">Find your next <span>Himalayan trek</span></h2></div>
@@ -1964,7 +1970,7 @@
       </div>
       <div class="comm-actions">
         <button onclick="go('peopleSearch')" title="Search trekkers"><span class="msr">person_search</span></button>
-        <button onclick="go('notifications')" title="Notifications"><span class="msr">notifications</span></button>
+        <button onclick="go('notifications')" title="Notifications" style="position:relative"><span class="msr">notifications</span><span class="notif-badge"></span></button>
       </div>
     </div>
     <div class="stories" id="storiesRow"></div>
