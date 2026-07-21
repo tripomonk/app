@@ -635,6 +635,118 @@
   .wtxn-amt.pos{color:#0f9d58}
   .wtxn-amt.neg{color:#ff7a7a}
   html.light .wtxn-amt.pos{color:#0b7a44}
+  /* ===== Adventure Readiness (Fitness + Trek Score) ===== */
+  .fit-green{color:#2fbf8f}.fit-yellow{color:#e0952a}.fit-red{color:#ef5f5f}
+  .fit-dot{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block;flex:none}
+  .fit-b-green{background:rgba(47,191,143,.15)!important;color:#2fbf8f!important}
+  .fit-b-yellow{background:rgba(224,149,42,.16)!important;color:#e0952a!important}
+  .fit-b-red{background:rgba(239,95,95,.15)!important;color:#ef5f5f!important}
+  .fit-b-none{background:rgba(127,140,170,.14)!important;color:var(--muted)!important}
+  /* readiness card (trek detail) */
+  .fit-card{border:1px solid var(--stroke);border-radius:18px;padding:15px 16px;background:var(--card)}
+  .fit-card.fit-b-green{border-color:rgba(47,191,143,.4)}.fit-card.fit-b-yellow{border-color:rgba(224,149,42,.4)}.fit-card.fit-b-red{border-color:rgba(239,95,95,.4)}
+  .fit-card-h{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+  .fit-card-h .msr{font-size:18px;color:var(--accent2)}
+  .fit-req-row{display:flex;gap:10px;margin:12px 0}
+  .fit-req-row>div{flex:1;background:var(--bg);border:1px solid var(--stroke);border-radius:13px;padding:9px 6px;text-align:center}
+  .fit-req-row small{display:block;font-size:10.5px;color:var(--muted);margin-bottom:3px}
+  .fit-req-row b{font-size:19px;font-weight:800}
+  .fit-status{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;padding:5px 11px;border-radius:20px;margin-top:2px}
+  .fit-status.fit-green{background:rgba(47,191,143,.14)}.fit-status.fit-yellow{background:rgba(224,149,42,.15)}.fit-status.fit-red{background:rgba(239,95,95,.14)}
+  .fit-msg{font-size:12.5px;color:var(--muted);line-height:1.45;margin:9px 0 0}
+  .fit-plan,.fit-cta{margin-top:12px;height:42px;font-size:13.5px;display:flex;align-items:center;justify-content:center;gap:7px}
+  .fit-plan .msr,.fit-cta .msr{font-size:18px}
+  /* trek-card chip */
+  .fit-chip{display:inline-flex!important;align-items:center;gap:5px;font-weight:700}
+  /* booking fitness check */
+  .fit-check{border:1px solid var(--stroke);border-radius:16px;padding:14px;margin:14px 0 4px;background:var(--card)}
+  .fit-check.fit-b-green{border-color:rgba(47,191,143,.4)}.fit-check.fit-b-yellow{border-color:rgba(224,149,42,.4)}.fit-check.fit-b-red{border-color:rgba(239,95,95,.4)}
+  .fit-check-h{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700}.fit-check-h .msr{font-size:18px;color:var(--accent2)}
+  .fit-check-row{display:flex;align-items:center;gap:10px;margin:11px 0 4px}
+  .fit-check-row>div{text-align:center}.fit-check-row small{display:block;font-size:10.5px;color:var(--muted)}.fit-check-row b{font-size:18px;font-weight:800}
+  .fit-check-st{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;padding:5px 10px;border-radius:16px}
+  .fit-check-st.fit-green{background:rgba(47,191,143,.14)}.fit-check-st.fit-yellow{background:rgba(224,149,42,.15)}.fit-check-st.fit-red{background:rgba(239,95,95,.14)}
+  .fit-check-p{font-size:12.5px;color:var(--muted);line-height:1.45;margin:4px 0 0}
+  .fit-check-cta{display:flex;gap:8px;margin-top:10px}.fit-check-cta .btn.sm{height:38px;font-size:12.5px;flex:1;gap:6px}
+  /* profile row */
+  .fit-prow{display:flex;align-items:center;gap:12px}
+  .fit-prow-score{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:16px;flex:none}
+  .fit-prow-tx{flex:1;min-width:0}.fit-prow-tx b{display:block;font-size:14px}.fit-prow-tx small{font-size:11.5px;color:var(--muted)}
+  /* intro */
+  .fit-intro{text-align:center;padding:14px 6px}
+  .fit-intro-ic{width:70px;height:70px;border-radius:22px;margin:8px auto 14px;display:grid;place-items:center;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 14px 30px -12px var(--accent)}
+  .fit-intro-ic .msr{font-size:38px;color:#fff}
+  .fit-intro h2{font-size:20px;margin:0 0 8px}.fit-intro p{font-size:13.5px;color:var(--muted);line-height:1.5;margin:0 auto 16px;max-width:340px}
+  .fit-intro-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:320px;margin:0 auto 20px}
+  .fit-intro-grid>div{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:12px;font-size:12.5px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:6px}
+  .fit-intro-grid .msr{font-size:22px;color:var(--accent2)}
+  .fit-intro-note{font-size:11.5px;color:var(--muted2);margin-top:12px!important}
+  /* dashboard ring */
+  .fit-ring-wrap{position:relative;width:150px;height:150px;margin:10px auto 4px}
+  .fit-ring{width:150px;height:150px;transform:rotate(-90deg)}
+  .fit-ring-bg{fill:none;stroke:var(--stroke);stroke-width:10}
+  .fit-ring-fg{fill:none;stroke-width:10;stroke-linecap:round;transition:stroke-dashoffset .7s cubic-bezier(.3,1,.4,1)}
+  .fit-ring-c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .fit-ring-c b{font-size:38px;font-weight:800;line-height:1}.fit-ring-c small{font-size:12px;color:var(--muted)}
+  .fit-level{text-align:center;font-size:16px;font-weight:800;margin-bottom:18px}
+  .fit-subs{display:flex;flex-direction:column;gap:11px;margin-bottom:16px}
+  .fit-bar-top{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px}.fit-bar-top b{font-weight:800}
+  .fit-bar-tr{height:8px;border-radius:6px;background:var(--stroke);overflow:hidden}
+  .fit-bar-tr i{display:block;height:100%;border-radius:6px;transition:width .6s ease}
+  .fit-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:14px}
+  .fit-meta-c{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:11px 4px;text-align:center}
+  .fit-meta-c .msr{font-size:20px;color:var(--accent2)}.fit-meta-c b{display:block;font-size:12.5px;margin:3px 0 1px;line-height:1.1}.fit-meta-c small{font-size:10px;color:var(--muted)}
+  .fit-update{height:44px;display:flex;align-items:center;justify-content:center;gap:7px;font-size:13.5px}
+  /* AI reco columns */
+  .reco-col{margin-bottom:14px;border:1px solid var(--stroke);border-radius:16px;overflow:hidden;background:var(--card)}
+  .reco-h{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;padding:10px 13px}
+  .reco-green .reco-h{color:#2fbf8f;background:rgba(47,191,143,.1)}.reco-yellow .reco-h{color:#e0952a;background:rgba(224,149,42,.1)}.reco-red .reco-h{color:#ef5f5f;background:rgba(239,95,95,.1)}
+  .reco-row{display:flex;align-items:center;gap:11px;padding:9px 13px;border-top:1px solid var(--stroke);cursor:pointer}
+  .reco-ph{width:44px;height:44px;border-radius:11px;background-size:cover;background-position:center;background-color:#16283f;flex:none}
+  .reco-tx{flex:1;min-width:0}.reco-tx b{display:block;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.reco-tx small{font-size:11px;color:var(--muted)}
+  .reco-req{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-weight:800;font-size:14px;flex:none}
+  /* assessment form */
+  .fit-sec{margin-bottom:20px}
+  .fit-sec-h{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;margin:0 2px 12px;text-transform:uppercase;letter-spacing:.03em}
+  .fit-sec-h .msr{font-size:20px;color:var(--accent2)}
+  .fit-q{margin-bottom:14px}
+  .fit-q>label{display:block;font-size:13px;font-weight:600;margin:0 2px 8px;color:var(--text)}
+  .fit-opts{display:flex;flex-wrap:wrap;gap:8px}
+  .fit-opt{font-family:inherit;font-size:12.5px;font-weight:600;padding:9px 14px;border-radius:20px;border:1.5px solid var(--stroke);background:var(--card);color:var(--text);cursor:pointer;transition:.15s}
+  .fit-opt.on{border-color:var(--accent2);background:rgba(47,107,255,.14);color:var(--accent2)}
+  .fit-num{display:flex;align-items:center;gap:8px;background:var(--card);border:1.5px solid var(--stroke);border-radius:13px;padding:0 14px;max-width:200px}
+  .fit-num input{all:unset;flex:1;font-size:15px;padding:12px 0;color:var(--text);width:100%}
+  .fit-num span{font-size:12px;color:var(--muted)}
+  .fit-q-tog{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .fit-q-tog>span{font-size:13px;font-weight:600}
+  .fit-tog{width:48px;height:28px;border-radius:20px;border:none;background:var(--stroke);position:relative;cursor:pointer;flex:none;transition:.2s}
+  .fit-tog.on{background:var(--accent2)}
+  .fit-knob{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.2s}
+  .fit-tog.on .fit-knob{left:23px}
+  .fit-soon{font-size:9.5px;font-weight:700;text-transform:uppercase;background:rgba(47,107,255,.15);color:var(--accent2);padding:2px 6px;border-radius:8px;vertical-align:middle}
+  .fit-submit{margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px}
+  /* compare cell */
+  .cmp-fit{display:inline-flex;align-items:center;gap:5px;font-weight:700;font-size:11.5px}
+  /* training plan */
+  .plan-goal{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:14px;margin-bottom:10px}
+  .plan-goal>div{text-align:center;flex:1}.plan-goal small{display:block;font-size:10.5px;color:var(--muted)}.plan-goal b{font-size:22px;font-weight:800}
+  .plan-goal .plan-arrow{flex:0;color:var(--muted)}.plan-days{border-left:1px solid var(--stroke)}
+  .plan-for{font-size:13px;color:var(--muted);line-height:1.45;margin:0 2px}
+  .plan-prog{display:flex;align-items:center;gap:10px;margin:12px 2px}
+  .plan-prog-tr{flex:1;height:9px;border-radius:6px;background:var(--stroke);overflow:hidden}.plan-prog-tr i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+  .plan-prog span{font-size:12px;font-weight:700;color:var(--muted)}
+  .plan-today{display:flex;flex-direction:column;gap:9px}
+  .plan-w{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:12px 14px}
+  .plan-w .msr{font-size:23px;color:var(--accent2)}.plan-w b{display:block;font-size:13.5px}.plan-w small{font-size:11.5px;color:var(--muted)}
+  .plan-week{display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}.plan-week::-webkit-scrollbar{display:none}
+  .plan-day{flex:0 0 96px;background:var(--card);border:1px solid var(--stroke);border-radius:13px;padding:11px 10px}
+  .plan-day.on{border-color:var(--accent2);background:rgba(47,107,255,.1)}
+  .plan-day b{display:block;font-size:12px;margin-bottom:5px}.plan-day span{font-size:11px;color:var(--muted);line-height:1.35}
+  .plan-ai{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:#a06bff;background:rgba(160,107,255,.14);padding:4px 9px;border-radius:12px}
+  .plan-ai .msr{font-size:14px}
+  .plan-coach{display:flex;gap:10px;background:linear-gradient(135deg,rgba(160,107,255,.12),rgba(47,107,255,.1));border:1px solid rgba(160,107,255,.28);border-radius:14px;padding:13px 14px;margin:14px 0 2px}
+  .plan-coach .msr{font-size:20px;color:#a06bff;flex:none}
+  .plan-coach p{font-size:13px;line-height:1.5;margin:0;color:var(--text)}
   .pwrap{padding:0 calc(18px + var(--safe-right)) calc(var(--safe-bottom) + 92px) calc(18px + var(--safe-left))}
   .pav{width:88px;height:88px;border-radius:50%;border:3px solid var(--bg);background-size:cover;background-position:center;margin:-50px 0 0;position:relative;z-index:1;background-color:#26466e;display:grid;place-items:center;font-size:32px;font-weight:600;color:#fff}
   .prow{display:flex;align-items:center;justify-content:space-between;margin-top:10px}
@@ -2154,6 +2266,7 @@
       <div class="meta"><span class="star">★</span> <b id="dRate"></b> <span class="g" id="dRev" style="color:var(--muted)"></span> &nbsp;·&nbsp; <span class="lvl" id="dLvl"></span></div>
       <div class="stats" id="dStats"></div>
     </div>
+    <div class="blk reveal" style="padding-top:0"><div id="dReadiness"></div></div>
     <div class="blk reveal"><h2>About the Trek</h2><p id="dDesc"></p></div>
     <div class="blk reveal"><h2>Highlights</h2><div class="hl" id="dHl"></div></div>
     <div class="blk reveal"><h2 style="display:flex;justify-content:space-between;align-items:center">Conditions <a style="font-size:12px;color:var(--accent2);cursor:pointer" onclick="openNav(cart.trek)">Trail map →</a></h2><div class="stats" id="dCond"></div></div>
@@ -2219,6 +2332,7 @@
     <div class="tcard" style="cursor:default"><div class="ph" id="rvPh"></div><div class="bd"><h3 id="rvName"></h3>
       <div class="rt"><span class="ic" data-i="calendar"></span> <span id="rvDate"></span></div>
       <div class="rt"><span class="ic" data-i="user"></span> <span id="rvPax"></span></div></div></div>
+    <div id="rvFitness"></div>
     <div class="sec"><h2 style="font-size:15px">Add-ons</h2></div>
     <div class="addon"><span class="ic" data-i="backpack"></span><div class="t">Rent full gear kit<small>Jacket, boots, poles · ₹2,700</small></div><div class="toggle" onclick="addon(this,'gear',2700)"><i></i></div></div>
     <div class="addon"><span class="ic" data-i="permits"></span><div class="t">Forest permit (assisted)<small>We process it · ₹350</small></div><div class="toggle" onclick="addon(this,'permit',350)"><i></i></div></div>
@@ -2426,6 +2540,20 @@
     <div class="lbl" style="margin-top:22px">Recent activity</div>
     <div id="wcTxns"></div>
     <div style="height:calc(var(--safe-bottom) + 20px)"></div>
+  </section>
+
+  <!-- FITNESS SCORE / ADVENTURE READINESS -->
+  <section class="view flow" id="fitness" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Adventure Readiness</h1></div>
+    <div id="fitnessBody"></div>
+  </section>
+  <section class="view flow" id="fitnessTest" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Fitness assessment</h1></div>
+    <div id="fitnessTestBody"></div>
+  </section>
+  <section class="view flow" id="trainingPlan" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Training plan</h1></div>
+    <div id="trainingPlanBody"></div>
   </section>
 
   <!-- SETTINGS -->

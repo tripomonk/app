@@ -1570,7 +1570,7 @@ const INR=n=>'₹'+Number(n).toLocaleString('en-IN');
 function trekCard(t){return `<div class="tcard" onclick="openDetail(${t.idx})"><div class="ph" style="background-image:url('${t.img}')">${t.soon?'<span class="soon">Coming Soon</span>':''}</div>
   <div class="bd"><h3>${t.n}</h3><div class="reg">${ic('pin',13)} ${t.region}</div>
   <div class="rt"><span class="star">★</span> <b>${t.r}</b> <span class="g">(${t.rev})</span></div>
-  <div class="ft"><span class="tag">${ic('clock',12)} ${t.dur}</span><span class="tag">${t.lvl}</span></div></div></div>`;}
+  <div class="ft"><span class="tag">${ic('clock',12)} ${t.dur}</span><span class="tag">${t.lvl}</span>${readinessChip(t)}</div></div></div>`;}
 /* lazy-load card background images: only paint a card's photo when it is near the
    viewport. Without this, a long list (130+ treks) loads every image at once and
    iOS Safari runs out of memory and crashes the tab. Geometry-based (not
@@ -1695,8 +1695,9 @@ function fitnessOf(lvl){lvl=(lvl||'').toLowerCase();
   if(/moderate/.test(lvl))return 'Moderate';
   return 'Low';}
 function isBeginnerFriendly(lvl){return /easy|beginner/i.test(lvl||'');}
-/* a soft fitness score from the user's onboarding experience level */
+/* the real Individual Fitness Score once assessed; else a soft estimate from onboarding */
 function userFitnessScore(){
+  if(typeof hasFitness==='function'&&hasFitness())return computeFitness().score;
   const p=getPrefs()||[];
   if(p.includes('Advanced'))return 88;
   if(p.includes('Intermediate'))return 75;
@@ -1763,6 +1764,8 @@ function renderCompare(){
       ['Distance',t=>t.dist||'—'],
       ['Max altitude',t=>t.alt||'—'],
       ['Difficulty',t=>t.lvl||'—'],
+      ['Required score',t=>trekReqScore(t)],
+      ['Your readiness',t=>{const req=trekReqScore(t);if(!hasFitness())return '—';const rd=readiness(computeFitness().score,req);return `<span class="cmp-fit fit-${rd.k}"><span class="fit-dot"></span>${rd.label}</span>`;}],
       ['Fitness needed',t=>fitnessOf(t.lvl)],
       ['Best season',t=>t.best||'—'],
       ['Region',t=>t.region||'—'],
@@ -1910,6 +1913,7 @@ function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
   const cta=document.getElementById('dCta');
   if(t.soon){cta.innerHTML=ic('bell',16)+' Coming Soon · Notify me';cta.onclick=()=>wa(t.n+' — please notify me when it goes live.');}
   else{cta.innerHTML='View Dates &amp; Price&nbsp; →';cta.onclick=()=>go('selectDate');}
+  const rd=document.getElementById('dReadiness');if(rd){rd.innerHTML=readinessCardHTML(t);hydrate(rd);}
   renderDetailGetting(t);
   refreshGearReco(t);          /* AI recommended gear, personalised to this trek */
   renderDetailNews(t.n);
@@ -2060,8 +2064,22 @@ function syncReview(){const t=cart.trek;cart.gear=false;cart.permit=false;
   document.querySelectorAll('#review .toggle').forEach(x=>x.classList.remove('on'));
   document.getElementById('sGear').style.display='none';document.getElementById('sPermit').style.display='none';
   computeTotal();
+  const fc=document.getElementById('rvFitness');if(fc){fc.innerHTML=bookingFitnessHTML(t);hydrate(fc);}
   const d=document.getElementById('rvDetails');if(d){d.innerHTML=reviewDetailsHTML(t);}
   hydrate(document.getElementById('review'));
+}
+/* the pre-payment fitness check — informs, never blocks */
+function bookingFitnessHTML(t){
+  const req=trekReqScore(t);
+  if(!hasFitness()){
+    return `<div class="fit-check"><div class="fit-check-h"><span class="msr">bolt</span> Fitness check</div>
+      <p class="fit-check-p">This trek needs a readiness score of about <b>${req}</b>. Take a 2-min check so we can help you prepare.</p>
+      <button class="btn ghost" onclick="go('fitness')"><span class="msr">fitness_center</span> Check my readiness</button></div>`;
+  }
+  const you=computeFitness().score,rd=readiness(you,req);
+  return `<div class="fit-check fit-b-${rd.k}"><div class="fit-check-h"><span class="msr">bolt</span> Fitness check</div>
+    <div class="fit-check-row"><div><small>Your score</small><b class="fit-${rd.k}">${you}</b></div><div><small>Required</small><b>${req}</b></div><div class="fit-check-st fit-${rd.k}"><span class="fit-dot"></span>${rd.label}</div></div>
+    ${rd.k==='green'?'<p class="fit-check-p">You\'re ready for this trek. Continue below.</p>':`<p class="fit-check-p">${rd.msg}</p><div class="fit-check-cta"><button class="btn ghost sm" onclick="openTrainingPlan('${jsq(t.n)}')"><span class="msr">calendar_month</span> Prep plan</button><button class="btn ghost sm" onclick="go('home')"><span class="msr">landscape</span> Easier trek</button></div>`}</div>`;
 }
 function addon(el,k,amt){el.classList.toggle('on');cart[k]=el.classList.contains('on');
   document.getElementById(k==='gear'?'sGear':'sPermit').style.display=cart[k]?'flex':'none';computeTotal();
@@ -3507,7 +3525,7 @@ function accountMenuGroups(){
       ['notifications','Notifications','notifications'],
       ['chat','Messages','messages'],
       ['verified_user','Adventure Passport','passport'],
-      ['fitness_center','Fitness Score','soon:Fitness score'],
+      ['fitness_center','Fitness Score','fitness'],
       ['monitor_heart','Trek Health','health']
     ]],
     ['Wallet & payments',[
@@ -3691,7 +3709,7 @@ function renderProfile(){document.getElementById('pCover').style.backgroundImage
      prompt live here. All account/utility items moved to the hamburger (accountMenu). */
   const pb=document.getElementById('profileBio');
   if(pb){const bio=(_hostApp&&_hostApp.bio)||'';pb.textContent=bio;pb.style.display=bio?'':'none';}
-  let rows=socialLinks(getSavedSocials())+'<div id="hostHub">'+hostHubCard()+'</div>';
+  let rows=socialLinks(getSavedSocials())+fitnessProfileCard()+'<div id="hostHub">'+hostHubCard()+'</div>';
   if(isLoggedIn()&&!isPrefsDone())rows+=`<div class="pref-prompt" onclick="go('onboarding')"><span class="msr">interests</span><div><b>Complete your preferences</b><small>Help us connect you with like-minded trekkers</small></div><span class="msr" style="margin-left:auto">chevron_right</span></div>`;
   if(!isLoggedIn())rows+=`<div class="mrow" onclick="go('login')"><span class="ic">${ic('user',20)}</span><span class="t" style="color:var(--accent2)">Sign in / Create account</span><span class="ch">${ic('back',16)}</span></div>`;
   document.getElementById('menu').innerHTML=rows;
@@ -5128,6 +5146,282 @@ async function flushEvents(){
 }
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'){trackScreenLeave();flushEvents();}});
 window.addEventListener('pagehide',function(){trackScreenLeave();flushEvents();});
+/* =========================================================================
+   ADVENTURE READINESS SYSTEM — Individual Fitness Score + Required Trek Score
+   ========================================================================= */
+
+/* ---- Required Trek Score (0–100). Admin-set; an explicit t.req / t.req_score
+   (from the admin panel or DB) always wins. For the 100+ seeded treks we derive
+   a sensible default from difficulty + altitude + duration, with named overrides
+   for the treks called out in the product spec. ---- */
+function clampScore(n){n=Math.round(Number(n)||0);return Math.max(0,Math.min(100,n));}
+const TREK_REQ={
+  'Triund':35,'Nag Tibba':34,'Kheerganga':36,'Lamadugh':34,'Sham Valley':38,'Chopta Chandrashila':40,'Kareri Lake':44,
+  'Valley of Flowers':42,'Dayara Bugyal':45,'Beas Kund':46,'Hemkund Sahib':48,'Patalsu Peak':48,
+  'Kedarkantha':62,'Brahmatal':64,'Kuari Pass':58,'Har Ki Dun':60,'Phulara Ridge':56,'Sar Pass':60,'Pindari Glacier':62,'Sandakphu':60,'Nubra Valley':58,'Bhrigu Lake':58,'Chandrakhani Pass':60,'Dodital Darwa Pass':58,'Seven Lakes':60,
+  'Hampta Pass':74,'Kashmir Great Lakes':72,'Goecha La':78,'Rupin Pass':76,'Tarsar Marsar':70,'Deo Tibba Base Camp':72,'Miyar Valley':70,'Stok Kangri Base Camp':74,'Lamayuru to Chilling':72,
+  'Roopkund':82,'Pin Parvati Pass':88,'Bali Pass':84,'Kedartal':86,'Satopanth Lake':85,'Markha Valley':80,'Chadar Trek':86,'Rumtse to Tso Moriri':84,'Pangarchulla Peak':82,'Borasu Pass':85,'Indrahar Pass':82,'Gaumukh Tapovan':80,'Kugti Pass':84,'Bara Bhangal':86,'Friendship Peak':88,
+  'Kang Yatse II':92
+};
+function trekReqScore(t){
+  if(!t)return 0;
+  if(typeof t.req==='number')return clampScore(t.req);
+  if(typeof t.req_score==='number')return clampScore(t.req_score);
+  if(TREK_REQ[t.n]!=null)return TREK_REQ[t.n];
+  const alt=parseInt(String(t.alt||'').replace(/[^0-9]/g,''),10)||10000;   /* feet */
+  const base={easy:36,moderate:58,difficult:82}[String(t.lvl||'').toLowerCase()]||55;
+  const s=base+Math.max(0,(alt-9500))/1000*1.4+Math.max(0,(t.days||4)-3)*1.4;
+  return clampScore(s);
+}
+function reqBand(s){return s<40?'Easy':s<50?'Easy+':s<65?'Moderate':s<80?'Moderate+':s<90?'Difficult':'Expedition';}
+
+/* ---- The assessment schema drives BOTH the form and the scoring ---- */
+/* No wearable integration yet, so the score is built entirely from self-reported
+   inputs — the smartwatch 15% is redistributed to the real physical pillars so the
+   score is honest and fully functional on its own. */
+const FIT_WEIGHTS={activity:.25,experience:.20,endurance:.25,health:.18,age:.06,bmi:.06};
+const FIT_SECTIONS=[
+ {t:'About you',icon:'person',qs:[
+   {k:'age',q:'Age',type:'num',unit:'yrs',ph:'28'},
+   {k:'height',q:'Height',type:'num',unit:'cm',ph:'170'},
+   {k:'weight',q:'Weight',type:'num',unit:'kg',ph:'68'},
+   {k:'gender',q:'Gender',type:'chips',opts:[{v:'f',l:'Female'},{v:'m',l:'Male'},{v:'o',l:'Other'}]}
+ ]},
+ {t:'Weekly activity',icon:'directions_run',qs:[
+   {k:'exercise',q:'How much do you exercise weekly?',type:'chips',comp:'activity',opts:[{v:'0',l:'Rarely',p:0},{v:'1',l:'1–2 hrs',p:.35},{v:'2',l:'3–4 hrs',p:.7},{v:'3',l:'5+ hrs',p:1}]},
+   {k:'steps',q:'Average daily steps',type:'chips',comp:'activity',opts:[{v:'0',l:'Under 3k',p:.2},{v:'1',l:'3–6k',p:.5},{v:'2',l:'6–10k',p:.8},{v:'3',l:'10k+',p:1}]},
+   {k:'freq',q:'Workout days per week',type:'chips',comp:'activity',opts:[{v:'0',l:'0',p:0},{v:'1',l:'1–2',p:.4},{v:'2',l:'3–4',p:.7},{v:'3',l:'5+',p:1}]},
+   {k:'sports',q:'Which do you do regularly?',type:'multi',comp:'activity',opts:[{v:'run',l:'Running'},{v:'cycle',l:'Cycling'},{v:'swim',l:'Swimming'},{v:'strength',l:'Strength'}]}
+ ]},
+ {t:'Endurance',icon:'monitoring',qs:[
+   {k:'walk5',q:'Walk 5 km',type:'chips',comp:'endurance',opts:[{v:'2',l:'Easily',p:1},{v:'1',l:'With effort',p:.5},{v:'0',l:'Struggle',p:0}]},
+   {k:'walk10',q:'Walk 10 km',type:'chips',comp:'endurance',opts:[{v:'2',l:'Easily',p:1},{v:'1',l:'With effort',p:.5},{v:'0',l:'Struggle',p:0}]},
+   {k:'run5',q:'Run 5 km',type:'chips',comp:'endurance',opts:[{v:'2',l:'Yes',p:1},{v:'1',l:'Slowly',p:.5},{v:'0',l:'No',p:0}]},
+   {k:'floors',q:'Climb 10 floors non-stop',type:'chips',comp:'endurance',opts:[{v:'2',l:'Easily',p:1},{v:'1',l:'Breathless',p:.5},{v:'0',l:"Can't",p:0}]},
+   {k:'pack',q:'Carry a 10 kg backpack',type:'chips',comp:'endurance',opts:[{v:'2',l:'Easily',p:1},{v:'1',l:'Light only',p:.5},{v:'0',l:'No',p:.1}]}
+ ]},
+ {t:'Trek experience',icon:'terrain',qs:[
+   {k:'done',q:'Treks completed',type:'chips',comp:'experience',opts:[{v:'0',l:'None',p:.15},{v:'1',l:'1–2',p:.45},{v:'2',l:'3–5',p:.75},{v:'3',l:'6+',p:1}]},
+   {k:'altd',q:'Highest altitude reached',type:'chips',comp:'experience',opts:[{v:'0',l:'None',p:.1},{v:'1',l:'<3000 m',p:.35},{v:'2',l:'3–4000 m',p:.6},{v:'3',l:'4–5000 m',p:.85},{v:'4',l:'5000 m+',p:1}]},
+   {k:'longest',q:'Longest trek so far',type:'chips',comp:'experience',opts:[{v:'0',l:'None',p:.1},{v:'1',l:'1–2 days',p:.4},{v:'2',l:'3–5 days',p:.7},{v:'3',l:'6+ days',p:1}]},
+   {k:'snow',q:'Snow trek experience',type:'toggle',comp:'experience'},
+   {k:'backpackx',q:'Multi-day backpacking',type:'toggle',comp:'experience'}
+ ]},
+ {t:'Health',icon:'monitor_heart',qs:[
+   {k:'conditions',q:'Any of these? (select all that apply)',type:'multi',comp:'health',opts:[{v:'asthma',l:'Asthma'},{v:'diabetes',l:'Diabetes'},{v:'bp',l:'Blood pressure'},{v:'heart',l:'Heart condition'},{v:'knee',l:'Knee injury'},{v:'surgery',l:'Recent surgery'}]}
+ ]}
+];
+function fitQ(k){for(const s of FIT_SECTIONS)for(const q of s.qs)if(q.k===k)return q;return null;}
+
+/* ---- storage (session-cached; the ledger of record is localStorage, mirrored
+   best-effort to profiles.fitness so the score follows the user across devices) ---- */
+let _fitStoreCache,_fitComputed=null,_fitDraft=null;
+function fitStore(){if(_fitStoreCache!==undefined)return _fitStoreCache;try{_fitStoreCache=JSON.parse(localStorage.getItem('tmk_fitness')||'null');}catch(e){_fitStoreCache=null;}return _fitStoreCache;}
+function fitSave(d){try{localStorage.setItem('tmk_fitness',JSON.stringify(d));}catch(e){}_fitStoreCache=d;_fitComputed=null;syncFitnessCloud(d);}
+function hasFitness(){const d=fitStore();return !!(d&&d.answers&&Object.keys(d.answers).length>=6);}
+async function syncFitnessCloud(d){try{const sb=getSupaClient();const uid=(typeof authUid==='function')?await authUid():null;if(sb&&uid)await sb.from('profiles').update({fitness:d}).eq('id',uid);}catch(e){}}
+
+function avg(a){a=a.filter(x=>x!=null&&!isNaN(x));return a.length?a.reduce((s,x)=>s+x,0)/a.length:0;}
+function fitLevel(s){return s<=30?'Beginner':s<=50?'Improving':s<=70?'Moderate':s<=85?'Adventure Ready':'Expedition Ready';}
+function scoreColor(s){return s<=30?'#ff7a7a':s<=50?'#ffb020':s<=70?'#5aa6ff':s<=85?'#38d39f':'#a06bff';}
+
+/* ---- the score engine (PRD weightage) ---- */
+function computeFitness(d){
+  if(!d&&_fitComputed)return _fitComputed;
+  const store=d||fitStore()||{};const a=store.answers||{};
+  const P=k=>{const q=fitQ(k);if(!q)return 0;const o=(q.opts||[]).find(o=>String(o.v)===String(a[k]));return o?(o.p||0):0;};
+  const T=k=>a[k]?1:0;
+  const M=k=>Array.isArray(a[k])?a[k]:[];
+  const activity=avg([P('exercise'),P('steps'),P('freq'),Math.min(1,M('sports').length*0.3)]);
+  const endurance=avg([P('walk5'),P('walk10'),P('run5'),P('floors'),P('pack')]);
+  const experience=avg([P('done'),P('altd'),P('longest'),T('snow'),T('backpackx')]);
+  const HP={asthma:.2,diabetes:.2,bp:.15,heart:.4,knee:.2,surgery:.4};
+  let health=1;M('conditions').forEach(c=>{health-=HP[c]||.15;});health=Math.max(0,health);
+  const age=Number(store.age)||0;
+  const ageP=!age?.7:age<18?.85:age<=35?1:age<=45?.85:age<=55?.65:age<=65?.45:.3;
+  const h=Number(store.height)||0,w=Number(store.weight)||0;let bmiP=.6;
+  if(h>0&&w>0){const bmi=w/Math.pow(h/100,2);bmiP=(bmi>=18.5&&bmi<=24.9)?1:(bmi>=17&&bmi<27)?.7:(bmi>=15&&bmi<30)?.45:.25;}
+  const W=FIT_WEIGHTS;
+  const score=clampScore(100*(activity*W.activity+experience*W.experience+endurance*W.endurance+health*W.health+ageP*W.age+bmiP*W.bmi));
+  const r=x=>clampScore(x*100);
+  const subs={
+    cardio:r(avg([P('exercise'),P('steps'),P('run5'),(M('sports').includes('run')||M('sports').includes('cycle')||M('sports').includes('swim'))?1:.3])),
+    strength:r(avg([M('sports').includes('strength')?1:.3,P('pack'),P('floors'),P('freq')])),
+    endurance:r(endurance),
+    recovery:r(avg([health,ageP,M('conditions').includes('surgery')?.3:1])),
+    consistency:r(avg([P('freq'),P('exercise')]))
+  };
+  const res={score,level:fitLevel(score),subs,comps:{activity:r(activity),experience:r(experience),endurance:r(endurance),health:r(health)}};
+  if(!d)_fitComputed=res;
+  return res;
+}
+
+/* ---- readiness = user score vs required trek score (Green / Yellow / Red) ---- */
+function readiness(user,req){
+  const diff=user-req;
+  if(diff>=0)return{k:'green',label:'Recommended',msg:"Your fitness meets this trek. You're good to go."};
+  if(req-user<=10)return{k:'yellow',label:'Prepare a little',msg:'You can do this trek — we recommend training for 2–4 weeks first.'};
+  return{k:'red',label:'Not ready yet',msg:'Not recommended right now. Build your score first with a short plan.'};
+}
+
+/* ---- the readiness card shown on the trek detail + booking review ---- */
+function readinessCardHTML(t){
+  const req=trekReqScore(t);
+  if(!hasFitness()){
+    return `<div class="fit-card"><div class="fit-card-h"><span class="msr">bolt</span> Adventure Readiness</div>
+      <div class="fit-req-row"><div><small>Difficulty</small><b>${esc(t.lvl||reqBand(req))}</b></div><div><small>Required score</small><b>${req}</b></div><div><small>Your score</small><b>—</b></div></div>
+      <button class="btn fit-cta" onclick="go('fitness')"><span class="msr">fitness_center</span> Check my readiness</button></div>`;
+  }
+  const you=computeFitness().score,rd=readiness(you,req);
+  return `<div class="fit-card fit-b-${rd.k}"><div class="fit-card-h"><span class="msr">bolt</span> Adventure Readiness</div>
+    <div class="fit-req-row"><div><small>Difficulty</small><b>${esc(t.lvl||reqBand(req))}</b></div><div><small>Required</small><b>${req}</b></div><div><small>Your score</small><b class="fit-you fit-${rd.k}">${you}</b></div></div>
+    <div class="fit-status fit-${rd.k}"><span class="fit-dot"></span>${rd.label}</div>
+    <p class="fit-msg">${rd.msg}</p>
+    ${rd.k!=='green'?`<button class="btn ghost fit-plan" onclick="openTrainingPlan('${jsq(t.n)}')"><span class="msr">calendar_month</span> View ${req-you>10?'30-day':'2–4 week'} prep plan</button>`:''}</div>`;
+}
+/* compact chip for trek cards / search results */
+function readinessChip(t){
+  if(!hasFitness())return `<span class="tag fit-chip fit-b-none">Req ${trekReqScore(t)}</span>`;
+  const req=trekReqScore(t),rd=readiness(computeFitness().score,req);
+  return `<span class="tag fit-chip fit-b-${rd.k}"><span class="fit-dot"></span>Req ${req}</span>`;
+}
+/* profile entry */
+function fitnessProfileCard(){
+  if(hasFitness()){
+    const r=computeFitness();
+    return `<div class="mrow fit-prow" onclick="go('fitness')"><span class="fit-prow-score" style="background:${scoreColor(r.score)}">${r.score}</span><div class="fit-prow-tx"><b>Adventure Readiness</b><small>${esc(r.level)} · tap to view</small></div><span class="ch">${ic('back',16)}</span></div>`;
+  }
+  return `<div class="mrow fit-prow" onclick="go('fitness')"><span class="ic" style="color:var(--accent2)">${ic('altitude',20)}</span><span class="t">Check your Adventure Readiness</span><span class="ch">${ic('back',16)}</span></div>`;
+}
+
+/* ---- Fitness dashboard ---- */
+function renderFitness(){
+  const box=document.getElementById('fitnessBody');if(!box)return;
+  if(!hasFitness()){box.innerHTML=fitnessIntroHTML();hydrate(box);return;}
+  const r=computeFitness(),col=scoreColor(r.score);
+  const C=2*Math.PI*52,off=C*(1-r.score/100);
+  const ring=`<div class="fit-ring-wrap"><svg viewBox="0 0 128 128" class="fit-ring"><circle cx="64" cy="64" r="52" class="fit-ring-bg"/><circle cx="64" cy="64" r="52" class="fit-ring-fg" style="stroke:${col};stroke-dasharray:${C.toFixed(1)};stroke-dashoffset:${off.toFixed(1)}"/></svg><div class="fit-ring-c"><b>${r.score}</b><small>/100</small></div></div><div class="fit-level" style="color:${col}">${esc(r.level)}</div>`;
+  const subs=[['Cardio','cardio'],['Strength','strength'],['Endurance','endurance'],['Recovery','recovery'],['Consistency','consistency']];
+  const bars=subs.map(s=>`<div class="fit-bar"><div class="fit-bar-top"><span>${s[0]}</span><b>${r.subs[s[1]]}</b></div><div class="fit-bar-tr"><i style="width:${r.subs[s[1]]}%;background:${scoreColor(r.subs[s[1]])}"></i></div></div>`).join('');
+  const subEntries=[['Cardio',r.subs.cardio],['Strength',r.subs.strength],['Endurance',r.subs.endurance],['Recovery',r.subs.recovery],['Consistency',r.subs.consistency]];
+  const focus=subEntries.reduce((a,b)=>b[1]<a[1]?b:a);
+  const meta=[['military_tech',r.level,'Level'],['landscape',new Set(getBookings().map(b=>b.trek)).size,'Treks'],['target',focus[0],'Focus area'],['bolt',r.score,'Score']];
+  box.innerHTML=`${ring}
+    <div class="fit-subs">${bars}</div>
+    <div class="fit-meta">${meta.map(m=>`<div class="fit-meta-c"><span class="msr">${m[0]}</span><b>${esc(String(m[1]))}</b><small>${esc(m[2])}</small></div>`).join('')}</div>
+    <button class="btn ghost fit-update" onclick="go('fitnessTest')"><span class="msr">edit</span> Update assessment</button>
+    <div class="sec-h" style="margin:22px 4px 10px"><b>Recommended for you</b></div>
+    ${aiRecoHTML(r.score)}
+    <div style="height:calc(var(--safe-bottom) + 20px)"></div>`;
+  hydrate(box);
+}
+function fitnessIntroHTML(){
+  return `<div class="fit-intro"><div class="fit-intro-ic"><span class="msr">bolt</span></div>
+    <h2>Know your Adventure Readiness</h2>
+    <p>Answer a few quick questions and we'll score your fitness out of 100 — then match you to treks you're ready for, and build prep plans for the ones you're not ready for yet.</p>
+    <div class="fit-intro-grid"><div><span class="msr">favorite</span>Cardio</div><div><span class="msr">fitness_center</span>Strength</div><div><span class="msr">directions_run</span>Endurance</div><div><span class="msr">terrain</span>Experience</div></div>
+    <button class="btn" onclick="go('fitnessTest')"><span class="msr">arrow_forward</span> Start assessment</button>
+    <p class="fit-intro-note">Takes about 2 minutes · Private to you</p></div>`;
+}
+function aiRecoHTML(score){
+  const pool=(typeof cmpAvail==='function'?cmpAvail():treks).slice();
+  const rec=[],chal=[],avoid=[];
+  pool.forEach(t=>{const req=trekReqScore(t),d=score-req;if(d>=0)rec.push([t,req]);else if(req-score<=10)chal.push([t,req]);else avoid.push([t,req]);});
+  rec.sort((x,y)=>y[1]-x[1]);chal.sort((x,y)=>x[1]-y[1]);avoid.sort((x,y)=>x[1]-y[1]);
+  const colf=(title,arr,cls,icn)=>arr.length?`<div class="reco-col reco-${cls}"><div class="reco-h"><span class="msr">${icn}</span>${title}</div>${arr.slice(0,4).map(([t,req])=>`<div class="reco-row" onclick="openDetailByName('${jsq(t.n)}')"><div class="reco-ph" style="background-image:url('${esc(t.img||'')}')"></div><div class="reco-tx"><b>${esc(t.n)}</b><small>${esc(t.region||'')} · Req ${req}</small></div><span class="reco-req fit-b-${cls}">${req}</span></div>`).join('')}</div>`:'';
+  return (colf('Recommended',rec,'green','check_circle')+colf('Possible challenge',chal,'yellow','trending_up')+colf('Avoid for now',avoid,'red','block'))||'<div class="empty"><p>No treks to match yet.</p></div>';
+}
+
+/* ---- Assessment form (chip/toggle driven, minimal typing) ---- */
+function renderFitnessTest(){
+  const box=document.getElementById('fitnessTestBody');if(!box)return;
+  const d=fitStore()||{};
+  _fitDraft={age:d.age||'',height:d.height||'',weight:d.weight||'',answers:Object.assign({},d.answers||{})};
+  box.innerHTML=FIT_SECTIONS.map(sec=>`<div class="fit-sec"><div class="fit-sec-h"><span class="msr">${sec.icon}</span>${esc(sec.t)}</div>${sec.qs.map(fitQuestionHTML).join('')}</div>`).join('')
+    +`<button class="btn fit-submit" onclick="fitSubmit()"><span class="msr">bolt</span> Calculate my score</button><div style="height:calc(var(--safe-bottom) + 20px)"></div>`;
+  hydrate(box);
+}
+function fitQuestionHTML(q){
+  const a=_fitDraft.answers,val=a[q.k];
+  if(q.type==='num'){const cur=_fitDraft[q.k]||'';return `<div class="fit-q fit-q-num"><label>${esc(q.q)}</label><div class="fit-num"><input id="fitn_${q.k}" type="number" inputmode="numeric" placeholder="${esc(q.ph||'')}" value="${esc(String(cur))}"><span>${esc(q.unit||'')}</span></div></div>`;}
+  if(q.type==='toggle'){return `<div class="fit-q fit-q-tog"><span>${esc(q.q)}</span><button type="button" class="fit-tog ${val?'on':''}" onclick="fitToggle('${q.k}',this)"><span class="fit-knob"></span></button></div>`;}
+  const multi=q.type==='multi',arr=multi?(Array.isArray(val)?val:[]):null;
+  const chips=(q.opts||[]).map(o=>{const on=multi?arr.includes(o.v):String(val)===String(o.v);const fn=multi?`fitMulti('${q.k}','${o.v}',this)`:`fitChip('${q.k}','${o.v}',this)`;return `<button type="button" class="fit-opt ${on?'on':''}" onclick="${fn}">${esc(o.l)}</button>`;}).join('');
+  return `<div class="fit-q"><label>${esc(q.q)}${q.soon?' <span class="fit-soon">soon</span>':''}</label><div class="fit-opts ${multi?'multi':''}">${chips}</div></div>`;
+}
+function fitChip(k,v,el){_fitDraft.answers[k]=v;const w=el.parentElement;w.querySelectorAll('.fit-opt').forEach(b=>b.classList.remove('on'));el.classList.add('on');}
+function fitToggle(k,el){const cur=!_fitDraft.answers[k];_fitDraft.answers[k]=cur;el.classList.toggle('on',cur);}
+function fitMulti(k,v,el){let arr=Array.isArray(_fitDraft.answers[k])?_fitDraft.answers[k]:[];const i=arr.indexOf(v);if(i>=0)arr.splice(i,1);else arr.push(v);_fitDraft.answers[k]=arr;el.classList.toggle('on');}
+function fitSubmit(){
+  const g=id=>{const e=document.getElementById(id);return e?e.value:'';};
+  _fitDraft.age=Number(g('fitn_age'))||_fitDraft.age||'';
+  _fitDraft.height=Number(g('fitn_height'))||_fitDraft.height||'';
+  _fitDraft.weight=Number(g('fitn_weight'))||_fitDraft.weight||'';
+  if(Object.keys(_fitDraft.answers).length<6){note('Please answer a few more questions so we can score you accurately.','Almost there');return;}
+  const data={age:_fitDraft.age,height:_fitDraft.height,weight:_fitDraft.weight,answers:_fitDraft.answers,updatedAt:Date.now()};
+  fitSave(data);
+  const r=computeFitness(data);_fitComputed=r;
+  if(typeof toast==='function')toast('Fitness score: '+r.score+' · '+r.level);
+  go('fitness');
+}
+
+/* ---- AI Training Plan ----
+   Renders a solid deterministic plan INSTANTLY (always works, offline-safe), then
+   asks Gemini (via the fitness-coach edge function) to personalise today's session
+   + a coaching note. If the GEMINI_API_KEY secret isn't set, or the function isn't
+   deployed, the deterministic plan simply stays — nothing breaks. */
+let _planTrek='';
+function openTrainingPlan(name){_planTrek=name||'';go('trainingPlan');}
+function trekByName(n){return treks.find(t=>t.n===n)||(typeof cmpAvail==='function'?cmpAvail().find(t=>t.n===n):null)||null;}
+function renderTrainingPlan(){
+  const box=document.getElementById('trainingPlanBody');if(!box)return;
+  const t=_planTrek?trekByName(_planTrek):null;
+  const you=hasFitness()?computeFitness().score:userFitnessScore();
+  const goal=t?trekReqScore(t):Math.min(100,you+15);
+  const gap=Math.max(0,goal-you);
+  const days=gap>10?30:14;
+  const wk=['Brisk walk 5 km','Stair / incline 30 min','Jog + walk intervals 4 km','Strength — legs & core 25 min','Long walk 8–10 km','Backpack walk 5 km (5 kg)','Rest + stretch 15 min'];
+  const today=wk[new Date().getDay()];
+  box.innerHTML=`
+    <div class="plan-goal"><div><small>Goal score</small><b>${goal}</b></div><div class="plan-arrow"><span class="msr">arrow_forward</span></div><div><small>Your score</small><b style="color:${scoreColor(you)}">${you}</b></div><div class="plan-days"><small>Days left</small><b>${days}</b></div></div>
+    ${t?`<p class="plan-for">A ${days}-day plan to get you ready for <b>${esc(t.n)}</b> (needs ${goal}).</p>`:`<p class="plan-for">A ${days}-day plan to lift your readiness by ~${Math.max(5,gap)} points.</p>`}
+    <div class="plan-prog"><div class="plan-prog-tr"><i style="width:${Math.round(Math.min(100,you/goal*100))}%"></i></div><span>${you}/${goal}</span></div>
+    <div id="planCoach"></div>
+    <div class="sec-h" style="margin:20px 4px 10px;display:flex;align-items:center;justify-content:space-between"><b>Today's workout</b><span id="planAiBadge" class="plan-ai" style="display:none"><span class="msr">auto_awesome</span> AI personalised</span></div>
+    <div class="plan-today" id="planToday">
+      <div class="plan-w"><span class="msr">directions_walk</span><div><b>${esc(today)}</b><small>Main session</small></div></div>
+      <div class="plan-w"><span class="msr">fitness_center</span><div><b>Strength 20 min</b><small>Squats · lunges · planks</small></div></div>
+      <div class="plan-w"><span class="msr">self_improvement</span><div><b>Stretch 10 min</b><small>Calves · hips · lower back</small></div></div>
+    </div>
+    <div class="sec-h" style="margin:20px 4px 10px"><b>Weekly rhythm</b></div>
+    <div class="plan-week">${wk.map((w,i)=>`<div class="plan-day ${i===new Date().getDay()?'on':''}"><b>${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][i]}</b><span>${esc(w)}</span></div>`).join('')}</div>
+    <button class="btn" style="margin-top:18px" onclick="go('fitnessTest')"><span class="msr">refresh</span> Re-test my score</button>
+    <div style="height:calc(var(--safe-bottom) + 20px)"></div>`;
+  hydrate(box);
+  aiEnhancePlan(t,you,goal,days);
+}
+/* ask Gemini to personalise the plan; silently no-ops if unavailable */
+async function aiEnhancePlan(t,you,goal,days){
+  try{
+    if(!(typeof SB!=='undefined'&&SB.SUPABASE_URL))return;
+    const r=hasFitness()?computeFitness():null;
+    const resp=await fetch(SB.SUPABASE_URL+'/functions/v1/fitness-coach',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+SB.SUPABASE_ANON_KEY,apikey:SB.SUPABASE_ANON_KEY},
+      body:JSON.stringify({score:you,goal,days,trek:t?t.n:'',level:r?r.level:'',subs:r?r.subs:null})
+    });
+    const d=await resp.json();
+    if(!d||!d.ok||!Array.isArray(d.today)||!d.today.length||cur!=='trainingPlan')return;
+    const coach=document.getElementById('planCoach');
+    if(coach&&d.coach)coach.innerHTML=`<div class="plan-coach"><span class="msr">auto_awesome</span><p>${esc(d.coach)}</p></div>`;
+    const icons=['directions_walk','fitness_center','self_improvement','hiking'];
+    const box2=document.getElementById('planToday');
+    if(box2)box2.innerHTML=d.today.slice(0,4).map((w,i)=>`<div class="plan-w"><span class="msr">${icons[i%icons.length]}</span><div><b>${esc(w.title||'')}</b><small>${esc(w.detail||'')}</small></div></div>`).join('');
+    const badge=document.getElementById('planAiBadge');if(badge)badge.style.display='inline-flex';
+    hydrate(document.getElementById('trainingPlanBody'));
+  }catch(e){/* deterministic plan stays */}
+}
+
 /* Kill any playing media before switching screens. A hidden view (display:none) keeps
    its <video> and — worse — its YouTube/Vimeo iframe playing audio in the background.
    Pause every video, and revert each played embed back to its tap-to-play poster. */
@@ -5203,6 +5497,9 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='language')renderLanguage();
   if(id==='payments')renderPayments();
   if(id==='compare')renderCompare();
+  if(id==='fitness')renderFitness();
+  if(id==='fitnessTest')renderFitnessTest();
+  if(id==='trainingPlan')renderTrainingPlan();
   staggerActive();saveNav();
 }
 /* in-app back button → use browser history so it stays in sync with device back */
