@@ -948,6 +948,34 @@
   .wa-btn:active{transform:scale(.98);filter:brightness(.96)}
   .wa-ic{flex:none}
   .wa-btn.sm{min-height:44px;font-size:13px;box-shadow:none}
+  /* --- host onboarding wizard --- */
+  .hw-top{margin:2px 0 16px}
+  .hw-prog{height:6px;border-radius:999px;background:var(--stroke2);overflow:hidden}
+  .hw-prog i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .35s cubic-bezier(.2,0,0,1)}
+  .hw-step{font-size:11.5px;color:var(--muted2);font-weight:700;margin-top:8px;text-transform:uppercase;letter-spacing:.4px}
+  .hw-title{font-size:22px;margin:0 0 4px;line-height:1.2}
+  .hw-sub{color:var(--muted);font-size:13px;margin:0 0 18px}
+  .hw-body{margin-bottom:18px}
+  .hw-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .hw-card{position:relative;background:var(--card);border:1.5px solid var(--stroke);border-radius:14px;padding:14px 34px 14px 14px;font-size:13.5px;font-weight:600;
+    cursor:pointer;min-height:52px;display:flex;align-items:center;transition:border-color .15s,background .15s,transform .1s}
+  .hw-card:active{transform:scale(.98)}
+  .hw-card.on{border-color:var(--accent);background:rgba(47,107,255,.1);color:var(--accent2)}
+  .hw-card.on::after{content:'✓';position:absolute;right:11px;top:50%;transform:translateY(-50%);width:20px;height:20px;border-radius:50%;
+    background:var(--accent);color:#fff;font-size:12px;font-weight:800;display:grid;place-items:center}
+  .hw-bio{width:100%;min-height:120px;box-sizing:border-box;background:var(--card);border:1px solid var(--stroke);border-radius:14px;
+    padding:14px;font-family:var(--font);font-size:14px;color:var(--text);resize:vertical;line-height:1.55}
+  .hw-bio:focus{outline:none;border-color:var(--accent)}
+  .hw-bioc{text-align:right;font-size:11.5px;color:var(--muted2);margin-top:6px}
+  .hw-review{display:flex;flex-direction:column;gap:1px;background:var(--card);border:1px solid var(--stroke);border-radius:16px;overflow:hidden;margin-bottom:14px}
+  .hw-rev{display:flex;justify-content:space-between;gap:14px;padding:12px 14px;border-bottom:1px solid var(--stroke)}
+  .hw-rev:last-child{border-bottom:0}
+  .hw-rev small{color:var(--muted);font-size:12px;flex:none}
+  .hw-rev b{font-size:12.5px;text-align:right;font-weight:600;word-break:break-word}
+  .hw-nav{display:flex;gap:10px;position:sticky;bottom:0;padding:12px 0 calc(var(--safe-bottom) + 12px);background:linear-gradient(180deg,transparent,var(--bg) 30%)}
+  .hw-nav .btn{flex:1}.hw-nav .btn.ghost{flex:.7}
+  .hd-level{color:#ffce1f;font-weight:800}
+  html.light .hd-level{color:#b07d00}
   /* --- Compare Treks motion (Premium: rise+fade, signature cubic-bezier(.2,0,0,1)) --- */
   @media(prefers-reduced-motion:no-preference){
     .cmp-table-wrap{animation:cmpRise .42s cubic-bezier(.2,0,0,1) both}

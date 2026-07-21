@@ -4709,6 +4709,7 @@ function isVerifiedHost(){return !!(_hostApp&&_hostApp.status==='approved');}
 
 const HOST_FIELDS=[
   ['hfName','Full name','text','Your full name',true],
+  ['hfEmail','Email','email','you@email.com',false],
   ['hfMobile','Mobile','tel','+91 XXXXX XXXXX',true],
   ['hfCity','City','text','Where are you based?',false],
   ['hfInsta','Instagram','text','@yourhandle or link',false],
@@ -4767,47 +4768,150 @@ async function renderBecomeHost(){
     return;
   }
 
-  /* the application form */
-  body.innerHTML='<div class="host-hero">'
-    +'<h2>Host trips. We run the operations.</h2>'
-    +'<p>Bring your community. Tripomonk handles stays, transport, guides, permits, payments and support — so you can focus on leading the trip.</p></div>'
-    +'<div class="host-perks">'
-    +'<div><span class="msr">check_circle</span>We arrange operators, leaders, permits and gear.</div>'
-    +'<div><span class="msr">check_circle</span>Payments, invoices and customer support are ours.</div>'
-    +'<div><span class="msr">check_circle</span>You get a public host page and a Verified Host badge.</div>'
-    +'<div><span class="msr">check_circle</span>Commercials are agreed with you before your first trip goes live.</div>'
-    +'</div>'
-    +HOST_FIELDS.map(hostField).join('')
-    +'<div class="field"><label>Travel experience</label><div class="inp"><input id="hfExp" placeholder="Trips led, years travelling…"/></div></div>'
-    +'<div class="field"><label>Trips you want to host</label><div class="inp"><input id="hfTypes" placeholder="Treks, road trips, photo tours…"/></div></div>'
-    +'<div class="field"><label>Preferred destinations</label><div class="inp"><input id="hfDests" placeholder="Spiti, Rishikesh, Meghalaya…"/></div></div>'
-    +'<div class="field"><label>Anything else</label><div class="inp"><input id="hfAbout" placeholder="Tell us about your community"/></div></div>'
-    /* commission — must be crystal clear and consented before applying */
-    +'<div class="commission-box">'
-      +'<div class="cb-row"><span class="msr">payments</span><div><b>How you earn</b>'
-      +'<small>Tripomonk keeps a <b>10% platform fee</b> on each confirmed booking. You keep <b>90%</b>. We run all operations, payments and support; your payout is settled after the trip.</small></div></div>'
-      +'<label class="cb-consent"><input type="checkbox" id="hfConsent"/> <span>I understand and agree that Tripomonk charges a 10% commission on my hosted trips.</span></label>'
-    +'</div>'
-    +'<button class="btn" id="hfSubmit" onclick="submitHostApp()">Submit application</button>'
-    +'<p class="host-note">We never ask for your government ID, bank details or GST in the app. Those are collected on the verification call once your application is approved.</p>';
+  /* the multi-step application wizard */
+  _hwStep=0;renderHostWizard();
+}
+/* ============================================================
+   HOST ONBOARDING WIZARD — card-style, multi-step
+   ============================================================ */
+const HOST_WIZARD=[
+  {key:'host_type',title:'Who are you?',sub:'Choose one',type:'single',opts:['Travel Influencer','Trek Leader','Photographer','Content Creator','Bike Ride Organizer','Camping Organizer','College Club / Community','Adventure Enthusiast','Tour Guide','Other']},
+  {key:'experiences',title:'What do you want to host?',sub:'Select all that apply',type:'multi',opts:['Treks','Bike Expeditions','Camping','Photography Tours','Heritage Walks','Sunrise Hikes','Spiritual Tours','Wildlife Trips','Beach Trips','Backpacking','Trail Running','Group Tours']},
+  {key:'destinations',title:'Which destinations can you host?',sub:'Select all that apply',type:'multi',opts:['Kashmir','Ladakh','Spiti','Uttarakhand','Himachal','Meghalaya','Sikkim','Goa','Rajasthan','Kerala','Nepal','Bhutan']},
+  {key:'experience_level',title:'Experience level',sub:'Choose one',type:'single',opts:['First Time Host','Hosted 1–5 Trips','Hosted 5–20 Trips','Hosted 20+ Trips','Professional Tour Leader']},
+  {key:'group_size',title:'Group size preference',sub:'Choose one',type:'single',opts:['5–10 People','10–20 People','20–40 People','40+ People','No Preference']},
+  {key:'languages',title:'Languages',sub:'Select all you speak',type:'multi',opts:['Hindi','English','Bengali','Tamil','Marathi','Gujarati','Punjabi','Kannada','Telugu','Malayalam','Other']},
+  {key:'hosting_style',title:'Your hosting style',sub:'Choose up to 3',type:'multi',max:3,opts:['Adventure','Luxury','Budget','Photography','Backpacking','Solo Travel','Women Only','Family Friendly','Corporate Retreats','Student Trips','Weekend Getaways','Wellness','Culture','Food','Motorcycling']},
+  {key:'acquisition',title:'How will you bring travellers?',sub:'Select all that apply',type:'multi',opts:['Instagram','YouTube','WhatsApp Community','Telegram','Facebook','LinkedIn','College Network','Travel Community','Personal Referrals','Website','Other']},
+  {key:'audience_size',title:'Audience size',sub:'Choose one',type:'single',opts:['Less than 500','500–2K','2K–10K','10K–50K','50K–100K','100K+','Prefer not to say']},
+  {key:'why_host',title:'Why do you want to host?',sub:'Choose one',type:'single',opts:['Share my travel experience','Earn extra income','Build a travel community','Create amazing content','Lead adventures','Start my own travel brand']},
+  {key:'basic',title:'Basic details',sub:'Mobile, WhatsApp, email and date of birth are required (hosts must be 18+)',type:'form',fields:[['bd_name','Full name','text',true],['bd_mobile','Mobile number','tel',true],['bd_whatsapp','WhatsApp number','tel',true],['bd_email','Email address','email',true],['bd_city','City','text',false],['bd_dob','Date of birth','date',true]]},
+  {key:'socials',title:'Social profiles',sub:'Add any you like',type:'form',fields:[['so_insta','Instagram','text',false],['so_yt','YouTube','text',false],['so_fb','Facebook','text',false],['so_li','LinkedIn','text',false],['so_web','Website (optional)','text',false]]},
+  {key:'bio',title:'Tell us about yourself',sub:'A short bio — max 300 characters',type:'bio'},
+  {key:'review',title:'Review & submit',sub:'Check your details, then submit for verification',type:'review'}
+];
+let _hwStep=0,_hwAns={};
+/* 18+ age gate for hosts */
+function eighteenCutoff(){const d=new Date();d.setFullYear(d.getFullYear()-18);return d;}
+function maxDobStr(){return eighteenCutoff().toISOString().slice(0,10);}   /* date input max = 18y ago */
+function dobIsAdult(str){if(!str)return false;const d=new Date(str);return !isNaN(d)&&d<=eighteenCutoff();}
+function hwCheckDob(el){
+  if(el.value&&!dobIsAdult(el.value)){
+    note('You need to be 18 or older to host trips on Tripomonk.','18+ required');
+    el.value='';if(_hwAns.basic)_hwAns.basic.bd_dob='';
+  }else if(_hwAns.basic){_hwAns.basic.bd_dob=el.value;}
+}
+function hwReset(){_hwStep=0;_hwAns={host_type:'',experiences:[],destinations:[],experience_level:'',group_size:'',languages:[],hosting_style:[],acquisition:[],audience_size:'',why_host:'',basic:{},socials:{},bio:''};
+  /* prefill basic + socials from the signed-in profile */
+  _hwAns.basic={bd_name:getSavedName()||'',bd_mobile:getSavedMobile()||'',bd_whatsapp:getSavedMobile()||'',bd_email:getUserEmail()||'',bd_city:'',bd_dob:''};
+  const soc=getSavedSocials()||{};
+  _hwAns.socials={so_insta:soc.instagram||'',so_yt:soc.youtube||'',so_fb:soc.facebook||'',so_li:soc.linkedin||'',so_web:soc.website||''};
+}
+function hwPick(key,val){_hwAns[key]=val;renderHostWizard();}
+function hwToggle(key,val,max){
+  const arr=_hwAns[key]||(_hwAns[key]=[]);const i=arr.indexOf(val);
+  if(i>=0)arr.splice(i,1);
+  else{ if(max&&arr.length>=max){toast('Choose up to '+max);return;} arr.push(val); }
+  renderHostWizard();
+}
+function hwSaveForm(){
+  const st=HOST_WIZARD[_hwStep];if(st.type!=='form')return;
+  _hwAns[st.key]=_hwAns[st.key]||{};
+  st.fields.forEach(f=>{const el=document.getElementById(f[0]);if(el)_hwAns[st.key][f[0]]=el.value.trim();});
+}
+function hwSaveBio(){const el=document.getElementById('hwBio');if(el)_hwAns.bio=el.value.slice(0,300);}
+function hwStepValid(){
+  const st=HOST_WIZARD[_hwStep];
+  if(st.type==='single')return !!_hwAns[st.key];
+  if(st.type==='multi')return (_hwAns[st.key]||[]).length>0;
+  if(st.type==='form'){hwSaveForm();return st.fields.filter(f=>f[3]).every(f=>(_hwAns[st.key][f[0]]||'').trim());}
+  return true;
+}
+function hwNext(){
+  const st=HOST_WIZARD[_hwStep];
+  if(st.type==='form')hwSaveForm();if(st.type==='bio')hwSaveBio();
+  if(!hwStepValid()){toast(st.type==='multi'?'Please select at least one':'Please complete this step');return;}
+  if(_hwStep<HOST_WIZARD.length-1){_hwStep++;renderHostWizard();document.querySelector('.view.active').scrollTop=0;}
+}
+function hwBack(){
+  const st=HOST_WIZARD[_hwStep];if(st.type==='form')hwSaveForm();if(st.type==='bio')hwSaveBio();
+  if(_hwStep>0){_hwStep--;renderHostWizard();document.querySelector('.view.active').scrollTop=0;}
+  else renderBecomeHost();
+}
+function renderHostWizard(){
+  const body=document.getElementById('hostBody');if(!body)return;
+  if(!_hwAns.basic)hwReset();
+  const st=HOST_WIZARD[_hwStep];const n=HOST_WIZARD.length;
+  const pct=Math.round(((_hwStep+1)/n)*100);
+  let inner='';
+  if(st.type==='single'){
+    inner='<div class="hw-cards">'+st.opts.map(o=>`<div class="hw-card ${_hwAns[st.key]===o?'on':''}" onclick="hwPick('${st.key}','${jsq(o)}')">${esc(o)}</div>`).join('')+'</div>';
+  }else if(st.type==='multi'){
+    const sel=_hwAns[st.key]||[];
+    inner='<div class="hw-cards">'+st.opts.map(o=>`<div class="hw-card ${sel.includes(o)?'on':''}" onclick="hwToggle('${st.key}','${jsq(o)}',${st.max||0})">${esc(o)}</div>`).join('')+'</div>';
+  }else if(st.type==='form'){
+    const a=_hwAns[st.key]||{};
+    inner=st.fields.map(f=>{
+      const ph=f[0]==='bd_mobile'||f[0]==='bd_whatsapp'?'+91 XXXXX XXXXX':f[0]==='bd_email'?'you@email.com':'';
+      const extra=f[0]==='bd_dob'?` max="${maxDobStr()}" oninput="hwCheckDob(this)"`:'';
+      return `<div class="field"><label>${esc(f[1])}${f[3]?' *':''}</label><div class="inp"><input id="${f[0]}" type="${f[2]}" value="${esc(a[f[0]]||'')}" placeholder="${ph}"${extra}/></div>${f[0]==='bd_dob'?'<small class="host-note" style="margin:5px 2px 0">You must be at least 18 to host trips.</small>':''}</div>`;
+    }).join('');
+  }else if(st.type==='bio'){
+    inner=`<textarea id="hwBio" class="hw-bio" maxlength="300" placeholder="e.g. I'm an avid Himalayan trekker who has led 30+ beginner-friendly treks…" oninput="document.getElementById('hwBioC').textContent=this.value.length">${esc(_hwAns.bio||'')}</textarea><div class="hw-bioc"><span id="hwBioC">${(_hwAns.bio||'').length}</span>/300</div>`;
+  }else if(st.type==='review'){
+    const rev=(l,v)=>v&&v.length?`<div class="hw-rev"><small>${l}</small><b>${esc(Array.isArray(v)?v.join(', '):v)}</b></div>`:'';
+    const b=_hwAns.basic||{},s=_hwAns.socials||{};
+    inner='<div class="hw-review">'
+      +rev('Host type',_hwAns.host_type)
+      +rev('Experiences',_hwAns.experiences)
+      +rev('Destinations',_hwAns.destinations)
+      +rev('Experience level',_hwAns.experience_level)
+      +rev('Group size',_hwAns.group_size)
+      +rev('Languages',_hwAns.languages)
+      +rev('Hosting style',_hwAns.hosting_style)
+      +rev('Audience size',_hwAns.audience_size)
+      +rev('Name',b.bd_name)+rev('Mobile',b.bd_mobile)+rev('City',b.bd_city)
+      +rev('Instagram',s.so_insta)+rev('Website',s.so_web)
+      +rev('Bio',_hwAns.bio)
+      +'</div><p class="host-note">Government ID, PAN and bank/payout details are collected securely on your verification call after approval — never in the app.</p>';
+  }
+  const isLast=_hwStep===n-1;
+  body.innerHTML=`<div class="hw-top"><div class="hw-prog"><i style="width:${pct}%"></i></div>
+      <div class="hw-step">Step ${_hwStep+1} of ${n}</div></div>
+    <h2 class="hw-title">${esc(st.title)}</h2>${st.sub?`<p class="hw-sub">${esc(st.sub)}</p>`:''}
+    <div class="hw-body">${inner}</div>
+    <div class="hw-nav">
+      <button class="btn ghost" onclick="hwBack()">${_hwStep===0?'Cancel':'Back'}</button>
+      <button class="btn" onclick="${isLast?'submitHostApp()':'hwNext()'}">${isLast?'Submit for verification':'Continue'}</button>
+    </div>`;
   hydrate(body);
 }
 async function submitHostApp(){
-  const v=id=>((document.getElementById(id)||{}).value||'').trim();
-  const name=v('hfName'),mobile=v('hfMobile');
+  hwSaveForm();hwSaveBio();
+  const b=_hwAns.basic||{},s=_hwAns.socials||{};
+  const name=(b.bd_name||'').trim(),mobile=(b.bd_mobile||'').trim(),whatsapp=(b.bd_whatsapp||'').trim(),email=(b.bd_email||'').trim();
+  const phoneOk=x=>/^[+\d][\d\s-]{7,}$/.test(x);
   if(!name){note('Please enter your full name.','Name required');return;}
-  if(!/^[+\d][\d\s-]{7,}$/.test(mobile)){note('Please enter a valid mobile number.','Check your number');return;}
-  if(!(document.getElementById('hfConsent')||{}).checked){note('Please agree to the 10% commission to continue.','Consent needed');return;}
+  if(!phoneOk(mobile)){note('Please enter a valid mobile number.','Check your number');return;}
+  if(!phoneOk(whatsapp)){note('Please enter a valid WhatsApp number.','WhatsApp required');return;}
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){note('Please enter a valid email address.','Email required');return;}
+  if(!dobIsAdult(b.bd_dob)){note('You need to be 18 or older to host trips on Tripomonk.','18+ required');return;}
   const sb=getSupaClient();const uid=sb?await authUid():null;
   if(!sb||!uid){note('Please sign in to apply.','Sign in required');return;}
-  const btn=document.getElementById('hfSubmit');
+  const btn=document.querySelector('#hostBody .hw-nav .btn:not(.ghost)');
   if(btn){btn.disabled=true;btn.textContent='Submitting…';}
-  const row={user_id:uid,full_name:name,mobile:mobile,city:v('hfCity'),instagram:v('hfInsta'),youtube:v('hfYt'),
-    website:v('hfSite'),followers:v('hfFollowers'),languages:v('hfLangs'),experience:v('hfExp'),
-    trip_types:v('hfTypes'),destinations:v('hfDests'),about:v('hfAbout'),status:'pending',
-    commission_pct:10,commission_consent:true,consent_at:new Date().toISOString()};
+  /* flat columns keep the admin view working; `answers` holds the full structured response */
+  const row={user_id:uid,full_name:name,mobile:mobile,city:b.bd_city||'',
+    instagram:s.so_insta||'',youtube:s.so_yt||'',website:s.so_web||'',
+    languages:(_hwAns.languages||[]).join(', '),experience:_hwAns.experience_level||'',
+    trip_types:(_hwAns.experiences||[]).join(', '),destinations:(_hwAns.destinations||[]).join(', '),
+    about:_hwAns.bio||'',status:'pending',commission_pct:10,commission_consent:true,consent_at:new Date().toISOString(),
+    answers:{host_type:_hwAns.host_type,experiences:_hwAns.experiences,destinations:_hwAns.destinations,
+      experience_level:_hwAns.experience_level,group_size:_hwAns.group_size,languages:_hwAns.languages,
+      hosting_style:_hwAns.hosting_style,acquisition:_hwAns.acquisition,audience_size:_hwAns.audience_size,
+      why_host:_hwAns.why_host,whatsapp:whatsapp,email:email,dob:b.bd_dob||'',facebook:s.so_fb||'',linkedin:s.so_li||'',bio:_hwAns.bio||''}};
   const r=await sb.from('host_applications').insert(row);
-  if(btn){btn.disabled=false;btn.textContent='Submit application';}
+  if(btn){btn.disabled=false;btn.textContent='Submit for verification';}
   if(r.error){
     const dup=r.error.code==='23505';
     note(dup?'You have already applied — we are reviewing it.':'Could not submit: '+r.error.message,dup?'Already applied':'Error');
@@ -5408,7 +5512,13 @@ async function bookHostTrip(){
    Hosts edit their own profile and their own trips. They can never
    change status: that is pinned by a DB trigger, not by this screen.
    ============================================================ */
-
+/* host progression levels by trips run (Ambassador is invite-only, not auto) */
+function hostLevel(n){
+  if(n>30)return{t:'Elite Host',em:'💎'};
+  if(n>=11)return{t:'Summit Host',em:'🥇'};
+  if(n>=4)return{t:'Trail Host',em:'🥈'};
+  return{t:'Explorer Host',em:'🥉'};
+}
 async function openHostDash(){
   await loadHostApp();
   if(!isVerifiedHost()){note('Only verified hosts have a dashboard.','Not yet approved');return;}
@@ -5425,7 +5535,7 @@ async function renderHostDash(){
        hostByName cache, which is only filled by the community feed */
     +'<div class="hdwho"><b>'+esc(a.full_name||myName())
     +'<span class="vbadge" title="Verified Host"><span class="msr">check</span></span></b>'
-    +'<small>Verified Host'+(a.city?' · '+esc(a.city):'')+'</small></div>'
+    +'<small><span id="hdLevel"></span> Verified Host'+(a.city?' · '+esc(a.city):'')+'</small></div>'
     +'<button class="hdedit" onclick="openHostProfile()">Edit profile</button>'
     +'</div><div class="hdstats" id="hdStats"></div></div>';
   document.getElementById('hdTabs').innerHTML=['Trips','Profile'].map(t=>
@@ -5435,6 +5545,8 @@ async function renderHostDash(){
   const live=_hdTrips.filter(t=>t.status==='live').length;
   const draft=_hdTrips.filter(t=>t.status==='draft').length;
   const seats=_hdTrips.filter(t=>t.status==='live').reduce((s,t)=>s+(t.max_people||0),0);
+  const lv=hostLevel(_hdTrips.length);const lvEl=document.getElementById('hdLevel');
+  if(lvEl)lvEl.innerHTML='<span class="hd-level">'+lv.em+' '+lv.t+'</span> ·';
   const st=document.getElementById('hdStats');
   if(st)st.innerHTML='<div><b>'+_hdTrips.length+'</b><small>Trips</small></div>'
     +'<div><b>'+live+'</b><small>Live</small></div>'
@@ -5541,10 +5653,17 @@ async function postTripToCommunity(id){
   note('Shared to the community feed! 🎉 It will help trekkers discover your trip.','Posted');
 }
 /* ---- host profile (public-facing details) ---- */
+/* commission info — only ever shown INSIDE the host dashboard (verified hosts) */
+function commissionCard(){
+  return '<div class="commission-box" style="margin:0 0 16px">'
+    +'<div class="cb-row"><span class="msr">payments</span><div><b>How you earn</b>'
+    +'<small>Tripomonk keeps a <b>10% platform fee</b> on each confirmed booking. You keep <b>90%</b>. We run all operations, payments and support; your payout is settled after the trip.</small></div></div>'
+    +'</div>';
+}
 function renderHdProfileSummary(box){
   const a=_hostApp||{};
   const row=(l,v)=>v?'<div class="br"><span>'+l+'</span><b style="max-width:58%;text-align:right;white-space:normal">'+esc(v)+'</b></div>':'';
-  box.innerHTML='<div class="bill">'
+  box.innerHTML=commissionCard()+'<div class="bill">'
     +row('Name',a.full_name)+row('City',a.city)+row('Mobile',a.mobile)
     +row('Instagram',a.instagram)+row('YouTube',a.youtube)+row('Website',a.website)
     +row('Followers',a.followers)+row('Languages',a.languages)
