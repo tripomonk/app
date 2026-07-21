@@ -3452,6 +3452,76 @@ function hostHubCard(){
     +'<div class="hh-tx"><b>Host with Tripomonk</b>'
     +'<small>Lead treks & earn — we handle operations, safety & payments</small></div>'+chev+'</div>';
 }
+/* ============================================================
+   ACCOUNT & SETTINGS MENU (hamburger) — everything that isn't the
+   social profile lives here: bookings, payments, tools, support.
+   ============================================================ */
+async function openAccountMenu(){go('accountMenu');if(isLoggedIn())await loadHostApp().catch(()=>{});renderAccountMenu();}
+function menuGo(t){
+  if(t==='signout'){signOut();return;}
+  if(t==='hostDash'){openHostDash();return;}
+  if(t.indexOf('soon:')===0){note(t.slice(5)+' is coming soon — we\'re building it into Tripomonk.','Coming soon');return;}
+  go(t);
+}
+function accountMenuGroups(){
+  const groups=[
+    ['Account & activity',[
+      ['confirmation_number','My Bookings','bookings'],
+      ['favorite','Wishlist','wishlist'],
+      ['bookmark','Saved Posts','soon:Saved posts'],
+      ['notifications','Notifications','notifications'],
+      ['chat','Messages','messages'],
+      ['verified_user','Adventure Passport','passport'],
+      ['fitness_center','Fitness Score','soon:Fitness score'],
+      ['monitor_heart','Trek Health','health']
+    ]],
+    ['Wallet & payments',[
+      ['credit_card','Payment Methods','soon:Payment methods'],
+      ['account_balance_wallet','Wallet','soon:Wallet'],
+      ['local_offer','Coupons','soon:Coupons'],
+      ['download','Downloaded Tickets','bookings']
+    ]],
+    ['Trek tools',[
+      ['checklist','Packing Lists','packing'],
+      ['explore','Trek Navigation','navmap'],
+      ['star','My Reviews','reviews']
+    ]]
+  ];
+  const host=(typeof isVerifiedHost==='function'&&isVerifiedHost())
+    ? [['dashboard','Host Dashboard','hostDash']]
+    : [['hiking','Become a Host','becomeHost']];
+  groups.push(['Hosting',host]);
+  groups.push(['Support & legal',[
+    ['help','Help & Support','help'],
+    ['emergency','Emergency Contacts','soon:Emergency contacts'],
+    ['lock','Privacy Policy','privacy'],
+    ['description','Terms & Conditions','soon:Terms & Conditions'],
+    ['settings','Settings','settings']
+  ]]);
+  return groups;
+}
+function renderAccountMenu(){
+  const box=document.getElementById('accountMenuBody');if(!box)return;
+  const row=a=>'<button type="button" class="amrow" onclick="menuGo(\''+jsq(a[2])+'\')"><span class="msr amic">'+a[0]+'</span><span class="amt">'+esc(a[1])+'</span><span class="msr amch">chevron_right</span></button>';
+  let html=accountMenuGroups().map(g=>'<div class="amgrp"><div class="amgrp-h">'+esc(g[0])+'</div>'+g[1].map(row).join('')+'</div>').join('');
+  const extra=[];
+  if(isStaffUser())extra.push(['verified','Trip Captain Check-in','captain']);
+  if(isAdminUser())extra.push(['admin_panel_settings','Admin Dashboard','admin']);
+  if(extra.length)html+='<div class="amgrp">'+extra.map(row).join('')+'</div>';
+  html+=isLoggedIn()
+    ? '<button type="button" class="amrow amlogout" onclick="menuGo(\'signout\')"><span class="msr amic">logout</span><span class="amt">Logout</span></button>'
+    : '<button type="button" class="amrow amsignin" onclick="menuGo(\'login\')"><span class="msr amic">login</span><span class="amt">Sign in / Create account</span></button>';
+  box.innerHTML=html;
+}
+/* share the traveller's public profile */
+function shareProfile(){
+  const un=getSavedUsername();
+  const base=window.location.origin+window.location.pathname.replace(/index\.html$/,'');
+  const url=base+(un?'#@'+un:'');
+  const data={title:'Tripomonk — '+(getSavedName()||'Trekker'),text:'Follow my treks on Tripomonk 🏔️',url};
+  if(navigator.share){navigator.share(data).catch(()=>{});return;}
+  try{navigator.clipboard.writeText(url);toast('Profile link copied');}catch(e){note(url,'Your profile link');}
+}
 function renderProfile(){document.getElementById('pCover').style.backgroundImage=`url('${getSavedCover()||treks[0].img}')`;
   const ce=document.getElementById('coverEdit');if(ce)ce.classList.toggle('on',isLoggedIn());
   const uname=getSavedName()||'Explorer';const photo=getSavedPhoto();
@@ -3478,16 +3548,13 @@ function renderProfile(){document.getElementById('pCover').style.backgroundImage
   ].map(s=>`<div class="pstat" onclick="${s[3]}"><b${s[4]?` id="${s[4]}"`:''}>${s[1]}</b><small>${s[2]}</small></div>`).join('');hydrate(ps);}
   if(isLoggedIn())loadMyCounts();
   renderProfileGallery();
+  /* the profile is now social: only the hosting hub + social links + a guest sign-in
+     prompt live here. All account/utility items moved to the hamburger (accountMenu). */
+  const pb=document.getElementById('profileBio');
+  if(pb){const bio=(_hostApp&&_hostApp.bio)||'';pb.textContent=bio;pb.style.display=bio?'':'none';}
   let rows=socialLinks(getSavedSocials())+'<div id="hostHub">'+hostHubCard()+'</div>';
   if(isLoggedIn()&&!isPrefsDone())rows+=`<div class="pref-prompt" onclick="go('onboarding')"><span class="msr">interests</span><div><b>Complete your preferences</b><small>Help us connect you with like-minded trekkers</small></div><span class="msr" style="margin-left:auto">chevron_right</span></div>`;
-  rows+=menu.map(m=>`<div class="mrow" onclick="${m[2]?`go('${m[2]}')`:'void 0'}"><span class="ic">${ic(m[0],20)}</span><span class="t">${m[1]}</span><span class="ch">${ic('back',16)}</span></div>`).join('');
-  rows+=isLoggedIn()
-    ?`<div class="mrow" onclick="signOut()"><span class="ic">${ic('logout',20)}</span><span class="t" style="color:#ff7a7a">Sign out</span></div>`
-    :`<div class="mrow" onclick="go('login')"><span class="ic">${ic('user',20)}</span><span class="t" style="color:var(--accent2)">Sign in / Create account</span><span class="ch">${ic('back',16)}</span></div>`;
-  /* Trip Captain — only staff (added by admin) or the admin see this */
-  if(isStaffUser())rows+=`<div class="mrow" onclick="go('captain')"><span class="ic">${ic('shield',20)}</span><span class="t">Trip Captain Check-in</span><span class="ch">${ic('back',16)}</span></div>`;
-  /* Admin — only the real admin(s) see this */
-  if(isAdminUser())rows+=`<div class="mrow" onclick="go('admin')"><span class="ic">${ic('edit',20)}</span><span class="t">Admin Dashboard</span><span class="ch">${ic('back',16)}</span></div>`;
+  if(!isLoggedIn())rows+=`<div class="mrow" onclick="go('login')"><span class="ic">${ic('user',20)}</span><span class="t" style="color:var(--accent2)">Sign in / Create account</span><span class="ch">${ic('back',16)}</span></div>`;
   document.getElementById('menu').innerHTML=rows;
   const cover=document.getElementById('pCover');cover.querySelectorAll('.ch').forEach(c=>c.style.transform='rotate(180deg)');
   document.querySelectorAll('#menu .ch svg').forEach(s=>s.style.transform='scaleX(-1)');
@@ -4970,6 +5037,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='bookings')renderBookings();
   if(id==='wishlist')renderWishlist();
   if(id==='profile')renderProfile();
+  if(id==='accountMenu')renderAccountMenu();
   if(id==='editProfile')renderEditProfile();
   if(id==='onboarding')initPrefs();
   if(id==='settings')renderSettings();

@@ -566,6 +566,24 @@
   .cover-edit:hover{background:rgba(8,16,28,.62)}
   .cover-edit:active{transform:scale(.94)}
   .cover-edit.on{display:grid}
+  /* hamburger (account & settings) on the profile cover */
+  .cover-menu{position:absolute;top:calc(var(--safe-top) + 12px);right:14px;z-index:3;display:grid;place-items:center;
+    width:40px;height:40px;padding:0;border-radius:50%;border:1px solid rgba(255,255,255,.28);
+    background:rgba(8,16,28,.42);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+    box-shadow:0 4px 14px rgba(0,0,0,.28);color:#fff;cursor:pointer;transition:background .18s,transform .12s;font-size:0}
+  .cover-menu .msr{font-size:23px;line-height:1}
+  .cover-menu:active{transform:scale(.94)}
+  .pbio{font-size:12.5px;color:var(--muted-strong);line-height:1.45;margin-top:6px;max-width:100%}
+  /* account & settings menu (hamburger screen) */
+  .amgrp{margin-bottom:16px}
+  .amgrp-h{font-size:11px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.05em;margin:0 4px 6px}
+  .amrow{display:flex;align-items:center;gap:14px;width:100%;padding:14px 14px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;margin-bottom:8px;cursor:pointer;font-family:inherit;text-align:left}
+  .amrow:active{background:var(--card2)}
+  .amic{font-size:21px;color:var(--accent2);flex:none;width:24px;text-align:center}
+  .amt{flex:1;font-size:14px;font-weight:500;color:var(--text)}
+  .amch{font-size:20px;color:var(--muted2)}
+  .amlogout .amic,.amlogout .amt{color:#ff7a7a}
+  .amsignin .amic,.amsignin .amt{color:var(--accent2)}
   .pwrap{padding:0 calc(18px + var(--safe-right)) calc(var(--safe-bottom) + 92px) calc(18px + var(--safe-left))}
   .pav{width:88px;height:88px;border-radius:50%;border:3px solid var(--bg);background-size:cover;background-position:center;margin:-50px 0 0;position:relative;z-index:1;background-color:#26466e;display:grid;place-items:center;font-size:32px;font-weight:600;color:#fff}
   .prow{display:flex;align-items:center;justify-content:space-between;margin-top:10px}
@@ -2267,15 +2285,16 @@
 
   <!-- PROFILE -->
   <section class="view full" id="profile" data-tab="profile">
-    <div class="pcover" id="pCover"><button class="cover-edit" id="coverEdit" aria-label="Change cover photo" title="Change cover" onclick="document.getElementById('coverPhoto').click()"><span class="msr">photo_camera</span></button><input type="file" id="coverPhoto" accept="image/*" hidden onchange="coverPickPhoto(this)"/></div>
+    <div class="pcover" id="pCover">
+      <button class="cover-menu" id="pMenuBtn" aria-label="Account & settings" title="Account & settings" onclick="openAccountMenu()"><span class="msr">menu</span></button>
+      <button class="cover-edit" id="coverEdit" aria-label="Change cover photo" title="Change cover" onclick="document.getElementById('coverPhoto').click()"><span class="msr">photo_camera</span></button><input type="file" id="coverPhoto" accept="image/*" hidden onchange="coverPickPhoto(this)"/></div>
     <div class="pwrap">
       <div class="pav" id="profileAv">E</div>
-      <div class="prow"><div style="min-width:0"><h1 id="profileName">Explorer</h1><div class="lv" id="profileSub">Sign in to track your treks</div></div></div>
+      <div class="prow"><div style="min-width:0"><h1 id="profileName">Explorer</h1><div class="lv" id="profileSub">Sign in to track your treks</div><div class="pbio" id="profileBio"></div></div></div>
       <div class="profile-actions"><button onclick="go('editProfile')">Edit Profile</button><button onclick="go('messages')">Messages</button></div>
       <div class="pstats" id="pStats"></div>
-      <div class="profile-tabs" id="profTabs"><span class="on" onclick="setProfTab('All',this)">All</span><span onclick="setProfTab('Photos',this)">Photos</span><span onclick="setProfTab('Videos',this)">Videos</span></div>
+      <div class="profile-tabs" id="profTabs"><span class="on" onclick="setProfTab('All',this)">Posts</span><span onclick="setProfTab('Photos',this)">Photos</span><span onclick="setProfTab('Videos',this)">Videos</span></div>
       <div class="profile-gallery" id="pMiniGrid"></div>
-      <div class="profile-menu-title">Account</div>
       <div id="menu"></div>
     </div>
   </section>
@@ -2310,6 +2329,13 @@
       <div id="epSocials" class="socinputs"></div>
     </div>
     <button class="btn" id="epSaveBtn" style="margin-top:8px" onclick="saveProfile()">Save Changes</button>
+  </section>
+
+  <!-- ACCOUNT & SETTINGS MENU (hamburger) -->
+  <section class="view flow" id="accountMenu" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Account</h1></div>
+    <div id="accountMenuBody"></div>
+    <div style="height:calc(var(--safe-bottom) + 20px)"></div>
   </section>
 
   <!-- SETTINGS -->
