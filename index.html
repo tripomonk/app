@@ -577,13 +577,14 @@
   /* account & settings menu (hamburger screen) */
   .amgrp{margin-bottom:16px}
   .amgrp-h{font-size:11px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.05em;margin:0 4px 6px}
-  .amrow{display:flex;align-items:center;gap:14px;width:100%;padding:14px 14px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;margin-bottom:8px;cursor:pointer;font-family:inherit;text-align:left}
+  .amrow{display:flex;align-items:center;gap:13px;width:100%;padding:11px 12px;background:var(--card);border:1px solid var(--stroke);border-radius:15px;margin-bottom:8px;cursor:pointer;font-family:inherit;text-align:left}
   .amrow:active{background:var(--card2)}
-  .amic{font-size:21px;color:var(--accent2);flex:none;width:24px;text-align:center}
+  .amic{font-size:21px;color:var(--accent2);flex:none;width:38px;height:38px;max-width:none;display:grid;place-items:center;border-radius:11px;background:rgba(47,107,255,.12)}
   .amt{flex:1;font-size:14px;font-weight:500;color:var(--text)}
-  .amch{font-size:20px;color:var(--muted2)}
-  .amlogout .amic,.amlogout .amt{color:#ff7a7a}
-  .amsignin .amic,.amsignin .amt{color:var(--accent2)}
+  .amch{font-size:20px;color:var(--muted2);flex:none}
+  .amlogout .amic{color:#ff5a6e;background:rgba(255,90,110,.12)}
+  .amlogout .amt{color:#ff7a7a}
+  .amsignin .amt{color:var(--accent2)}
   .pwrap{padding:0 calc(18px + var(--safe-right)) calc(var(--safe-bottom) + 92px) calc(18px + var(--safe-left))}
   .pav{width:88px;height:88px;border-radius:50%;border:3px solid var(--bg);background-size:cover;background-position:center;margin:-50px 0 0;position:relative;z-index:1;background-color:#26466e;display:grid;place-items:center;font-size:32px;font-weight:600;color:#fff}
   .prow{display:flex;align-items:center;justify-content:space-between;margin-top:10px}
