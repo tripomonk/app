@@ -1447,9 +1447,9 @@ async function renderProfileGallery(){
       const poster=videoPoster(c.src);
       const bg=poster?`background-image:url('${esc(poster)}')`:(String(c.src).startsWith('data:video')?'':'background:#0a1626');
       const vid=(!poster&&String(c.src).startsWith('data:video'))?`<video src="${esc(c.src)}" muted playsinline style="width:100%;height:100%;object-fit:cover"></video>`:'';
-      return `<div class="pg" style="${bg}" onclick="openComments('${c.post.id}')">${vid}<span class="msr pg-play">play_arrow</span></div>`;
+      return `<div class="pg" style="${bg}" onclick="openPostDetail('${c.post.id}')">${vid}<span class="msr pg-play">play_arrow</span></div>`;
     }
-    return `<div class="pg" style="background-image:url('${c.src}${String(c.src).startsWith('http')?Q:''}')" onclick="openComments('${c.post.id}')"></div>`;
+    return `<div class="pg" style="background-image:url('${c.src}${String(c.src).startsWith('http')?Q:''}')" onclick="openPostDetail('${c.post.id}')"></div>`;
   }).join(''):`<div class="empty" style="grid-column:1/-1">${_profTab==='All'?'You haven\'t posted yet. Share your first trek moment!':'No '+_profTab.toLowerCase()+' yet.'}</div>`;
 }
 
@@ -3341,7 +3341,7 @@ function gridCell(p){
     inner=poster?`<div class="g-img" style="background-image:url('${esc(poster)}')"></div>`
       :(String(media).startsWith('data:video')?`<video src="${esc(media)}" muted playsinline></video>`:`<div class="g-img" style="background:#0a1626"></div>`);
   }else inner=`<div class="g-img" style="background-image:url('${url}')"></div>`;
-  return `<div class="g-cell" onclick="openComments('${p.id}')">${inner}${badge}</div>`;
+  return `<div class="g-cell" onclick="openPostDetail('${p.id}')">${inner}${badge}</div>`;
 }
 async function renderPerson(){if(!curPerson){go('community');return;}const p=getPerson(curPerson);if(!p)return;
   const me=p.n==='You'||p.n===myName();
