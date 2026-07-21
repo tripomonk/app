@@ -5579,7 +5579,7 @@ async function renderHostDash(){
     +'<small><span id="hdLevel"></span> Verified Host'+(a.city?' · '+esc(a.city):'')+'</small></div>'
     +'<button class="hdedit" onclick="openHostProfile()">Edit profile</button>'
     +'</div><div class="hdstats" id="hdStats"></div></div>';
-  document.getElementById('hdTabs').innerHTML=['Trips','Profile'].map(t=>
+  document.getElementById('hdTabs').innerHTML=['Trips','Earnings','Profile'].map(t=>
     '<div class="chip pill '+(hdTab===t?'on':'')+'" onclick="setHdTab(\''+t+'\')">'+t+'</div>').join('');
   hydrate(head);
   _hdTrips=await myHostTrips();
@@ -5598,6 +5598,7 @@ function setHdTab(t){hdTab=t;renderHostDash();}
 function renderHdBody(){
   const box=document.getElementById('hdBody');if(!box)return;
   if(hdTab==='Profile'){renderHdProfileSummary(box);return;}
+  if(hdTab==='Earnings'){renderHdEarnings(box);return;}
   if(!_hdTrips.length){
     box.innerHTML='<div class="hdempty"><span class="msr">landscape</span>'
       +'<p>No trips yet. Create your first one — we handle the operations once it is approved.</p>'
@@ -5692,6 +5693,106 @@ async function postTripToCommunity(id){
   userPosts.unshift(post);savePosts();
   await savePostRemote(post);
   note('Shared to the community feed! 🎉 It will help trekkers discover your trip.','Posted');
+}
+/* ============================================================
+   HOST EARNINGS — verified hosts only (this whole dashboard is
+   gated by isVerifiedHost). Shows the host's 90% share from trip
+   bookings + referral rewards. Numbers are real: pulled from the
+   bookings table best-effort, never faked. Empty until real
+   bookings exist.
+   ============================================================ */
+const HOST_TAKE=0.90;         /* host keeps 90% */
+/* a stable, shareable referral code for this host */
+function hostReferralCode(){
+  const u=getSavedUsername();
+  const clean=u?u.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12):'';
+  if(clean)return clean;
+  const seed=String((currentUser&&currentUser.id)||myName()||'HOST');
+  let h=0;for(let i=0;i<seed.length;i++)h=(h*31+seed.charCodeAt(i))>>>0;
+  return 'TMK'+h.toString(36).toUpperCase().slice(0,6);
+}
+function referralLink(){
+  const base=window.location.origin+window.location.pathname.replace(/index\.html$/,'');
+  return base+'#ref='+hostReferralCode();
+}
+/* no referral backend yet — read any locally-credited total, default 0 (honest) */
+function hostReferralEarnings(){try{return Math.max(0,+localStorage.getItem('tmk_ref_earn')||0);}catch(e){return 0;}}
+function hostReferralCount(){try{return Math.max(0,+localStorage.getItem('tmk_ref_count')||0);}catch(e){return 0;}}
+async function shareReferral(){
+  const code=hostReferralCode(),url=referralLink();
+  const data={title:'Join me on Tripomonk',text:'Explore the Himalayas with Tripomonk 🏔️ Use my code '+code+' when you book.',url};
+  if(navigator.share){try{await navigator.share(data);return;}catch(e){if(e&&e.name==='AbortError')return;}}
+  try{await navigator.clipboard.writeText(url);toast('Referral link copied');}catch(e){note(url,'Your referral link');}
+}
+function copyReferral(){
+  const url=referralLink();
+  if(navigator.clipboard)navigator.clipboard.writeText(url).then(()=>toast('Referral link copied')).catch(()=>note(url,'Your referral link'));
+  else note(url,'Your referral link');
+}
+/* pull the host's real earnings from confirmed bookings on their own trips */
+async function loadHostEarnings(){
+  const trips=_hdTrips||[];
+  const titles=trips.map(t=>t.title).filter(Boolean);
+  let rows=[];
+  const sb=getSupaClient();
+  if(sb&&titles.length){
+    try{const{data}=await sb.from('bookings').select('trek,pax,total,paid,status').in('trek',titles);rows=data||[];}
+    catch(e){rows=[];}
+  }
+  const counts=r=>!/cancel|refund|fail|void/i.test(String(r.status||''));   /* only money that stuck */
+  const perTrip=trips.map(t=>{
+    const br=rows.filter(r=>counts(r)&&r.trek===t.title);
+    const seats=br.reduce((s,r)=>s+(+r.pax||0),0);
+    const gross=br.reduce((s,r)=>s+(+r.total||0),0);
+    const advance=br.reduce((s,r)=>s+(+r.paid||0),0);
+    return{t,bookings:br.length,seats,gross,advance,net:Math.round(gross*HOST_TAKE)};
+  });
+  const tripGross=perTrip.reduce((s,x)=>s+x.gross,0);
+  const tripNet=Math.round(tripGross*HOST_TAKE);
+  const advance=perTrip.reduce((s,x)=>s+x.advance,0);
+  const bookings=perTrip.reduce((s,x)=>s+x.bookings,0);
+  const refEarn=hostReferralEarnings(),refCount=hostReferralCount();
+  return{perTrip,tripGross,tripNet,advance,bookings,refEarn,refCount,total:tripNet+refEarn};
+}
+async function renderHdEarnings(box){
+  box.innerHTML='<div class="earn-loading"><span class="msr spin">progress_activity</span> Loading your earnings…</div>';
+  const e=await loadHostEarnings();
+  if(hdTab!=='Earnings')return;   /* user switched tabs while loading */
+  const m=v=>INR(v||0),code=hostReferralCode();
+  const isEmpty=e.tripGross===0&&e.refEarn===0;
+  const hero='<div class="earn-hero">'
+    +'<small>Your total earnings</small>'
+    +'<div class="earn-big">'+m(e.total)+'</div>'
+    +'<div class="earn-heropill"><span><b>'+m(e.tripNet)+'</b> trips</span><span><b>'+m(e.refEarn)+'</b> referrals</span></div>'
+    +'</div>';
+  const empty=isEmpty
+    ?'<div class="earn-empty"><span class="msr">savings</span><p>No earnings yet. When trekkers book your live trips, your <b>90% share</b> and referral rewards appear here.</p></div>'
+    :'';
+  const tripCard='<div class="earn-card">'
+    +'<div class="earn-ch"><span class="msr">hiking</span><b>Trip earnings</b>'+(e.bookings?'<span class="earn-tag">'+e.bookings+' booking'+(e.bookings===1?'':'s')+'</span>':'')+'</div>'
+    +'<div class="earn-line"><span>Gross bookings</span><b>'+m(e.tripGross)+'</b></div>'
+    +'<div class="earn-line sub"><span>Platform fee (10%)</span><b>−'+m(e.tripGross-e.tripNet)+'</b></div>'
+    +'<div class="earn-line grand"><span>You keep (90%)</span><b>'+m(e.tripNet)+'</b></div>'
+    +(e.advance?'<div class="earn-foot">'+m(e.advance)+' advance collected so far · balance settles after each trip</div>':'')
+    +'</div>';
+  const withEarn=e.perTrip.filter(x=>x.bookings>0);
+  const breakdown=withEarn.length
+    ?'<div class="earn-card"><div class="earn-ch"><span class="msr">receipt_long</span><b>By trip</b></div>'
+      +withEarn.map(x=>'<div class="earn-trip"><div class="et-h"><b>'+esc(x.t.title)+'</b><b>'+m(x.net)+'</b></div>'
+        +'<small>'+x.seats+' seat'+(x.seats===1?'':'s')+' booked · '+m(x.gross)+' gross</small></div>').join('')
+      +'</div>'
+    :'';
+  const refCard='<div class="earn-card">'
+    +'<div class="earn-ch"><span class="msr">redeem</span><b>Referral earnings</b>'+(e.refCount?'<span class="earn-tag">'+e.refCount+' joined</span>':'')+'</div>'
+    +'<div class="earn-line grand"><span>Earned from referrals</span><b>'+m(e.refEarn)+'</b></div>'
+    +'<div class="ref-box"><div class="ref-code"><small>YOUR CODE</small><b>'+esc(code)+'</b></div>'
+    +'<div class="ref-acts"><button class="mk" onclick="copyReferral()"><span class="msr">link</span> Copy link</button>'
+    +'<button class="mk" onclick="shareReferral()"><span class="msr">ios_share</span> Share</button></div></div>'
+    +'<p class="host-note" style="margin:10px 0 0">Share your code — you earn a reward for every new trekker who books their first trip through it. Rewards appear here after their trek.</p>'
+    +'</div>';
+  const payout='<p class="host-note" style="text-align:center;margin-top:4px">Payouts settle to your account after each trip. Bank & ID details are handled on your verification call — never in the app.</p>';
+  box.innerHTML=hero+empty+tripCard+breakdown+refCard+payout;
+  hydrate(box);
 }
 /* ---- host profile (public-facing details) ---- */
 /* commission info — only ever shown INSIDE the host dashboard (verified hosts) */
