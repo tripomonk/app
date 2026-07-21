@@ -600,10 +600,12 @@
   .gc-gift .msr{font-size:28px;color:#1a1205}
   .gc-head h1{font-size:22px;font-weight:700;margin:0 0 6px;letter-spacing:-.3px}
   .gc-head p{font-size:12.5px;color:rgba(255,255,255,.6);margin:0;line-height:1.5}
-  .gc-row{position:relative;z-index:2;display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;
-    padding:24px 12%;-webkit-overflow-scrolling:touch;flex:1;align-items:center}
+  .gc-row{position:relative;z-index:2;display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;
+    padding:24px 0;-webkit-overflow-scrolling:touch;flex:1;align-items:center}
   .gc-row::-webkit-scrollbar{display:none}
-  .gc-card{flex:0 0 76%;scroll-snap-align:center;border-radius:18px;overflow:hidden;cursor:pointer;background:#14141a;
+  /* spacers let the FIRST and LAST cards snap to dead centre (11% each side, minus the leading gap) */
+  .gc-row::before,.gc-row::after{content:'';flex:0 0 calc(11% - 14px)}
+  .gc-card{flex:0 0 78%;scroll-snap-align:center;border-radius:18px;overflow:hidden;cursor:pointer;background:#14141a;
     transform:scale(.9);opacity:.55;transition:transform .28s cubic-bezier(.3,1,.4,1),opacity .28s,box-shadow .28s;
     box-shadow:0 16px 36px -14px rgba(0,0,0,.8)}
   .gc-card.on{transform:scale(1);opacity:1;box-shadow:0 24px 54px -12px rgba(240,190,80,.4),0 0 0 2px rgba(240,190,80,.55)}
