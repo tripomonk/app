@@ -88,7 +88,7 @@ const SVGIC={
 function ic(n,s){s=s||20;
   if(SVGIC[n])return `<span class="ic" style="display:inline-flex;width:${s}px;height:${s}px">${SVGIC[n].replace('<svg','<svg width="'+s+'" height="'+s+'"')}</span>`;
   return `<span class="msr" style="font-size:${s}px">${IMAP[n]||'circle'}</span>`;}
-function hydrate(root){(root||document).querySelectorAll('[data-i]').forEach(el=>{el.innerHTML=ic(el.dataset.i,+el.dataset.sz||20);el.removeAttribute('data-i');});}
+function hydrate(root){(root||document).querySelectorAll('[data-i]').forEach(el=>{el.innerHTML=ic(el.dataset.i,+el.dataset.sz||20);el.removeAttribute('data-i');});fitCarousels(root);}
 
 /* ---------- data ---------- */
 const U='https://images.unsplash.com/photo-';
@@ -2487,6 +2487,36 @@ function mediaItem(src){
     </div>`;}
   const url=src.startsWith('data:')?src:src+Q;
   return `<div class="slide" style="background-image:url('${url}')"></div>`;}
+/* --- Feed media keeps its OWN shape ---------------------------------------
+   Instead of force-cropping every post into a fixed 4:5 box, each carousel adopts
+   the natural aspect ratio of its FIRST photo/video. Ratio is clamped to a sane
+   range (9:16 tall portrait … 1.91:1 wide landscape) so an extreme upload can't
+   blow up the feed, but virtually every real phone photo/video shows uncropped.
+   The measured ratio is cached by url so re-renders/revisits are flash-free. */
+const _carRatio={};
+function clampRatio(r){return (!r||!isFinite(r)||r<=0)?0:Math.max(0.5625,Math.min(1.91,r));}
+/* the same resolved url mediaItem() paints, so postCard() and fitCarousels() share a cache key */
+function mediaFitUrl(src){return src&&!isAnyVideo(src)?(src.startsWith('data:')?src:src+Q):'';}
+function fitCarousels(root){
+  (root||document).querySelectorAll('.car').forEach(car=>{
+    if(car._fitDone)return; car._fitDone=1;
+    const first=car.querySelector('.car-track > .slide'); if(!first)return;
+    const set=r=>{const c=clampRatio(r);if(c)car.style.aspectRatio=c.toFixed(4);};
+    if(first.classList.contains('emb')){set(16/9);return;}          /* YouTube/Vimeo → 16:9 */
+    const vid=first.querySelector('video');
+    if(vid){
+      if(vid.videoWidth)set(vid.videoWidth/vid.videoHeight);
+      else vid.addEventListener('loadedmetadata',()=>set(vid.videoWidth/vid.videoHeight),{once:true});
+      return;
+    }
+    const m=(first.style.backgroundImage||'').match(/url\(["']?(.*?)["']?\)/);
+    const url=m&&m[1]; if(!url)return;
+    if(_carRatio[url]!=null){car.style.aspectRatio=_carRatio[url];return;}
+    const im=new Image();
+    im.onload=()=>{const c=clampRatio(im.naturalWidth/im.naturalHeight);if(c){_carRatio[url]=c.toFixed(4);car.style.aspectRatio=_carRatio[url];}};
+    im.src=url;
+  });
+}
 let likeCounts={},likedByMe={},commentCounts={};
 function postCard(p){
   const liked=!!likedByMe[p.id];const nc=commentCounts[p.id]||0;
@@ -2508,7 +2538,7 @@ function postCard(p){
      ${more}
    </div>
    ${p.trek?`<div class="ig-trek" onclick="openDetailByName('${jsq(p.trek)}')">${ic('pin',13)} ${esc(p.trek)}</div>`:''}
-   ${media.length?`<div class="car" ondblclick="dblLike('${p.id}',this)"><div class="car-track" onscroll="carScroll(this)">${media.map(mediaItem).join('')}</div>${dots}<div class="heart-burst">${ic('like',96)}</div></div>`:''}
+   ${media.length?`<div class="car"${(()=>{const u=mediaFitUrl(media[0]);return u&&_carRatio[u]!=null?` style="aspect-ratio:${_carRatio[u]}"`:'';})()} ondblclick="dblLike('${p.id}',this)"><div class="car-track" onscroll="carScroll(this)">${media.map(mediaItem).join('')}</div>${dots}<div class="heart-burst">${ic('like',96)}</div></div>`:''}
    ${textOnly?`<div class="ig-textpost">${linkifyMentions(esc(p.txt))}</div>`:''}
    ${p.trek?`<div class="ig-book" onclick="openDetailByName('${jsq(p.trek)}')"><span class="msr">confirmation_number</span><span>View trip &amp; book</span><span class="ig-book-go">${ic('back',15)}</span></div>`:''}
    ${tagged}
