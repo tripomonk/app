@@ -660,7 +660,8 @@
   .post-pics:empty{display:none}
   .post-pics .pp{position:relative;width:72px;height:72px;border-radius:12px;background-size:cover;background-position:center;border:1px solid rgba(255,255,255,.2)}
   .post-pics .pp button{position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;border:none;background:#ff4d6d;color:#fff;font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.4)}
-  .post-add{display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-size:13.5px;font-weight:600;color:var(--accent);background:rgba(47,107,255,.12);border:1px dashed rgba(47,107,255,.5);border-radius:12px;padding:11px 14px;margin-bottom:18px}
+  .post-add-row{display:flex;gap:9px;margin-bottom:18px;flex-wrap:wrap}
+  .post-add{display:inline-flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;font-size:13.5px;font-weight:600;color:var(--accent);background:rgba(47,107,255,.12);border:1px dashed rgba(47,107,255,.5);border-radius:12px;padding:11px 14px;flex:1;font-family:inherit}
   .post-add .msr{font-size:18px;vertical-align:middle}
   /* ---- social ---- */
   .av-i{border-radius:50%;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:700;color:#27160a;flex:none;cursor:pointer;overflow:hidden}
@@ -1186,6 +1187,29 @@
   .tpick .tphint{position:absolute;left:0;right:0;bottom:10px;text-align:center;font-size:10.5px;color:var(--muted2)}
   .tpick.has .tphint{color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.8)}
   .tpick.has{border-style:solid;border-color:var(--accent)}
+  /* trek gallery picker (create-trip form) */
+  .htm-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .htm-item,.htm-add{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden}
+  .htm-item{background:var(--card2);border:1px solid var(--stroke)}
+  .htm-thumb,.htm-item video{width:100%;height:100%;object-fit:cover;display:block;background-size:cover;background-position:center}
+  .htm-play{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:34px;text-shadow:0 2px 8px rgba(0,0,0,.6);pointer-events:none}
+  .htm-tag{position:absolute;left:6px;bottom:6px;font-size:9px;font-weight:700;color:#fff;background:rgba(0,0,0,.55);padding:2px 7px;border-radius:20px;letter-spacing:.3px}
+  .htm-x{position:absolute;top:5px;right:5px;width:24px;height:24px;border:none;border-radius:50%;background:rgba(10,16,26,.7);color:#fff;font-size:17px;line-height:1;cursor:pointer;display:grid;place-items:center;padding:0}
+  .htm-add{border:2px dashed var(--stroke2);background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer;color:var(--muted)}
+  .htm-add .msr{font-size:26px;color:var(--muted)}
+  .htm-add small{font-size:9.5px;line-height:1.2;text-align:center;padding:0 4px}
+  /* trek gallery on the public trip page — horizontal, snap-scrolling */
+  .tg-row{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding:2px 0 4px;margin:0 0 4px}
+  .tg-row::-webkit-scrollbar{display:none}
+  .tg-item{flex:0 0 84%;aspect-ratio:16/10;border-radius:16px;overflow:hidden;scroll-snap-align:center;background:var(--card2);border:1px solid var(--stroke)}
+  .tg-img{background-size:cover;background-position:center}
+  .tg-vid{background:#000}
+  .tg-vid video,.tg-vid .vembed{width:100%;height:100%;display:block}
+  .tg-vid video{object-fit:cover}
+  .vembed{position:relative}
+  .vembed iframe{width:100%;height:100%;border:0;display:block}
+  .vlink{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:100%;color:#fff;background:#0a1626;font-size:13px;font-weight:600;text-decoration:none}
+  .vlink .msr{font-size:26px}
   .tprev{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:13px;margin:6px 0 16px}
   .tprev .tpl{font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
   .tprev b{font-size:14px;display:block;margin-bottom:4px}
@@ -2593,6 +2617,14 @@
 
     <div class="tform-sec"><span class="msr">description</span><b>Details</b><small>optional</small></div>
     <div class="field"><label>Description</label><textarea id="htDesc" rows="4" placeholder="What makes this trip special?"></textarea></div>
+
+    <div class="tform-sec"><span class="msr">perm_media</span><b>Trek gallery</b><small>photos &amp; videos — optional</small></div>
+    <div class="field"><label>Show the trek — add photos and video links</label>
+      <div class="htm-grid" id="htMediaGrid"></div>
+      <input type="file" id="htMediaFile" accept="image/*" multiple hidden onchange="htPickMedia(this)"/>
+      <small class="host-note" style="margin:8px 2px 0">Upload up to 12 photos, and add your videos as YouTube / Vimeo links (tap “Video link”). Videos play right on your trip page — no upload needed.</small>
+    </div>
+
     <div class="field"><label>Inclusions — tap what's included</label><div class="chiprow" id="htIncChips"></div></div>
     <div class="field"><label>Exclusions — tap what's NOT included</label><div class="chiprow" id="htExcChips"></div></div>
 
@@ -2702,7 +2734,10 @@
         <div class="mention-box" id="mentionBox"></div>
       </div>
       <div class="post-pics" id="postPics"></div>
-      <label class="post-add"><input type="file" id="postFiles" accept="image/*,video/*" multiple hidden/><span id="postAddIc"></span> Add photos / video</label>
+      <div class="post-add-row">
+        <label class="post-add"><input type="file" id="postFiles" accept="image/*" multiple hidden/><span id="postAddIc"></span> Add photos</label>
+        <button type="button" class="post-add" onclick="postAddVideoLink()"><span class="msr" style="font-size:18px">smart_display</span> Video link</button>
+      </div>
       <div class="field" style="margin-bottom:12px"><div class="inp"><span class="msr" style="font-size:18px;color:var(--accent2);margin-right:6px">location_on</span><select id="postTrek" style="all:unset;flex:1;color:var(--text);font-size:14px"></select></div></div>
       <div style="margin-bottom:14px"><div style="font-size:12px;color:var(--muted);margin-bottom:7px">Tag trekkers</div><div id="postTagList" class="tag-list"></div></div>
       <div class="modal-actions"><button class="btn ghost" id="postCancel">Cancel</button><button class="btn" id="postOk">Post</button></div>

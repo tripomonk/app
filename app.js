@@ -376,7 +376,7 @@ let liveHostTrips=[],verifiedHosts=[];
    bottom of the file, they'd be in the temporal dead zone and kill the script. */
 let _hostApp=null,_hostLoaded=false;
 let hdTab='Trips',_hdTrips=[],_editTripId=null;
-let _htDiff='Moderate',_htFile=null,_htImgData='',_htInc=[],_htExc=[];
+let _htDiff='Moderate',_htFile=null,_htImgData='',_htInc=[],_htExc=[],_htMedia=[];
 /* common options so hosts tap instead of typing */
 const INC_OPTIONS=['Accommodation','All meals','Transport','Trek guide','Permits','Camping equipment','First aid','Porter support','Bonfire','Sightseeing'];
 const EXC_OPTIONS=['Travel to base city','Personal expenses','Insurance','Tips','Gear rental','Meals en route','Anything not listed'];
@@ -1314,14 +1314,19 @@ async function renderProfileGallery(){
   const name=getSavedName()||'You';
   let posts=[];try{posts=await loadUserPosts(name);}catch(e){posts=userPosts.filter(p=>p.n===name);}
   const items=[];
-  posts.forEach(p=>(p.imgs||[]).forEach(src=>{const isVid=src.startsWith('data:video')||/\.(mp4|mov)/i.test(src);items.push({src,post:p,isVid});}));
+  posts.forEach(p=>(p.imgs||[]).forEach(src=>{items.push({src,post:p,isVid:isAnyVideo(src)});}));
   let show=items;
   if(_profTab==='Photos')show=items.filter(i=>!i.isVid);
   else if(_profTab==='Videos')show=items.filter(i=>i.isVid);
-  grid.innerHTML=show.length?show.map(c=>c.isVid
-    ?`<div class="pg" onclick="openComments('${c.post.id}')"><video src="${c.src}" muted playsinline style="width:100%;height:100%;object-fit:cover"></video><span class="msr pg-play">play_arrow</span></div>`
-    :`<div class="pg" style="background-image:url('${c.src}${String(c.src).startsWith('http')?Q:''}')" onclick="openComments('${c.post.id}')"></div>`
-  ).join(''):`<div class="empty" style="grid-column:1/-1">${_profTab==='All'?'You haven\'t posted yet. Share your first trek moment!':'No '+_profTab.toLowerCase()+' yet.'}</div>`;
+  grid.innerHTML=show.length?show.map(c=>{
+    if(c.isVid){
+      const poster=videoPoster(c.src);
+      const bg=poster?`background-image:url('${esc(poster)}')`:(String(c.src).startsWith('data:video')?'':'background:#0a1626');
+      const vid=(!poster&&String(c.src).startsWith('data:video'))?`<video src="${esc(c.src)}" muted playsinline style="width:100%;height:100%;object-fit:cover"></video>`:'';
+      return `<div class="pg" style="${bg}" onclick="openComments('${c.post.id}')">${vid}<span class="msr pg-play">play_arrow</span></div>`;
+    }
+    return `<div class="pg" style="background-image:url('${c.src}${String(c.src).startsWith('http')?Q:''}')" onclick="openComments('${c.post.id}')"></div>`;
+  }).join(''):`<div class="empty" style="grid-column:1/-1">${_profTab==='All'?'You haven\'t posted yet. Share your first trek moment!':'No '+_profTab.toLowerCase()+' yet.'}</div>`;
 }
 
 /* ---------- preferences (onboarding) — used to connect like-minded trekkers ---------- */
@@ -2262,10 +2267,56 @@ function renderFollowStrip(){const box=document.getElementById('followStrip');if
     <div class="fcard">${avatar(p.n,52)}<b onclick="openPerson('${jsq(p.n)}')">${esc(p.n)}</b><small>${esc(p.h)}</small>
     <button class="fbtn" onclick="toggleFollow('${jsq(p.n)}')">Follow</button></div>`).join('')}</div>`;
   hydrate(box);}
+/* ---- video links: photos are uploaded, videos are added as links (YouTube / Vimeo /
+   direct file) so we never store or serve heavy video files ourselves ---- */
+function parseVideoLink(url){
+  url=String(url||'').trim();if(!url)return null;
+  let m;
+  if((m=url.match(/(?:youtube\.com\/(?:watch\?[^ ]*\bv=|embed\/|shorts\/|live\/)|youtu\.be\/)([\w-]{6,})/i)))
+    return{kind:'youtube',id:m[1],embed:'https://www.youtube.com/embed/'+m[1],thumb:'https://img.youtube.com/vi/'+m[1]+'/hqdefault.jpg'};
+  if((m=url.match(/vimeo\.com\/(?:video\/)?(\d+)/i)))
+    return{kind:'vimeo',id:m[1],embed:'https://player.vimeo.com/video/'+m[1],thumb:''};
+  if(/\.(mp4|webm|mov|m4v|ogv)(\?|#|$)/i.test(url))return{kind:'file',embed:url,thumb:''};
+  if(/^https?:\/\//i.test(url))return{kind:'link',embed:url,thumb:''};
+  return null;
+}
+/* true if a stored media entry is a video (uploaded file, or a video link) */
+function isAnyVideo(src){
+  if(!src)return false;
+  if(String(src).startsWith('data:video'))return true;
+  const v=parseVideoLink(src);
+  return !!(v&&(v.kind==='youtube'||v.kind==='vimeo'||v.kind==='file'));
+}
+/* a poster/thumbnail image for a video link, when one is available (YouTube) */
+function videoPoster(src){const v=parseVideoLink(src);return (v&&v.thumb)||'';}
+/* playable HTML for a video link: embed for YT/Vimeo, <video> for a direct file,
+   a "Watch video" button for anything else */
+function videoEmbedHTML(url){
+  const v=parseVideoLink(url);if(!v)return '';
+  if(v.kind==='youtube'||v.kind==='vimeo')
+    return '<div class="vembed"><iframe src="'+esc(v.embed)+'" title="Trek video" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="lazy"></iframe></div>';
+  if(v.kind==='file')
+    return '<video src="'+esc(url)+'#t=0.1" controls preload="metadata" playsinline></video>';
+  return '<a class="vlink" href="'+esc(url)+'" target="_blank" rel="noopener noreferrer"><span class="msr">play_circle</span> Watch video</a>';
+}
+/* lazily swap a video-link thumbnail slide for its real embed on tap (keeps the feed light) */
+function loadEmbed(el){
+  const url=el&&el.getAttribute('data-embed');if(!url)return;
+  el.onclick=null;
+  el.innerHTML='<iframe src="'+esc(url)+(url.indexOf('?')>=0?'&':'?')+'autoplay=1" title="Video" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen style="width:100%;height:100%;border:0;display:block"></iframe>';
+}
 function mediaItem(src){
-  if(src.startsWith('data:video')||src.includes('.mp4')||src.includes('.mov')){
+  if(isAnyVideo(src)){
+    const v=parseVideoLink(src);
+    if(v&&(v.kind==='youtube'||v.kind==='vimeo')){
+      const poster=v.thumb;
+      return `<div class="slide vid emb" data-embed="${esc(v.embed)}" onclick="loadEmbed(this)">
+        <div class="slide" style="position:absolute;inset:0;${poster?`background-image:url('${esc(poster)}')`:'background:#000'}"></div>
+        <div class="play-ic"><span class="msr" style="font-size:44px;color:rgba(255,255,255,.95);text-shadow:0 2px 12px rgba(0,0,0,.5)">play_circle</span></div>
+      </div>`;
+    }
     return `<div class="slide vid" onclick="this.querySelector('video').paused?this.querySelector('video').play():this.querySelector('video').pause()">
-      <video src="${src}" playsinline preload="metadata" loop></video>
+      <video src="${esc(src)}" playsinline preload="metadata" loop></video>
       <div class="play-ic"><span class="msr" style="font-size:44px;color:rgba(255,255,255,.9);text-shadow:0 2px 12px rgba(0,0,0,.5)">play_circle</span></div>
     </div>`;}
   const url=src.startsWith('data:')?src:src+Q;
@@ -2872,14 +2923,26 @@ function toggleTagPerson(n){
 }
 function renderPostPics(){const box=document.getElementById('postPics');
   box.innerHTML=postImgs.map((src,i)=>{
-    const isVid=src.startsWith('data:video');
-    const inner=isVid
-      ?`<video src="${src}" style="width:100%;height:100%;object-fit:cover;border-radius:12px" muted playsinline></video><span class="msr" style="position:absolute;bottom:4px;left:5px;font-size:16px;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.7)">videocam</span>`
-      :``;
-    return `<div class="pp" style="${isVid?'':'background-image:url(\''+src+'\')'};position:relative">${inner}<button onclick="rmPostPic(${i})" style="position:absolute;top:-7px;right:-7px;z-index:2">${ic('close',13)}</button></div>`;
+    const vid=isAnyVideo(src);const poster=vid?videoPoster(src):'';
+    let inner='',bg='';
+    if(vid){
+      bg=poster?'background-image:url(\''+esc(poster)+'\')':'background:#0a1626';
+      inner=(!poster&&String(src).startsWith('data:video'))
+        ?`<video src="${esc(src)}" style="width:100%;height:100%;object-fit:cover;border-radius:12px" muted playsinline></video>`:'';
+      inner+=`<span class="msr" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:24px;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.7)">play_circle</span>`;
+    }else{bg='background-image:url(\''+esc(src)+'\')';}
+    return `<div class="pp" style="${bg};position:relative">${inner}<button onclick="rmPostPic(${i})" style="position:absolute;top:-7px;right:-7px;z-index:2">${ic('close',13)}</button></div>`;
   }).join('');
   hydrate(box);}
 function rmPostPic(i){postImgs.splice(i,1);postFileRefs.splice(i,1);renderPostPics();}
+async function postAddVideoLink(){
+  if(postImgs.length>=4){note('You can add up to 4 items per post.','Limit reached');return;}
+  const url=await askCode('Paste a YouTube, Vimeo or video link',{placeholder:'https://youtube.com/watch?v=…'});
+  if(url==null)return;
+  const v=parseVideoLink((url||'').trim());
+  if(!v||(v.kind!=='youtube'&&v.kind!=='vimeo'&&v.kind!=='file')){note('That doesn’t look like a video link. Paste a YouTube, Vimeo or direct video URL.','Invalid link');return;}
+  postFileRefs.push(null);postImgs.push(url.trim());renderPostPics();
+}
 function addPost(){
   /* posting now requires an account (DB policies reject anonymous writes) */
   if(!isLoggedIn()){
@@ -2901,16 +2964,17 @@ function addPost(){
   m.classList.add('show');setTimeout(()=>ta.focus(),80);
   function close(){m.classList.remove('show');files.onchange=ok.onclick=cn.onclick=m.onclick=null;ok.textContent='Post';ok.disabled=false;}
   files.onchange=e=>{[...e.target.files].slice(0,4-postImgs.length).forEach(f=>{
+    if(!/^image\//.test(f.type)){note('Only photos can be uploaded. Add videos with the “Video link” button.','Photos only');return;}
     postFileRefs.push(f);
     const r=new FileReader();r.onload=ev=>{postImgs.push(ev.target.result);renderPostPics();};r.readAsDataURL(f);
   });files.value='';};
   ok.onclick=async()=>{
-    const txt=ta.value.trim();if(!txt&&!postFileRefs.length){close();return;}
+    const txt=ta.value.trim();if(!txt&&!postImgs.length){close();return;}
     ok.textContent='Uploading…';ok.disabled=true;
-    /* upload each file to Supabase Storage */
+    /* upload each photo file; video links are kept as-is (no upload) */
     const mediaUrls=[];
-    for(let i=0;i<postFileRefs.length;i++){
-      const url=await uploadMedia(postFileRefs[i]);
+    for(let i=0;i<postImgs.length;i++){
+      const url=postFileRefs[i]?await uploadMedia(postFileRefs[i]):postImgs[i];
       mediaUrls.push(url||postImgs[i]); /* fallback to base64 if upload fails */
     }
     const authorName=getSavedName()||( currentUser?( currentUser.email?currentUser.email.split('@')[0]:'Trekker'):'You');
@@ -3045,10 +3109,16 @@ async function loadUserPosts(name){
 }
 function gridCell(p){
   const media=(p.imgs&&p.imgs.length)?p.imgs[0]:'';
-  const isVid=media&&(media.startsWith('data:video')||/\.(mp4|mov)/.test(media));
+  const isVid=media&&isAnyVideo(media);
   const url=media?(media.startsWith('data:')?media:media+Q):'';
   const badge=p.imgs&&p.imgs.length>1?`<span class="g-multi msr">filter_none</span>`:(isVid?`<span class="g-multi msr">play_arrow</span>`:'');
-  const inner=media?(isVid?`<video src="${media}" muted playsinline></video>`:`<div class="g-img" style="background-image:url('${url}')"></div>`):`<div class="g-img g-txt">${esc((p.txt||'').slice(0,40))}</div>`;
+  let inner;
+  if(!media)inner=`<div class="g-img g-txt">${esc((p.txt||'').slice(0,40))}</div>`;
+  else if(isVid){
+    const poster=videoPoster(media);
+    inner=poster?`<div class="g-img" style="background-image:url('${esc(poster)}')"></div>`
+      :(String(media).startsWith('data:video')?`<video src="${esc(media)}" muted playsinline></video>`:`<div class="g-img" style="background:#0a1626"></div>`);
+  }else inner=`<div class="g-img" style="background-image:url('${url}')"></div>`;
   return `<div class="g-cell" onclick="openComments('${p.id}')">${inner}${badge}</div>`;
 }
 async function renderPerson(){if(!curPerson){go('community');return;}const p=getPerson(curPerson);if(!p)return;
@@ -5229,6 +5299,7 @@ function renderHostTrip(){
   }
   const dt=document.getElementById('htDate');if(dt)dt.min=todayISO(0);
   const et=document.getElementById('htEnd');if(et)et.min=(dt&&dt.value)||todayISO(0);
+  renderHtMedia();
   htPreview();
   hydrate(document.getElementById('hostTrip'));
 }
@@ -5279,6 +5350,49 @@ function htPickImg(input){
   r.onload=e=>{_htImgData=e.target.result;renderHostTrip();};
   r.readAsDataURL(f);
 }
+/* ---- trek gallery: multiple photos + videos (incl. the host's own video) ---- */
+const HT_MEDIA_MAX=12, HT_VIDEO_MB=50;
+function isVideoUrl(u){return /\.(mp4|webm|mov|m4v|ogv)(\?|#|$)/i.test(String(u||''));}
+function htPickMedia(input){
+  const files=[...(input.files||[])];input.value='';
+  if(!files.length)return;
+  files.forEach(f=>{
+    if(_htMedia.length>=HT_MEDIA_MAX){note('You can add up to '+HT_MEDIA_MAX+' items.','Gallery full');return;}
+    if(!/^image\//.test(f.type)){note('Only photos can be uploaded. Add videos with the “Video link” button.','Photos only');return;}
+    const item={kind:'image',file:f,isNew:true,preview:''};
+    const r=new FileReader();r.onload=e=>{item.preview=e.target.result;_htMedia.push(item);renderHtMedia();};r.readAsDataURL(f);
+  });
+}
+async function htAddVideoLink(){
+  if(_htMedia.length>=HT_MEDIA_MAX){note('You can add up to '+HT_MEDIA_MAX+' items.','Gallery full');return;}
+  const url=await askCode('Paste a YouTube, Vimeo or video link',{placeholder:'https://youtube.com/watch?v=…'});
+  if(url==null)return;
+  const v=parseVideoLink((url||'').trim());
+  if(!v||(v.kind!=='youtube'&&v.kind!=='vimeo'&&v.kind!=='file')){note('That doesn’t look like a video link. Paste a YouTube, Vimeo or direct video URL.','Invalid link');return;}
+  _htMedia.push({kind:'video',url:url.trim(),isNew:false});renderHtMedia();
+}
+function htRemoveMedia(i){
+  const m=_htMedia[i];
+  if(m&&m.isNew&&m.kind==='video'&&m.preview){try{URL.revokeObjectURL(m.preview);}catch(e){}}
+  _htMedia.splice(i,1);renderHtMedia();
+}
+function renderHtMedia(){
+  const g=document.getElementById('htMediaGrid');if(!g)return;
+  const tiles=_htMedia.map((m,i)=>{
+    const src=m.isNew?m.preview:m.url;
+    let body;
+    if(m.kind==='video'){
+      const poster=videoPoster(src);
+      const frame=(!poster&&isVideoUrl(src))?'<video src="'+esc(src)+'#t=0.1" muted preload="metadata" playsinline></video>':'';
+      body='<div class="htm-thumb" style="'+(poster?'background-image:url(\''+esc(poster)+'\')':'background:#0a1626')+'">'+frame+'</div><span class="htm-play msr">play_circle</span><span class="htm-tag">Video</span>';
+    }else body='<div class="htm-thumb" style="background-image:url(\''+esc(src)+'\')"></div>';
+    return '<div class="htm-item">'+body+'<button class="htm-x" type="button" aria-label="Remove" onclick="htRemoveMedia('+i+')">&times;</button></div>';
+  }).join('');
+  const canAdd=_htMedia.length<HT_MEDIA_MAX;
+  const addPhoto=canAdd?'<button type="button" class="htm-add" onclick="document.getElementById(\'htMediaFile\').click()"><span class="msr">add_photo_alternate</span><small>Add photos</small></button>':'';
+  const addVid=canAdd?'<button type="button" class="htm-add" onclick="htAddVideoLink()"><span class="msr">smart_display</span><small>Video link</small></button>':'';
+  g.innerHTML=tiles+addPhoto+addVid;
+}
 /* no id = create. id = edit that trip (drafts/rejected only; live is locked). */
 async function openHostTrip(id){
   await loadHostApp();
@@ -5293,6 +5407,7 @@ async function openHostTrip(id){
     if(!t){note('Trip not found.','Error');_editTripId=null;return;}
     if(t.status==='live'){note('Live trips are locked — message us to change them.','Locked');_editTripId=null;return;}
     _htDiff=t.difficulty||'Moderate';_htImgData=t.img||'';
+    _htMedia=Array.isArray(t.media)?t.media.filter(x=>x&&x.url).map(x=>({kind:(x.type==='video'||isVideoUrl(x.url))?'video':'image',url:x.url,isNew:false})):[];
     set('htTitle',t.title);set('htDest',t.destination);set('htDate',t.start_date);set('htEnd',t.end_date);
     set('htDays',t.days);set('htMax',t.max_people);set('htPrice',t.price);
     set('htDesc',t.description);
@@ -5301,7 +5416,7 @@ async function openHostTrip(id){
     _htInc=splt(t.inclusions);_htExc=splt(t.exclusions);
     htDaysFromRange();
   }else{
-    _htDiff='Moderate';_htImgData='';_htInc=[];_htExc=[];
+    _htDiff='Moderate';_htImgData='';_htInc=[];_htExc=[];_htMedia=[];
     ['htTitle','htDest','htDate','htEnd','htDays','htMax','htPrice','htDesc'].forEach(k=>set(k,''));
   }
   go('hostTrip');renderHostTrip();
@@ -5339,6 +5454,27 @@ async function submitHostTrip(){
       if(up.error)throw new Error(up.error.message);
       imgUrl=sb.storage.from('community').getPublicUrl(path).data.publicUrl;
     }
+    /* upload the trek gallery — photos + videos (incl. the host's own video).
+       Already-uploaded items (on edit) keep their URL; new picks are uploaded. */
+    const mediaArr=[];
+    if(_htMedia.length&&btn)btn.textContent='Uploading media…';
+    for(const m of _htMedia){
+      if(!m.isNew){mediaArr.push({type:m.kind,url:m.url});continue;}
+      if(m.kind==='image'){
+        const small=await compressImage(m.file,{maxW:1600,quality:.82});
+        const p='trips/media/'+Date.now()+'_'+Math.random().toString(36).slice(2)+'.jpg';
+        const up=await sb.storage.from('community').upload(p,small,{cacheControl:'3600',contentType:'image/jpeg'});
+        if(up.error)throw new Error('Photo upload failed: '+up.error.message);
+        mediaArr.push({type:'image',url:sb.storage.from('community').getPublicUrl(p).data.publicUrl});
+      }else{
+        const ext=((m.file.name.split('.').pop()||'mp4').toLowerCase().replace(/[^a-z0-9]/g,''))||'mp4';
+        const p='trips/media/'+Date.now()+'_'+Math.random().toString(36).slice(2)+'.'+ext;
+        const up=await sb.storage.from('community').upload(p,m.file,{cacheControl:'3600',contentType:m.file.type||'video/mp4'});
+        if(up.error)throw new Error('Video upload failed: '+up.error.message);
+        mediaArr.push({type:'video',url:sb.storage.from('community').getPublicUrl(p).data.publicUrl});
+      }
+    }
+    if(btn)btn.textContent='Submitting…';
     /* the host's real name is what they gave on their APPLICATION, not a stale
        localStorage value (which could be blank or, if the admin created it, wrong) */
     const hostName=(_hostApp&&_hostApp.full_name)||myName();
@@ -5347,6 +5483,7 @@ async function submitHostTrip(){
       description:v('htDesc'),inclusions:_htInc.join('\n'),exclusions:_htExc.join('\n')};
     /* keep the existing photo on edit unless a new one was picked */
     if(imgUrl)row.img=imgUrl; else if(!_editTripId)row.img=null;
+    row.media=mediaArr;   /* the trek gallery (may be empty if the host removed everything) */
     let r;
     if(_editTripId){
       /* status deliberately not sent — the DB trigger pins it regardless */
@@ -5585,6 +5722,18 @@ function trustCard(host,title){
     +'</div>';
 }
 let _htvTrip=null,_htvPax=1;
+/* the trek gallery on the public trip page — photos + playable videos */
+function mediaGallery(media){
+  if(!Array.isArray(media)||!media.length)return '';
+  const items=media.map(m=>{
+    const url=m&&m.url;if(!url)return '';
+    if((m.type||'')==='video'||isVideoUrl(url))
+      return '<div class="tg-item tg-vid">'+videoEmbedHTML(url)+'</div>';
+    return '<div class="tg-item tg-img" style="background-image:url(\''+esc(url)+'\')"></div>';
+  }).join('');
+  if(!items)return '';
+  return '<div class="blk" style="padding:0"><h2>Trek gallery</h2><div class="tg-row">'+items+'</div></div>';
+}
 async function openHostTripDetail(id){
   go('hostTripView');
   const box=document.getElementById('htvBody');
@@ -5609,6 +5758,7 @@ async function openHostTripDetail(id){
     +`<button class="htv-share" onclick="shareHostTrip('${jsq(t.id)}','${jsq(t.title)}')">${ic('share',14)} Share this trip</button>`
     +`<div class="htv-host">${avatar(t.host_name,38)}<div class="hn"><b>${esc(t.host_name)}</b><small>Trip host</small></div><span class="hbadge">Verified</span></div>`
     +`<div class="stats">${stat('calendar',dateRange,'Dates')}${stat('clock',t.days?t.days+' days':'','Duration')}${stat('altitude',t.difficulty,'Level')}${stat('community',t.max_people?'Max '+t.max_people:'','Group')}</div>`
+    +mediaGallery(t.media)
     +(t.description?`<div class="blk" style="padding:0"><h2>About this trip</h2><p>${esc(t.description)}</p></div>`:'')
     +(t.inclusions?`<div class="blk" style="padding:0"><h2>What's included</h2><p style="white-space:pre-line">${esc(t.inclusions)}</p></div>`:'')
     +(t.exclusions?`<div class="blk" style="padding:0"><h2>Not included</h2><p style="white-space:pre-line">${esc(t.exclusions)}</p></div>`:'')
