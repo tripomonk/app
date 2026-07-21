@@ -527,6 +527,9 @@
   .mrow .ic{color:var(--accent2)}.mrow .t{flex:1;font-size:14px;font-weight:600}.mrow .ch{color:var(--muted2)}
 
   /* splash */
+  /* splash / login / otp always sit on the dark mountain photo — keep text white in BOTH themes */
+  #splash,#login,#otp{color:#fff}
+  #splash .home-title-block small,#login .home-title-block small{color:#7ab4ff}
   .splash{position:absolute;inset:0;background-size:cover;background-position:center;display:flex;flex-direction:column;justify-content:flex-end;padding:34px calc(26px + var(--safe-right)) calc(var(--safe-bottom) + 34px) calc(26px + var(--safe-left))}
   .splash:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,17,30,.55) 0%,rgba(8,17,30,.15) 35%,rgba(8,17,30,.92) 100%)}
   .splash .top{position:absolute;top:calc(var(--safe-top) + 26px);left:26px;display:flex;align-items:center;gap:10px;z-index:1}
@@ -1738,7 +1741,9 @@
   /* home, profile and chat refresh */
   .home-refresh{background:radial-gradient(110% 38% at 50% -6%,rgba(47,107,255,.25),transparent 58%)}
   .home-top-ui{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:48px 1fr 48px;align-items:center;gap:10px;margin:-4px -2px 14px;padding:8px 10px 12px;border-radius:22px;background:linear-gradient(180deg,var(--bg) 72%,rgba(10,22,38,0));backdrop-filter:blur(18px)}
-  html.light .home-top-ui{background:linear-gradient(180deg,var(--bg) 72%,rgba(245,247,251,0))}
+  /* light mode: a darker, solid blue-grey header (not washed-out white) with a soft edge */
+  html.light .home-top-ui{background:linear-gradient(180deg,#d3ddef,#e2e9f5);box-shadow:0 10px 24px -16px rgba(16,32,58,.4);border:1px solid rgba(16,32,58,.08)}
+  html.light .home-avatar-btn,html.light .home-bell{background:#fff;border-color:rgba(16,32,58,.14);box-shadow:0 3px 8px -4px rgba(16,32,58,.25)}
   .home-avatar-btn,.home-bell{width:46px;height:46px;border-radius:18px;border:1px solid var(--stroke);background:rgba(255,255,255,.09);color:var(--text);display:grid;place-items:center;font-weight:700;cursor:pointer;background-size:cover;background-position:center}
   .home-title-block{text-align:center}.home-title-block small{font-size:10.5px;color:var(--accent2);font-weight:700;text-transform:uppercase;letter-spacing:.5px}.home-title-block h1{font-size:20px;margin:1px 0 0}
   .home-intro-card{display:flex;align-items:center;justify-content:space-between;gap:14px;border-radius:25px;padding:16px;margin-bottom:14px;background:linear-gradient(135deg,rgba(47,107,255,.24),rgba(255,255,255,.06));border:1px solid rgba(255,255,255,.13);box-shadow:0 20px 44px -34px rgba(0,0,0,.85);backdrop-filter:blur(20px)}
@@ -1752,7 +1757,9 @@
   #profile .pcover:after{background:linear-gradient(180deg,rgba(8,17,30,.05),rgba(8,17,30,.1) 42%,var(--bg) 100%)}
   #profile .pwrap{padding:0 calc(16px + var(--safe-right)) calc(var(--safe-bottom) + 98px) calc(16px + var(--safe-left))}
   #profile .pav{width:96px;height:96px;margin:-58px auto 0;border-width:5px;box-shadow:0 18px 34px -22px rgba(0,0,0,.9)}
-  #profile .prow{justify-content:center;text-align:center;gap:10px;position:relative}.edit-pill{position:absolute;right:0;top:4px;color:#fff;background:var(--accent);border-radius:999px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer}.prow h1{font-size:21px}.prow .lv{max-width:260px;margin:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #profile .prow{justify-content:center;text-align:center;padding:0 20px}
+  #profile .prow h1{font-size:21px;line-height:1.2;word-break:break-word;max-width:100%}
+  .prow .lv{max-width:260px;margin:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .profile-actions{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin:17px 0 12px}.profile-actions button{height:44px;border-radius:999px;border:1px solid var(--stroke);background:rgba(255,255,255,.1);color:var(--text);font-family:var(--font);font-weight:700;cursor:pointer}.profile-actions button:first-child{background:var(--accent);border-color:var(--accent);color:#fff}.profile-actions button.on,.profile-actions button:first-child.on{background:rgba(255,255,255,.1);border-color:var(--stroke);color:var(--text);transition:background .22s ease,color .22s ease}
   #profile .pstats{gap:8px;margin:14px 0}.pstat{border-radius:18px;background:rgba(255,255,255,.08)}.pstat b{font-size:18px}.pstat small{font-size:9.5px}
   .profile-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 10px;padding:4px;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid var(--stroke)}.profile-tabs span{text-align:center;border-radius:12px;padding:9px 4px;font-size:11.5px;font-weight:700;color:var(--muted)}.profile-tabs .on{background:var(--accent);color:#fff}
@@ -2052,7 +2059,7 @@
     <div class="pcover" id="pCover"><button class="cover-edit" id="coverEdit" aria-label="Change cover photo" title="Change cover" onclick="document.getElementById('coverPhoto').click()"><span class="msr">photo_camera</span></button><input type="file" id="coverPhoto" accept="image/*" hidden onchange="coverPickPhoto(this)"/></div>
     <div class="pwrap">
       <div class="pav" id="profileAv">E</div>
-      <div class="prow"><div><h1 id="profileName">Explorer</h1><div class="lv" id="profileSub">Sign in to track your treks</div></div><a class="edit-pill" onclick="go('editProfile')">Edit</a></div>
+      <div class="prow"><div style="min-width:0"><h1 id="profileName">Explorer</h1><div class="lv" id="profileSub">Sign in to track your treks</div></div></div>
       <div class="profile-actions"><button onclick="go('editProfile')">Edit Profile</button><button onclick="go('messages')">Messages</button></div>
       <div class="pstats" id="pStats"></div>
       <div class="profile-tabs" id="profTabs"><span class="on" onclick="setProfTab('All',this)">All</span><span onclick="setProfTab('Photos',this)">Photos</span><span onclick="setProfTab('Videos',this)">Videos</span></div>
