@@ -2476,7 +2476,7 @@ function mediaItem(src){
     const v=parseVideoLink(src);
     if(v&&(v.kind==='youtube'||v.kind==='vimeo')){
       const poster=v.thumb;
-      return `<div class="slide vid emb" data-embed="${esc(v.embed)}" onclick="loadEmbed(this)">
+      return `<div class="slide vid emb" data-embed="${esc(v.embed)}" data-poster="${esc(poster||'')}" onclick="loadEmbed(this)">
         <div class="slide" style="position:absolute;inset:0;${poster?`background-image:url('${esc(poster)}')`:'background:#000'}"></div>
         <div class="play-ic"><span class="msr" style="font-size:44px;color:rgba(255,255,255,.95);text-shadow:0 2px 12px rgba(0,0,0,.5)">play_circle</span></div>
       </div>`;
@@ -5128,7 +5128,23 @@ async function flushEvents(){
 }
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'){trackScreenLeave();flushEvents();}});
 window.addEventListener('pagehide',function(){trackScreenLeave();flushEvents();});
+/* Kill any playing media before switching screens. A hidden view (display:none) keeps
+   its <video> and — worse — its YouTube/Vimeo iframe playing audio in the background.
+   Pause every video, and revert each played embed back to its tap-to-play poster. */
+function stopAllMedia(){
+  document.querySelectorAll('video').forEach(v=>{try{v.pause();}catch(e){}});
+  document.querySelectorAll('.slide.vid.emb').forEach(cell=>{
+    if(!cell.querySelector('iframe'))return;                 /* only ones that were actually played */
+    const poster=cell.getAttribute('data-poster')||'';
+    cell.innerHTML=`<div class="slide" style="position:absolute;inset:0;${poster?`background-image:url('${poster}')`:'background:#000'}"></div>`
+      +`<div class="play-ic"><span class="msr" style="font-size:44px;color:rgba(255,255,255,.95);text-shadow:0 2px 12px rgba(0,0,0,.5)">play_circle</span></div>`;
+    cell.setAttribute('onclick','loadEmbed(this)');
+  });
+  /* generic embeds (trek detail etc.) — blank the src so their audio stops too */
+  document.querySelectorAll('.vembed iframe').forEach(f=>{try{f.src='about:blank';}catch(e){}});
+}
 function go(id){const el=document.getElementById(id);if(!el)return;
+  stopAllMedia();
   if(id==='captain'&&!isStaffUser()){note('Trip Captain access is for staff only.','Restricted');return;}
   if((id==='admin'||id==='adminTrip')&&!isAdminUser()){note('Admin access is restricted to the account owner.','Restricted');return;}
   /* hide any live news banner when entering the login/signup flow */
@@ -5192,7 +5208,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
 /* in-app back button → use browser history so it stays in sync with device back */
 function back(){history.back();}
 /* actually move the app to the previous screen (called by device/browser back) */
-function _showPrev(){const p=hist.pop();if(p){cur=p;document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));const el=document.getElementById(p);el.classList.add('active');document.getElementById('nav').classList.toggle('hide',el.hasAttribute('data-nonav'));if(el.dataset.tab){lastTab=el.dataset.tab;document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===el.dataset.tab));}staggerActive();saveNav();}else{cur='__root';go(lastTab||'home');}}
+function _showPrev(){stopAllMedia();const p=hist.pop();if(p){cur=p;document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));const el=document.getElementById(p);el.classList.add('active');document.getElementById('nav').classList.toggle('hide',el.hasAttribute('data-nonav'));if(el.dataset.tab){lastTab=el.dataset.tab;document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===el.dataset.tab));}staggerActive();saveNav();}else{cur='__root';go(lastTab||'home');}}
 /* device/browser back button handling */
 window.addEventListener('popstate',function(){_showPrev();});
 /* remember the current screen + context so a refresh stays put */
