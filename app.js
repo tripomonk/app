@@ -2351,7 +2351,7 @@ function personRow(p){
   const sn=jsq(p.n);
   const shared=sharedPrefs(p.prefs);
   const match=shared>0?`<span class="pmatch">${ic('like',11)} ${shared} shared interest${shared>1?'s':''}</span>`:'';
-  return `<div class="mrow" style="gap:12px;padding:10px 0">
+  return `<div class="mrow" style="gap:12px;padding:12px 14px">
     ${avatar(p.n,44)}
     <div style="flex:1;min-width:0">
       <b style="font-size:13.5px;display:block;cursor:pointer" onclick="openPerson('${sn}')">${esc(p.n)}</b>
