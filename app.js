@@ -1439,7 +1439,7 @@ function renderHomeHero(){
    COMPARE TREKS — pick up to 3 treks, side-by-side table + a
    rules-based "best match" using the user's onboarding prefs.
    ============================================================ */
-let _cmpSel=[],_cmpQ='';
+let _cmpSel=[],_cmpQ='',_cmpShow=false;
 function cmpAvail(){return treks.filter(t=>!t.soon);}
 function fitnessOf(lvl){lvl=(lvl||'').toLowerCase();
   if(/difficult|hard|advanced|challeng/.test(lvl))return 'High';
@@ -1469,9 +1469,17 @@ function toggleCmp(name){
   const i=_cmpSel.indexOf(name);
   if(i>=0)_cmpSel.splice(i,1);
   else{ if(_cmpSel.length>=3){toast('You can compare up to 3 treks');return;} _cmpSel.push(name); }
+  _cmpShow=false;   /* selection changed — require an explicit "Compare now" tap again */
   renderCompare();
 }
-function clearCmp(){_cmpSel=[];renderCompare();}
+function clearCmp(){_cmpSel=[];_cmpShow=false;renderCompare();}
+/* explicit compare action — the table only appears when the user asks for it */
+function doCompare(){
+  if(_cmpSel.length<2){toast('Pick at least 2 treks to compare');return;}
+  _cmpShow=true;renderCompare();
+  const t=document.querySelector('#compareBody .cmp-table-wrap');
+  if(t)t.scrollIntoView({behavior:'smooth',block:'center'});
+}
 function cmpSearch(v){_cmpQ=v||'';renderCompare();}
 function shareTrekByName(name){
   const url=window.location.origin+window.location.pathname.replace(/index\.html$/,'')+'#trek='+encodeURIComponent(name);
@@ -1494,7 +1502,10 @@ function renderCompare(){
   }).join('')||'<div class="empty"><p>No treks match your search.</p></div>'}</div>`;
 
   let compare='';
-  if(sel.length>=2){
+  if(sel.length>=2&&!_cmpShow){
+    /* 2–3 picked, but wait for an explicit tap before showing the comparison */
+    compare=`<button class="btn cmp-go" onclick="doCompare()"><span class="msr">compare_arrows</span> Compare ${sel.length} treks now</button>`;
+  }else if(sel.length>=2){
     /* recommended = highest score */
     let best=sel[0];sel.forEach(t=>{if(cmpScore(t)>cmpScore(best))best=t;});
     const ROWS=[
@@ -1903,7 +1914,7 @@ function renderBookings(){
   }else{
     const pop=treks.slice(0,6).map((t,i)=>bkPopCard(t,i)).join('');
     box.innerHTML=`<div class="bk-empty">
-      <div class="bk-empty-ill"><img src="illustrations/hiker-mountains.svg" alt=""/></div>
+      <div class="bk-empty-ill"><img src="illustrations/trekss.svg" alt="A trekker on the trail"/></div>
       <b>No bookings yet</b>
       <small>Your booked treks and e-tickets will show up here. Your next Himalayan adventure is one tap away.</small>
       <button class="bk-cta" onclick="go('explore')"><span class="msr">hiking</span> Browse Treks</button>
@@ -5740,7 +5751,16 @@ function copyReferral(){
   if(navigator.clipboard)navigator.clipboard.writeText(url).then(()=>toast('Referral link copied')).catch(()=>note(url,'Your referral link'));
   else note(url,'Your referral link');
 }
-/* pull the host's real earnings from confirmed bookings on their own trips */
+/* operations cost per person for a trip, as set by Tripomonk during costing.
+   Until it's set we can't know the profit, so the host's share stays "pending". */
+function tripOpsCostPP(t){
+  const v=+(t&&(t.ops_cost_pp!=null?t.ops_cost_pp:t.ops_cost))||0;
+  return v>0?v:0;
+}
+/* pull the host's real earnings from confirmed bookings on their own trips.
+   MODEL: host keeps 90% of the PROFIT (booking revenue − Tripomonk's operations
+   cost), never 90% of gross bookings. Trips without a finalised operations cost
+   show their revenue but their payout is "awaiting costing" — we never guess it. */
 async function loadHostEarnings(){
   const trips=_hdTrips||[];
   const titles=trips.map(t=>t.title).filter(Boolean);
@@ -5754,43 +5774,68 @@ async function loadHostEarnings(){
   const perTrip=trips.map(t=>{
     const br=rows.filter(r=>counts(r)&&r.trek===t.title);
     const seats=br.reduce((s,r)=>s+(+r.pax||0),0);
-    const gross=br.reduce((s,r)=>s+(+r.total||0),0);
+    const revenue=br.reduce((s,r)=>s+(+r.total||0),0);
     const advance=br.reduce((s,r)=>s+(+r.paid||0),0);
-    return{t,bookings:br.length,seats,gross,advance,net:Math.round(gross*HOST_TAKE)};
+    const opsPP=tripOpsCostPP(t);
+    const costKnown=opsPP>0;                       /* Tripomonk has finalised the cost */
+    const opsCost=opsPP*seats;
+    const profit=Math.max(0,revenue-opsCost);
+    const net=costKnown?Math.round(profit*HOST_TAKE):0;   /* 90% of profit */
+    return{t,bookings:br.length,seats,revenue,advance,opsPP,opsCost,profit,net,costKnown};
   });
-  const tripGross=perTrip.reduce((s,x)=>s+x.gross,0);
-  const tripNet=Math.round(tripGross*HOST_TAKE);
-  const advance=perTrip.reduce((s,x)=>s+x.advance,0);
-  const bookings=perTrip.reduce((s,x)=>s+x.bookings,0);
+  const booked=perTrip.filter(x=>x.bookings>0);
+  const known=booked.filter(x=>x.costKnown);
+  const revenue=booked.reduce((s,x)=>s+x.revenue,0);          /* all confirmed bookings */
+  const knownRevenue=known.reduce((s,x)=>s+x.revenue,0);      /* only costed trips */
+  const pendingRevenue=booked.filter(x=>!x.costKnown).reduce((s,x)=>s+x.revenue,0);
+  const opsCost=known.reduce((s,x)=>s+x.opsCost,0);
+  const profit=known.reduce((s,x)=>s+x.profit,0);
+  const tripNet=known.reduce((s,x)=>s+x.net,0);               /* host's 90% of profit, costed trips */
+  const advance=booked.reduce((s,x)=>s+x.advance,0);
+  const bookings=booked.reduce((s,x)=>s+x.bookings,0);
   const refEarn=hostReferralEarnings(),refCount=hostReferralCount();
-  return{perTrip,tripGross,tripNet,advance,bookings,refEarn,refCount,total:tripNet+refEarn};
+  return{perTrip,booked,revenue,knownRevenue,pendingRevenue,opsCost,profit,tripNet,advance,bookings,refEarn,refCount,total:tripNet+refEarn};
 }
 async function renderHdEarnings(box){
   box.innerHTML='<div class="earn-loading"><span class="msr spin">progress_activity</span> Loading your earnings…</div>';
   const e=await loadHostEarnings();
   if(hdTab!=='Earnings')return;   /* user switched tabs while loading */
   const m=v=>INR(v||0),code=hostReferralCode();
-  const isEmpty=e.tripGross===0&&e.refEarn===0;
+  const isEmpty=e.bookings===0&&e.refEarn===0;
   const hero='<div class="earn-hero">'
-    +'<small>Your total earnings</small>'
+    +'<small>Your earnings so far</small>'
     +'<div class="earn-big">'+m(e.total)+'</div>'
     +'<div class="earn-heropill"><span><b>'+m(e.tripNet)+'</b> trips</span><span><b>'+m(e.refEarn)+'</b> referrals</span></div>'
     +'</div>';
   const empty=isEmpty
-    ?'<div class="earn-empty"><span class="msr">savings</span><p>No earnings yet. When trekkers book your live trips, your <b>90% share</b> and referral rewards appear here.</p></div>'
+    ?'<div class="earn-empty"><span class="msr">savings</span><p>No earnings yet. When trekkers book your live trips, your <b>90% share of the profit</b> and referral rewards appear here.</p></div>'
     :'';
-  const tripCard='<div class="earn-card">'
-    +'<div class="earn-ch"><span class="msr">hiking</span><b>Trip earnings</b>'+(e.bookings?'<span class="earn-tag">'+e.bookings+' booking'+(e.bookings===1?'':'s')+'</span>':'')+'</div>'
-    +'<div class="earn-line"><span>Gross bookings</span><b>'+m(e.tripGross)+'</b></div>'
-    +'<div class="earn-line sub"><span>Platform fee (10%)</span><b>−'+m(e.tripGross-e.tripNet)+'</b></div>'
-    +'<div class="earn-line grand"><span>You keep (90%)</span><b>'+m(e.tripNet)+'</b></div>'
+  /* revenue on trips Tripomonk hasn\'t costed yet — surfaced so we never imply a payout we can\'t compute */
+  const pendingBanner=e.pendingRevenue>0
+    ?'<div class="earn-pending"><span class="msr">hourglass_top</span><p><b>'+m(e.pendingRevenue)+'</b> in bookings is awaiting operations costing. Your <b>90% profit share</b> appears here once Tripomonk finalises the trip cost.</p></div>'
+    :'';
+  /* trip earnings = 90% of PROFIT (revenue − operations cost) on costed trips only */
+  const tripCard=e.knownRevenue>0?'<div class="earn-card">'
+    +'<div class="earn-ch"><span class="msr">hiking</span><b>Trip earnings</b><span class="earn-tag">'+e.bookings+' booking'+(e.bookings===1?'':'s')+'</span></div>'
+    +'<div class="earn-line"><span>Booking revenue</span><b>'+m(e.knownRevenue)+'</b></div>'
+    +'<div class="earn-line sub"><span>Operations cost</span><b>−'+m(e.opsCost)+'</b></div>'
+    +'<div class="earn-line"><span>Profit</span><b>'+m(e.profit)+'</b></div>'
+    +'<div class="earn-line grand"><span>You earn (90% of profit)</span><b>'+m(e.tripNet)+'</b></div>'
     +(e.advance?'<div class="earn-foot">'+m(e.advance)+' advance collected so far · balance settles after each trip</div>':'')
-    +'</div>';
-  const withEarn=e.perTrip.filter(x=>x.bookings>0);
+    +'</div>':'';
+  /* how-it-works explainer — shows the model even before any trip is costed */
+  const modelCard=(e.bookings>0&&e.knownRevenue===0)?'<div class="earn-card">'
+    +'<div class="earn-ch"><span class="msr">calculate</span><b>How your payout is worked out</b></div>'
+    +'<div class="earn-line"><span>Booking revenue</span><b>'+m(e.revenue)+'</b></div>'
+    +'<div class="earn-line sub"><span>− Operations cost (guides, permits, stay, transport, safety)</span><b>set by Tripomonk</b></div>'
+    +'<div class="earn-line sub"><span>= Trip profit</span><b>—</b></div>'
+    +'<div class="earn-line grand"><span>You earn 90% of the profit</span><b>Pending</b></div>'
+    +'</div>':'';
+  const withEarn=e.booked.filter(x=>x.costKnown);
   const breakdown=withEarn.length
     ?'<div class="earn-card"><div class="earn-ch"><span class="msr">receipt_long</span><b>By trip</b></div>'
       +withEarn.map(x=>'<div class="earn-trip"><div class="et-h"><b>'+esc(x.t.title)+'</b><b>'+m(x.net)+'</b></div>'
-        +'<small>'+x.seats+' seat'+(x.seats===1?'':'s')+' booked · '+m(x.gross)+' gross</small></div>').join('')
+        +'<small>'+x.seats+' seat'+(x.seats===1?'':'s')+' · '+m(x.revenue)+' revenue − '+m(x.opsCost)+' ops = '+m(x.profit)+' profit</small></div>').join('')
       +'</div>'
     :'';
   const refCard='<div class="earn-card">'
@@ -5801,8 +5846,8 @@ async function renderHdEarnings(box){
     +'<button class="mk" onclick="shareReferral()"><span class="msr">ios_share</span> Share</button></div></div>'
     +'<p class="host-note" style="margin:10px 0 0">Share your code — you earn a reward for every new trekker who books their first trip through it. Rewards appear here after their trek.</p>'
     +'</div>';
-  const payout='<p class="host-note" style="text-align:center;margin-top:4px">Payouts settle to your account after each trip. Bank & ID details are handled on your verification call — never in the app.</p>';
-  box.innerHTML=hero+empty+tripCard+breakdown+refCard+payout;
+  const payout='<p class="host-note" style="text-align:center;margin-top:4px">You earn 90% of the profit on each trip (booking revenue minus operations cost). Payouts settle after each trip — bank & ID details are handled on your verification call, never in the app.</p>';
+  box.innerHTML=hero+empty+pendingBanner+tripCard+modelCard+breakdown+refCard+payout;
   hydrate(box);
 }
 /* ---- host profile (public-facing details) ---- */
@@ -5810,7 +5855,7 @@ async function renderHdEarnings(box){
 function commissionCard(){
   return '<div class="commission-box" style="margin:0 0 16px">'
     +'<div class="cb-row"><span class="msr">payments</span><div><b>How you earn</b>'
-    +'<small>Tripomonk keeps a <b>10% platform fee</b> on each confirmed booking. You keep <b>90%</b>. We run all operations, payments and support; your payout is settled after the trip.</small></div></div>'
+    +'<small>You keep <b>90% of the profit</b> on every trip — that\'s the booking revenue minus operations cost (guides, permits, stay, transport, safety), which Tripomonk runs and covers. Tripomonk keeps the other <b>10% of the profit</b>. Your payout is settled after the trip.</small></div></div>'
     +'</div>';
 }
 function renderHdProfileSummary(box){
