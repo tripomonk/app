@@ -586,7 +586,8 @@
   .amlogout .amt{color:#ff7a7a}
   .amsignin .amt{color:var(--accent2)}
   /* gift cards — immersive premium picker */
-  .giftcards-view{padding:0;background:#08080c;color:#fff;display:flex;flex-direction:column;overflow:hidden}
+  .giftcards-view{padding:0;background:#08080c;color:#fff;overflow:hidden}
+  .giftcards-view.active{display:flex;flex-direction:column}
   .gc-glow{position:absolute;top:20%;left:50%;transform:translateX(-50%);width:150%;height:55%;pointer-events:none;z-index:0;
     background:radial-gradient(closest-side, rgba(240,190,80,.28), rgba(240,150,40,.08) 55%, transparent 75%)}
   .gc-top{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:center;padding:calc(var(--safe-top) + 12px) 18px 2px}
