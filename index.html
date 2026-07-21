@@ -612,6 +612,25 @@
   .gc-name{font-size:14px;font-weight:600;color:#f7c451;margin-bottom:12px;letter-spacing:.02em}
   #giftCards .gc-redeem{width:100%;background:linear-gradient(135deg,#f7c451,#e0952a);color:#1a1205;font-weight:700;border:0;box-shadow:0 12px 30px -10px rgba(240,170,60,.6)}
   #giftCards .gc-redeem:active{transform:translateY(1px)}
+  .gc-amt-wrap{position:relative;z-index:2;padding:2px 20px 4px;text-align:center}
+  .gc-amts{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:10px}
+  .gc-amt{padding:9px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+  .gc-amt.on{background:linear-gradient(135deg,rgba(247,196,81,.25),rgba(224,149,42,.18));border-color:#f7c451;color:#f7c451}
+  .gc-link{display:inline-flex;align-items:center;gap:6px;margin-top:12px;background:none;border:0;color:rgba(255,255,255,.6);font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit}
+  .gc-link .msr{font-size:17px}
+  /* wallet */
+  .wallet-card{border-radius:20px;padding:22px;margin-bottom:18px;color:#fff;background:linear-gradient(135deg,#2f6bff,#00c2a8);box-shadow:0 14px 34px -14px rgba(47,107,255,.5)}
+  .wc-lbl{font-size:11px;text-transform:uppercase;letter-spacing:.04em;opacity:.85}
+  .wc-bal{font-size:36px;font-weight:800;line-height:1.1;margin:6px 0 3px;letter-spacing:-.5px}
+  .wc-sub{font-size:12px;opacity:.9}
+  .wtxn{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--stroke)}
+  .wtxn-tx{flex:1;min-width:0}
+  .wtxn-tx b{font-size:13px;display:block}
+  .wtxn-tx small{font-size:11px;color:var(--muted)}
+  .wtxn-amt{font-size:14px;font-weight:700;white-space:nowrap}
+  .wtxn-amt.pos{color:#0f9d58}
+  .wtxn-amt.neg{color:#ff7a7a}
+  html.light .wtxn-amt.pos{color:#0b7a44}
   .pwrap{padding:0 calc(18px + var(--safe-right)) calc(var(--safe-bottom) + 92px) calc(18px + var(--safe-left))}
   .pav{width:88px;height:88px;border-radius:50%;border:3px solid var(--bg);background-size:cover;background-position:center;margin:-50px 0 0;position:relative;z-index:1;background-color:#26466e;display:grid;place-items:center;font-size:32px;font-weight:600;color:#fff}
   .prow{display:flex;align-items:center;justify-content:space-between;margin-top:10px}
@@ -2375,14 +2394,35 @@
     </div>
     <div class="gc-head">
       <div class="gc-gift"><span class="msr">redeem</span></div>
-      <h1>Choose your welcome gift</h1>
-      <p>Pick a Tripomonk gift card to gift a fellow traveller.</p>
+      <h1>Tripomonk Gift Cards</h1>
+      <p>Pick a design, choose an amount, and it's added to your wallet.</p>
     </div>
     <div class="gc-row" id="gcRow"></div>
-    <div class="gc-cta">
+    <div class="gc-amt-wrap">
       <div class="gc-name" id="gcName"></div>
-      <button class="btn gc-redeem" onclick="giftRedeem()">Send this gift &nbsp;→</button>
+      <div class="gc-amts" id="gcAmts"></div>
     </div>
+    <div class="gc-cta">
+      <button class="btn gc-redeem" id="gcBuyBtn" onclick="buyGiftCard()">Buy gift card</button>
+      <button type="button" class="gc-link" onclick="go('wallet')"><span class="msr">account_balance_wallet</span> Redeem a code / view wallet</button>
+    </div>
+  </section>
+
+  <!-- WALLET -->
+  <section class="view flow" id="wallet" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Wallet</h1></div>
+    <div class="wallet-card">
+      <div class="wc-lbl">Tripomonk wallet balance</div>
+      <div class="wc-bal" id="wcBal">₹0</div>
+      <div class="wc-sub">Use it towards any trek booking.</div>
+    </div>
+    <div class="field"><label>Redeem a gift card code</label>
+      <div class="inp"><span class="msr" style="font-size:19px;color:var(--muted)">confirmation_number</span><input id="wcCode" placeholder="TMK-XXXX-XXXX" autocapitalize="characters" autocomplete="off"/></div>
+    </div>
+    <button class="btn" id="wcRedeemBtn" onclick="redeemGiftCode()">Redeem to wallet</button>
+    <div class="lbl" style="margin-top:22px">Recent activity</div>
+    <div id="wcTxns"></div>
+    <div style="height:calc(var(--safe-bottom) + 20px)"></div>
   </section>
 
   <!-- SETTINGS -->

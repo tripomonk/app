@@ -2075,6 +2075,11 @@ function computeTotal(){const t=cart.trek;let sum=cart.total*cart.pax;if(cart.ge
 function selPay(el){document.querySelectorAll('#payment .pay').forEach(p=>p.classList.remove('on'));el.classList.add('on');}
 
 /* call the secure Razorpay Edge Function */
+/* the logged-in user's access token — lets the edge function credit the right wallet */
+async function authToken(){
+  const sb=getSupaClient();if(!sb)return'';
+  try{const{data}=await sb.auth.getSession();return (data&&data.session&&data.session.access_token)||'';}catch(e){return'';}
+}
 async function rzpCall(action,payload){
   const r=await fetch(SB.SUPABASE_URL+'/functions/v1/razorpay',{
     method:'POST',
@@ -3477,8 +3482,8 @@ function accountMenuGroups(){
     ]],
     ['Wallet & payments',[
       ['card_giftcard','Gift Cards','giftCards'],
+      ['account_balance_wallet','Wallet','wallet'],
       ['credit_card','Payment Methods','soon:Payment methods'],
-      ['account_balance_wallet','Wallet','soon:Wallet'],
       ['local_offer','Coupons','soon:Coupons'],
       ['download','Downloaded Tickets','bookings']
     ]],
@@ -3524,22 +3529,96 @@ const GIFT_CARDS=[
   {file:'unscripted-wanderer',name:'The Unscripted Wanderer'},
   {file:'wanderer-queen',name:'The Wanderer Queen'}
 ];
-let _giftSel=0;
-function openGiftCards(){_giftSel=0;go('giftCards');renderGiftCards();}
+const GIFT_AMOUNTS=[2000,5000,8000,10000,15000];
+let _giftSel=0,_giftAmt=2000;
+function inr(n){return '₹'+Number(n||0).toLocaleString('en-IN');}
+function openGiftCards(){_giftSel=0;_giftAmt=2000;go('giftCards');renderGiftCards();}
 function renderGiftCards(){
-  const row=document.getElementById('gcRow');if(!row)return;
-  row.innerHTML=GIFT_CARDS.map((g,i)=>'<div class="gc-card'+(i===_giftSel?' on':'')+'" onclick="selGift('+i+')"><img src="giftcards/'+g.file+'.svg" alt="'+esc(g.name)+'" loading="lazy"/></div>').join('');
+  const row=document.getElementById('gcRow');
+  if(row)row.innerHTML=GIFT_CARDS.map((g,i)=>'<div class="gc-card'+(i===_giftSel?' on':'')+'" onclick="selGift('+i+')"><img src="giftcards/'+g.file+'.svg" alt="'+esc(g.name)+'" loading="lazy"/></div>').join('');
+  renderGiftAmts();
+}
+function renderGiftAmts(){
   const nm=document.getElementById('gcName');if(nm)nm.textContent=GIFT_CARDS[_giftSel].name;
+  const el=document.getElementById('gcAmts');
+  if(el){
+    const custom=!GIFT_AMOUNTS.includes(_giftAmt);
+    el.innerHTML=GIFT_AMOUNTS.map(a=>'<button type="button" class="gc-amt'+(_giftAmt===a?' on':'')+'" onclick="pickGiftAmt('+a+')">'+inr(a)+'</button>').join('')
+      +'<button type="button" class="gc-amt'+(custom?' on':'')+'" onclick="pickGiftAmtCustom()">'+(custom?inr(_giftAmt):'Custom')+'</button>';
+  }
+  const btn=document.getElementById('gcBuyBtn');if(btn)btn.textContent='Buy gift card · '+inr(_giftAmt);
+}
+function pickGiftAmt(a){_giftAmt=a;renderGiftAmts();}
+async function pickGiftAmtCustom(){
+  const v=await askCode('Custom gift card amount (₹)',{placeholder:'e.g. 3500'});
+  if(v==null)return;
+  const n=Math.round(parseFloat(String(v).replace(/[^\d.]/g,''))||0);
+  if(n<500||n>100000){note('Enter an amount between ₹500 and ₹1,00,000.','Invalid amount');return;}
+  _giftAmt=n;renderGiftAmts();
 }
 function selGift(i){
   _giftSel=i;
   document.querySelectorAll('#gcRow .gc-card').forEach((c,j)=>c.classList.toggle('on',j===i));
-  const nm=document.getElementById('gcName');if(nm)nm.textContent=GIFT_CARDS[i].name;
   const el=document.querySelectorAll('#gcRow .gc-card')[i];if(el)el.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+  renderGiftAmts();
 }
-function giftRedeem(){
-  const g=GIFT_CARDS[_giftSel];
-  wa('Hi Tripomonk, I\'d like to send the "'+g.name+'" gift card. How do I redeem / gift it?');
+/* buy a gift card — priced & credited server-side (booking.kind = 'giftcard') */
+async function buyGiftCard(){
+  const card=GIFT_CARDS[_giftSel],amount=_giftAmt;
+  if(!(amount>=500)){note('Choose an amount first.','Amount required');return;}
+  if(!isLoggedIn()){note('Please sign in to buy a gift card.','Sign in required').then(()=>{_loginReturn='giftCards';go('login');});return;}
+  if(!window.Razorpay){note('Payment is still loading — try again in a moment.','Please wait');return;}
+  if(!sbOn){note('Payment service not configured. Please contact Tripomonk.','Payment error');return;}
+  const btn=document.getElementById('gcBuyBtn');if(btn){btn.disabled=true;btn.textContent='Starting payment…';}
+  const restore=()=>{if(btn)btn.disabled=false;renderGiftAmts();};
+  const email=getUserEmail()||'',name=getSavedName()||'Trekker';
+  const gc={kind:'giftcard',amount,card:card.file,card_name:card.name,name,email,phone:getSavedMobile()||''};
+  const token=await authToken();
+  let order;try{order=await rzpCall('create',{booking:gc,token});}catch(e){order=null;}
+  if(!order||!order.order_id){restore();note((order&&order.error)?order.error:'Could not start payment — the gift-card service may not be enabled on the server yet.','Payment error');return;}
+  const rzp=new window.Razorpay({
+    key:order.key_id,order_id:order.order_id,amount:order.amount,currency:order.currency||'INR',
+    name:'Tripomonk',description:'Gift card · '+card.name,image:'icons/icon-192.png',
+    prefill:{name,email,contact:getSavedMobile()||''},notes:{giftcard:card.file},theme:{color:'#2f6bff'},
+    handler:async function(response){
+      let res;try{res=await rzpCall('verify',{razorpay_order_id:response.razorpay_order_id,razorpay_payment_id:response.razorpay_payment_id,razorpay_signature:response.razorpay_signature,booking:gc,token});}catch(e){res=null;}
+      if(!res||!res.ok){note('Payment received — we\'ll credit your wallet shortly. Payment ID: '+(response.razorpay_payment_id||'—'),'Credit pending');return;}
+      note(inr(amount)+' gift card purchased and added to your wallet! 🎉','Success').then(()=>go('wallet'));
+    },
+    modal:{ondismiss:function(){restore();note('Payment cancelled — nothing was charged.','Cancelled');}}
+  });
+  rzp.open();restore();
+}
+/* ---- wallet ---- */
+let _walletBal=0;
+function renderWallet(){loadWallet();}
+async function loadWallet(){
+  const bEl=document.getElementById('wcBal'),tEl=document.getElementById('wcTxns');
+  const sb=getSupaClient();const uid=sb?await authUid():null;
+  if(!sb||!uid){if(bEl)bEl.textContent='₹0';if(tEl)tEl.innerHTML='<div class="empty" style="padding:22px 6px"><p>Sign in to see your wallet.</p></div>';return;}
+  try{
+    const{data}=await sb.from('wallet_transactions').select('amount,kind,note,created_at').eq('user_id',uid).order('created_at',{ascending:false});
+    const rows=data||[];
+    _walletBal=rows.reduce((s,r)=>s+(+r.amount||0),0);
+    if(bEl)bEl.textContent=inr(_walletBal);
+    if(tEl)tEl.innerHTML=rows.length?rows.map(r=>{const pos=(+r.amount||0)>=0;
+      return '<div class="wtxn"><div class="wtxn-tx"><b>'+esc(r.note||r.kind||'Transaction')+'</b><small>'+new Date(r.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})+'</small></div><div class="wtxn-amt '+(pos?'pos':'neg')+'">'+(pos?'+':'−')+inr(Math.abs(+r.amount||0)).slice(1)+'</div></div>';
+    }).join(''):'<div class="empty" style="padding:22px 6px"><p>No wallet activity yet. Buy or redeem a gift card to add funds.</p></div>';
+  }catch(e){if(bEl)bEl.textContent='₹0';if(tEl)tEl.innerHTML='<div class="empty" style="padding:22px 6px"><p>Wallet isn’t set up on the server yet.</p></div>';}
+}
+async function redeemGiftCode(){
+  const el=document.getElementById('wcCode');const code=(el?el.value:'').trim().toUpperCase();
+  if(!code){note('Enter a gift card code.','Code required');return;}
+  if(!isLoggedIn()){note('Please sign in to redeem.','Sign in required');return;}
+  if(!sbOn){note('Redemption service not configured.','Error');return;}
+  const btn=document.getElementById('wcRedeemBtn');if(btn){btn.disabled=true;btn.textContent='Redeeming…';}
+  try{
+    const token=await authToken();
+    const res=await rzpCall('redeem_giftcard',{code,token});
+    if(res&&res.ok){note(inr(res.amount||0)+' added to your wallet! 🎉','Redeemed').then(()=>{if(el)el.value='';loadWallet();});}
+    else note((res&&res.error)||'That code is invalid or already used.','Could not redeem');
+  }catch(e){note('Could not redeem right now — please try again.','Error');}
+  if(btn){btn.disabled=false;btn.textContent='Redeem to wallet';}
 }
 /* share the traveller's public profile */
 function shareProfile(){
@@ -5067,6 +5146,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='profile')renderProfile();
   if(id==='accountMenu')renderAccountMenu();
   if(id==='giftCards')renderGiftCards();
+  if(id==='wallet')renderWallet();
   if(id==='editProfile')renderEditProfile();
   if(id==='onboarding')initPrefs();
   if(id==='settings')renderSettings();
