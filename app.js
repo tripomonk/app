@@ -3582,8 +3582,10 @@ async function buyGiftCard(){
     prefill:{name,email,contact:getSavedMobile()||''},notes:{giftcard:card.file},theme:{color:'#2f6bff'},
     handler:async function(response){
       let res;try{res=await rzpCall('verify',{razorpay_order_id:response.razorpay_order_id,razorpay_payment_id:response.razorpay_payment_id,razorpay_signature:response.razorpay_signature,booking:gc,token});}catch(e){res=null;}
-      if(!res||!res.ok){note('Payment received — we\'ll credit your wallet shortly. Payment ID: '+(response.razorpay_payment_id||'—'),'Credit pending');return;}
-      note(inr(amount)+' gift card purchased and added to your wallet! 🎉','Success').then(()=>go('wallet'));
+      if(!res||!res.ok){note('Payment received — your gift code is being generated. If it doesn\'t appear, contact us with payment ID: '+(response.razorpay_payment_id||'—'),'Almost done');return;}
+      const code=res.code||'';
+      try{if(code&&navigator.clipboard)navigator.clipboard.writeText(code);}catch(e){}
+      note('Your '+inr(amount)+' '+card.name+' gift card is ready 🎁  Code: '+code+' (copied). Redeem it in your Wallet, or share the code with a friend to gift it.','Gift card ready').then(()=>go('wallet'));
     },
     modal:{ondismiss:function(){restore();note('Payment cancelled — nothing was charged.','Cancelled');}}
   });
