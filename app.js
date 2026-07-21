@@ -1571,7 +1571,35 @@ function trekCard(t){return `<div class="tcard" onclick="openDetail(${t.idx})"><
   <div class="bd"><h3>${t.n}</h3><div class="reg">${ic('pin',13)} ${t.region}</div>
   <div class="rt"><span class="star">★</span> <b>${t.r}</b> <span class="g">(${t.rev})</span></div>
   <div class="ft"><span class="tag">${ic('clock',12)} ${t.dur}</span><span class="tag">${t.lvl}</span></div></div></div>`;}
-function bigCard(t){return `<div class="bigcard" onclick="openDetail(${t.idx})" style="background-image:url('${t.img}')">
+/* lazy-load card background images: only paint a card's photo when it is near the
+   viewport. Without this, a long list (130+ treks) loads every image at once and
+   iOS Safari runs out of memory and crashes the tab. Geometry-based (not
+   IntersectionObserver) because the view transitions leave elements at opacity:0
+   mid-animation, which IO can miss — getBoundingClientRect ignores opacity. */
+let _lazyT=0,_lazyScroll=null,_lazyScroller=null,_lazyObs=null;
+function lazyBg(root){
+  root=root||document;
+  const paint=el=>{if(el.dataset&&el.dataset.bg){el.style.backgroundImage="url('"+String(el.dataset.bg).replace(/'/g,'%27')+"')";el.removeAttribute('data-bg');}};
+  /* geometric pass — paints only the cards currently near the viewport */
+  const loadVisible=()=>{const vh=window.innerHeight||800;root.querySelectorAll('[data-bg]').forEach(el=>{const r=el.getBoundingClientRect();if(r.width>0&&r.bottom>-500&&r.top<vh+500)paint(el);});};
+  /* (1) IntersectionObserver loads cards as they scroll into view */
+  if('IntersectionObserver'in window){
+    if(!_lazyObs)_lazyObs=new IntersectionObserver((ents,obs)=>{ents.forEach(e=>{if(e.isIntersecting){paint(e.target);obs.unobserve(e.target);}});},{rootMargin:'500px'});
+    root.querySelectorAll('[data-bg]').forEach(el=>_lazyObs.observe(el));
+  }
+  /* (2) geometric passes for the initially-visible cards — robust against the
+     view still animating in (opacity/transform) when IO first checks */
+  loadVisible();setTimeout(loadVisible,180);setTimeout(loadVisible,600);
+  /* (3) belt-and-suspenders: a scroll listener on the actual scroll container */
+  let sc=root.parentElement;
+  while(sc&&sc!==document.body){const o=getComputedStyle(sc).overflowY;if(o==='auto'||o==='scroll')break;sc=sc.parentElement;}
+  sc=sc||window;
+  if(_lazyScroll&&_lazyScroller)_lazyScroller.removeEventListener('scroll',_lazyScroll);
+  _lazyScroll=()=>{clearTimeout(_lazyT);_lazyT=setTimeout(loadVisible,80);};
+  _lazyScroller=sc;
+  sc.addEventListener('scroll',_lazyScroll,{passive:true});
+}
+function bigCard(t){return `<div class="bigcard" onclick="openDetail(${t.idx})" data-bg="${esc(t.img||'')}" style="background-color:#12243f">
   <span class="pr">${t.soon?'Coming Soon':INR(t.price)}</span>
   <div class="info"><h3>${t.n}</h3><div class="reg">${ic('pin',12)} ${t.region} · ${t.dur} · ${t.lvl}</div></div></div>`;}
 
@@ -1774,8 +1802,10 @@ function renderHome(){
   if(hav)setAvatarEl(hav,getSavedName()||'Explorer',getSavedPhoto());
   const hg=document.getElementById('homeGreet');if(hg){const nm=getSavedName();hg.textContent=nm?'Hello, '+nm:'Hello there';}
   renderHomeHero();
-  const list=homeFilter==='All'?treks:treks.filter(t=>t.lvl===homeFilter);
-  /* Popular Treks as a centre-focus coverflow (big swipeable cards) */
+  /* Popular Treks is a small featured rail — bookable first, then a few coming-soon.
+     Capping it is essential: rendering all 130+ treks here crashed iOS Safari (memory). */
+  const pool=homeFilter==='All'?treks:treks.filter(t=>t.lvl===homeFilter);
+  const list=[...pool].sort((a,b)=>(a.soon?1:0)-(b.soon?1:0)).slice(0,12);
   makeCoverflow('homeList',list,trekCardCF,(t)=>openDetail(t.idx));
   /* paint the host slot now (CTA), then swap in the rail if any trips are live */
   renderHomeHosts();
@@ -1802,11 +1832,15 @@ function renderExplore(){
   document.getElementById('diffGrid').innerHTML=dd.map(d=>`<div class="diffc" onclick="filterByDiff('${d[0]}')"><b>${d[0]}</b><small>${d[1]}</small></div>`).join('');
   const cc=document.getElementById('cityChips');
   if(cc)cc.innerHTML=DEP_CITIES.map(c=>`<div class="chip pill ${exploreLabel===('From '+c)?'on':''}" onclick="filterByCity('${c}')">${ic('pin',13)} ${c}</div>`).join('');
-  const list=exploreView||treks;
+  /* filtered views (a region / difficulty / city) show their full set — always small.
+     The unfiltered "Top Picks" is capped so we never render 130+ image cards at once
+     (that crashed iOS Safari). Everything stays reachable via the region tiles above. */
+  const list=exploreView||treks.slice(0,30);
   const head=document.getElementById('topHead'); if(head)head.textContent=exploreLabel||'Top Picks For You';
   const el=document.getElementById('exploreList');el.className='';
   el.innerHTML=list.length?list.map(bigCard).join(''):`<div class="empty"><img src="illustrations/hiker-mountains.svg" alt=""/>No treks in ${esc(exploreLabel||'this filter').replace(' Treks','')} yet — more coming soon.<br><br><button class="btn sm" onclick="filterAll()">Show all treks</button></div>`;
   hydrate(document.getElementById('explore'));
+  lazyBg(el);   /* only load photos as cards scroll into view (keeps iOS memory sane) */
 }
 let exploreView=null, exploreLabel='';
 function scrollToPicks(){const el=document.getElementById('topSec');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}
