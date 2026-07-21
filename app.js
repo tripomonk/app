@@ -1894,7 +1894,7 @@ function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
   document.getElementById('dReg').textContent=t.region;
   document.getElementById('dRate').textContent=t.r;
   document.getElementById('dRev').textContent='('+t.rev+' reviews)';
-  document.getElementById('dLvl').textContent=t.lvl;
+  const _dl=document.getElementById('dLvl');if(_dl)_dl.textContent=t.lvl;   /* difficulty removed from the header; guarded in case the element returns */
   const dsb=document.getElementById('dScoreBadge');if(dsb)dsb.innerHTML=trekScoreBadge(t,'trek-score-lg')+'<span class="d-score-cap">Trek score</span>';
   document.getElementById('dDesc').textContent=t.desc;
   const stats=[['altitude',t.alt,'Altitude'],['clock',t.dur,'Duration'],['distance',t.dist,'Distance'],['calendar',t.best,'Best Time']];
