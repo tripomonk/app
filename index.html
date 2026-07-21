@@ -694,8 +694,10 @@
   .fit-bar-tr{height:8px;border-radius:6px;background:var(--stroke);overflow:hidden}
   .fit-bar-tr i{display:block;height:100%;border-radius:6px;transition:width .6s ease}
   .fit-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:14px}
-  .fit-meta-c{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:11px 4px;text-align:center}
-  .fit-meta-c .msr{font-size:20px;color:var(--accent2)}.fit-meta-c b{display:block;font-size:12.5px;margin:3px 0 1px;line-height:1.1}.fit-meta-c small{font-size:10px;color:var(--muted)}
+  .fit-meta-c{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:12px 5px 10px;text-align:center;min-width:0}
+  .fit-meta-ic{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;margin:0 auto 7px;background:rgba(47,107,255,.13);color:var(--accent);font-size:19px}
+  .fit-meta-c b{display:block;font-size:12.5px;font-weight:800;margin:0 0 1px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .fit-meta-c small{font-size:10px;color:var(--muted)}
   .fit-update{height:44px;display:flex;align-items:center;justify-content:center;gap:7px;font-size:13.5px}
   /* AI reco columns */
   .reco-col{margin-bottom:14px;border:1px solid var(--stroke);border-radius:16px;overflow:hidden;background:var(--card)}
@@ -739,14 +741,56 @@
   .plan-w{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:12px 14px}
   .plan-w .msr{font-size:23px;color:var(--accent2)}.plan-w b{display:block;font-size:13.5px}.plan-w small{font-size:11.5px;color:var(--muted)}
   .plan-week{display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}.plan-week::-webkit-scrollbar{display:none}
-  .plan-day{flex:0 0 96px;background:var(--card);border:1px solid var(--stroke);border-radius:13px;padding:11px 10px}
-  .plan-day.on{border-color:var(--accent2);background:rgba(47,107,255,.1)}
-  .plan-day b{display:block;font-size:12px;margin-bottom:5px}.plan-day span{font-size:11px;color:var(--muted);line-height:1.35}
+  .plan-day{flex:0 0 108px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:11px 11px}
+  .plan-day.on{border-color:var(--accent);background:rgba(47,107,255,.12)}
+  .plan-day.on b{color:var(--accent)}
+  .plan-day b{display:block;font-size:12px;font-weight:800;margin-bottom:5px}.plan-day span{font-size:11px;color:var(--muted);line-height:1.35}
+  /* circular Trek Score badge */
+  .trek-score{position:relative;width:46px;height:46px;flex:none;display:grid;place-items:center}
+  .trek-score svg{position:absolute;inset:0;width:46px;height:46px;transform:rotate(-90deg)}
+  .trek-score .tsc-bg{fill:none;stroke:rgba(255,255,255,.26);stroke-width:4}
+  .trek-score .tsc-fg{fill:none;stroke-width:4;stroke-linecap:round}
+  .trek-score .tsc-num{font-size:15px;font-weight:800;line-height:1;color:currentColor}
+  .trek-score.on-photo{position:absolute;top:10px;right:10px;z-index:3;width:44px;height:44px;background:rgba(8,14,24,.58);border-radius:50%;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);box-shadow:0 4px 14px rgba(0,0,0,.4)}
+  .trek-score.on-photo svg{width:44px;height:44px}
+  .trek-score.on-photo .tsc-num{font-size:14px;color:#fff}
+  /* on the big centred coverflow card the top-right sits under the sticky header — drop it to the clean bottom-right of the photo */
+  .fcx-img .trek-score.on-photo{top:auto;bottom:12px;right:12px}
+  .trek-score.trek-score-lg{width:56px;height:56px}
+  .trek-score.trek-score-lg svg{width:56px;height:56px}
+  .trek-score.trek-score-lg .tsc-bg{stroke:var(--stroke)}
+  .trek-score.trek-score-lg .tsc-num{font-size:19px}
+  .dcard{position:relative}
+  .d-score-wrap{position:absolute;top:15px;right:16px;text-align:center;z-index:2}
+  .d-score-cap{display:block;font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:3px}
   .plan-ai{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:#a06bff;background:rgba(160,107,255,.14);padding:4px 9px;border-radius:12px}
   .plan-ai .msr{font-size:14px}
   .plan-coach{display:flex;gap:10px;background:linear-gradient(135deg,rgba(160,107,255,.12),rgba(47,107,255,.1));border:1px solid rgba(160,107,255,.28);border-radius:14px;padding:13px 14px;margin:14px 0 2px}
   .plan-coach .msr{font-size:20px;color:#a06bff;flex:none}
   .plan-coach p{font-size:13px;line-height:1.5;margin:0;color:var(--text)}
+  /* progress tracking */
+  .plan-track{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:14px;margin:14px 0 2px}
+  .ptrk-row{display:flex;gap:8px}
+  .ptrk-stat{flex:1;text-align:center;min-width:0}
+  .ptrk-stat .msr{font-size:22px;color:var(--accent2)}
+  .ptrk-stat b{display:block;font-size:18px;font-weight:800;line-height:1.1;margin-top:1px}
+  .ptrk-stat small{font-size:10px;color:var(--muted)}
+  .ptrk-stat.done .msr{color:#2fbf8f}
+  .ptrk-strip{display:flex;gap:4px;margin-top:13px}
+  .ptrk-dot{flex:1;height:7px;border-radius:4px;background:var(--stroke)}
+  .ptrk-dot.on{background:linear-gradient(90deg,var(--accent),var(--accent2))}
+  .ptrk-dot.part{background:rgba(47,107,255,.4)}
+  .ptrk-done{margin-top:13px;font-size:12px;font-weight:600;color:#2fbf8f;display:flex;align-items:center;gap:7px;background:rgba(47,191,143,.1);border-radius:10px;padding:9px 11px}
+  .ptrk-done .msr{font-size:18px}
+  .plan-hint{font-size:11.5px;color:var(--muted);margin:0 4px 8px}
+  /* tickable session rows */
+  .plan-w.tick{cursor:pointer;position:relative;padding-right:46px;transition:opacity .15s,border-color .15s}
+  .plan-w.tick:active{transform:scale(.99)}
+  .plan-check{position:absolute;right:12px;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:50%;border:2px solid var(--stroke);display:grid;place-items:center;color:transparent}
+  .plan-check .msr{font-size:16px}
+  .plan-w.done{opacity:.62;border-color:var(--accent)}
+  .plan-w.done .plan-check{background:var(--accent);border-color:var(--accent);color:#fff}
+  .plan-w.done b{text-decoration:line-through;text-decoration-color:var(--muted)}
   .pwrap{padding:0 calc(18px + var(--safe-right)) calc(var(--safe-bottom) + 92px) calc(18px + var(--safe-left))}
   .pav{width:88px;height:88px;border-radius:50%;border:3px solid var(--bg);background-size:cover;background-position:center;margin:-50px 0 0;position:relative;z-index:1;background-color:#26466e;display:grid;place-items:center;font-size:32px;font-weight:600;color:#fff}
   .prow{display:flex;align-items:center;justify-content:space-between;margin-top:10px}
@@ -2262,6 +2306,7 @@
       <div class="right"><div class="hb" onclick="shareTrek()"><span class="ic" data-i="share"></span></div><div class="hb fav" id="dFav" onclick="toggleFav(this)"><span class="ic" data-i="heart"></span></div></div></div>
       <div class="hero-credit" id="dCredit"></div></div>
     <div class="dcard">
+      <div class="d-score-wrap" id="dScoreBadge"></div>
       <h1 id="dName"></h1><div class="reg"><span class="ic" data-i="pin"></span><span id="dReg"></span></div>
       <div class="meta"><span class="star">★</span> <b id="dRate"></b> <span class="g" id="dRev" style="color:var(--muted)"></span> &nbsp;·&nbsp; <span class="lvl" id="dLvl"></span></div>
       <div class="stats" id="dStats"></div>

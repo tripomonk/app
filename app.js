@@ -1567,7 +1567,7 @@ function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;',
 const INR=n=>'₹'+Number(n).toLocaleString('en-IN');
 
 /* ---------- render ---------- */
-function trekCard(t){return `<div class="tcard" onclick="openDetail(${t.idx})"><div class="ph" style="background-image:url('${t.img}')">${t.soon?'<span class="soon">Coming Soon</span>':''}</div>
+function trekCard(t){return `<div class="tcard" onclick="openDetail(${t.idx})"><div class="ph" style="background-image:url('${t.img}')">${t.soon?'<span class="soon">Coming Soon</span>':''}${trekScoreBadge(t,'on-photo')}</div>
   <div class="bd"><h3>${t.n}</h3><div class="reg">${ic('pin',13)} ${t.region}</div>
   <div class="rt"><span class="star">★</span> <b>${t.r}</b> <span class="g">(${t.rev})</span></div>
   <div class="ft"><span class="tag">${ic('clock',12)} ${t.dur}</span><span class="tag">${t.lvl}</span>${readinessChip(t)}</div></div></div>`;}
@@ -1600,7 +1600,7 @@ function lazyBg(root){
   sc.addEventListener('scroll',_lazyScroll,{passive:true});
 }
 function bigCard(t){return `<div class="bigcard" onclick="openDetail(${t.idx})" data-bg="${esc(t.img||'')}" style="background-color:#12243f">
-  <span class="pr">${t.soon?'Coming Soon':INR(t.price)}</span>
+  ${trekScoreBadge(t,'on-photo')}<span class="pr">${t.soon?'Coming Soon':INR(t.price)}</span>
   <div class="info"><h3>${t.n}</h3><div class="reg">${ic('pin',12)} ${t.region} · ${t.dur} · ${t.lvl}</div></div></div>`;}
 
 let homeFilter='All';
@@ -1608,7 +1608,7 @@ const diffs=['All','Easy','Moderate','Difficult'];
 const diffIcon={All:'treks',Easy:'pine',Moderate:'altitude',Difficult:'flame'};
 function renderHomeChips(){document.getElementById('homeChips').innerHTML=diffs.map(d=>`<div class="chip ${d===homeFilter?'on':''}" onclick="setHomeFilter('${d}')"><span style="display:grid;place-items:center">${ic(diffIcon[d],20)}</span>${d==='All'?'All Treks':d}</div>`).join('');hydrate(document.getElementById('homeChips'));}
 function setHomeFilter(d){homeFilter=d;renderHomeChips();renderHome();}
-function trekCardH(t){return `<div class="hcard" onclick="openDetail(${t.idx})"><div class="hph" style="background-image:url('${t.img}')">${t.soon?'<span class="soon">Coming Soon</span>':''}</div>
+function trekCardH(t){return `<div class="hcard" onclick="openDetail(${t.idx})"><div class="hph" style="background-image:url('${t.img}')">${t.soon?'<span class="soon">Coming Soon</span>':''}${trekScoreBadge(t,'on-photo')}</div>
   <div class="hbd"><h3>${t.n}</h3><div class="reg">${ic('pin',12)} ${t.region}</div>
   <div class="rt"><span class="star">★</span> <b>${t.r}</b> <span style="color:var(--muted)">(${t.rev})</span></div>
   <div class="ft"><span class="tag">${ic('clock',12)} ${t.dur}</span><span class="tag">${t.lvl}</span></div></div></div>`;}
@@ -1616,7 +1616,7 @@ function trekCardH(t){return `<div class="hcard" onclick="openDetail(${t.idx})">
 let _cfMoved=false;
 /* card builders */
 function trekCardCF(t,i){return `<div class="fcx" data-cf="${i}" onclick="cfTapCard(this)">
-  <div class="fcx-img" style="background-image:url('${t.img}')">${t.soon?'<span class="soon">Coming Soon</span>':''}</div>
+  <div class="fcx-img" style="background-image:url('${t.img}')">${t.soon?'<span class="soon">Coming Soon</span>':''}${trekScoreBadge(t,'on-photo')}</div>
   <div class="fcx-bd">
     <h3>${esc(t.n)}</h3>
     <div class="fcx-loc">${ic('pin',13)} ${esc(t.region)}</div>
@@ -1895,6 +1895,7 @@ function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
   document.getElementById('dRate').textContent=t.r;
   document.getElementById('dRev').textContent='('+t.rev+' reviews)';
   document.getElementById('dLvl').textContent=t.lvl;
+  const dsb=document.getElementById('dScoreBadge');if(dsb)dsb.innerHTML=trekScoreBadge(t,'trek-score-lg')+'<span class="d-score-cap">Trek score</span>';
   document.getElementById('dDesc').textContent=t.desc;
   const stats=[['altitude',t.alt,'Altitude'],['clock',t.dur,'Duration'],['distance',t.dist,'Distance'],['calendar',t.best,'Best Time']];
   document.getElementById('dStats').innerHTML=stats.map(s=>`<div class="stat"><div class="ic" style="display:grid;place-items:center">${ic(s[0],20)}</div><b>${s[1]}</b><small>${s[2]}</small></div>`).join('');
@@ -5279,11 +5280,22 @@ function readinessCardHTML(t){
     <p class="fit-msg">${rd.msg}</p>
     ${rd.k!=='green'?`<button class="btn ghost fit-plan" onclick="openTrainingPlan('${jsq(t.n)}')"><span class="msr">calendar_month</span> View ${req-you>10?'30-day':'2–4 week'} prep plan</button>`:''}</div>`;
 }
-/* compact chip for trek cards / search results */
+/* difficulty-band colour for a required trek score */
+function bandColor(s){return s<50?'#2fbf8f':s<65?'#2f6bff':s<80?'#e0952a':s<90?'#ff7a5c':'#a06bff';}
+/* small circular Trek Score badge — the trek's REQUIRED score, band-coloured ring.
+   cls 'on-photo' adds a frosted dark disc so it reads over any card image. */
+function trekScoreBadge(t,cls){
+  const s=trekReqScore(t);if(!s)return '';
+  const col=bandColor(s),R=19,C=2*Math.PI*R,off=C*(1-s/100);
+  return `<div class="trek-score ${cls||''}" style="color:${col}" title="Trek Score ${s} / 100"><svg viewBox="0 0 46 46"><circle class="tsc-bg" cx="23" cy="23" r="${R}"/><circle class="tsc-fg" cx="23" cy="23" r="${R}" style="stroke:${col};stroke-dasharray:${C.toFixed(1)};stroke-dashoffset:${off.toFixed(1)}"/></svg><span class="tsc-num">${s}</span></div>`;
+}
+/* compact readiness chip for the search card footer — status word only; the
+   circular badge already shows the number, so we don't repeat it. */
 function readinessChip(t){
-  if(!hasFitness())return `<span class="tag fit-chip fit-b-none">Req ${trekReqScore(t)}</span>`;
-  const req=trekReqScore(t),rd=readiness(computeFitness().score,req);
-  return `<span class="tag fit-chip fit-b-${rd.k}"><span class="fit-dot"></span>Req ${req}</span>`;
+  if(!hasFitness())return '';
+  const rd=readiness(computeFitness().score,trekReqScore(t));
+  const lbl=rd.k==='green'?'Ready':rd.k==='yellow'?'Prep':'Not ready';
+  return `<span class="tag fit-chip fit-b-${rd.k}"><span class="fit-dot"></span>${lbl}</span>`;
 }
 /* profile entry */
 function fitnessProfileCard(){
@@ -5305,10 +5317,10 @@ function renderFitness(){
   const bars=subs.map(s=>`<div class="fit-bar"><div class="fit-bar-top"><span>${s[0]}</span><b>${r.subs[s[1]]}</b></div><div class="fit-bar-tr"><i style="width:${r.subs[s[1]]}%;background:${scoreColor(r.subs[s[1]])}"></i></div></div>`).join('');
   const subEntries=[['Cardio',r.subs.cardio],['Strength',r.subs.strength],['Endurance',r.subs.endurance],['Recovery',r.subs.recovery],['Consistency',r.subs.consistency]];
   const focus=subEntries.reduce((a,b)=>b[1]<a[1]?b:a);
-  const meta=[['military_tech',r.level,'Level'],['landscape',new Set(getBookings().map(b=>b.trek)).size,'Treks'],['target',focus[0],'Focus area'],['bolt',r.score,'Score']];
+  const meta=[['military_tech',esc(r.level),'Level',''],['landscape',String(new Set(getBookings().map(b=>b.trek)).size),'Treks',''],['target',esc(focus[0]),'Focus',''],['bolt',String(r.score),'Score',col]];
   box.innerHTML=`${ring}
     <div class="fit-subs">${bars}</div>
-    <div class="fit-meta">${meta.map(m=>`<div class="fit-meta-c"><span class="msr">${m[0]}</span><b>${esc(String(m[1]))}</b><small>${esc(m[2])}</small></div>`).join('')}</div>
+    <div class="fit-meta">${meta.map(m=>`<div class="fit-meta-c"><span class="fit-meta-ic msr">${m[0]}</span><b${m[3]?` style="color:${m[3]}"`:''}>${m[1]}</b><small>${m[2]}</small></div>`).join('')}</div>
     <button class="btn ghost fit-update" onclick="go('fitnessTest')"><span class="msr">edit</span> Update assessment</button>
     <div class="sec-h" style="margin:22px 4px 10px"><b>Recommended for you</b></div>
     ${aiRecoHTML(r.score)}
@@ -5363,6 +5375,9 @@ function fitSubmit(){
   const r=computeFitness(data);_fitComputed=r;
   if(typeof toast==='function')toast('Fitness score: '+r.score+' · '+r.level);
   go('fitness');
+  /* Collapse the assessment flow out of history: Back from the result must return to
+     wherever the user started (home / trek / menu), never to the assessment form. */
+  for(let i=hist.length-1;i>=0;i--){if(hist[i]==='fitness'||hist[i]==='fitnessTest')hist.splice(i,1);}
 }
 
 /* ---- AI Training Plan ----
@@ -5373,6 +5388,51 @@ function fitSubmit(){
 let _planTrek='';
 function openTrainingPlan(name){_planTrek=name||'';go('trainingPlan');}
 function trekByName(n){return treks.find(t=>t.n===n)||(typeof cmpAvail==='function'?cmpAvail().find(t=>t.n===n):null)||null;}
+
+/* --- workout tracking: tick off today's sessions, build a streak, watch progress --- */
+let _planCtx={trek:'',goal:0,total:3,items:[]};
+function planStore(){try{return JSON.parse(localStorage.getItem('tmk_plan')||'null');}catch(e){return null;}}
+function planSave(p){try{localStorage.setItem('tmk_plan',JSON.stringify(p));}catch(e){}}
+function planDkey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function planTodayKey(){return planDkey(new Date());}
+function planLast14(){const a=[];for(let i=13;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);a.push(planDkey(d));}return a;}
+function planEnsure(){let p=planStore();if(!p){p={trek:_planCtx.trek,goal:_planCtx.goal,startISO:planTodayKey(),days:{}};planSave(p);}return p;}
+function planDayCount(day){return day?Object.keys(day).filter(i=>day[i]).length:0;}
+function planStats(p,total){
+  const days=p.days||{};let doneDays=0;
+  Object.keys(days).forEach(k=>{const c=planDayCount(days[k]);if(c>0&&c>=total)doneDays++;});
+  let streak=0;const cur=new Date();
+  for(;;){const c=planDayCount(days[planDkey(cur)]);if(c>0&&c>=total){streak++;cur.setDate(cur.getDate()-1);}else break;}
+  return {doneDays,streak};
+}
+function togglePlanItem(i){
+  const p=planEnsure();const k=planTodayKey();const day=p.days[k]||(p.days[k]={});
+  if(day[i])delete day[i];else day[i]=1;
+  planSave(p);refreshPlanTracking();
+}
+function planItemsHTML(items){
+  const p=planEnsure();const day=p.days[planTodayKey()]||{};
+  return items.map((w,i)=>`<div class="plan-w tick${day[i]?' done':''}" onclick="togglePlanItem(${i})"><span class="msr">${w.icon}</span><div><b>${esc(w.title)}</b><small>${esc(w.detail)}</small></div><span class="plan-check"><span class="msr">check</span></span></div>`).join('');
+}
+function planTrackHTML(){
+  const p=planEnsure();const st=planStats(p,_planCtx.total);
+  const doneToday=planDayCount(p.days[planTodayKey()]);
+  const allDone=doneToday>0&&doneToday>=_planCtx.total;
+  const strip=planLast14().map(k=>{const c=planDayCount(p.days[k]);const cls=(c>0&&c>=_planCtx.total)?'on':c>0?'part':'';return `<span class="ptrk-dot ${cls}"></span>`;}).join('');
+  return `<div class="plan-track">
+    <div class="ptrk-row">
+      <div class="ptrk-stat"><span class="msr" style="color:#ff8a3c">local_fire_department</span><b>${st.streak}</b><small>day streak</small></div>
+      <div class="ptrk-stat"><span class="msr">event_available</span><b>${st.doneDays}</b><small>days done</small></div>
+      <div class="ptrk-stat ${allDone?'done':''}"><span class="msr">${allDone?'task_alt':'radio_button_unchecked'}</span><b>${doneToday}/${_planCtx.total}</b><small>today</small></div>
+    </div>
+    <div class="ptrk-strip">${strip}</div>
+    ${allDone?`<div class="ptrk-done"><span class="msr">celebration</span> Today complete — nice work! Keep the streak going.</div>`:''}
+  </div>`;
+}
+function refreshPlanTracking(){
+  const tk=document.getElementById('planTrack');if(tk)tk.innerHTML=planTrackHTML();
+  const td=document.getElementById('planToday');if(td)td.innerHTML=planItemsHTML(_planCtx.items);
+}
 function renderTrainingPlan(){
   const box=document.getElementById('trainingPlanBody');if(!box)return;
   const t=_planTrek?trekByName(_planTrek):null;
@@ -5380,21 +5440,28 @@ function renderTrainingPlan(){
   const goal=t?trekReqScore(t):Math.min(100,you+15);
   const gap=Math.max(0,goal-you);
   const days=gap>10?30:14;
-  const wk=['Brisk walk 5 km','Stair / incline 30 min','Jog + walk intervals 4 km','Strength — legs & core 25 min','Long walk 8–10 km','Backpack walk 5 km (5 kg)','Rest + stretch 15 min'];
-  const today=wk[new Date().getDay()];
+  const wk=['Walk 5 km','Stairs 30 min','Jog + walk 4 km','Strength 25 min','Long walk 8 km','Pack walk 5 kg','Rest + stretch'];
+  const dow=new Date().getDay();
+  const today=wk[dow];
+  const strengthDay=/strength/i.test(today);
+  const second=strengthDay?{t:'Core & stability 15 min',d:'Plank · side plank · bird-dog'}:{t:'Strength 20 min',d:'Squats · lunges · push-ups'};
+  const items=[
+    {icon:'directions_walk',title:today,detail:'Main session'},
+    {icon:'fitness_center',title:second.t,detail:second.d},
+    {icon:'self_improvement',title:'Stretch 10 min',detail:'Calves · hips · lower back'}
+  ];
+  _planCtx={trek:t?t.n:'',goal,total:items.length,items};
   box.innerHTML=`
     <div class="plan-goal"><div><small>Goal score</small><b>${goal}</b></div><div class="plan-arrow"><span class="msr">arrow_forward</span></div><div><small>Your score</small><b style="color:${scoreColor(you)}">${you}</b></div><div class="plan-days"><small>Days left</small><b>${days}</b></div></div>
     ${t?`<p class="plan-for">A ${days}-day plan to get you ready for <b>${esc(t.n)}</b> (needs ${goal}).</p>`:`<p class="plan-for">A ${days}-day plan to lift your readiness by ~${Math.max(5,gap)} points.</p>`}
     <div class="plan-prog"><div class="plan-prog-tr"><i style="width:${Math.round(Math.min(100,you/goal*100))}%"></i></div><span>${you}/${goal}</span></div>
+    <div id="planTrack">${planTrackHTML()}</div>
     <div id="planCoach"></div>
-    <div class="sec-h" style="margin:20px 4px 10px;display:flex;align-items:center;justify-content:space-between"><b>Today's workout</b><span id="planAiBadge" class="plan-ai" style="display:none"><span class="msr">auto_awesome</span> AI personalised</span></div>
-    <div class="plan-today" id="planToday">
-      <div class="plan-w"><span class="msr">directions_walk</span><div><b>${esc(today)}</b><small>Main session</small></div></div>
-      <div class="plan-w"><span class="msr">fitness_center</span><div><b>Strength 20 min</b><small>Squats · lunges · planks</small></div></div>
-      <div class="plan-w"><span class="msr">self_improvement</span><div><b>Stretch 10 min</b><small>Calves · hips · lower back</small></div></div>
-    </div>
+    <div class="sec-h" style="margin:20px 4px 6px;display:flex;align-items:center;justify-content:space-between"><b>Today's workout</b><span id="planAiBadge" class="plan-ai" style="display:none"><span class="msr">auto_awesome</span> AI personalised</span></div>
+    <div class="plan-hint">Tap a session to tick it off</div>
+    <div class="plan-today" id="planToday">${planItemsHTML(items)}</div>
     <div class="sec-h" style="margin:20px 4px 10px"><b>Weekly rhythm</b></div>
-    <div class="plan-week">${wk.map((w,i)=>`<div class="plan-day ${i===new Date().getDay()?'on':''}"><b>${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][i]}</b><span>${esc(w)}</span></div>`).join('')}</div>
+    <div class="plan-week">${wk.map((w,i)=>`<div class="plan-day ${i===dow?'on':''}"><b>${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][i]}</b><span>${esc(w)}</span></div>`).join('')}</div>
     <button class="btn" style="margin-top:18px" onclick="go('fitnessTest')"><span class="msr">refresh</span> Re-test my score</button>
     <div style="height:calc(var(--safe-bottom) + 20px)"></div>`;
   hydrate(box);
@@ -5415,8 +5482,10 @@ async function aiEnhancePlan(t,you,goal,days){
     const coach=document.getElementById('planCoach');
     if(coach&&d.coach)coach.innerHTML=`<div class="plan-coach"><span class="msr">auto_awesome</span><p>${esc(d.coach)}</p></div>`;
     const icons=['directions_walk','fitness_center','self_improvement','hiking'];
-    const box2=document.getElementById('planToday');
-    if(box2)box2.innerHTML=d.today.slice(0,4).map((w,i)=>`<div class="plan-w"><span class="msr">${icons[i%icons.length]}</span><div><b>${esc(w.title||'')}</b><small>${esc(w.detail||'')}</small></div></div>`).join('');
+    _planCtx.items=d.today.slice(0,4).map((w,i)=>({icon:icons[i%icons.length],title:w.title||'',detail:w.detail||''}));
+    _planCtx.total=_planCtx.items.length;
+    const box2=document.getElementById('planToday');if(box2)box2.innerHTML=planItemsHTML(_planCtx.items);
+    const tk=document.getElementById('planTrack');if(tk)tk.innerHTML=planTrackHTML();
     const badge=document.getElementById('planAiBadge');if(badge)badge.style.display='inline-flex';
     hydrate(document.getElementById('trainingPlanBody'));
   }catch(e){/* deterministic plan stays */}
