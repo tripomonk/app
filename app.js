@@ -3476,6 +3476,7 @@ function accountMenuGroups(){
       ['monitor_heart','Trek Health','health']
     ]],
     ['Wallet & payments',[
+      ['card_giftcard','Gift Cards','giftCards'],
       ['credit_card','Payment Methods','soon:Payment methods'],
       ['account_balance_wallet','Wallet','soon:Wallet'],
       ['local_offer','Coupons','soon:Coupons'],
@@ -3512,6 +3513,33 @@ function renderAccountMenu(){
     ? '<button type="button" class="amrow amlogout" onclick="menuGo(\'signout\')"><span class="msr amic">logout</span><span class="amt">Logout</span></button>'
     : '<button type="button" class="amrow amsignin" onclick="menuGo(\'login\')"><span class="msr amic">login</span><span class="amt">Sign in / Create account</span></button>';
   box.innerHTML=html;
+}
+/* ---- gift cards (welcome-gift picker) ---- */
+const GIFT_CARDS=[
+  {file:'escape-together',name:'Escape Together'},
+  {file:'explorer-buddy',name:'The Explorer Buddy'},
+  {file:'solo-warrior',name:'The Solo Warrior'},
+  {file:'soul-sisters',name:'The Soul Sisters'},
+  {file:'story-collector',name:'The Story Collector'},
+  {file:'unscripted-wanderer',name:'The Unscripted Wanderer'},
+  {file:'wanderer-queen',name:'The Wanderer Queen'}
+];
+let _giftSel=0;
+function openGiftCards(){_giftSel=0;go('giftCards');renderGiftCards();}
+function renderGiftCards(){
+  const row=document.getElementById('gcRow');if(!row)return;
+  row.innerHTML=GIFT_CARDS.map((g,i)=>'<div class="gc-card'+(i===_giftSel?' on':'')+'" onclick="selGift('+i+')"><img src="giftcards/'+g.file+'.svg" alt="'+esc(g.name)+'" loading="lazy"/></div>').join('');
+  const nm=document.getElementById('gcName');if(nm)nm.textContent=GIFT_CARDS[_giftSel].name;
+}
+function selGift(i){
+  _giftSel=i;
+  document.querySelectorAll('#gcRow .gc-card').forEach((c,j)=>c.classList.toggle('on',j===i));
+  const nm=document.getElementById('gcName');if(nm)nm.textContent=GIFT_CARDS[i].name;
+  const el=document.querySelectorAll('#gcRow .gc-card')[i];if(el)el.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+}
+function giftRedeem(){
+  const g=GIFT_CARDS[_giftSel];
+  wa('Hi Tripomonk, I\'d like to send the "'+g.name+'" gift card. How do I redeem / gift it?');
 }
 /* share the traveller's public profile */
 function shareProfile(){
@@ -5038,6 +5066,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='wishlist')renderWishlist();
   if(id==='profile')renderProfile();
   if(id==='accountMenu')renderAccountMenu();
+  if(id==='giftCards')renderGiftCards();
   if(id==='editProfile')renderEditProfile();
   if(id==='onboarding')initPrefs();
   if(id==='settings')renderSettings();
