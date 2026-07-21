@@ -2912,10 +2912,37 @@ function renderTagList(){
   const followed=peoplePool.filter(p=>isFollowing(p.n)&&p.n!==mine);
   const others=peoplePool.filter(p=>!isFollowing(p.n)&&p.n!==mine);
   const list=[...followed,...others];
-  if(!list.length){box.innerHTML='<span style="font-size:12px;color:var(--muted2)">No other trekkers yet.</span>';return;}
-  box.innerHTML=list.map(p=>`<span class="tag-chip ${postTags.includes(p.n)?'on':''}" onclick="toggleTagPerson('${jsq(p.n)}')">${avatar(p.n,18)} ${esc(p.h||p.n)}</span>`).join('');
+  if(!list.length){box.innerHTML='<span style="font-size:12px;color:var(--muted2)">No other trekkers yet.</span>';}
+  else box.innerHTML=list.map(p=>`<span class="tag-chip ${postTags.includes(p.n)?'on':''}" onclick="toggleTagPerson('${jsq(p.n)}')">${avatar(p.n,18)} ${esc(p.h||p.n)}</span>`).join('');
   hydrate(box);
+  updatePeopleVal();
 }
+/* ---- composer rows: Tag trekkers / Tag a trek (Instagram-style) ---- */
+let _postTrek='';
+function updatePeopleVal(){const v=document.getElementById('pcPeopleVal');if(v){v.textContent=postTags.length?postTags.length+(postTags.length===1?' trekker':' trekkers'):'None';v.classList.toggle('set',!!postTags.length);}}
+function updateTrekVal(){const v=document.getElementById('pcTrekVal');if(v){v.textContent=_postTrek||'None';v.classList.toggle('set',!!_postTrek);}}
+function pcToggle(which){
+  const rows={trek:['pcTrekRow','pcTrekPanel'],people:['pcPeopleRow','pcPeoplePanel']};
+  const [rid,pid]=rows[which];const panel=document.getElementById(pid);
+  const opening=!panel.classList.contains('open');
+  Object.values(rows).forEach(([r,p])=>{document.getElementById(r).classList.remove('open');document.getElementById(p).classList.remove('open');});
+  if(!opening)return;
+  document.getElementById(rid).classList.add('open');panel.classList.add('open');
+  if(which==='people'){renderTagList();}
+  else{
+    panel.innerHTML='<div class="pc-search"><span class="msr">search</span><input id="pcTrekSearch" placeholder="Search treks" autocomplete="off" oninput="filterTrekPicker(this.value)"/></div><div class="pc-list" id="pcTrekList"></div>';
+    filterTrekPicker('');
+    setTimeout(()=>{const s=document.getElementById('pcTrekSearch');if(s)s.focus();},60);
+  }
+}
+function filterTrekPicker(q){
+  const box=document.getElementById('pcTrekList');if(!box)return;
+  q=(q||'').toLowerCase().trim();
+  const list=treks.filter(t=>!q||t.n.toLowerCase().includes(q)||String(t.region||'').toLowerCase().includes(q));
+  box.innerHTML='<div class="pc-opt'+(_postTrek?'':' on')+'" onclick="pickPostTrek(\'\')"><b>No trek</b></div>'
+    +list.map(t=>'<div class="pc-opt'+(_postTrek===t.n?' on':'')+'" onclick="pickPostTrek(\''+jsq(t.n)+'\')"><b>'+esc(t.n)+'</b><small>'+esc(t.region||'')+'</small></div>').join('');
+}
+function pickPostTrek(n){_postTrek=n;updateTrekVal();pcToggle('trek');/* close */}
 function toggleTagPerson(n){
   const i=postTags.indexOf(n);
   if(i>=0)postTags.splice(i,1);else postTags.push(n);
@@ -2955,11 +2982,10 @@ function addPost(){
   const m=document.getElementById('postModal'),ta=document.getElementById('postText'),
     files=document.getElementById('postFiles'),ok=document.getElementById('postOk'),cn=document.getElementById('postCancel');
   ta.value='';renderPostPics();
-  /* populate trek tag dropdown */
-  const sel=document.getElementById('postTrek');
-  if(sel)sel.innerHTML='<option value="">📍 Tag a trek (optional)</option>'+treks.map(t=>`<option value="${esc(t.n)}">${esc(t.n)}</option>`).join('');
-  /* populate people-tag chips (people you follow first, then others) */
-  postTags=[];renderTagList();
+  /* reset the Tag-trek / Tag-trekkers rows to collapsed + empty */
+  _postTrek='';postTags=[];updateTrekVal();updatePeopleVal();
+  ['pcTrekRow','pcTrekPanel','pcPeopleRow','pcPeoplePanel'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('open');});
+  renderTagList();
   document.getElementById('postAddIc').innerHTML=ic('camera',18);hydrate(document.getElementById('postAddIc').parentElement);
   m.classList.add('show');setTimeout(()=>ta.focus(),80);
   function close(){m.classList.remove('show');files.onchange=ok.onclick=cn.onclick=m.onclick=null;ok.textContent='Post';ok.disabled=false;}
@@ -2978,7 +3004,7 @@ function addPost(){
       mediaUrls.push(url||postImgs[i]); /* fallback to base64 if upload fails */
     }
     const authorName=getSavedName()||( currentUser?( currentUser.email?currentUser.email.split('@')[0]:'Trekker'):'You');
-    const trekTag=(document.getElementById('postTrek')||{}).value||'';
+    const trekTag=_postTrek||'';
     const post={id:'p'+Date.now(),uid:currentUser?currentUser.id:null,n:authorName,when:'just now',txt:txt||'',imgs:mediaUrls,likes:0,comments:[],trek:trekTag,tagged:postTags.slice()};
     userPosts.unshift(post);
     savePosts();
