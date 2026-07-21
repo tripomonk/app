@@ -897,6 +897,20 @@ function getSavedName(){try{return localStorage.getItem('tmk_uname')||'';}catch(
 function saveUserName(n){try{if(n)localStorage.setItem('tmk_uname',n);}catch(e){}}
 function getSavedMobile(){try{return localStorage.getItem('tmk_umobile')||'';}catch(e){return'';}}
 function getSavedPhoto(){try{return localStorage.getItem('tmk_uphoto')||'';}catch(e){return'';}}
+/* paint an avatar tile safely: show the photo, but ALWAYS fall back to the
+   person's initial when there's no photo, a junk value ("null"), or the image
+   fails to load (broken / expired storage URL). Never leaves a blank tile —
+   this was the "profile picture invisible" bug in light mode. */
+function setAvatarEl(el,name,photo){
+  if(!el)return;
+  const letter=(String(name||'E').trim()[0]||'E').toUpperCase();
+  el.textContent=letter;el.style.backgroundImage='';
+  if(!photo||!/^(data:image\/|https?:\/\/|blob:)/i.test(photo))return;
+  const im=new Image();
+  im.onload=()=>{el.style.backgroundImage="url('"+photo.replace(/'/g,'%27')+"')";el.textContent='';};
+  im.onerror=()=>{el.style.backgroundImage='';el.textContent=letter;};
+  im.src=photo;
+}
 function getSavedUsername(){try{return localStorage.getItem('tmk_uhandle')||'';}catch(e){return'';}}
 
 /* ---------- username: pick, check, keep ---------- */
@@ -1525,7 +1539,7 @@ function renderCompare(){
 }
 function renderHome(){
   const hav=document.getElementById('homeUserAv');
-  if(hav){const name=getSavedName()||'Explorer',photo=getSavedPhoto();if(photo){hav.style.backgroundImage=`url('${photo}')`;hav.textContent='';}else{hav.style.backgroundImage='';hav.textContent=(name[0]||'E').toUpperCase();}}
+  if(hav)setAvatarEl(hav,getSavedName()||'Explorer',getSavedPhoto());
   const hg=document.getElementById('homeGreet');if(hg){const nm=getSavedName();hg.textContent=nm?'Hello, '+nm:'Hello there';}
   renderHomeHero();
   const list=homeFilter==='All'?treks:treks.filter(t=>t.lvl===homeFilter);
@@ -3082,10 +3096,7 @@ function renderProfile(){document.getElementById('pCover').style.backgroundImage
   const ce=document.getElementById('coverEdit');if(ce)ce.classList.toggle('on',isLoggedIn());
   const uname=getSavedName()||'Explorer';const photo=getSavedPhoto();
   const pav=document.getElementById('profileAv');
-  if(pav){
-    if(photo){pav.style.backgroundImage=`url('${photo}')`;pav.style.backgroundSize='cover';pav.style.backgroundPosition='center';pav.textContent='';}
-    else{pav.style.backgroundImage='';pav.textContent=(uname[0]||'E').toUpperCase();}
-  }
+  if(pav){pav.style.backgroundSize='cover';pav.style.backgroundPosition='center';setAvatarEl(pav,uname,photo);}
   const pname=document.getElementById('profileName');if(pname)pname.textContent=isLoggedIn()?uname:'Guest';
   /* the Hosting hub card adapts to host status once the application loads */
   if(isLoggedIn())loadHostApp().then(()=>{const h=document.getElementById('hostHub');if(h)h.innerHTML=hostHubCard();}).catch(()=>{});
