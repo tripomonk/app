@@ -847,23 +847,54 @@
   @keyframes uspin{to{transform:rotate(360deg)}}
 
   /* ---- profile photo cropper ---- */
-  .crop-card{max-width:340px;padding:20px 18px 16px}
-  .crop-title{margin:0 0 14px;font-size:16px;text-align:center}
+  .crop-card{max-width:360px;padding:20px 18px 16px}
+  .crop-title{margin:0 0 3px;font-size:17px;text-align:center;font-weight:700}
+  .crop-sub{margin:0 0 14px;text-align:center;font-size:11.5px;color:var(--muted2)}
   .crop-stage{position:relative;width:100%;aspect-ratio:1;border-radius:16px;overflow:hidden;background:#0a1626;touch-action:none;cursor:grab}
   .crop-stage:active{cursor:grabbing}
   .crop-stage canvas{display:block;width:100%;height:100%}
   /* circular window: everything outside the circle dims */
   .crop-mask{position:absolute;inset:0;pointer-events:none;border-radius:16px;
     background:radial-gradient(circle at 50% 50%, transparent 0 49.5%, rgba(6,16,28,.72) 50.5% 100%)}
-  .crop-mask::after{content:'';position:absolute;inset:0;border-radius:50%;border:2px solid rgba(255,255,255,.9);
-    box-shadow:0 0 0 1px rgba(0,0,0,.25)}
-  .crop-zoom{display:flex;align-items:center;gap:10px;margin:14px 2px 4px;color:var(--muted)}
+  .crop-mask::after{content:'';position:absolute;inset:0;border-radius:50%;border:2px solid rgba(255,255,255,.92);
+    box-shadow:0 0 0 1px rgba(0,0,0,.25),0 0 22px rgba(0,0,0,.35)}
+  /* rule-of-thirds guides inside the circle, fade in only while adjusting */
+  .crop-grid{position:absolute;inset:0;pointer-events:none;border-radius:50%;
+    -webkit-mask-image:radial-gradient(circle at 50% 50%,#000 0 49.5%,transparent 50%);
+            mask-image:radial-gradient(circle at 50% 50%,#000 0 49.5%,transparent 50%);
+    background:
+      linear-gradient(to right,transparent calc(33.33% - .5px),rgba(255,255,255,.28) calc(33.33% - .5px) calc(33.33% + .5px),transparent calc(33.33% + .5px)),
+      linear-gradient(to right,transparent calc(66.66% - .5px),rgba(255,255,255,.28) calc(66.66% - .5px) calc(66.66% + .5px),transparent calc(66.66% + .5px)),
+      linear-gradient(to bottom,transparent calc(33.33% - .5px),rgba(255,255,255,.28) calc(33.33% - .5px) calc(33.33% + .5px),transparent calc(33.33% + .5px)),
+      linear-gradient(to bottom,transparent calc(66.66% - .5px),rgba(255,255,255,.28) calc(66.66% - .5px) calc(66.66% + .5px),transparent calc(66.66% + .5px));
+    opacity:0;transition:opacity .18s}
+  .crop-stage.adjusting .crop-grid{opacity:1}
+  .crop-zoom{display:flex;align-items:center;gap:10px;margin:14px 2px 6px;color:var(--muted)}
   .crop-zoom .msr{font-size:19px}
   .crop-zoom input[type=range]{flex:1;accent-color:var(--accent);height:44px;cursor:pointer}
-  .crop-hint{margin:0 0 14px;text-align:center;font-size:11.5px;color:var(--muted2)}
-  html.light .crop-stage{background:#e6ebf4}
+  /* live preview — exactly how the cropped avatar will render */
+  .crop-preview-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:center;
+    margin:6px 0 16px;padding:12px;border-radius:14px;background:var(--card);border:1px solid var(--stroke)}
+  .crop-prev-item{display:flex;flex-direction:column;align-items:center;gap:6px}
+  .crop-prev-item small{font-size:10px;color:var(--muted2);letter-spacing:.02em}
+  .crop-prev{border-radius:50%;overflow:hidden;background:#0a1626;box-shadow:0 2px 10px rgba(0,0,0,.25);border:2px solid var(--card)}
+  .crop-prev canvas{display:block;width:100%;height:100%}
+  .crop-prev-lg{width:64px;height:64px}
+  .crop-prev-sm{width:38px;height:38px}
+  .crop-prev-note{flex:1;min-width:130px;margin:0;font-size:11px;line-height:1.45;color:var(--muted)}
+  /* photo action links under the avatar (Change · Reposition & resize) */
+  .photo-actions{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:9px}
+  .photo-link{background:none;border:0;padding:0;font:inherit;font-size:12px;font-weight:600;color:var(--accent2);cursor:pointer;display:inline-flex;align-items:center;gap:3px}
+  .photo-link:active{opacity:.7}
+  .photo-sep{color:var(--muted2);font-size:12px}
+  html.light .crop-stage,html.light .crop-prev{background:#e6ebf4}
   html.light .crop-mask{background:radial-gradient(circle at 50% 50%, transparent 0 49.5%, rgba(255,255,255,.75) 50.5% 100%)}
   html.light .crop-mask::after{border-color:rgba(16,32,58,.75)}
+  html.light .crop-grid{background:
+      linear-gradient(to right,transparent calc(33.33% - .5px),rgba(16,32,58,.28) calc(33.33% - .5px) calc(33.33% + .5px),transparent calc(33.33% + .5px)),
+      linear-gradient(to right,transparent calc(66.66% - .5px),rgba(16,32,58,.28) calc(66.66% - .5px) calc(66.66% + .5px),transparent calc(66.66% + .5px)),
+      linear-gradient(to bottom,transparent calc(33.33% - .5px),rgba(16,32,58,.28) calc(33.33% - .5px) calc(33.33% + .5px),transparent calc(33.33% + .5px)),
+      linear-gradient(to bottom,transparent calc(66.66% - .5px),rgba(16,32,58,.28) calc(66.66% - .5px) calc(66.66% + .5px),transparent calc(66.66% + .5px))}
 
   /* ---- story viewer ---- */
   .story-viewer{position:absolute;inset:0;z-index:300;background:#050c16;display:none;flex-direction:column}
@@ -2072,7 +2103,7 @@
 
   <!-- BOOKINGS -->
   <section class="view" id="bookings" data-tab="bookings">
-    <div class="bar"><h1>My Bookings</h1></div>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>My Bookings</h1></div>
     <div id="bookList"></div>
   </section>
 
@@ -2114,7 +2145,7 @@
         <span style="position:absolute;bottom:0;right:0;width:26px;height:26px;border-radius:50%;background:var(--accent);display:grid;place-items:center"><span class="msr" style="font-size:14px;color:#fff">photo_camera</span></span>
       </div>
       <input type="file" id="epPhoto" accept="image/*" hidden onchange="epPickPhoto(this)"/>
-      <div style="color:var(--muted);font-size:11.5px;margin-top:8px">Tap photo to change</div>
+      <div class="photo-actions" id="epPhotoActions"></div>
     </div>
     <div class="field"><label>Full name</label><div class="inp"><span class="msr" style="font-size:20px;color:var(--muted)">person</span><input id="epName" placeholder="Your full name"/></div></div>
     <div class="field"><label>Username</label>
@@ -2665,16 +2696,28 @@
   <div class="modal" id="cropModal">
     <div class="modal-card crop-card">
       <h3 class="crop-title">Adjust your photo</h3>
+      <p class="crop-sub">Drag to move · pinch or use the slider to zoom</p>
       <div class="crop-stage" id="cropStage">
         <canvas id="cropCanvas"></canvas>
         <div class="crop-mask"></div>
+        <div class="crop-grid"></div>
       </div>
       <div class="crop-zoom">
         <span class="msr">zoom_out</span>
         <input type="range" id="cropZoom" min="1" max="4" step="0.01" value="1" aria-label="Zoom"/>
         <span class="msr">zoom_in</span>
       </div>
-      <p class="crop-hint">Drag to reposition · pinch or slide to zoom</p>
+      <div class="crop-preview-row">
+        <div class="crop-prev-item">
+          <div class="crop-prev crop-prev-lg"><canvas id="cropPreview"></canvas></div>
+          <small>Profile</small>
+        </div>
+        <div class="crop-prev-item">
+          <div class="crop-prev crop-prev-sm"><canvas id="cropPreviewSm"></canvas></div>
+          <small>Comments</small>
+        </div>
+        <p class="crop-prev-note">This is exactly how your photo will appear across Tripomonk.</p>
+      </div>
       <div class="modal-actions"><button class="btn ghost" id="cropCancel">Cancel</button><button class="btn" id="cropOk">Save photo</button></div>
     </div>
   </div>

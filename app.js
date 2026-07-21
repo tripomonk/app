@@ -476,7 +476,7 @@ function toggleFollow(n){
     }
   });
 }
-const menu=[['bookings','My Bookings','bookings'],['chat','Messages','messages'],['shield','Trek Passport','passport'],['like','My Preferences','onboarding'],['monitor','Trek Health','health'],['distance','Trek Navigation','navmap'],['heartmenu','My Wishlist','wishlist'],['starline','My Reviews','reviews'],['settings','Settings','settings'],['help','Help & Support','help']];
+const menu=[['bookings','My Bookings','bookings'],['shield','Trek Passport','passport'],['like','My Preferences','onboarding'],['monitor','Trek Health','health'],['distance','Trek Navigation','navmap'],['heartmenu','My Wishlist','wishlist'],['starline','My Reviews','reviews'],['settings','Settings','settings'],['help','Help & Support','help']];
 const setList=[['user','Account & security','account'],['bell','Notifications','notifPrefs'],['globe','Language','language'],['card','Payment methods','payments'],['shield','Privacy Policy','privacy'],['help','About Tripomonk','about']];
 /* demo notifications removed — the notifications screen shows only real activity now */
 const faqs=[['How do I book a trek?','Pick a trek, choose a batch on Select Date, add travellers and pay 25% to confirm your seat.'],['What is the cancellation policy?','Free cancellation up to 15 days before departure (full refund). Within 15 days, a 50% charge applies.'],['Do you provide gear on rent?','Yes — add the gear kit (jacket, boots, poles) as an add-on at checkout.'],['Are permits included?','We arrange forest / eco-zone permits for you as an assisted service.'],['What fitness level do I need?','Easy treks suit beginners; Moderate+ need regular cardio for 3–4 weeks before.']];
@@ -1005,6 +1005,11 @@ function renderEditProfile(){
     badge.innerHTML='<span class="msr" style="font-size:14px;color:#fff">photo_camera</span>';
     av.appendChild(badge);
   }
+  const pa=document.getElementById('epPhotoActions');
+  if(pa){
+    pa.innerHTML='<button type="button" class="photo-link" onclick="document.getElementById(\'epPhoto\').click()"><span class="msr" style="font-size:14px">add_a_photo</span> Change photo</button>'
+      +(photo?'<span class="photo-sep">·</span><button type="button" class="photo-link" onclick="reCropPhoto()"><span class="msr" style="font-size:14px">crop_rotate</span> Reposition &amp; resize</button>':'');
+  }
 }
 
 /* ---------- profile photo: crop / zoom / reposition before saving ---------- */
@@ -1018,11 +1023,36 @@ function epPickPhoto(input){
   reader.readAsDataURL(file);
   input.value='';   /* so picking the same file again still fires change */
 }
+/* the re-editable original (downscaled) kept from the last crop */
+function getSavedPhotoSrc(){try{return localStorage.getItem('tmk_uphoto_src')||'';}catch(e){return'';}}
+/* shrink an image to fit within `max` px on its longest side, as a JPEG data URL */
+function downscaleToDataURL(img,max){
+  const w=img.naturalWidth||img.width,h=img.naturalHeight||img.height;if(!w||!h)return'';
+  const s=Math.min(1,max/Math.max(w,h));
+  const c=document.createElement('canvas');c.width=Math.max(1,Math.round(w*s));c.height=Math.max(1,Math.round(h*s));
+  c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+  try{return c.toDataURL('image/jpeg',.85);}catch(e){return'';}
+}
+/* re-open the cropper on the photo the user already saved, so they can
+   re-position / resize it without picking the file again. Falls back to the
+   file picker when there's no photo yet. */
+function reCropPhoto(){
+  const src=getSavedPhotoSrc()||getSavedPhoto();
+  if(src){openCropper(src);return;}
+  const inp=document.getElementById('epPhoto')||document.getElementById('hpPhoto');
+  if(inp)inp.click();
+}
 function drawCrop(){
   if(!_crop)return;
   const{ctx,img,S,scale,x,y}=_crop;
   ctx.clearRect(0,0,S,S);
   ctx.drawImage(img,x,y,img.width*scale,img.height*scale);
+  /* mirror the crop window into the live preview canvases at avatar size */
+  (_crop.previews||[]).forEach(p=>{
+    const k=p.P/S;
+    p.pctx.clearRect(0,0,p.P,p.P);
+    p.pctx.drawImage(img,x*k,y*k,img.width*scale*k,img.height*scale*k);
+  });
 }
 /* keep the photo covering the crop window — no empty gaps at the edges */
 function clampCrop(){
@@ -1057,11 +1087,17 @@ function openCropper(src){
     const minScale=Math.max(S/img.width,S/img.height);   /* cover the window */
     _crop={img,S,ctx,minScale,scale:minScale,x:0,y:0};
     _crop.x=(S-img.width*minScale)/2;_crop.y=(S-img.height*minScale)/2;
+    /* wire up the live preview canvases (large + small) */
+    _crop.previews=[['cropPreview',128],['cropPreviewSm',76]].map(([id,P])=>{
+      const c=document.getElementById(id);if(!c)return null;
+      c.width=P;c.height=P;return{pctx:c.getContext('2d'),P};
+    }).filter(Boolean);
     zoom.value=1;drawCrop();
 
     /* drag to reposition + pinch to zoom */
     const pts=new Map();let pinch0=0,scale0=1;
-    stage.onpointerdown=e=>{stage.setPointerCapture(e.pointerId);pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    const flag=on=>stage.classList.toggle('adjusting',on);
+    stage.onpointerdown=e=>{stage.setPointerCapture(e.pointerId);flag(true);pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
       if(pts.size===2){const[a,b]=[...pts.values()];pinch0=Math.hypot(a.x-b.x,a.y-b.y);scale0=+zoom.value;}};
     stage.onpointermove=e=>{
       if(!pts.has(e.pointerId))return;
@@ -1081,14 +1117,15 @@ function openCropper(src){
       _crop.x+=cur.x-prev.x;_crop.y+=cur.y-prev.y;
       clampCrop();drawCrop();
     };
-    const end=e=>{pts.delete(e.pointerId);if(pts.size<2)pinch0=0;};
+    const end=e=>{pts.delete(e.pointerId);if(pts.size<2)pinch0=0;if(pts.size===0)flag(false);};
     stage.onpointerup=end;stage.onpointercancel=end;
-    zoom.oninput=()=>setCropScale(+zoom.value);
+    let gridT=0;
+    zoom.oninput=()=>{setCropScale(+zoom.value);flag(true);clearTimeout(gridT);gridT=setTimeout(()=>flag(false),450);};
   };
   img.src=src;
 
   function close(){
-    m.classList.remove('show');
+    m.classList.remove('show');stage.classList.remove('adjusting');
     stage.onpointerdown=stage.onpointermove=stage.onpointerup=stage.onpointercancel=null;
     zoom.oninput=null;ok.onclick=cancel.onclick=m.onclick=null;_crop=null;
   }
@@ -1103,8 +1140,12 @@ function openCropper(src){
     octx.drawImage(_crop.img,_crop.x*k,_crop.y*k,_crop.img.width*_crop.scale*k,_crop.img.height*_crop.scale*k);
     let url;
     try{url=out.toDataURL('image/jpeg',.86);}catch(e){note('Could not process that image.','Error');return;}
+    /* keep a downscaled copy of the original so the user can re-crop / resize later
+       without re-uploading. Capture it before close() nulls _crop. Best-effort. */
+    let srcCopy='';try{srcCopy=downscaleToDataURL(_crop.img,1280);}catch(err){}
     close();
     try{localStorage.setItem('tmk_uphoto',url);}catch(err){note('Photo is too large to store on this device.','Storage full');return;}
+    try{if(srcCopy)localStorage.setItem('tmk_uphoto_src',srcCopy);}catch(err){}
     renderEditProfile();
     upsertProfile();          /* sync to the server so it survives sign-out / other devices */
     if(cur==='profile')renderProfile();
@@ -5695,11 +5736,12 @@ function renderHostProfile(){
       +(photo?'background-image:url(\''+esc(photo)+'\')':'')+'" onclick="document.getElementById(\'hpPhoto\').click()">'
       +(photo?'':esc((myName()[0]||'H').toUpperCase()))
       +'<span style="position:absolute;bottom:0;right:0;width:26px;height:26px;border-radius:50%;background:var(--accent);display:grid;place-items:center"><span class="msr" style="font-size:14px;color:#fff">photo_camera</span></span></div>'
-      +'<div style="font-size:12px;color:var(--muted);margin-top:8px">Tap to change your photo</div>'
+      +'<div class="photo-actions"><button type="button" class="photo-link" onclick="document.getElementById(\'hpPhoto\').click()"><span class="msr" style="font-size:14px">add_a_photo</span> Change photo</button>'
+      +(photo?'<span class="photo-sep">·</span><button type="button" class="photo-link" onclick="reCropPhoto()"><span class="msr" style="font-size:14px">crop_rotate</span> Reposition &amp; resize</button>':'')+'</div>'
       +'<input type="file" id="hpPhoto" accept="image/*" hidden onchange="epPickPhoto(this)"/></div>'
     +HP_FIELDS.map(f=>'<div class="field"><label>'+f[1]+'</label>'
       +'<div class="inp"><input id="'+f[0]+'" type="'+f[2]+'" value="'+esc(val[f[0]]||'')+'"/></div></div>').join('')
-    +'<div class="field"><label>Short bio</label><textarea id="hpBio" rows="3" placeholder="Shown on your host page">'+esc(a.bio||'')+'</textarea></div>'
+    +'<div class="field"><label>Short bio</label><textarea id="hpBio" class="hw-bio" maxlength="300" placeholder="A short intro shown on your public host page — your experience, the vibe of your trips…" oninput="var c=document.getElementById(\'hpBioC\');if(c)c.textContent=this.value.length">'+esc(a.bio||'')+'</textarea><div class="hw-bioc"><span id="hpBioC">'+String(a.bio||'').length+'</span>/300</div></div>'
     +'<div class="field"><label>Travel experience</label><div class="inp"><input id="hpExp" value="'+esc(a.experience||'')+'"/></div></div>'
     +'<div class="field"><label>Trips you host</label><div class="inp"><input id="hpTypes" value="'+esc(a.trip_types||'')+'"/></div></div>'
     +'<div class="field"><label>Preferred destinations</label><div class="inp"><input id="hpDests" value="'+esc(a.destinations||'')+'"/></div></div>'
