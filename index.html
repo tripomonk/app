@@ -308,6 +308,28 @@
     padding:4px 10px;border-radius:20px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .hero-credit.on{display:inline-flex}
   .hero-credit .msr{font-size:12px;opacity:.9}
+  /* AI recommended gear card (reusable across the journey) */
+  .gearreco{background:linear-gradient(150deg,rgba(47,107,255,.10),rgba(0,194,168,.06));border:1px solid rgba(47,107,255,.28);border-radius:18px;padding:15px}
+  .gr-head{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  .gr-emoji{font-size:18px}
+  .gr-head b{font-size:14.5px}
+  .gr-count{margin-left:auto;font-size:10.5px;font-weight:600;color:var(--accent2);background:rgba(47,107,255,.14);border-radius:20px;padding:3px 9px;text-transform:capitalize}
+  .gr-item{display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid var(--stroke)}
+  .gr-item:first-child{border-top:0}
+  .gr-ic{font-size:22px;color:var(--accent2);flex:none;width:26px;text-align:center}
+  .gr-tx{flex:1;min-width:0}
+  .gr-tx b{font-size:13px;display:block}
+  .gr-tx small{font-size:11px;color:var(--muted);display:block}
+  .gr-own{flex:none;width:26px;height:26px;border-radius:50%;border:1.5px solid var(--stroke2);background:transparent;color:var(--muted2);display:grid;place-items:center;cursor:pointer;padding:0}
+  .gr-own:active{background:var(--card2)}
+  .gr-kit{display:flex;align-items:center;gap:12px;margin-top:12px;padding:12px;border-radius:13px;background:var(--card);border:1px solid var(--stroke)}
+  .gr-kit-tx{flex:1;min-width:0}
+  .gr-kit-tx b{font-size:13.5px;display:block}
+  .gr-kit-tx small{font-size:11.5px;color:var(--muted)}
+  .gr-save{color:#0f9d58;font-weight:700}
+  html.light .gr-save{color:#0b7a44}
+  .gr-kit .gr-add{width:auto;flex:none;min-width:96px;padding:11px 16px;font-size:13px}
+  .gr-note{margin:10px 2px 0;font-size:10.5px;color:var(--muted2);line-height:1.45}
   .hero .hb{width:44px;height:44px;flex:none;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.4);backdrop-filter:blur(6px);color:#fff;cursor:pointer}
   .dcard{margin:-90px 16px 0;position:relative;z-index:3;background:rgba(14,28,48,.86);backdrop-filter:blur(18px);border:1px solid var(--stroke);border-radius:24px;padding:18px}
   .dcard h1{margin:0;font-size:22px;font-weight:600}
@@ -2055,6 +2077,7 @@
     <div class="blk reveal"><h2>Getting there</h2><div id="dGetting"></div></div>
     <div class="blk reveal"><h2>Inclusions &amp; Exclusions</h2><div id="dIncl"></div></div>
     <div class="blk reveal"><h2 style="display:flex;justify-content:space-between;align-items:center">Itinerary <a style="font-size:12px;color:var(--accent2);cursor:pointer" onclick="go('itinerary')">View full →</a></h2><div id="dItinPrev"></div></div>
+    <div class="blk reveal" id="dGearBlk" style="display:none"><div id="dGear"></div></div>
     <div class="blk reveal" id="dNewsBlk" style="display:none"><h2>News &amp; Alerts</h2><div id="dNews"></div></div>
     <div class="blk reveal"><h2 style="display:flex;justify-content:space-between;align-items:center">Reviews <a style="font-size:12px;color:var(--accent2);cursor:pointer" onclick="go('reviews')">See all →</a></h2><div id="dRevPrev"></div></div>
     <div style="padding:10px 16px calc(var(--safe-bottom) + 28px)">

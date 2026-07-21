@@ -1911,6 +1911,7 @@ function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
   if(t.soon){cta.innerHTML=ic('bell',16)+' Coming Soon · Notify me';cta.onclick=()=>wa(t.n+' — please notify me when it goes live.');}
   else{cta.innerHTML='View Dates &amp; Price&nbsp; →';cta.onclick=()=>go('selectDate');}
   renderDetailGetting(t);
+  refreshGearReco(t);          /* AI recommended gear, personalised to this trek */
   renderDetailNews(t.n);
   go('detail');
 }
@@ -4646,6 +4647,65 @@ function renderDest(){
   hydrate(document.getElementById('dest'));
 }
 let gearSel={};
+/* ============================================================
+   AI RECOMMENDED GEAR — a context-aware engine + a reusable card
+   that drops into any surface (trek detail, packing list, checkout…).
+   Recommendations adapt to altitude, season, difficulty & duration,
+   and skip gear the user already owns.
+   ============================================================ */
+const GEAR_CATALOG=[
+  {id:'shoe',   name:'Trekking Shoes', price:120, icon:'hiking',        when:()=>true,                                                why:'grip on rocky trails'},
+  {id:'backpack',name:'50L Backpack',  price:100, icon:'backpack',      when:()=>true,                                                why:'carry your load'},
+  {id:'pole',   name:'Trekking Pole',  price:60,  icon:'hiking',        when:t=>gAlt(t)>=9000||/moderate|difficult/i.test(t.lvl||''), why:'saves your knees on descents'},
+  {id:'headlamp',name:'Headlamp',      price:50,  icon:'flashlight_on', when:t=>(+t.days||1)>=2,                                       why:'early starts & campsites'},
+  {id:'jacket', name:'Down Jacket',    price:150, icon:'checkroom',     when:t=>gCold(t),                                             why:'below-freezing nights'},
+  {id:'bed',    name:'Sleeping Bag',   price:120, icon:'king_bed',      when:t=>(+t.days||1)>=2&&gCold(t),                            why:'warm nights in camp'},
+  {id:'spikes', name:'Micro-spikes',   price:90,  icon:'ac_unit',       when:t=>gSnow(t),                                             why:'traction on snow'},
+  {id:'gaiters',name:'Gaiters',        price:60,  icon:'ac_unit',       when:t=>gSnow(t),                                             why:'keep snow out of your boots'},
+  {id:'rain',   name:'Rain Jacket',    price:70,  icon:'umbrella',      when:t=>gMonsoon(t),                                          why:'monsoon showers'}
+];
+function gAlt(t){const m=String(t&&t.alt||'').replace(/[, ]/g,'').match(/(\d+)/);return m?+m[1]:0;}
+function gSeason(t){return String(t&&t.best||'').toLowerCase();}
+function gSnow(t){return gAlt(t)>=13500||(/dec|jan|feb|mar/.test(gSeason(t))&&gAlt(t)>=9000);}
+function gCold(t){return gAlt(t)>=11000||/dec|jan|feb|nov/.test(gSeason(t))||gSnow(t);}
+function gMonsoon(t){return /jul|aug|sep/.test(gSeason(t));}
+/* gear the user already owns — excluded from every recommendation */
+function getOwnedGear(){try{return JSON.parse(localStorage.getItem('tmk_owngear')||'[]');}catch(e){return[];}}
+function toggleOwnGear(id){const o=getOwnedGear();const i=o.indexOf(id);if(i>=0)o.splice(i,1);else o.push(id);try{localStorage.setItem('tmk_owngear',JSON.stringify(o));}catch(e){}}
+function recommendGear(t){if(!t)return[];const own=getOwnedGear();return GEAR_CATALOG.filter(g=>{try{return g.when(t)&&own.indexOf(g.id)<0;}catch(e){return false;}});}
+/* reusable card — the same component everywhere gear is upsold */
+function gearRecoCard(t){
+  const list=recommendGear(t);
+  if(!list.length)return '';
+  const total=list.reduce((s,g)=>s+g.price,0);
+  const kit=Math.max(10,Math.round(total*0.82/10)*10);   /* ~18% bundle discount */
+  const save=total-kit;
+  const ctx=[t.lvl,gSnow(t)?'snow':(gCold(t)?'cold':''),gMonsoon(t)?'monsoon':''].filter(Boolean).join(' · ');
+  const rows=list.map(g=>'<div class="gr-item"><span class="msr gr-ic">'+g.icon+'</span>'
+    +'<div class="gr-tx"><b>'+esc(g.name)+'</b><small>₹'+g.price+'/day · '+esc(g.why)+'</small></div>'
+    +'<button class="gr-own" type="button" onclick="ownGear(\''+g.id+'\')" title="I already own this">'+ic('check',13)+'</button></div>').join('');
+  return '<div class="gearreco">'
+    +'<div class="gr-head"><span class="gr-emoji">🎒</span><b>AI Recommended Gear</b><span class="gr-count">'+list.length+' item'+(list.length>1?'s':'')+(ctx?' · '+esc(ctx):'')+'</span></div>'
+    +'<div class="gr-list">'+rows+'</div>'
+    +'<div class="gr-kit"><div class="gr-kit-tx"><b>Rent the complete kit</b><small>₹'+kit+'/day'+(save>0?' · <span class="gr-save">save ₹'+save+'</span>':'')+'</small></div>'
+    +'<button class="btn gr-add" onclick="rentKit(\''+jsq(t.n)+'\')">Rent kit</button></div>'
+    +'<p class="gr-note">Personalised for '+esc(t.n)+' by altitude, season & difficulty. Tap ✓ on anything you already own.</p>'
+    +'</div>';
+}
+function ownGear(id){toggleOwnGear(id);if(cart.trek)refreshGearReco(cart.trek);}
+function refreshGearReco(t){
+  const el=document.getElementById('dGear');if(!el)return;
+  const blk=document.getElementById('dGearBlk');
+  const html=gearRecoCard(t);
+  if(html){el.innerHTML=html;if(blk)blk.style.display='';hydrate(el);}
+  else if(blk){blk.style.display='none';}
+}
+function rentKit(trekName){
+  const t=(treks||[]).find(x=>x.n===trekName)||cart.trek;
+  const list=t?recommendGear(t):[];
+  const lines=list.map(g=>'• '+g.name+' (₹'+g.price+'/day)');
+  wa('Hi Tripomonk, I want to rent the recommended gear kit for '+trekName+':\n'+lines.join('\n')+'\n\nPlease confirm availability and delivery / pickup.');
+}
 function renderQuick(){const q=[['pin','Destinations','dests'],['backpack','Rent Gear','gear'],['permits','Permits','permits'],['para','Activities','activities']];const el=document.getElementById('quick');if(!el)return;el.style.gridTemplateColumns='repeat(4,1fr)';el.innerHTML=q.map(a=>`<div class="qa" onclick="go('${a[2]}')"><div class="qi">${ic(a[0],20)}</div><span>${a[1]}</span></div>`).join('');hydrate(el);}
 function renderGear(){
   const n=Object.values(gearSel).filter(Boolean).length;
