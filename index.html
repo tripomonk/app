@@ -274,7 +274,7 @@
   .bigcard .info{position:relative;z-index:1}
   .bigcard h3{margin:0;font-size:18px;font-weight:600}
   .bigcard .reg{font-size:12px;color:rgba(255,255,255,.8);display:flex;align-items:center;gap:4px;margin-top:3px}
-  .bigcard .pr{position:absolute;top:12px;right:12px;z-index:1;background:rgba(0,0,0,.45);backdrop-filter:blur(6px);padding:6px 11px;border-radius:999px;font-size:13px;font-weight:600}
+  .bigcard .pr{position:absolute;top:12px;right:12px;z-index:1;color:#fff;background:rgba(10,18,30,.52);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.18);padding:6px 12px;border-radius:999px;font-size:13px;font-weight:700;letter-spacing:.2px;box-shadow:0 3px 10px -2px rgba(0,0,0,.35)}
   .bigcard .fav{position:absolute;top:12px;left:12px;z-index:1;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.4);backdrop-filter:blur(6px);cursor:pointer}
   .fav.on{color:#ff5a7a}
 
@@ -389,6 +389,13 @@
   .field .inp{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:13px 14px}
   .field .inp input{all:unset;flex:1;color:var(--text);font-size:14px}
   .field .inp input::placeholder{color:var(--muted2)}
+  /* country-code selector paired with a phone number in one field */
+  .field .inp.tel-inp{gap:9px}
+  .cc-sel{appearance:none;-webkit-appearance:none;border:none;outline:none;background:transparent;cursor:pointer;
+    color:var(--text);font-size:14px;font-weight:600;padding:0 19px 0 0;border-right:1px solid var(--stroke);flex:none;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M1 1l4 4 4-4' fill='none' stroke='%238a93a6' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat:no-repeat;background-position:right 4px center}
+  .cc-sel option{color:#111;background:#fff}
   /* `all:unset` above kills the native date UI and can make the field un-tappable.
      Restore appearance, keep the picker icon, and let the whole row open the picker. */
   .field .inp.dateinp{cursor:pointer}
@@ -1853,7 +1860,7 @@
   .home-top-ui{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:48px 1fr 48px;align-items:center;gap:10px;margin:-4px -2px 14px;padding:8px 10px 12px;border-radius:22px;background:linear-gradient(180deg,var(--bg) 72%,rgba(10,22,38,0));backdrop-filter:blur(18px)}
   /* light mode: a darker, solid blue-grey header (not washed-out white) with a soft edge */
   html.light .home-top-ui{background:linear-gradient(180deg,#d3ddef,#e2e9f5);box-shadow:0 10px 24px -16px rgba(16,32,58,.4);border:1px solid rgba(16,32,58,.08)}
-  html.light .home-avatar-btn,html.light .home-bell{background:#fff;border-color:rgba(16,32,58,.14);box-shadow:0 3px 8px -4px rgba(16,32,58,.25)}
+  html.light .home-avatar-btn,html.light .home-bell{background-color:#fff;border-color:rgba(16,32,58,.14);box-shadow:0 3px 8px -4px rgba(16,32,58,.25)}
   .home-avatar-btn,.home-bell{width:46px;height:46px;border-radius:18px;border:1px solid var(--stroke);background:rgba(255,255,255,.09);color:var(--text);display:grid;place-items:center;font-weight:700;cursor:pointer;background-size:cover;background-position:center}
   .home-title-block{text-align:center}.home-title-block small{font-size:10.5px;color:var(--accent2);font-weight:700;text-transform:uppercase;letter-spacing:.5px}.home-title-block h1{font-size:20px;margin:1px 0 0}
   .home-intro-card{display:flex;align-items:center;justify-content:space-between;gap:14px;border-radius:25px;padding:16px;margin-bottom:14px;background:linear-gradient(135deg,rgba(47,107,255,.24),rgba(255,255,255,.06));border:1px solid rgba(255,255,255,.13);box-shadow:0 20px 44px -34px rgba(0,0,0,.85);backdrop-filter:blur(20px)}
@@ -2203,7 +2210,7 @@
       <div class="inp"><span class="uname-at">@</span><input id="epUser" placeholder="yourname" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="20" oninput="onUsernameInput(this.value)"/><span class="uname-spin" id="epUserSpin"></span></div>
       <small class="uname-msg" id="epUserMsg">3–20 characters · letters, numbers, dots and underscores</small>
     </div>
-    <div class="field"><label>Mobile</label><div class="inp"><span class="msr" style="font-size:20px;color:var(--muted)">call</span><input id="epMobile" type="tel" placeholder="+91 XXXXX XXXXX"/></div></div>
+    <div class="field"><label>Mobile</label><div id="epMobileWrap"></div></div>
     <div class="field"><label>Email</label><div class="inp"><span class="msr" style="font-size:20px;color:var(--muted)">mail</span><input id="epEmail" type="email" placeholder="you@email.com" readonly style="opacity:.6"/></div></div>
     <div class="field"><label>Social links <small style="color:var(--muted2);font-weight:400">— add any you like</small></label>
       <div id="epSocials" class="socinputs"></div>

@@ -907,7 +907,14 @@ function setAvatarEl(el,name,photo){
   el.textContent=letter;el.style.backgroundImage='';
   if(!photo||!/^(data:image\/|https?:\/\/|blob:)/i.test(photo))return;
   const im=new Image();
-  im.onload=()=>{el.style.backgroundImage="url('"+photo.replace(/'/g,'%27')+"')";el.textContent='';};
+  im.onload=()=>{
+    /* set size/position inline too — the light-theme CSS uses a `background`
+       shorthand that would otherwise reset background-size to auto, cropping the
+       photo to its top-left corner (looked like the image "not showing"). */
+    el.style.backgroundImage="url('"+photo.replace(/'/g,'%27')+"')";
+    el.style.backgroundSize='cover';el.style.backgroundPosition='center';
+    el.textContent='';
+  };
   im.onerror=()=>{el.style.backgroundImage='';el.textContent=letter;};
   im.src=photo;
 }
@@ -985,6 +992,89 @@ function socialUrl(key,val){
     default:         return 'https://'+val.replace(/^\/+/,'');
   }
 }
+
+/* ============================================================
+   PHONE — country-code selector (separate from the number) +
+   automatic country-code / city fill from the visitor's location.
+   ============================================================ */
+/* [dial, iso, flag, name] — flag emojis show as ISO letters on Windows, still clear */
+const COUNTRY_CODES=[
+  ['+91','IN','🇮🇳','India'],['+977','NP','🇳🇵','Nepal'],['+975','BT','🇧🇹','Bhutan'],
+  ['+94','LK','🇱🇰','Sri Lanka'],['+880','BD','🇧🇩','Bangladesh'],['+92','PK','🇵🇰','Pakistan'],
+  ['+1','US','🇺🇸','USA / Canada'],['+44','GB','🇬🇧','UK'],['+61','AU','🇦🇺','Australia'],
+  ['+64','NZ','🇳🇿','New Zealand'],['+971','AE','🇦🇪','UAE'],['+966','SA','🇸🇦','Saudi Arabia'],
+  ['+974','QA','🇶🇦','Qatar'],['+965','KW','🇰🇼','Kuwait'],['+968','OM','🇴🇲','Oman'],
+  ['+65','SG','🇸🇬','Singapore'],['+60','MY','🇲🇾','Malaysia'],['+66','TH','🇹🇭','Thailand'],
+  ['+62','ID','🇮🇩','Indonesia'],['+63','PH','🇵🇭','Philippines'],['+84','VN','🇻🇳','Vietnam'],
+  ['+81','JP','🇯🇵','Japan'],['+82','KR','🇰🇷','South Korea'],['+86','CN','🇨🇳','China'],
+  ['+852','HK','🇭🇰','Hong Kong'],['+49','DE','🇩🇪','Germany'],['+33','FR','🇫🇷','France'],
+  ['+39','IT','🇮🇹','Italy'],['+34','ES','🇪🇸','Spain'],['+31','NL','🇳🇱','Netherlands'],
+  ['+41','CH','🇨🇭','Switzerland'],['+46','SE','🇸🇪','Sweden'],['+47','NO','🇳🇴','Norway'],
+  ['+353','IE','🇮🇪','Ireland'],['+351','PT','🇵🇹','Portugal'],['+7','RU','🇷🇺','Russia'],
+  ['+90','TR','🇹🇷','Turkey'],['+972','IL','🇮🇱','Israel'],['+27','ZA','🇿🇦','South Africa'],
+  ['+254','KE','🇰🇪','Kenya'],['+20','EG','🇪🇬','Egypt'],['+55','BR','🇧🇷','Brazil'],
+  ['+52','MX','🇲🇽','Mexico'],['+54','AR','🇦🇷','Argentina']
+];
+function ccSelect(id,dial){
+  dial=dial||'+91';
+  let opts=COUNTRY_CODES;
+  if(!opts.some(c=>c[0]===dial))opts=[[dial,'','🏳️',dial]].concat(opts);   /* keep an unknown saved code selectable */
+  return '<select id="'+id+'" class="cc-sel" aria-label="Country code" onchange="this.dataset.userset=1">'
+    +opts.map(c=>'<option value="'+c[0]+'"'+(c[0]===dial?' selected':'')+'>'+c[2]+' '+c[0]+'</option>').join('')
+    +'</select>';
+}
+/* split a stored number ("+91 98765 43210") into its dial code + local part */
+function splitPhone(full){
+  full=String(full||'').trim();
+  if(!full)return{dial:'+91',num:''};
+  if(full[0]==='+'){
+    const codes=COUNTRY_CODES.map(c=>c[0]).sort((a,b)=>b.length-a.length);   /* longest match first */
+    for(const code of codes){if(full.indexOf(code)===0)return{dial:code,num:full.slice(code.length).replace(/^[\s-]+/,'').trim()};}
+    const m=full.match(/^(\+\d{1,4})[\s-]*(.*)$/);if(m)return{dial:m[1],num:m[2].trim()};
+  }
+  return{dial:'+91',num:full.replace(/^0+/,'')};
+}
+function joinPhone(dial,num){num=String(num||'').replace(/\D/g,'');return num?((dial||'+91')+' '+num):'';}
+/* markup for a country-code select + number input as one field. id is the NUMBER
+   input id; the select is id+'_cc'. Read the combined value with readTel(id). */
+function telInput(id,fullValue,opts){
+  opts=opts||{};const p=splitPhone(fullValue);
+  return '<div class="inp tel-inp">'+ccSelect(id+'_cc',p.dial)
+    +'<input id="'+id+'" type="tel" inputmode="numeric" autocomplete="tel-national" value="'+esc(p.num)+'" placeholder="'+esc(opts.ph||'98765 43210')+'"'+(opts.extra||'')+'/></div>';
+}
+function readTel(id){
+  const sel=document.getElementById(id+'_cc'),inp=document.getElementById(id);
+  return joinPhone(sel?sel.value:'+91',inp?inp.value:'');
+}
+/* best-effort IP geolocation — no permission prompt, cached 7 days, falls back to India */
+async function detectLocale(){
+  try{const c=JSON.parse(localStorage.getItem('tmk_geo')||'null');if(c&&c.dial&&c.t&&Date.now()-c.t<6048e5)return c;}catch(e){}
+  const fb={dial:'+91',iso:'IN',city:'',region:'',t:Date.now()};
+  try{
+    const ctrl=new AbortController();const to=setTimeout(()=>ctrl.abort(),3500);
+    const r=await fetch('https://ipwho.is/',{signal:ctrl.signal});clearTimeout(to);
+    const d=await r.json();
+    if(d&&d.success!==false){
+      const g={dial:d.calling_code?('+'+String(d.calling_code).replace(/^\+/,'')):'+91',
+               iso:d.country_code||'IN',city:d.city||'',region:d.region||'',t:Date.now()};
+      try{localStorage.setItem('tmk_geo',JSON.stringify(g));}catch(e){}
+      return g;
+    }
+  }catch(e){}
+  return fb;
+}
+/* fill each country-code select whose number is still empty, and each empty city
+   input, from the detected location. Never overrides what the user already typed. */
+async function applyGeoAutofill(telIds,cityIds){
+  let g;try{g=await detectLocale();}catch(e){return;}
+  if(!g)return;
+  (telIds||[]).forEach(id=>{
+    const sel=document.getElementById(id+'_cc'),inp=document.getElementById(id);
+    if(sel&&inp&&!inp.value.trim()&&!sel.dataset.userset&&g.dial&&COUNTRY_CODES.some(c=>c[0]===g.dial))sel.value=g.dial;
+  });
+  (cityIds||[]).forEach(id=>{const el=document.getElementById(id);if(el&&!el.value.trim()&&g.city)el.value=g.city;});
+}
+
 /* tappable brand chips for a socials object (used on own + others' profiles) */
 function socialLinks(soc){
   soc=soc||{};
@@ -1001,7 +1091,9 @@ function renderEditProfile(){
   if(sc)sc.innerHTML=SOCIALS.map(s=>`<div class="inp soc-inp"><span class="soc-dot" style="background:${s[2]}"></span><input id="epSoc_${s[0]}" placeholder="${esc(s[1])} — handle or link" autocapitalize="none" autocorrect="off" spellcheck="false" value="${esc(soc[s[0]]||'')}"/></div>`).join('');
   const inp=id=>document.getElementById(id);
   if(inp('epName'))inp('epName').value=name;
-  if(inp('epMobile'))inp('epMobile').value=mobile;
+  /* mobile = country-code selector + number; auto-fill the code from the visitor's location */
+  const mw=inp('epMobileWrap');
+  if(mw){mw.innerHTML=telInput('epMobile',mobile);applyGeoAutofill(['epMobile'],[]);}
   if(inp('epEmail'))inp('epEmail').value=email;
   const uname=getSavedUsername();
   if(inp('epUser')){
@@ -1170,7 +1262,7 @@ function openCropper(src){
 
 async function saveProfile(){
   const name=(document.getElementById('epName').value||'').trim();
-  const mobile=(document.getElementById('epMobile').value||'').trim();
+  const mobile=readTel('epMobile');
   /* usernames never contain spaces (or any char outside a-z0-9._) — strip before saving,
      so nothing can slip through even if the live field somehow held one */
   const uname=((document.getElementById('epUser')||{}).value||'').toLowerCase().replace(/[^a-z0-9._]/g,'');
@@ -4880,7 +4972,10 @@ function hwToggle(key,val,max){
 function hwSaveForm(){
   const st=HOST_WIZARD[_hwStep];if(st.type!=='form')return;
   _hwAns[st.key]=_hwAns[st.key]||{};
-  st.fields.forEach(f=>{const el=document.getElementById(f[0]);if(el)_hwAns[st.key][f[0]]=el.value.trim();});
+  st.fields.forEach(f=>{
+    if(f[2]==='tel'){if(document.getElementById(f[0]))_hwAns[st.key][f[0]]=readTel(f[0]);return;}
+    const el=document.getElementById(f[0]);if(el)_hwAns[st.key][f[0]]=el.value.trim();
+  });
 }
 function hwSaveBio(){const el=document.getElementById('hwBio');if(el)_hwAns.bio=el.value.slice(0,300);}
 function hwStepValid(){
@@ -4915,9 +5010,14 @@ function renderHostWizard(){
   }else if(st.type==='form'){
     const a=_hwAns[st.key]||{};
     inner=st.fields.map(f=>{
-      const ph=f[0]==='bd_mobile'||f[0]==='bd_whatsapp'?'+91 XXXXX XXXXX':f[0]==='bd_email'?'you@email.com':'';
+      const req=f[3]?' *':'';
+      /* phone fields get a country-code selector; the code auto-fills from location */
+      if(f[2]==='tel'){
+        return `<div class="field"><label>${esc(f[1])}${req}</label>${telInput(f[0],a[f[0]]||'',{ph:f[0]==='bd_whatsapp'?'WhatsApp number':'98765 43210'})}</div>`;
+      }
+      const ph=f[0]==='bd_email'?'you@email.com':'';
       const extra=f[0]==='bd_dob'?` max="${maxDobStr()}" oninput="hwCheckDob(this)"`:'';
-      return `<div class="field"><label>${esc(f[1])}${f[3]?' *':''}</label><div class="inp"><input id="${f[0]}" type="${f[2]}" value="${esc(a[f[0]]||'')}" placeholder="${ph}"${extra}/></div>${f[0]==='bd_dob'?'<small class="host-note" style="margin:5px 2px 0">You must be at least 18 to host trips.</small>':''}</div>`;
+      return `<div class="field"><label>${esc(f[1])}${req}</label><div class="inp"><input id="${f[0]}" type="${f[2]}" value="${esc(a[f[0]]||'')}" placeholder="${ph}"${extra}/></div>${f[0]==='bd_dob'?'<small class="host-note" style="margin:5px 2px 0">You must be at least 18 to host trips.</small>':''}</div>`;
     }).join('');
   }else if(st.type==='bio'){
     inner=`<textarea id="hwBio" class="hw-bio" maxlength="300" placeholder="e.g. I'm an avid Himalayan trekker who has led 30+ beginner-friendly treks…" oninput="document.getElementById('hwBioC').textContent=this.value.length">${esc(_hwAns.bio||'')}</textarea><div class="hw-bioc"><span id="hwBioC">${(_hwAns.bio||'').length}</span>/300</div>`;
@@ -4948,6 +5048,8 @@ function renderHostWizard(){
       <button class="btn" onclick="${isLast?'submitHostApp()':'hwNext()'}">${isLast?'Submit for verification':'Continue'}</button>
     </div>`;
   hydrate(body);
+  /* on the basic-details step, pre-fill the country code + city from the visitor's location */
+  if(st.type==='form'&&st.key==='basic')applyGeoAutofill(['bd_mobile','bd_whatsapp'],['bd_city']);
 }
 async function submitHostApp(){
   hwSaveForm();hwSaveBio();
@@ -5897,7 +5999,8 @@ function renderHostProfile(){
       +(photo?'<span class="photo-sep">·</span><button type="button" class="photo-link" onclick="reCropPhoto()"><span class="msr" style="font-size:14px">crop_rotate</span> Reposition &amp; resize</button>':'')+'</div>'
       +'<input type="file" id="hpPhoto" accept="image/*" hidden onchange="epPickPhoto(this)"/></div>'
     +HP_FIELDS.map(f=>'<div class="field"><label>'+f[1]+'</label>'
-      +'<div class="inp"><input id="'+f[0]+'" type="'+f[2]+'" value="'+esc(val[f[0]]||'')+'"/></div></div>').join('')
+      +(f[2]==='tel'?telInput(f[0],val[f[0]]||'')
+        :'<div class="inp"><input id="'+f[0]+'" type="'+f[2]+'" value="'+esc(val[f[0]]||'')+'"/></div>')+'</div>').join('')
     +'<div class="field"><label>Short bio</label><textarea id="hpBio" class="hw-bio" maxlength="300" placeholder="A short intro shown on your public host page — your experience, the vibe of your trips…" oninput="var c=document.getElementById(\'hpBioC\');if(c)c.textContent=this.value.length">'+esc(a.bio||'')+'</textarea><div class="hw-bioc"><span id="hpBioC">'+String(a.bio||'').length+'</span>/300</div></div>'
     +'<div class="field"><label>Travel experience</label><div class="inp"><input id="hpExp" value="'+esc(a.experience||'')+'"/></div></div>'
     +'<div class="field"><label>Trips you host</label><div class="inp"><input id="hpTypes" value="'+esc(a.trip_types||'')+'"/></div></div>'
@@ -5905,10 +6008,11 @@ function renderHostProfile(){
     +'<button class="btn" id="hpSave" onclick="saveHostProfile()">Save changes</button>'
     +'<p class="host-note">Your verified status is set by Tripomonk and cannot be changed here.</p>';
   hydrate(box);
+  applyGeoAutofill(['hpMobile'],['hpCity']);
 }
 async function saveHostProfile(){
   const v=id=>((document.getElementById(id)||{}).value||'').trim();
-  const name=v('hpName'),mobile=v('hpMobile');
+  const name=v('hpName'),mobile=readTel('hpMobile');
   if(!name){note('Name cannot be empty.','Name required');return;}
   if(!/^[+\d][\d\s-]{7,}$/.test(mobile)){note('Please enter a valid mobile number.','Check your number');return;}
   const sb=getSupaClient();const uid=sb?await authUid():null;
