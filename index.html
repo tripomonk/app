@@ -645,6 +645,9 @@
   /* custom modal (replaces native prompt) */
   .modal{position:absolute;inset:0;z-index:200;display:none;align-items:center;justify-content:center;padding:26px;background:rgba(5,11,20,.55);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
   .modal.show{display:flex;animation:mfade .22s ease}
+  /* the generic prompt/alert modal must sit ABOVE any other open modal
+     (e.g. tapping "Video link" inside the post composer opens askCode over it) */
+  #modal{z-index:400}
   @keyframes mfade{from{opacity:0}to{opacity:1}}
   .modal-card{width:100%;max-width:330px;background:rgba(22,38,62,.82);backdrop-filter:blur(24px) saturate(150%);-webkit-backdrop-filter:blur(24px) saturate(150%);border:1px solid rgba(255,255,255,.18);border-radius:22px;padding:22px;box-shadow:0 30px 70px rgba(0,0,0,.55);animation:mpop .28s cubic-bezier(.3,1.5,.5,1)}
   @keyframes mpop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
