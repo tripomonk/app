@@ -302,6 +302,12 @@
   .hero:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,17,30,.25) 0%,rgba(8,17,30,0) 30%,rgba(10,22,38,.6) 78%,var(--bg) 100%)}
   .hero .htop{position:absolute;top:calc(var(--safe-top) + 12px);left:calc(16px + var(--safe-left));right:calc(16px + var(--safe-right));display:flex;justify-content:space-between;z-index:2}
   .hero .htop .right{display:flex;gap:10px}
+  /* photo credit chip overlaid on the hero image (attribution for Wikimedia photos) */
+  .hero-credit{position:absolute;right:12px;bottom:100px;max-width:72%;display:none;align-items:center;gap:5px;z-index:2;
+    font-size:10px;color:rgba(255,255,255,.94);background:rgba(0,0,0,.44);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
+    padding:4px 10px;border-radius:20px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hero-credit.on{display:inline-flex}
+  .hero-credit .msr{font-size:12px;opacity:.9}
   .hero .hb{width:44px;height:44px;flex:none;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.4);backdrop-filter:blur(6px);color:#fff;cursor:pointer}
   .dcard{margin:-90px 16px 0;position:relative;z-index:3;background:rgba(14,28,48,.86);backdrop-filter:blur(18px);border:1px solid var(--stroke);border-radius:24px;padding:18px}
   .dcard h1{margin:0;font-size:22px;font-weight:600}
@@ -2035,7 +2041,8 @@
   <!-- DETAIL -->
   <section class="view full" id="detail" data-nonav>
     <div class="hero" id="dHero"><div class="htop"><div class="hb" onclick="back()"><span class="ic" data-i="back"></span></div>
-      <div class="right"><div class="hb" onclick="shareTrek()"><span class="ic" data-i="share"></span></div><div class="hb fav" id="dFav" onclick="toggleFav(this)"><span class="ic" data-i="heart"></span></div></div></div></div>
+      <div class="right"><div class="hb" onclick="shareTrek()"><span class="ic" data-i="share"></span></div><div class="hb fav" id="dFav" onclick="toggleFav(this)"><span class="ic" data-i="heart"></span></div></div></div>
+      <div class="hero-credit" id="dCredit"></div></div>
     <div class="dcard">
       <h1 id="dName"></h1><div class="reg"><span class="ic" data-i="pin"></span><span id="dReg"></span></div>
       <div class="meta"><span class="star">★</span> <b id="dRate"></b> <span class="g" id="dRev" style="color:var(--muted)"></span> &nbsp;·&nbsp; <span class="lvl" id="dLvl"></span></div>
