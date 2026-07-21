@@ -174,6 +174,22 @@
   .perm .pa{background:var(--accent);color:#fff;border:0;font-size:12px;font-weight:600;padding:8px 14px;border-radius:10px;cursor:pointer}
   /* --- Rent Gear: card grid --- */
   .gear-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  /* categorised rental catalog */
+  .gcats{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:8px;-webkit-overflow-scrolling:touch}
+  .gcats::-webkit-scrollbar{display:none}
+  .gcats .chip{flex:none;white-space:nowrap}
+  .gcat-h{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:16px 2px 8px}
+  .gcat-h .msr{font-size:17px;color:var(--accent2)}
+  .grow{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:var(--card);border:1px solid var(--stroke);margin-bottom:8px;cursor:pointer;transition:border-color .14s,background .14s}
+  .grow.on{border-color:var(--accent);background:rgba(47,107,255,.09)}
+  .grow-tx{flex:1;min-width:0}
+  .grow-tx b{font-size:13.5px;font-weight:500}
+  .grow-price{font-size:14px;font-weight:700;color:var(--accent2);white-space:nowrap}
+  .grow-price small{font-size:10px;color:var(--muted2);font-weight:400}
+  .grow-chk{flex:none;width:24px;height:24px;border-radius:50%;border:1.5px solid var(--stroke2);display:grid;place-items:center;color:#fff}
+  .grow-chk svg{opacity:0;transition:opacity .12s}
+  .grow.on .grow-chk{background:var(--accent);border-color:var(--accent)}
+  .grow.on .grow-chk svg{opacity:1}
   .gcard{position:relative;background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:14px;cursor:pointer;transition:border-color .15s,background .15s,transform .1s}
   .gcard:active{transform:scale(.98)}
   .gcard.sel{border-color:var(--accent);background:rgba(47,107,255,.09)}
@@ -2520,9 +2536,11 @@
   <!-- RENT GEAR -->
   <section class="view flow" id="gear" data-nonav>
     <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Rent Gear</h1></div>
-    <div class="panel" style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:14px">Reserve in the app, collect at the trek base or get it delivered. Daily rates · refundable deposit.</div>
+    <div class="panel" style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:12px">Reserve in the app, collect at the trek base or get it delivered. Daily rates · refundable deposit.</div>
+    <div class="search" style="margin-bottom:10px"><span class="msr" style="font-size:20px;color:var(--muted)">search</span><input id="gearSearch" type="text" placeholder="Search gear…" autocomplete="off" oninput="gearSearch(this.value)" style="all:unset;flex:1;font-size:14px;color:var(--text)"/></div>
+    <div class="gcats" id="gearCats"></div>
     <div id="gearList"></div>
-    <div class="cta"><button class="btn" onclick="gearEnquire()"><span class="ic" data-i="chat"></span> Enquire to rent</button></div>
+    <div class="cta"><button class="btn" id="gearCta" onclick="gearEnquire()"><span class="ic" data-i="chat"></span> Enquire to rent</button></div>
   </section>
 
   <!-- PERMITS -->

@@ -4076,7 +4076,21 @@ async function delTrek(i){const t=treks[i];if(!(await askConfirm('Delete "'+t.n+
   treks.splice(i,1);deriveTreks();renderHomeChips();renderHome();renderQuick();renderAdmin();
   note('Deleted ✓');}
 /* ---- services: rent gear / permits / adventure activities ---- */
-const gearItems=[['jacket','Down Jacket','-10°C rated','₹150/day'],['shoe','Trekking Shoes','Waterproof, all sizes','₹120/day'],['backpack','Backpack 60L','Rain cover included','₹100/day'],['poles','Trek Poles','Pair, foldable','₹60/day'],['bed','Sleeping Bag','-15°C comfort','₹120/day'],['snow','Micro-spikes','Grip for snow treks','₹90/day']];
+/* full rental catalog, grouped by category — [name, ₹/day] */
+const GEAR_CATS=[
+  {cat:'Footwear',icon:'hiking',items:[['Trekking Shoes',150],['Snow Boots',250],['Mountaineering Boots',400]]},
+  {cat:'Backpacks',icon:'backpack',items:[['30L Daypack',100],['50–55L Trek Backpack',150],['65–70L Expedition Backpack',200],['Duffel Bag (90–100L)',100]]},
+  {cat:'Winter Gear',icon:'ac_unit',items:[['Down Jacket',200],['Waterproof Jacket',120],['Rain Poncho',60],['Gaiters',80]]},
+  {cat:'Camping',icon:'festival',items:[['Sleeping Bag (0°C to -10°C)',200],['Sleeping Bag (-20°C Expedition)',300],['Sleeping Mat',50],['2 Person Tent',400],['4 Person Tent',600],['Camping Chair',100],['Camping Table',200]]},
+  {cat:'Trekking Essentials',icon:'explore',items:[['Trekking Pole (Pair)',80],['Headlamp',50],['Helmet',100],['Climbing Harness',200],['Carabiner Set',50],['Ice Axe',150],['Crampons',150],['Microspikes',100]]},
+  {cat:'Technical Climbing',icon:'terrain',items:[['Static Rope',400],['Dynamic Rope',500],['Ascender (Jumar)',150],['Descender (ATC/Figure 8)',100],['Belay Device',100]]},
+  {cat:'Cooking & Expedition',icon:'outdoor_grill',items:[['Camping Stove',150],['Cooking Set',150],['Mess Tent',800],['Toilet Tent',250]]},
+  {cat:'Electronics',icon:'photo_camera',items:[['Power Bank',100],['GPS Device',300],['Walkie Talkie',250],['GoPro',700],['DSLR Camera',1000],['Drone (DJI Mini Class)',2000],['Tripod',150]]},
+  {cat:'Cycling',icon:'directions_bike',items:[['Mountain Bike',700],['Cycling Helmet',100]]},
+  {cat:'Water Sports',icon:'kayaking',items:[['Kayak',1000],['Life Jacket',150],['Snorkeling Kit',300],['Wetsuit',400]]},
+  {cat:'Winter Sports',icon:'downhill_skiing',items:[['Ski Set',1000],['Snowboard',1200],['Ski Helmet',200]]}
+];
+function gearAllItems(){const out=[];GEAR_CATS.forEach(c=>c.items.forEach(it=>out.push({cat:c.cat,icon:c.icon,name:it[0],price:it[1]})));return out;}
 const permitTypes=[['Forest Entry Permit','Required for most Uttarakhand treks (Sankri, Govindghat).','1–2 days','₹350'],['National Park Permit','Valley of Flowers & Hemkund route entry.','1 day','₹400'],['Eco-Zone / Camping','Designated camping & eco-sensitive-zone clearance.','2 days','₹300'],['Foreigner Permit','Extra documentation for non-Indian trekkers.','3–4 days','₹900']];
 const activitiesData=[['raft','River Rafting','Rishikesh · Grade III','₹1,200'],['para','Paragliding','Mussoorie / Tehri','₹2,500'],['bungee','Bungee Jump','Rishikesh · 83 m','₹3,700'],['ski','Skiing','Auli · with gear','₹2,200'],['camp','Camping','Lakeside · per night','₹999'],['kayak','Kayaking','Tehri Lake','₹1,500']];
 
@@ -4653,16 +4667,17 @@ let gearSel={};
    Recommendations adapt to altitude, season, difficulty & duration,
    and skip gear the user already owns.
    ============================================================ */
+/* prices/names mirror the rental catalog (GEAR_CATS) so the kit total matches */
 const GEAR_CATALOG=[
-  {id:'shoe',   name:'Trekking Shoes', price:120, icon:'hiking',        when:()=>true,                                                why:'grip on rocky trails'},
-  {id:'backpack',name:'50L Backpack',  price:100, icon:'backpack',      when:()=>true,                                                why:'carry your load'},
-  {id:'pole',   name:'Trekking Pole',  price:60,  icon:'hiking',        when:t=>gAlt(t)>=9000||/moderate|difficult/i.test(t.lvl||''), why:'saves your knees on descents'},
-  {id:'headlamp',name:'Headlamp',      price:50,  icon:'flashlight_on', when:t=>(+t.days||1)>=2,                                       why:'early starts & campsites'},
-  {id:'jacket', name:'Down Jacket',    price:150, icon:'checkroom',     when:t=>gCold(t),                                             why:'below-freezing nights'},
-  {id:'bed',    name:'Sleeping Bag',   price:120, icon:'king_bed',      when:t=>(+t.days||1)>=2&&gCold(t),                            why:'warm nights in camp'},
-  {id:'spikes', name:'Micro-spikes',   price:90,  icon:'ac_unit',       when:t=>gSnow(t),                                             why:'traction on snow'},
-  {id:'gaiters',name:'Gaiters',        price:60,  icon:'ac_unit',       when:t=>gSnow(t),                                             why:'keep snow out of your boots'},
-  {id:'rain',   name:'Rain Jacket',    price:70,  icon:'umbrella',      when:t=>gMonsoon(t),                                          why:'monsoon showers'}
+  {id:'shoe',   name:'Trekking Shoes',      price:150, icon:'hiking',        when:()=>true,                                                why:'grip on rocky trails'},
+  {id:'backpack',name:'50–55L Trek Backpack',price:150,icon:'backpack',      when:()=>true,                                                why:'carry your load'},
+  {id:'pole',   name:'Trekking Pole (Pair)',price:80,  icon:'hiking',        when:t=>gAlt(t)>=9000||/moderate|difficult/i.test(t.lvl||''), why:'saves your knees on descents'},
+  {id:'headlamp',name:'Headlamp',           price:50,  icon:'flashlight_on', when:t=>(+t.days||1)>=2,                                       why:'early starts & campsites'},
+  {id:'jacket', name:'Down Jacket',         price:200, icon:'checkroom',     when:t=>gCold(t),                                             why:'below-freezing nights'},
+  {id:'bed',    name:'Sleeping Bag',        price:200, icon:'king_bed',      when:t=>(+t.days||1)>=2&&gCold(t),                            why:'warm nights in camp'},
+  {id:'spikes', name:'Microspikes',         price:100, icon:'ac_unit',       when:t=>gSnow(t),                                             why:'traction on snow'},
+  {id:'gaiters',name:'Gaiters',             price:80,  icon:'ac_unit',       when:t=>gSnow(t),                                             why:'keep snow out of your boots'},
+  {id:'rain',   name:'Waterproof Jacket',   price:120, icon:'umbrella',      when:t=>gMonsoon(t),                                          why:'monsoon showers'}
 ];
 function gAlt(t){const m=String(t&&t.alt||'').replace(/[, ]/g,'').match(/(\d+)/);return m?+m[1]:0;}
 function gSeason(t){return String(t&&t.best||'').toLowerCase();}
@@ -4707,16 +4722,38 @@ function rentKit(trekName){
   wa('Hi Tripomonk, I want to rent the recommended gear kit for '+trekName+':\n'+lines.join('\n')+'\n\nPlease confirm availability and delivery / pickup.');
 }
 function renderQuick(){const q=[['pin','Destinations','dests'],['backpack','Rent Gear','gear'],['permits','Permits','permits'],['para','Activities','activities']];const el=document.getElementById('quick');if(!el)return;el.style.gridTemplateColumns='repeat(4,1fr)';el.innerHTML=q.map(a=>`<div class="qa" onclick="go('${a[2]}')"><div class="qi">${ic(a[0],20)}</div><span>${a[1]}</span></div>`).join('');hydrate(el);}
+let gearCat='All',gearQ='';
+function pickGearCat(c){gearCat=c;renderGear();}
+function gearSearch(v){gearQ=v||'';renderGear();}
+function togGear(name){gearSel[name]=!gearSel[name];renderGear();}
 function renderGear(){
-  const n=Object.values(gearSel).filter(Boolean).length;
-  document.getElementById('gearList').innerHTML='<div class="gear-grid">'+gearItems.map((g,i)=>
-    `<div class="gcard ${gearSel[i]?'sel':''}" onclick="togGear(${i})"><span class="g-chk">${ic('check',13)}</span><div class="g-ic">${ic(g[0],22)}</div><b>${esc(g[1])}</b><small>${esc(g[2])}</small><div class="g-rate">${esc(g[3])}</div></div>`
-  ).join('')+'</div>';
-  const btn=document.querySelector('#gear .cta .btn');
-  if(btn)btn.innerHTML='<span class="ic" data-i="chat"></span> '+(n?('Enquire to rent ('+n+')'):'Enquire to rent');
+  const catsEl=document.getElementById('gearCats');
+  if(catsEl){const cats=['All'].concat(GEAR_CATS.map(c=>c.cat));
+    catsEl.innerHTML=cats.map(c=>`<div class="chip pill ${gearCat===c?'on':''}" onclick="pickGearCat('${jsq(c)}')">${esc(c)}</div>`).join('');}
+  const q=gearQ.toLowerCase().trim();
+  const box=document.getElementById('gearList');if(!box)return;
+  let html='';
+  GEAR_CATS.filter(c=>gearCat==='All'||c.cat===gearCat).forEach(c=>{
+    const items=c.items.filter(it=>!q||it[0].toLowerCase().includes(q));
+    if(!items.length)return;
+    html+=`<div class="gcat-h"><span class="msr">${c.icon}</span>${esc(c.cat)}</div>`;
+    html+=items.map(it=>{const on=!!gearSel[it[0]];
+      return `<div class="grow ${on?'on':''}" onclick="togGear('${jsq(it[0])}')"><div class="grow-tx"><b>${esc(it[0])}</b></div><div class="grow-price">₹${it[1]}<small>/day</small></div><span class="grow-chk">${ic('check',14)}</span></div>`;
+    }).join('');
+  });
+  box.innerHTML=html||`<div class="empty" style="padding:26px 10px"><p>No gear matches “${esc(gearQ)}”.</p></div>`;
+  const sel=gearAllItems().filter(g=>gearSel[g.name]);
+  const total=sel.reduce((s,g)=>s+g.price,0);
+  const btn=document.getElementById('gearCta');
+  if(btn)btn.innerHTML='<span class="ic" data-i="chat"></span> '+(sel.length?`Enquire to rent (${sel.length}) · ₹${total}/day`:'Enquire to rent');
   hydrate(document.getElementById('gear'));}
-function togGear(i){gearSel[i]=!gearSel[i];renderGear();}
-function gearEnquire(){const picked=gearItems.filter((g,i)=>gearSel[i]).map(g=>g[1]);wa(picked.length?('I want to rent: '+picked.join(', ')):'I want to rent trek gear.');}
+function gearEnquire(){
+  const sel=gearAllItems().filter(g=>gearSel[g.name]);
+  if(!sel.length){wa('Hi Tripomonk, I want to rent trek gear. What do you have available?');return;}
+  const lines=sel.map(g=>'• '+g.name+' (₹'+g.price+'/day)');
+  const total=sel.reduce((s,g)=>s+g.price,0);
+  wa('Hi Tripomonk, I want to rent:\n'+lines.join('\n')+'\n\nTotal: ₹'+total+'/day. Please confirm availability and delivery / pickup.');
+}
 function permitIcon(name){name=String(name||'').toLowerCase();
   if(name.includes('forest'))return 'pine';
   if(name.includes('national'))return 'altitude';
