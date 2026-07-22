@@ -749,7 +749,8 @@
   .trek-score{position:relative;width:46px;height:46px;flex:none;display:grid;place-items:center}
   .trek-score svg{position:absolute;inset:0;width:46px;height:46px;transform:rotate(-90deg)}
   .trek-score .tsc-bg{fill:none;stroke:rgba(255,255,255,.26);stroke-width:4}
-  .trek-score .tsc-fg{fill:none;stroke-width:4;stroke-linecap:round}
+  .trek-score .tsc-fg{fill:none;stroke-width:4;stroke-linecap:round;transition:stroke-dashoffset .9s cubic-bezier(.35,1,.4,1)}
+  @media (prefers-reduced-motion: reduce){.trek-score .tsc-fg{transition:none}}
   .trek-score .tsc-num{font-size:15px;font-weight:800;line-height:1;color:currentColor}
   .trek-score.on-photo{position:absolute;top:10px;right:10px;z-index:3;width:44px;height:44px;background:rgba(8,14,24,.58);border-radius:50%;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);box-shadow:0 4px 14px rgba(0,0,0,.4)}
   .trek-score.on-photo svg{width:44px;height:44px}

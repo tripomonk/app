@@ -88,7 +88,7 @@ const SVGIC={
 function ic(n,s){s=s||20;
   if(SVGIC[n])return `<span class="ic" style="display:inline-flex;width:${s}px;height:${s}px">${SVGIC[n].replace('<svg','<svg width="'+s+'" height="'+s+'"')}</span>`;
   return `<span class="msr" style="font-size:${s}px">${IMAP[n]||'circle'}</span>`;}
-function hydrate(root){(root||document).querySelectorAll('[data-i]').forEach(el=>{el.innerHTML=ic(el.dataset.i,+el.dataset.sz||20);el.removeAttribute('data-i');});fitCarousels(root);}
+function hydrate(root){(root||document).querySelectorAll('[data-i]').forEach(el=>{el.innerHTML=ic(el.dataset.i,+el.dataset.sz||20);el.removeAttribute('data-i');});fitCarousels(root);if(typeof animateTrekScores==='function')animateTrekScores();}
 
 /* ---------- data ---------- */
 const U='https://images.unsplash.com/photo-';
@@ -5286,8 +5286,42 @@ function bandColor(s){return s<50?'#2fbf8f':s<65?'#2f6bff':s<80?'#e0952a':s<90?'
    cls 'on-photo' adds a frosted dark disc so it reads over any card image. */
 function trekScoreBadge(t,cls){
   const s=trekReqScore(t);if(!s)return '';
-  const col=bandColor(s),R=19,C=2*Math.PI*R,off=C*(1-s/100);
-  return `<div class="trek-score ${cls||''}" style="color:${col}" title="Trek Score ${s} / 100"><svg viewBox="0 0 46 46"><circle class="tsc-bg" cx="23" cy="23" r="${R}"/><circle class="tsc-fg" cx="23" cy="23" r="${R}" style="stroke:${col};stroke-dasharray:${C.toFixed(1)};stroke-dashoffset:${off.toFixed(1)}"/></svg><span class="tsc-num">${s}</span></div>`;
+  const col=bandColor(s),R=19,C=2*Math.PI*R;
+  /* Starts empty (ring at 0, number 0). animateTrekScores() sweeps the ring + counts
+     the number up to the real value the moment the badge scrolls into view. */
+  return `<div class="trek-score ${cls||''}" style="color:${col}" title="Trek Score ${s} / 100" data-score="${s}" data-circ="${C.toFixed(2)}"><svg viewBox="0 0 46 46"><circle class="tsc-bg" cx="23" cy="23" r="${R}"/><circle class="tsc-fg" cx="23" cy="23" r="${R}" style="stroke:${col};stroke-dasharray:${C.toFixed(2)};stroke-dashoffset:${C.toFixed(2)}"/></svg><span class="tsc-num">0</span></div>`;
+}
+/* Count-up + ring sweep, fired once per badge when it scrolls into view.
+   Geometric (getBoundingClientRect) not IntersectionObserver — the coverflow cards
+   animate with opacity/transform, which IO can miss (same reason lazyBg is geometric). */
+let _tsScrollWired=false;
+function runTrekScore(el){
+  if(el.getAttribute('data-tsdone'))return;
+  el.setAttribute('data-tsdone','1');
+  const target=+el.getAttribute('data-score')||0, C=+el.getAttribute('data-circ')||0;
+  const fg=el.querySelector('.tsc-fg'), num=el.querySelector('.tsc-num');
+  const finalOff=(C*(1-target/100)).toFixed(2);
+  const reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduce){if(fg)fg.style.strokeDashoffset=finalOff;if(num)num.textContent=String(target);return;}
+  requestAnimationFrame(()=>{if(fg)fg.style.strokeDashoffset=finalOff;});   /* CSS transition sweeps the ring */
+  const dur=900,t0=performance.now();
+  const tick=now=>{const p=Math.min(1,(now-t0)/dur),e=1-Math.pow(1-p,3);
+    if(num)num.textContent=String(Math.round(target*e));
+    if(p<1)requestAnimationFrame(tick);else if(num)num.textContent=String(target);};
+  requestAnimationFrame(tick);
+}
+function animateTrekScores(){
+  const check=()=>{const vh=window.innerHeight||800;
+    document.querySelectorAll('.trek-score[data-score]:not([data-tsdone])').forEach(el=>{
+      const r=el.getBoundingClientRect();
+      if(r.width>0&&r.top<vh-16&&r.bottom>16)runTrekScore(el);
+    });};
+  check();setTimeout(check,180);setTimeout(check,650);
+  if(!_tsScrollWired){_tsScrollWired=true;let t=0;
+    const onScroll=()=>{clearTimeout(t);t=setTimeout(check,80);};
+    window.addEventListener('scroll',onScroll,{passive:true,capture:true});   /* capture catches inner scroll containers too */
+    window.addEventListener('resize',onScroll,{passive:true});
+  }
 }
 /* compact readiness chip for the search card footer — status word only; the
    circular badge already shows the number, so we don't repeat it. */
@@ -5570,6 +5604,8 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='fitnessTest')renderFitnessTest();
   if(id==='trainingPlan')renderTrainingPlan();
   staggerActive();saveNav();
+  /* animate any Trek Score badges the just-shown view revealed (view switches fire no scroll event) */
+  if(typeof animateTrekScores==='function')setTimeout(animateTrekScores,60);
 }
 /* in-app back button → use browser history so it stays in sync with device back */
 function back(){history.back();}
