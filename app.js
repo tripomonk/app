@@ -1887,7 +1887,9 @@ async function openDetailByName(n){
   note('This trek isn’t available right now.','Not found');
 }
 function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
-  const hh=document.getElementById('dHero');hh.style.backgroundImage=`url('${t.img}')`;hh.style.transform='';
+  const hh=document.getElementById('dHero');hh.style.transform='';
+  hh.classList.add('img-loading');hh.style.backgroundImage=`url('${t.img}')`;
+  const _hi=new Image();_hi.onload=_hi.onerror=()=>hh.classList.remove('img-loading');_hi.src=t.img;   /* shimmer skeleton until the hero photo is ready */
   const dc=document.getElementById('dCredit');
   if(dc){if(t.credit){dc.innerHTML='<span class="msr">photo_camera</span> '+esc(t.credit);dc.classList.add('on');}else dc.classList.remove('on');}
   document.getElementById('dName').textContent=t.n;
@@ -6752,7 +6754,7 @@ async function openHostTripDetail(id){
   const dateRange=when+(t.end_date?' → '+new Date(t.end_date+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'}):'');
   const stat=(ic2,v,l)=>v?`<div class="stat"><div class="ic" style="display:grid;place-items:center">${ic(ic2,20)}</div><b style="font-size:12px">${esc(String(v))}</b><small>${l}</small></div>`:'';
   box.innerHTML=
-    (t.img?`<div class="htv-img" style="background-image:url('${esc(t.img)}')"></div>`:'')
+    (t.img?`<div class="htv-img img-loading" style="background-image:url('${esc(t.img)}')"></div>`:'')
     +`<h1 style="margin:2px 0 2px;font-size:22px">${esc(t.title)}</h1>`
     +`<div class="reg" style="color:var(--muted);font-size:13px;margin-bottom:8px">${ic('pin',13)} ${esc(t.destination)}</div>`
     +`<button class="htv-share" onclick="shareHostTrip('${jsq(t.id)}','${jsq(t.title)}')">${ic('share',14)} Share this trip</button>`
@@ -6770,6 +6772,8 @@ async function openHostTripDetail(id){
   const mx=document.getElementById('htvMax');if(mx&&t.max_people)mx.textContent='up to '+t.max_people;
   htvRecalc();
   hydrate(box);
+  const _hti=box.querySelector('.htv-img.img-loading');
+  if(_hti&&t.img){const p=new Image();p.onload=p.onerror=()=>_hti.classList.remove('img-loading');p.src=t.img;}
 }
 function htvStep(d){
   const t=_htvTrip;if(!t)return;

@@ -1222,14 +1222,17 @@
     background:var(--accent);color:#fff}
   .pref-group .chips{gap:8px;margin:0}
   /* --- Compare Treks --- */
-  .cmp-home{display:flex;align-items:center;gap:13px;margin:16px 0 4px;padding:15px;border-radius:18px;cursor:pointer;
-    background:linear-gradient(135deg,rgba(255,122,89,.16),rgba(47,107,255,.08));border:1px solid rgba(255,122,89,.3);transition:transform .1s}
+  .cmp-home{position:relative;overflow:hidden;display:flex;align-items:center;gap:14px;margin:18px 0 4px;padding:16px;border-radius:20px;cursor:pointer;
+    background:linear-gradient(120deg,rgba(47,107,255,.16),rgba(160,107,255,.13));border:1px solid rgba(47,107,255,.28);transition:transform .12s}
+  .cmp-home::before{content:"";position:absolute;right:-34px;top:-34px;width:130px;height:130px;border-radius:50%;background:radial-gradient(circle,rgba(255,122,89,.26),transparent 68%);pointer-events:none}
   .cmp-home:active{transform:scale(.99)}
-  .cmp-home-ic{width:46px;height:46px;flex:none;border-radius:13px;display:grid;place-items:center;background:rgba(255,122,89,.2);color:#ff7a59}
-  .cmp-home-ic .msr{font-size:24px}
-  .cmp-home-tx{flex:1;min-width:0}
-  .cmp-home-tx b{font-size:15px;display:block}
-  .cmp-home-tx small{display:block;color:var(--muted);font-size:12px;line-height:1.45;margin-top:2px}
+  .cmp-home-ic{position:relative;z-index:1;width:50px;height:50px;flex:none;border-radius:15px;display:grid;place-items:center;background:linear-gradient(135deg,var(--accent),#a06bff);color:#fff;box-shadow:0 10px 22px -8px rgba(47,107,255,.6)}
+  .cmp-home-ic .msr{font-size:26px}
+  .cmp-home-tx{flex:1;min-width:0;position:relative;z-index:1}
+  .cmp-home-tx b{font-size:16px;display:block;font-weight:800;letter-spacing:-.2px}
+  .cmp-home-tx small{display:block;color:var(--muted);font-size:12px;line-height:1.45;margin-top:3px}
+  .cmp-home-go{position:relative;z-index:1;flex:none;width:38px;height:38px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;box-shadow:0 6px 16px -6px var(--accent)}
+  .cmp-home-go .msr{font-size:20px}
   .cmp-home .ch{flex:none;color:var(--muted2);font-size:18px}
   .cmp-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
   .cmp-chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:6px 12px;border-radius:999px;
@@ -2172,6 +2175,10 @@
   .skel-row{display:flex;gap:13px;align-items:center;padding:11px;margin-bottom:13px;background:var(--card);border:1px solid var(--stroke);border-radius:var(--r)}
   .skel-row .sk-av{width:104px;height:104px;border-radius:15px;flex:none}
   .skel-row .sk-l{flex:1}.skel-row .sk-l>div{height:12px;border-radius:6px;margin-bottom:9px}
+  /* image-loading shimmer: sits behind real controls (::before renders under later DOM children) */
+  .img-loading{position:relative}
+  .img-loading::before{content:"";position:absolute;inset:0;background:linear-gradient(100deg,rgba(255,255,255,.06) 30%,rgba(255,255,255,.16) 50%,rgba(255,255,255,.06) 70%);background-size:220% 100%;animation:skl 1.3s ease-in-out infinite;pointer-events:none}
+  html.light .img-loading::before{background:linear-gradient(100deg,rgba(12,24,44,.05) 30%,rgba(12,24,44,.12) 50%,rgba(12,24,44,.05) 70%);background-size:220% 100%}
 
   /* community social refresh */
   #community.community-view{padding-left:calc(16px + var(--safe-left));padding-right:calc(16px + var(--safe-right));background:radial-gradient(110% 42% at 50% -8%, rgba(47,107,255,.26) 0%, transparent 58%)}
@@ -2320,9 +2327,9 @@
     <!-- host trips: a rail when hosts are live, a recruitment card when they aren't -->
     <div id="homeHosts"></div>
     <div class="cmp-home" onclick="go('compare')">
-      <div class="cmp-home-ic"><span class="msr">balance</span></div>
-      <div class="cmp-home-tx"><b>🔥 Compare Treks</b><small>Compare treks side by side and choose the one that's right for you.</small></div>
-      <span class="ch">▸</span>
+      <div class="cmp-home-ic"><span class="msr">compare_arrows</span></div>
+      <div class="cmp-home-tx"><b>Compare Treks</b><small>Line up 2–3 treks side by side — price, difficulty, altitude &amp; your readiness.</small></div>
+      <span class="cmp-home-go"><span class="msr">arrow_forward</span></span>
     </div>
     <div class="sec" style="margin-top:20px"><h2>Trek News &amp; Alerts</h2><a onclick="go('news')">View all</a></div>
     <div id="homeNews"></div>
@@ -2391,7 +2398,7 @@
       </div>
       <div class="stats" id="dStats"></div>
     </div>
-    <div class="blk reveal" style="padding-top:0"><div id="dReadiness"></div></div>
+    <div class="blk reveal" style="padding-top:10px"><div id="dReadiness"></div></div>
     <div class="blk reveal"><h2>About the Trek</h2><p id="dDesc"></p></div>
     <div class="blk reveal"><h2>Highlights</h2><div class="hl" id="dHl"></div></div>
     <div class="blk reveal"><h2 style="display:flex;justify-content:space-between;align-items:center">Conditions <a style="font-size:12px;color:var(--accent2);cursor:pointer" onclick="openNav(cart.trek)">Trail map →</a></h2><div class="stats" id="dCond"></div></div>
