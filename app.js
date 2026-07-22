@@ -5382,8 +5382,8 @@ function fitSubmit(){
 
 /* ---- AI Training Plan ----
    Renders a solid deterministic plan INSTANTLY (always works, offline-safe), then
-   asks Gemini (via the fitness-coach edge function) to personalise today's session
-   + a coaching note. If the GEMINI_API_KEY secret isn't set, or the function isn't
+   asks Claude (via the fitness-coach edge function) to personalise today's session
+   + a coaching note. If the ANTHROPIC_API_KEY secret isn't set, or the function isn't
    deployed, the deterministic plan simply stays — nothing breaks. */
 let _planTrek='';
 function openTrainingPlan(name){_planTrek=name||'';go('trainingPlan');}
@@ -5467,7 +5467,7 @@ function renderTrainingPlan(){
   hydrate(box);
   aiEnhancePlan(t,you,goal,days);
 }
-/* ask Gemini to personalise the plan; silently no-ops if unavailable */
+/* ask Claude to personalise the plan; silently no-ops if unavailable */
 async function aiEnhancePlan(t,you,goal,days){
   try{
     if(!(typeof SB!=='undefined'&&SB.SUPABASE_URL))return;
