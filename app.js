@@ -272,9 +272,9 @@ function swrGet(key){try{const v=JSON.parse(localStorage.getItem('tmk_swr_'+key)
 function swrSet(key,data){try{localStorage.setItem('tmk_swr_'+key,JSON.stringify({t:Date.now(),data}));}catch(e){}}
 function swrFresh(key,ttl){const v=swrGet(key);return !!(v&&ttl&&(Date.now()-v.t<ttl));}
 async function loadTreks(){ if(!sbOn) return;
-  try{let r=await fetch(SB.SUPABASE_URL+'/rest/v1/treks?select=*&order=sort.asc',{headers:sbHeaders()});
+  try{let r=await fetch(SB.SUPABASE_URL+'/rest/v1/treks?select=*&order=sort.asc',{headers:sbHeaders(),cache:'no-store'});
     /* table may not have a `sort` column — retry ordering by id */
-    if(!r.ok) r=await fetch(SB.SUPABASE_URL+'/rest/v1/treks?select=*&order=id.asc',{headers:sbHeaders()});
+    if(!r.ok) r=await fetch(SB.SUPABASE_URL+'/rest/v1/treks?select=*&order=id.asc',{headers:sbHeaders(),cache:'no-store'});
     if(!r.ok) return; const rows=await r.json(); if(!rows||!rows.length) return;
     /* DB is the source of truth for editable fields. Merge DB rows OVER the hardcoded
        fallback by name — so an admin edit persists for everyone even when not all treks
@@ -4358,11 +4358,13 @@ function addBatch(){const g=id=>document.getElementById(id);
 function delBatch(i){const m=getBatchMap();if(!m[depTrek]||!m[depTrek].length)m[depTrek]=getBatches(depTrek).slice();
   m[depTrek].splice(i,1);setBatchMap(m);renderDepartures();}
 /* ----- Settings ----- */
+const APP_BUILD='280';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
     <button class="btn" onclick="saveSettings()">Save settings</button></div>
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:8px">Secure admin access</b><div class="note2">Trek edits, packing updates and bookings now use Supabase protected admin functions. Do not paste secret database keys in the app.</div></div>
+  <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:6px">App build</b><div class="note2">This device is running <b>v${APP_BUILD}</b>. If this isn't the latest you deployed, fully close &amp; reopen the app (or clear site data) so edits save correctly.</div></div>
   <button class="btn ghost" onclick="adminExit()"><span class="ic" data-i="logout"></span> Log out of admin</button>`;
   hydrate(document.getElementById('adminBody'));
 }
