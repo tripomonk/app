@@ -4141,7 +4141,10 @@ async function sbWriteChecked(method,path,body){
   if(path.indexOf('treks')===0){
     const id=(path.split('eq.')[1]||'');
     if(method==='POST')res=await adminCall('save_trek',{trek:body});
-    else if(method==='PATCH'&&body&&Object.prototype.hasOwnProperty.call(body,'packing'))res=await adminCall('save_packing',{id:id,packing:body.packing});
+    /* a packing-only save carries JUST {packing:…}; a full trek save also carries name/price/etc
+       (and a packing key). Route to save_packing ONLY when there's no trek name — otherwise a trek
+       edit was silently going down the packing path and its price/other fields never saved. */
+    else if(method==='PATCH'&&body&&Object.prototype.hasOwnProperty.call(body,'packing')&&!Object.prototype.hasOwnProperty.call(body,'name'))res=await adminCall('save_packing',{id:id,packing:body.packing});
     else if(method==='PATCH')res=await adminCall('save_trek',{id:id,trek:body});
     else if(method==='DELETE')res=await adminCall('delete_trek',{id:id});
   }
@@ -4358,7 +4361,7 @@ function addBatch(){const g=id=>document.getElementById(id);
 function delBatch(i){const m=getBatchMap();if(!m[depTrek]||!m[depTrek].length)m[depTrek]=getBatches(depTrek).slice();
   m[depTrek].splice(i,1);setBatchMap(m);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='280';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='281';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
