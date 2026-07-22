@@ -1536,6 +1536,47 @@
   .adm-stat>div{flex:1;background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:13px 14px}
   .adm-stat b{font-size:19px;display:block;line-height:1.1}
   .adm-stat small{font-size:10.5px;color:var(--muted);display:block;margin-top:3px}
+  /* ---- trek manager (searchable list) ---- */
+  .adm-search{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--stroke);border-radius:12px;padding:0 12px;margin-bottom:10px}
+  .adm-search .msr{font-size:19px;color:var(--muted)}
+  .adm-search input{all:unset;flex:1;font-size:14px;color:var(--text);padding:11px 0;min-width:0}
+  .adm-chips{display:flex;gap:7px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}
+  .adm-chips::-webkit-scrollbar{display:none}
+  .adm-chip{flex:none;font-family:inherit;font-size:12px;font-weight:600;padding:7px 13px;border-radius:999px;border:1px solid var(--stroke);background:var(--card);color:var(--muted);cursor:pointer;white-space:nowrap}
+  .adm-chip.on{border-color:var(--accent2);background:rgba(47,107,255,.14);color:var(--accent2)}
+  .adm-count{font-size:11.5px;color:var(--muted);margin:6px 2px 9px}
+  .adm-trek-list{display:flex;flex-direction:column;gap:9px}
+  .adm-tc{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:9px;cursor:pointer;transition:transform .12s}
+  .adm-tc:active{transform:scale(.99)}
+  .adm-tc-ph{width:58px;height:58px;border-radius:11px;background-size:cover;background-position:center;background-color:#16283f;flex:none;position:relative;overflow:hidden}
+  .adm-tc-soon{position:absolute;bottom:0;left:0;right:0;font-size:8px;font-weight:800;letter-spacing:.03em;text-align:center;background:rgba(224,149,42,.92);color:#fff;padding:2px 0}
+  .adm-tc-bd{flex:1;min-width:0}
+  .adm-tc-bd b{font-size:14px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .adm-tc-bd small{font-size:11.5px;color:var(--muted);display:block;margin:2px 0 6px}
+  .adm-tc-tags{display:flex;gap:6px}
+  .adm-tc-lvl,.adm-tc-req{font-size:10px;font-weight:700;padding:3px 8px;border-radius:8px;white-space:nowrap}
+  .adm-tc-lvl{background:rgba(47,107,255,.13);color:var(--accent2)}
+  .adm-tc-req{background:rgba(127,140,170,.15);color:var(--muted)}
+  .adm-tc-act{display:flex;flex-direction:column;gap:6px;flex:none}
+  .adm-ic{width:34px;height:34px;border-radius:10px;border:1px solid var(--stroke);background:var(--bg);display:grid;place-items:center;cursor:pointer;color:var(--text);padding:0}
+  .adm-ic .msr{font-size:18px}
+  .adm-ic.del{color:#ff7a7a}
+  /* ---- trek editor ---- */
+  .adm-editor{background:var(--card);border:1px solid var(--stroke);border-radius:18px;padding:16px}
+  .adm-ed-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+  .adm-ed-head b{font-size:17px}
+  .adm-sec{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--accent2);margin:16px 0 9px}
+  .adm-editor .field{margin-bottom:11px}
+  .adm-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .adm-row2 .field{min-width:0}
+  .adm-status{display:flex;gap:6px}
+  .adm-status-btn{flex:1;font-family:inherit;font-size:12.5px;font-weight:600;height:46px;border-radius:11px;border:1px solid var(--stroke);background:var(--bg);color:var(--muted);cursor:pointer}
+  .adm-status-btn.on{border-color:var(--accent2);background:rgba(47,107,255,.14);color:var(--accent2)}
+  .adm-hint{font-size:11px;color:var(--muted);margin:-2px 2px 0;line-height:1.4}
+  .adm-ta{all:unset;display:block;width:100%;box-sizing:border-box;min-height:82px;background:var(--bg);border:1px solid var(--stroke);border-radius:12px;padding:11px 12px;font-size:14px;color:var(--text);line-height:1.45;font-family:inherit}
+  .adm-imgprev{width:100%;height:130px;border-radius:12px;background-size:cover;background-position:center;background-color:#16283f;border:1px solid var(--stroke);margin-top:9px}
+  .adm-ed-foot{display:flex;gap:10px;margin-top:20px}
+  .adm-ed-foot .btn{flex:1}
 
   /* ---- trip captain polish ---- */
   .cap-hero{position:relative;overflow:hidden;border-radius:22px;padding:26px 20px;text-align:center;cursor:pointer;

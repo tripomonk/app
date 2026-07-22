@@ -278,7 +278,7 @@ async function loadTreks(){ if(!sbOn) return;
     if(!r.ok) return; const rows=await r.json(); if(!rows||!rows.length) return;
     treks.length=0;
     rows.forEach(d=>treks.push({n:d.name,region:d.region,img:d.img,r:d.rating,rev:d.reviews,lvl:d.level,days:d.days,
-      alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,credit:d.credit||'',packing:d.packing||null,_id:d.id}));
+      alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,credit:d.credit||'',packing:d.packing||null,req:(typeof d.req_score==='number'?d.req_score:null),_id:d.id}));
     deriveTreks();
     renderHomeChips(); renderHome(); renderQuick();
     if(cur==='explore') renderExplore();
@@ -4121,7 +4121,7 @@ async function sbWriteChecked(method,path,body){
   if(!res||!res.ok){note((res&&res.error)||'Admin save failed.','Save failed');return false;}
   return true;
 }
-function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null};}
+function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null,req_score:(typeof t.req==='number'?t.req:null)};}
 let editIdx=-1, adminTab='Treks', depTrek=null;
 const ADM_TAB_IC={Bookings:'receipt_long',Treks:'landscape',Departures:'event',Packing:'checklist',Hosts:'groups',Staff:'badge',Settings:'settings'};
 function renderAdmin(){
@@ -4210,10 +4210,50 @@ async function renderAdminBookings(){
   hydrate(box);
 }
 function setAdminTab(t){adminTab=t;renderAdmin();}
-function renderAdminTreks(){document.getElementById('adminBody').innerHTML=
-  treks.map((t,i)=>`<div class="mrow" style="cursor:default"><div class="t" onclick="editTrek(${i})" style="cursor:pointer"><b>${esc(t.n)}</b><small>${esc(t.region)} · ₹${Number(t.price).toLocaleString('en-IN')} · ${t.lvl}${t.soon?' · Coming soon':''}</small></div><span class="ic" onclick="editTrek(${i})" style="color:var(--accent2);cursor:pointer">${ic('edit',18)}</span><span class="ic" onclick="delTrek(${i})" style="color:#ff7a7a;cursor:pointer;margin-left:10px">${ic('alert',18)}</span></div>`).join('')
-  +'<button class="btn ghost" style="margin-top:6px" onclick="newTrek()">+ Add a trek</button>';
-  hydrate(document.getElementById('adminBody'));
+let _admQ='',_admStatus='All',_admRegion='All',_admDiff='All';
+function admTrekFiltered(){
+  const q=_admQ.trim().toLowerCase();
+  return treks.map((t,i)=>({t,i})).filter(({t})=>{
+    if(_admStatus==='Live'&&t.soon)return false;
+    if(_admStatus==='Coming soon'&&!t.soon)return false;
+    if(_admRegion!=='All'&&t.region!==_admRegion)return false;
+    if(_admDiff!=='All'&&(t.lvl||'')!==_admDiff)return false;
+    if(q&&!((t.n+' '+(t.region||'')).toLowerCase().includes(q)))return false;
+    return true;
+  });
+}
+function admTrekCard(t,i){
+  const req=trekReqScore(t), img=(t.img||'').split('?')[0];
+  return `<div class="adm-tc" onclick="editTrek(${i})">
+    <div class="adm-tc-ph" style="background-image:url('${esc(img)}')">${t.soon?'<span class="adm-tc-soon">Soon</span>':''}</div>
+    <div class="adm-tc-bd"><b>${esc(t.n)}</b><small>${esc(t.region||'—')} · ${t.days||'?'}d · ₹${Number(t.price||0).toLocaleString('en-IN')}</small>
+      <div class="adm-tc-tags"><span class="adm-tc-lvl">${esc(t.lvl||'—')}</span><span class="adm-tc-req">Score ${req}</span></div></div>
+    <div class="adm-tc-act"><button class="adm-ic" onclick="event.stopPropagation();editTrek(${i})" title="Edit"><span class="msr">edit</span></button>
+      <button class="adm-ic del" onclick="event.stopPropagation();delTrek(${i})" title="Delete"><span class="msr">delete</span></button></div>
+  </div>`;
+}
+/* only the list + count re-render on each keystroke, so the search box keeps focus */
+function renderAdmTrekList(){
+  const wrap=document.getElementById('admTrekList');if(!wrap)return;
+  const list=admTrekFiltered();
+  wrap.innerHTML=`<div class="adm-count">${list.length} trek${list.length!==1?'s':''}</div>
+    <div class="adm-trek-list">${list.map(({t,i})=>admTrekCard(t,i)).join('')||'<div class="empty"><p>No treks match your filters.</p></div>'}</div>`;
+  hydrate(wrap);
+}
+function renderAdminTreks(){
+  const box=document.getElementById('adminBody');
+  const live=treks.filter(t=>!t.soon).length, soon=treks.length-live;
+  const regions=['All',...[...new Set(treks.map(t=>t.region).filter(Boolean))].sort()];
+  const chip=(v,cur,onc)=>`<button class="adm-chip ${v===cur?'on':''}" onclick="${onc}">${esc(v)}</button>`;
+  box.innerHTML=`
+    <div class="adm-stat"><div><b>${treks.length}</b><small>Total</small></div><div><b>${live}</b><small>Live</small></div><div><b>${soon}</b><small>Coming soon</small></div></div>
+    <div class="adm-search"><span class="msr">search</span><input placeholder="Search treks by name or region…" value="${esc(_admQ)}" oninput="_admQ=this.value;renderAdmTrekList()"></div>
+    <div class="adm-chips">${['All','Live','Coming soon'].map(v=>chip(v,_admStatus,`_admStatus='${v}';renderAdminTreks()`)).join('')}</div>
+    <div class="adm-chips">${['All','Easy','Moderate','Difficult'].map(v=>chip(v,_admDiff,`_admDiff='${v}';renderAdminTreks()`)).join('')}</div>
+    <div class="adm-chips">${regions.map(v=>chip(v,_admRegion,`_admRegion='${jsq(v)}';renderAdminTreks()`)).join('')}</div>
+    <div id="admTrekList"></div>
+    <button class="btn" style="margin-top:14px" onclick="newTrek()"><span class="msr">add</span> Add a trek</button>`;
+  hydrate(box);renderAdmTrekList();
 }
 /* ----- Departures (batches) ----- */
 function getBatchMap(){try{return JSON.parse(localStorage.getItem('tmk_batches')||'{}');}catch(e){return {};}}
@@ -4255,37 +4295,58 @@ function saveSettings(){const g=id=>document.getElementById(id);
 }catch(e){}
   note('Settings saved.');}
 function fld(id,label,val,ph){return `<div class="field"><label>${label}</label><div class="inp"><input id="${id}" value="${esc(val==null?'':val)}" placeholder="${ph||''}"></div></div>`;}
+function admSetStatus(live){const l=document.getElementById('admStatusLive'),s=document.getElementById('admStatusSoon');if(l)l.classList.toggle('on',live);if(s)s.classList.toggle('on',!live);}
 function showAdminForm(t){const f=document.getElementById('adminForm');
-  const lv=t.lvl||'Easy';
-  f.innerHTML=`<div class="panel" style="margin-bottom:16px">
-    <b style="display:block;margin-bottom:10px">${editIdx<0?'Add trek':'Edit trek'}</b>
-    ${fld('admN','Name',t.n,'Trek name')}
+  const lv=t.lvl||'Easy', img=(t.img||'').split('?')[0];
+  const reqVal=(t.req!=null?t.req:''), reqAuto=t.n?trekReqScore(t):'';
+  f.innerHTML=`<div class="adm-editor">
+    <div class="adm-ed-head"><b>${editIdx<0?'Add a trek':'Edit trek'}</b><button class="adm-ic" onclick="closeAdminForm()" title="Close"><span class="msr">close</span></button></div>
+
+    <div class="adm-sec">Basics</div>
+    ${fld('admN','Trek name',t.n,'Kedarkantha')}
     ${fld('admReg','Region',t.region,'Uttarakhand')}
-    <div class="field"><label>Difficulty</label><div class="inp"><select id="admLvl" style="all:unset;flex:1;color:var(--text)">
-      ${['Easy','Moderate','Difficult'].map(o=>`<option ${o===lv?'selected':''} style="color:#000">${o}</option>`).join('')}</select></div></div>
-    ${fld('admPrice','Price (₹)',t.price,'8999')}
-    ${fld('admDays','Days',t.days,'5')}
-    ${fld('admAlt','Max altitude',t.alt,'12,500 ft')}
-    ${fld('admDist','Distance',t.dist,'20 km')}
-    ${fld('admBest','Best time',t.best,'Dec – Apr')}
-    ${fld('admRate','Rating',t.r,'4.8')}
-    ${fld('admRev','Reviews',t.rev,'860')}
-    ${fld('admImg','Image URL',(t.img||'').split('?')[0],'https://...')}
-    <div class="field"><label>Description</label><div class="inp"><input id="admDesc" value="${esc(t.desc||'')}" placeholder="Short description"></div></div>
-    <div class="addon" style="margin:4px 0 12px"><div class="t">Coming soon (not bookable)</div><div class="toggle ${t.soon?'on':''}" id="admSoon" onclick="this.classList.toggle('on')"><i></i></div></div>
-    <div style="display:flex;gap:10px"><button class="btn ghost" style="flex:1" onclick="closeAdminForm()">Cancel</button><button class="btn" style="flex:1.3" onclick="saveTrek()">Save trek</button></div>
+    <div class="adm-row2">
+      <div class="field"><label>Difficulty</label><div class="inp"><select id="admLvl" style="all:unset;flex:1;color:var(--text)">${['Easy','Moderate','Difficult'].map(o=>`<option ${o===lv?'selected':''} style="color:#000">${o}</option>`).join('')}</select></div></div>
+      <div class="field"><label>Status</label><div class="adm-status"><button type="button" class="adm-status-btn ${!t.soon?'on':''}" id="admStatusLive" onclick="admSetStatus(true)">Live</button><button type="button" class="adm-status-btn ${t.soon?'on':''}" id="admStatusSoon" onclick="admSetStatus(false)">Soon</button></div></div>
+    </div>
+
+    <div class="adm-sec">Trip details</div>
+    <div class="adm-row2">${fld('admDays','Days',t.days,'5')}${fld('admAlt','Max altitude',t.alt,'12,500 ft')}</div>
+    <div class="adm-row2">${fld('admDist','Distance',t.dist,'20 km')}${fld('admBest','Best time',t.best,'Dec – Apr')}</div>
+
+    <div class="adm-sec">Pricing &amp; readiness</div>
+    <div class="adm-row2">${fld('admPrice','Price (₹)',t.price,'8999')}
+      <div class="field"><label>Required trek score</label><div class="inp"><input id="admReq" type="number" min="0" max="100" value="${esc(reqVal)}" placeholder="auto${reqAuto!==''?' ('+reqAuto+')':''}"></div></div></div>
+    <div class="adm-hint">Leave the score blank to auto-calculate it from difficulty, altitude &amp; days.</div>
+
+    <div class="adm-sec">Ratings</div>
+    <div class="adm-row2">${fld('admRate','Rating',t.r,'4.8')}${fld('admRev','Reviews',t.rev,'860')}</div>
+
+    <div class="adm-sec">Media</div>
+    ${fld('admImg','Image URL',img,'https://…')}
+    <div class="adm-imgprev" id="admImgPrev" style="${img?`background-image:url('${esc(img)}')`:''}"></div>
+
+    <div class="adm-sec">Description</div>
+    <div class="field"><textarea id="admDesc" class="adm-ta" placeholder="A short, inviting description of the trek…">${esc(t.desc||'')}</textarea></div>
+
+    <div class="adm-ed-foot"><button class="btn ghost" onclick="closeAdminForm()">Cancel</button><button class="btn" onclick="saveTrek()"><span class="msr">check</span> Save trek</button></div>
   </div>`;
   f.style.display='block';hydrate(f);f.scrollIntoView({behavior:'smooth',block:'start'});
+  const imgInp=document.getElementById('admImg');
+  if(imgInp)imgInp.addEventListener('input',()=>{const p=document.getElementById('admImgPrev');if(p)p.style.backgroundImage=imgInp.value.trim()?`url('${imgInp.value.split('?')[0].replace(/'/g,'%27')}')`:'';});
 }
 function newTrek(){editIdx=-1;adminTab='Treks';renderAdmin();showAdminForm({lvl:'Easy',region:'Uttarakhand'});}
 function editTrek(i){editIdx=i;showAdminForm(treks[i]);}
 function closeAdminForm(){const f=document.getElementById('adminForm');f.style.display='none';f.innerHTML='';}
 async function saveTrek(){const g=id=>document.getElementById(id);
+  const reqRaw=(g('admReq')?g('admReq').value:'').trim();
+  const req=reqRaw===''?null:Math.max(0,Math.min(100,parseInt(reqRaw)||0));
+  const soon=g('admStatusSoon')?g('admStatusSoon').classList.contains('on'):false;
   const t={n:g('admN').value.trim()||'Untitled',region:g('admReg').value.trim()||'Uttarakhand',lvl:g('admLvl').value,
     price:parseInt(g('admPrice').value)||0,days:parseInt(g('admDays').value)||1,alt:g('admAlt').value.trim(),
     dist:g('admDist').value.trim(),best:g('admBest').value.trim(),r:parseFloat(g('admRate').value)||4.7,
     rev:g('admRev').value.trim()||'0',img:g('admImg').value.trim(),desc:g('admDesc').value.trim(),
-    soon:g('admSoon').classList.contains('on')};
+    req:req,soon:soon};
   if(editIdx<0){treks.push(t);} else {t._id=treks[editIdx]._id;treks[editIdx]=t;}
   deriveTreks();renderHomeChips();renderHome();renderQuick();
   closeAdminForm();renderAdmin();
