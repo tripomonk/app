@@ -276,9 +276,17 @@ async function loadTreks(){ if(!sbOn) return;
     /* table may not have a `sort` column — retry ordering by id */
     if(!r.ok) r=await fetch(SB.SUPABASE_URL+'/rest/v1/treks?select=*&order=id.asc',{headers:sbHeaders()});
     if(!r.ok) return; const rows=await r.json(); if(!rows||!rows.length) return;
-    treks.length=0;
-    rows.forEach(d=>treks.push({n:d.name,region:d.region,img:d.img,r:d.rating,rev:d.reviews,lvl:d.level,days:d.days,
-      alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,credit:d.credit||'',packing:d.packing||null,req:(typeof d.req_score==='number'?d.req_score:null),_id:d.id}));
+    /* DB is the source of truth for editable fields. Merge DB rows OVER the hardcoded
+       fallback by name — so an admin edit persists for everyone even when not all treks
+       were pre-imported, the trek keeps its rich display fields (highlights etc.), and it
+       picks up the DB _id so the NEXT edit updates the same row instead of inserting. */
+    const dbByName={};
+    rows.forEach(d=>{const row={n:d.name,region:d.region,img:d.img,r:d.rating,rev:d.reviews,lvl:d.level,days:d.days,
+      alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,packing:d.packing||null,req:(typeof d.req_score==='number'?d.req_score:null),_id:d.id};
+      if(d.credit)row.credit=d.credit; dbByName[d.name]=row;});
+    const seen=new Set();
+    treks.forEach(t=>{const d=dbByName[t.n];if(d){Object.assign(t,d);seen.add(t.n);}});
+    rows.forEach(d=>{if(!seen.has(d.name)){treks.push(dbByName[d.name]);seen.add(d.name);}});
     deriveTreks();
     renderHomeChips(); renderHome(); renderQuick();
     if(cur==='explore') renderExplore();
@@ -2462,6 +2470,10 @@ function parseVideoLink(url){
   let m;
   if((m=url.match(/(?:youtube\.com\/(?:watch\?[^ ]*\bv=|embed\/|shorts\/|live\/)|youtu\.be\/)([\w-]{6,})/i)))
     return{kind:'youtube',id:m[1],embed:'https://www.youtube.com/embed/'+m[1],thumb:'https://img.youtube.com/vi/'+m[1]+'/hqdefault.jpg'};
+  if((m=url.match(/instagram\.com\/(reel|reels|p|tv)\/([\w-]+)/i))){
+    const type=m[1].toLowerCase()==='reels'?'reel':m[1].toLowerCase();
+    return{kind:'instagram',id:m[2],embed:'https://www.instagram.com/'+type+'/'+m[2]+'/embed',thumb:''};
+  }
   if((m=url.match(/vimeo\.com\/(?:video\/)?(\d+)/i)))
     return{kind:'vimeo',id:m[1],embed:'https://player.vimeo.com/video/'+m[1],thumb:''};
   if(/\.(mp4|webm|mov|m4v|ogv)(\?|#|$)/i.test(url))return{kind:'file',embed:url,thumb:''};
@@ -2473,7 +2485,7 @@ function isAnyVideo(src){
   if(!src)return false;
   if(String(src).startsWith('data:video'))return true;
   const v=parseVideoLink(src);
-  return !!(v&&(v.kind==='youtube'||v.kind==='vimeo'||v.kind==='file'));
+  return !!(v&&(v.kind==='youtube'||v.kind==='vimeo'||v.kind==='file'||v.kind==='instagram'));
 }
 /* a poster/thumbnail image for a video link, when one is available (YouTube) */
 function videoPoster(src){const v=parseVideoLink(src);return (v&&v.thumb)||'';}
@@ -2481,8 +2493,8 @@ function videoPoster(src){const v=parseVideoLink(src);return (v&&v.thumb)||'';}
    a "Watch video" button for anything else */
 function videoEmbedHTML(url){
   const v=parseVideoLink(url);if(!v)return '';
-  if(v.kind==='youtube'||v.kind==='vimeo')
-    return '<div class="vembed"><iframe src="'+esc(v.embed)+'" title="Trek video" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="lazy"></iframe></div>';
+  if(v.kind==='youtube'||v.kind==='vimeo'||v.kind==='instagram')
+    return '<div class="vembed'+(v.kind==='instagram'?' vembed-ig':'')+'"><iframe src="'+esc(v.embed)+'" title="Trek video" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="lazy"></iframe></div>';
   if(v.kind==='file')
     return '<video src="'+esc(url)+'#t=0.1" controls preload="metadata" playsinline></video>';
   return '<a class="vlink" href="'+esc(url)+'" target="_blank" rel="noopener noreferrer"><span class="msr">play_circle</span> Watch video</a>';
@@ -2496,9 +2508,9 @@ function loadEmbed(el){
 function mediaItem(src){
   if(isAnyVideo(src)){
     const v=parseVideoLink(src);
-    if(v&&(v.kind==='youtube'||v.kind==='vimeo')){
+    if(v&&(v.kind==='youtube'||v.kind==='vimeo'||v.kind==='instagram')){
       const poster=v.thumb;
-      return `<div class="slide vid emb" data-embed="${esc(v.embed)}" data-poster="${esc(poster||'')}" onclick="loadEmbed(this)">
+      return `<div class="slide vid emb${v.kind==='instagram'?' ig':''}" data-embed="${esc(v.embed)}" data-poster="${esc(poster||'')}" onclick="loadEmbed(this)">
         <div class="slide" style="position:absolute;inset:0;${poster?`background-image:url('${esc(poster)}')`:'background:#000'}"></div>
         <div class="play-ic"><span class="msr" style="font-size:44px;color:rgba(255,255,255,.95);text-shadow:0 2px 12px rgba(0,0,0,.5)">play_circle</span></div>
       </div>`;
@@ -2524,7 +2536,7 @@ function fitCarousels(root){
     if(car._fitDone)return; car._fitDone=1;
     const first=car.querySelector('.car-track > .slide'); if(!first)return;
     const set=r=>{const c=clampRatio(r);if(c)car.style.aspectRatio=c.toFixed(4);};
-    if(first.classList.contains('emb')){set(16/9);return;}          /* YouTube/Vimeo → 16:9 */
+    if(first.classList.contains('emb')){set(first.classList.contains('ig')?0.8:16/9);return;}   /* Instagram → 4:5 portrait, else 16:9 */
     const vid=first.querySelector('video');
     if(vid){
       if(vid.videoWidth)set(vid.videoWidth/vid.videoHeight);
@@ -3182,10 +3194,10 @@ function renderPostPics(){const box=document.getElementById('postPics');
 function rmPostPic(i){postImgs.splice(i,1);postFileRefs.splice(i,1);renderPostPics();}
 async function postAddVideoLink(){
   if(postImgs.length>=4){note('You can add up to 4 items per post.','Limit reached');return;}
-  const url=await askCode('Paste a YouTube, Vimeo or video link',{placeholder:'https://youtube.com/watch?v=…'});
+  const url=await askCode('Paste an Instagram or YouTube link',{placeholder:'instagram.com/reel/… or youtube.com/watch?v=…'});
   if(url==null)return;
   const v=parseVideoLink((url||'').trim());
-  if(!v||(v.kind!=='youtube'&&v.kind!=='vimeo'&&v.kind!=='file')){note('That doesn’t look like a video link. Paste a YouTube, Vimeo or direct video URL.','Invalid link');return;}
+  if(!v||(v.kind!=='instagram'&&v.kind!=='youtube')){note('Please paste an Instagram or YouTube video link.','Invalid link');return;}
   postFileRefs.push(null);postImgs.push(url.trim());renderPostPics();
 }
 function addPost(){
@@ -4218,9 +4230,30 @@ async function renderAdminBookings(){
   if(!rows.length){box.innerHTML='<div class="empty"><p>No bookings yet.</p></div>';return;}
   const total=rows.reduce((s,b)=>s+(Number(b.paid)||0),0);
   const pax=rows.reduce((s,b)=>s+(Number(b.pax)||1),0);
-  box.innerHTML=`<div class="adm-stat"><div><b>${rows.length}</b><small>Bookings</small></div><div><b>${pax}</b><small>Trekkers</small></div><div><b>${INR(total)}</b><small>Collected</small></div></div>`+
-    rows.map(b=>`<div class="mrow" style="cursor:default;align-items:flex-start"><div class="t"><b>${esc(b.trek||'-')}</b><small>${esc(b.name||'')} · ${esc(b.date||'')} · ${b.pax||1} pax</small><small style="display:block;color:var(--muted2)">${esc(b.payment_id||b.id||'')}</small></div><div style="text-align:right"><b style="font-size:13px">${INR(b.paid||0)}</b><small style="display:block;color:#6ee7a0">${esc(b.status||'Confirmed')}</small></div></div>`).join('');
+  box.innerHTML=`<div class="adm-stat"><div><b>${rows.length}</b><small>Bookings</small></div><div><b>${pax}</b><small>Trekkers</small></div><div><b>${INR(total)}</b><small>Collected</small></div></div>`
+    +`<div class="adm-hint" style="margin:0 2px 10px">Tap a booking to see the trekker's full details.</div>`
+    +rows.map(admBookingCard).join('');
   hydrate(box);
+}
+/* a whatsapp-ready number: strip non-digits, add 91 for a bare 10-digit Indian mobile */
+function waNumber(p){let d=String(p||'').replace(/\D/g,'');if(d.length===10)d='91'+d;return d;}
+function admBookingCard(b){
+  const wa=waNumber(b.phone);
+  const paid=Number(b.paid)||0, tot=Number(b.total)||0;
+  const st=b.checked_in?'Checked in':esc(b.status||'Confirmed');
+  return `<div class="adm-bk" onclick="this.classList.toggle('open')">
+    <div class="adm-bk-top">
+      <div class="adm-bk-main"><b>${esc(b.trek||'—')}</b><small>${esc(b.name||'')} · ${esc(b.date||'')} · ${b.pax||1} pax</small></div>
+      <div class="adm-bk-rt"><b>${INR(paid)}</b><span class="adm-bk-st ${b.checked_in?'in':''}">${st}</span></div>
+      <span class="adm-bk-chev msr">expand_more</span>
+    </div>
+    <div class="adm-bk-det">
+      <div class="adm-bk-row"><span class="msr">call</span>${b.phone?`<a href="tel:${esc(b.phone)}" onclick="event.stopPropagation()">${esc(b.phone)}</a>${wa?`<a class="adm-bk-wa" href="https://wa.me/${esc(wa)}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><span class="msr">chat</span> WhatsApp</a>`:''}`:'<span class="adm-bk-na">No phone</span>'}</div>
+      <div class="adm-bk-row"><span class="msr">mail</span>${b.email?`<a href="mailto:${esc(b.email)}" onclick="event.stopPropagation()">${esc(b.email)}</a>`:'<span class="adm-bk-na">No email</span>'}</div>
+      <div class="adm-bk-row"><span class="msr">emergency</span><span>Emergency: <b>${esc(b.emergency_name||'—')}</b> · ${esc(b.emergency_phone||'—')}</span></div>
+      <div class="adm-bk-row"><span class="msr">payments</span><span>Paid ${INR(paid)}${tot?' of '+INR(tot):''} · <span class="adm-bk-pid">${esc(b.payment_id||b.id||'')}</span></span></div>
+    </div>
+  </div>`;
 }
 function setAdminTab(t){adminTab=t;renderAdmin();}
 let _admQ='',_admStatus='All',_admRegion='All',_admDiff='All';
@@ -6380,10 +6413,10 @@ function htPickMedia(input){
 }
 async function htAddVideoLink(){
   if(_htMedia.length>=HT_MEDIA_MAX){note('You can add up to '+HT_MEDIA_MAX+' items.','Gallery full');return;}
-  const url=await askCode('Paste a YouTube, Vimeo or video link',{placeholder:'https://youtube.com/watch?v=…'});
+  const url=await askCode('Paste an Instagram or YouTube link',{placeholder:'instagram.com/reel/… or youtube.com/watch?v=…'});
   if(url==null)return;
   const v=parseVideoLink((url||'').trim());
-  if(!v||(v.kind!=='youtube'&&v.kind!=='vimeo'&&v.kind!=='file')){note('That doesn’t look like a video link. Paste a YouTube, Vimeo or direct video URL.','Invalid link');return;}
+  if(!v||(v.kind!=='instagram'&&v.kind!=='youtube')){note('Please paste an Instagram or YouTube video link.','Invalid link');return;}
   _htMedia.push({kind:'video',url:url.trim(),isNew:false});renderHtMedia();
 }
 function htRemoveMedia(i){

@@ -1623,6 +1623,28 @@
   .adm-pk-add input{all:unset;flex:1;box-sizing:border-box;background:var(--bg);border:1px solid var(--stroke);border-radius:11px;padding:10px 12px;font-size:13.5px;color:var(--text)}
   .adm-date{width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--stroke);border-radius:12px;padding:11px 12px;font-size:14px;color:var(--text);font-family:inherit;color-scheme:light dark;outline:none;cursor:pointer}
   .adm-date:focus{border-color:var(--accent2)}
+  /* ---- booking detail cards ---- */
+  .adm-bk{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:13px 14px;margin-bottom:10px;cursor:pointer}
+  .adm-bk-top{display:flex;align-items:center;gap:10px}
+  .adm-bk-main{flex:1;min-width:0}
+  .adm-bk-main b{font-size:14px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .adm-bk-main small{font-size:11.5px;color:var(--muted);display:block;margin-top:2px}
+  .adm-bk-rt{text-align:right;flex:none}
+  .adm-bk-rt b{font-size:14px;display:block}
+  .adm-bk-st{font-size:9.5px;font-weight:700;color:#2fbf8f;display:inline-block;margin-top:2px}
+  .adm-bk-st.in{color:var(--accent2)}
+  .adm-bk-chev{font-size:20px;color:var(--muted);flex:none;transition:transform .2s}
+  .adm-bk.open .adm-bk-chev{transform:rotate(180deg)}
+  .adm-bk-det{display:none;margin-top:12px;padding-top:11px;border-top:1px solid var(--stroke);flex-direction:column;gap:10px}
+  .adm-bk.open .adm-bk-det{display:flex}
+  .adm-bk-row{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text);line-height:1.35}
+  .adm-bk-row>.msr{font-size:17px;color:var(--accent2);flex:none}
+  .adm-bk-row a{color:var(--accent2);text-decoration:none;font-weight:600}
+  .adm-bk-row b{font-weight:700}
+  .adm-bk-wa{margin-left:auto;display:inline-flex;align-items:center;gap:4px;color:#1faa55!important;font-weight:700}
+  .adm-bk-wa .msr{font-size:15px}
+  .adm-bk-na{color:var(--muted)}
+  .adm-bk-pid{color:var(--muted2);word-break:break-all}
 
   /* ---- trip captain polish ---- */
   .cap-hero{position:relative;overflow:hidden;border-radius:22px;padding:26px 20px;text-align:center;cursor:pointer;
@@ -3081,7 +3103,7 @@
     <div class="field"><label>Show the trek — add photos and video links</label>
       <div class="htm-grid" id="htMediaGrid"></div>
       <input type="file" id="htMediaFile" accept="image/*" multiple hidden onchange="htPickMedia(this)"/>
-      <small class="host-note" style="margin:8px 2px 0">Upload up to 12 photos, and add your videos as YouTube / Vimeo links (tap “Video link”). Videos play right on your trip page — no upload needed.</small>
+      <small class="host-note" style="margin:8px 2px 0">Upload up to 12 photos, and add your videos as Instagram / YouTube links (tap “Video link”). Videos play right on your trip page — no upload needed.</small>
     </div>
 
     <div class="field"><label>Inclusions — tap what's included</label><div class="chiprow" id="htIncChips"></div></div>
