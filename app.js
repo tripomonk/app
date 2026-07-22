@@ -4172,17 +4172,15 @@ function renderAdminPacking(){
   const box=document.getElementById('adminBody');
   const sel=pkAdminTrek||((treks.find(t=>!t.soon)||treks[0]||{}).n);pkAdminTrek=sel;
   if(!_pkEdit||_pkEditTrek!==sel){_pkEdit=loadPkEdit(sel);_pkEditTrek=sel;}
-  const opts=treks.map(t=>`<option ${t.n===sel?'selected':''}>${esc(t.n)}</option>`).join('');
-  box.innerHTML=`
-    <div class="field"><label>Trek</label><div class="inp"><select onchange="pkAdminTrek=this.value;_pkEdit=null;renderAdminPacking()" style="all:unset;flex:1;color:var(--text)">${opts}</select></div></div>
-    <div class="note2" style="margin-bottom:12px">Admin saves are protected by your Supabase login email.</div>
-    ${PK_CATS.map(c=>`
-      <div class="panel" style="margin-bottom:12px">
-        <b style="display:block;margin-bottom:8px">${c}</b>
-        ${(_pkEdit[c]||[]).map((it,i)=>`<div class="mrow" style="cursor:default;padding:9px 12px"><span class="t">${esc(it)}</span><span class="ic" onclick="pkDelItem('${c}',${i})" style="color:#ff7a7a;cursor:pointer">${ic('close',16)}</span></div>`).join('')||'<div class="note2" style="margin-bottom:8px">No items.</div>'}
-        <div class="inp" style="margin-top:8px"><input id="pkAdd_${c}" placeholder="Add item to ${c}" style="all:unset;flex:1;color:var(--text)"><span class="ic" onclick="pkAddItem('${c}')" style="color:var(--accent2);cursor:pointer">${ic('plus',18)}</span></div>
-      </div>`).join('')}
-    <button class="btn" onclick="savePackingAdmin()">Save packing list for ${esc(sel)}</button>`;
+  box.innerHTML=
+    admTrekSelect(sel,"pkAdminTrek=this.value;_pkEdit=null;renderAdminPacking()")+
+    `${PK_CATS.map(c=>`
+      <div class="adm-sec">${esc(c)}</div>
+      <div class="adm-pk-items">${(_pkEdit[c]||[]).map((it,i)=>`<span class="adm-pk-chip">${esc(it)}<button onclick="pkDelItem('${jsq(c)}',${i})" title="Remove"><span class="msr">close</span></button></span>`).join('')||'<span class="adm-pk-empty">No items yet</span>'}</div>
+      <div class="adm-pk-add"><input id="pkAdd_${c}" placeholder="Add to ${esc(c)}…" onkeydown="if(event.key==='Enter'){event.preventDefault();pkAddItem('${jsq(c)}');}"><button class="adm-ic" onclick="pkAddItem('${jsq(c)}')" title="Add"><span class="msr">add</span></button></div>
+    `).join('')}
+    <button class="btn" style="margin-top:16px" onclick="savePackingAdmin()"><span class="msr">check</span> Save packing list</button>
+    <div class="adm-hint" style="margin-top:8px">Saves are protected by your Supabase admin login.</div>`;
   hydrate(box);
 }
 function pkAddItem(cat){const inp=document.getElementById('pkAdd_'+cat);const v=(inp.value||'').trim();if(!v)return;_pkEdit[cat]=_pkEdit[cat]||[];_pkEdit[cat].push(v);renderAdminPacking();}
@@ -4261,23 +4259,53 @@ function setBatchMap(m){try{localStorage.setItem('tmk_batches',JSON.stringify(m)
 function getBatches(name){const m=getBatchMap();if(m[name]&&m[name].length)return m[name];
   const t=treks.find(x=>x.n===name)||{price:0};
   return [{label:'18 May – 22 May',seats:'Few seats left',price:t.price},{label:'25 May – 29 May',seats:'Available',price:t.price},{label:'01 Jun – 05 Jun',seats:'Available',price:t.price+500}];}
+/* selected-trek card with a tap-to-change native picker — shared by Departures + Packing */
+function admTrekSelect(selName,onchangeFn){
+  const sel=treks.find(t=>t.n===selName)||{};
+  const opts=treks.map(t=>`<option ${t.n===selName?'selected':''} style="color:#000">${esc(t.n)}</option>`).join('');
+  return `<div class="adm-picker">
+    <div class="adm-tc-ph" style="background-image:url('${esc((sel.img||'').split('?')[0])}')">${sel.soon?'<span class="adm-tc-soon">Soon</span>':''}</div>
+    <div class="adm-picker-tx"><small>Editing trek</small><b>${esc(sel.n||'—')}</b><span>${esc(sel.region||'')}${sel.days?' · '+sel.days+'d':''}</span></div>
+    <div class="adm-picker-change"><span class="msr">unfold_more</span>Change<select onchange="${onchangeFn}">${opts}</select></div>
+  </div>`;
+}
 function renderDepartures(){const sel=depTrek||((treks.find(t=>!t.soon)||treks[0]).n); depTrek=sel;
-  const opts=treks.map(t=>`<option ${t.n===sel?'selected':''}>${esc(t.n)}</option>`).join('');
   const list=getBatches(sel);
-  document.getElementById('adminBody').innerHTML=`
-    <div class="field"><label>Trek</label><div class="inp"><select id="depSel" onchange="depTrek=this.value;renderDepartures()" style="all:unset;flex:1;color:var(--text)">${opts}</select></div></div>
-    ${list.map((b,i)=>`<div class="mrow" style="cursor:default"><div class="t"><b>${esc(b.label)}</b><small>${esc(b.seats||'Available')} · ₹${Number(b.price||0).toLocaleString('en-IN')}</small></div><span class="ic" onclick="delBatch(${i})" style="color:#ff7a7a;cursor:pointer">${ic('alert',18)}</span></div>`).join('')||'<div class="note2" style="margin-bottom:12px">No departures yet — add one below.</div>'}
-    <div class="panel" style="margin-top:6px"><b style="display:block;margin-bottom:8px">Add a departure</b>
-      <div class="field"><div class="inp"><input id="bLabel" placeholder="e.g. 18 May – 22 May"></div></div>
-      <div class="field"><div class="inp"><input id="bSeats" placeholder="Few seats left / Available"></div></div>
-      <div class="field"><div class="inp"><input id="bPrice" placeholder="Price ₹ (blank = trek price)"></div></div>
-      <button class="btn" onclick="addBatch()">Add departure</button></div>`;
+  document.getElementById('adminBody').innerHTML=
+    admTrekSelect(sel,"depTrek=this.value;renderDepartures()")+
+    `<div class="adm-sec">Departures</div>
+    <div class="adm-batch-list">${list.map((b,i)=>{const st=batchState(b.seats);const d=parseStartDate(b.label);return `<div class="adm-batch">
+      <div class="adm-batch-cal"><span class="mo">${esc(d.mo||'—')}</span><span class="dy">${esc(d.day||'')}</span></div>
+      <div class="adm-batch-bd"><b>${esc(b.label)}</b><span class="adm-batch-seats ${st}"><span class="dot"></span>${esc(b.seats||'Available')}</span></div>
+      <div class="adm-batch-rt"><b>₹${Number(b.price||0).toLocaleString('en-IN')}</b><button class="adm-ic del" onclick="delBatch(${i})" title="Remove"><span class="msr">delete</span></button></div>
+    </div>`;}).join('')||'<div class="empty" style="padding:12px 0"><p>No departures yet — add one below.</p></div>'}</div>
+    <div class="adm-sec">Add a departure</div>
+    <div class="adm-editor" style="padding:14px">
+      <div class="adm-row2">
+        <div class="field"><label>From</label><input id="bFrom" type="date" class="adm-date"></div>
+        <div class="field"><label>Till</label><input id="bTill" type="date" class="adm-date"></div>
+      </div>
+      ${fld('bSeats','Seats status','','Few seats left / Available')}
+      ${fld('bPrice','Price ₹ (blank = trek price)','','')}
+      <button class="btn" style="margin-top:4px" onclick="addBatch()"><span class="msr">add</span> Add departure</button>
+    </div>`;
   hydrate(document.getElementById('adminBody'));
 }
-function addBatch(){const g=id=>document.getElementById(id);const label=g('bLabel').value.trim();if(!label){note('Enter the dates.');return;}
+/* "2026-05-18" -> "18 May" for the departure label the rest of the app reads */
+function fmtBatchDate(iso){
+  if(!iso)return '';
+  const d=new Date(iso+'T00:00:00');if(isNaN(d))return '';
+  return d.getDate()+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+}
+function addBatch(){const g=id=>document.getElementById(id);
+  const from=g('bFrom').value, till=g('bTill').value;
+  if(!from){note('Pick a start date from the calendar.','Start date needed');return;}
+  if(till&&till<from){note('The end date can’t be before the start date.','Check dates');return;}
+  const end=till||from;
+  const label=fmtBatchDate(from)+' – '+fmtBatchDate(end);
   const t=treks.find(x=>x.n===depTrek)||{price:0};
   const m=getBatchMap();if(!m[depTrek]||!m[depTrek].length)m[depTrek]=getBatches(depTrek).slice();
-  m[depTrek].push({label,seats:g('bSeats').value.trim()||'Available',price:parseInt(g('bPrice').value)||t.price});
+  m[depTrek].push({label,seats:g('bSeats').value.trim()||'Available',price:parseInt(g('bPrice').value)||t.price,start:from,end:end});
   setBatchMap(m);renderDepartures();}
 function delBatch(i){const m=getBatchMap();if(!m[depTrek]||!m[depTrek].length)m[depTrek]=getBatches(depTrek).slice();
   m[depTrek].splice(i,1);setBatchMap(m);renderDepartures();}
@@ -5664,6 +5692,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='fitness')renderFitness();
   if(id==='fitnessTest')renderFitnessTest();
   if(id==='trainingPlan')renderTrainingPlan();
+  if(id==='htBook')renderHtBook();
   staggerActive();saveNav();
   /* animate any Trek Score badges the just-shown view revealed (view switches fire no scroll event) */
   if(typeof animateTrekScores==='function')setTimeout(animateTrekScores,60);
@@ -6755,36 +6784,72 @@ function htvRecalc(){
   document.getElementById('htvPrice').textContent=INR(total);
   document.getElementById('htvPriceSub').textContent=_htvPax+(_htvPax===1?' person · ':' people · ')+INR(t.price||0)+' each · 25% advance';
 }
-/* book a hosted trip — priced server-side (kind:hosttrip), 25% advance via Razorpay */
+/* book a hosted trip — opens a proper details page (like the trek flow), then pays */
 async function bookHostTrip(){
   const t=_htvTrip;if(!t){note('Please reopen this trip.','Nothing selected');return;}
   if(!isLoggedIn()){note('Please sign in to book.','Sign in required').then(()=>{_loginReturn='home';go('login');});return;}
-  if(!window.Razorpay){note('Payment is still loading — wait a moment and tap Book again.','Please wait');return;}
+  if(!(getUserEmail()||'')){note('Your account has no email. Please sign in with email.','Cannot book');return;}
+  go('htBook');
+}
+/* the hosted-trip booking form — collects the same details a trek booking needs, on one page */
+function renderHtBook(){
+  const box=document.getElementById('htBookBody');if(!box)return;
+  const t=_htvTrip;
+  if(!t){box.innerHTML='<div class="empty" style="padding:30px 0"><p>Please reopen the trip to book it.</p></div>';return;}
+  const c=getContact()||{};
+  const total=(t.price||0)*_htvPax, adv=Math.round(total*0.25);
+  const when=t.start_date?new Date(t.start_date+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'As scheduled';
+  box.innerHTML=`
+    <div class="tcard" style="cursor:default"><div class="ph" style="background-image:url('${esc(t.img||'')}')"></div>
+      <div class="bd"><h3>${esc(t.title)}</h3>
+        <div class="rt">${ic('calendar',14)} <span>${esc(when)}</span></div>
+        <div class="rt">${ic('user',14)} <span>${_htvPax} ${_htvPax===1?'traveller':'travellers'} · hosted by ${esc(t.host_name||'host')}</span></div></div></div>
+    <div class="sec"><h2 style="font-size:15px">Lead traveller</h2></div>
+    <div class="field"><label>Full name (as per ID)</label><div class="inp"><input id="htName" value="${esc(getSavedName()||c.name||'')}" placeholder="Your full name"></div></div>
+    <div class="field"><label>Mobile number</label><div class="inp"><input id="htPhone" type="tel" inputmode="numeric" value="${esc((typeof getSavedMobile==='function'&&getSavedMobile())||c.phone||'')}" placeholder="10-digit mobile"></div></div>
+    <div class="field"><label>Email</label><div class="inp"><input id="htEmail" type="email" value="${esc(getUserEmail()||c.email||'')}" placeholder="you@email.com"></div></div>
+    <div class="sec"><h2 style="font-size:15px">Emergency contact</h2></div>
+    <div class="field"><label>Contact name</label><div class="inp"><input id="htEmName" value="${esc(c.emName||'')}" placeholder="Family / friend"></div></div>
+    <div class="field"><label>Contact mobile</label><div class="inp"><input id="htEmPhone" type="tel" inputmode="numeric" value="${esc(c.emPhone||'')}" placeholder="Different from yours"></div></div>
+    <div class="panel" style="margin-top:6px">
+      <div class="srow"><span>${_htvPax} × ${INR(t.price||0)}</span><span>${INR(total)}</span></div>
+      <div class="srow tot"><span>Advance now (25%)</span><span>${INR(adv)}</span></div>
+      <div class="srow" style="border:0;padding-top:2px"><span style="font-size:11.5px;color:var(--muted)">Balance ${INR(total-adv)} paid to Tripomonk before departure</span><span></span></div></div>
+    <div style="height:16px"></div>
+    <div class="cta"><button class="btn" onclick="htPay()"><span class="msr">lock</span> Pay ${INR(adv)} advance</button></div>`;
+  hydrate(box);
+}
+async function htPay(){
+  const t=_htvTrip;if(!t){note('Please reopen this trip.','Nothing selected');return;}
+  if(!window.Razorpay){note('Payment is still loading — wait a moment and tap again.','Please wait');return;}
   if(!sbOn){note('Payment service not configured. Please contact Tripomonk.','Payment error');return;}
-  /* real multi-day trip: collect the same details a trek booking needs */
-  const name=(await askCode('Your full name',{value:getSavedName()||'',placeholder:'As per ID'}));if(name==null)return;
-  if(!name.trim()){note('Name is required.','Missing');return;}
-  const phone=(await askCode('Your mobile number',{value:getSavedMobile()||'',placeholder:'+91…'}));if(phone==null)return;
-  const emgName=(await askCode('Emergency contact name',{placeholder:'Family / friend'}));if(emgName==null)return;
-  const emgPhone=(await askCode('Emergency contact number',{placeholder:'Different from yours'}));if(emgPhone==null)return;
-  const email=getUserEmail()||'';
-  if(!email){note('Your account has no email. Please sign in with email.','Cannot book');return;}
-  const booking={kind:'hosttrip',hosttrip_id:t.id,trek:t.title,pax:_htvPax,name:name.trim(),email,
-                 phone:phone.trim(),emergency_name:emgName.trim(),emergency_phone:emgPhone.trim()};
+  const g=id=>document.getElementById(id);
+  const name=(g('htName').value||'').trim();
+  const phone=(g('htPhone').value||'').replace(/\D/g,'');
+  const email=(g('htEmail').value||'').trim();
+  const emName=(g('htEmName').value||'').trim();
+  const emPhone=(g('htEmPhone').value||'').replace(/\D/g,'');
+  if(!name){note('Please enter the lead traveller name.','Name required');g('htName').focus();return;}
+  if(phone.length<10){note('Please enter a valid 10-digit mobile number.','Mobile required');g('htPhone').focus();return;}
+  if(!email||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){note('Please enter a valid email address.','Email required');g('htEmail').focus();return;}
+  if(!emName){note('Please enter an emergency contact name.','Emergency contact required');g('htEmName').focus();return;}
+  if(emPhone.length<10){note('Please enter a valid emergency contact mobile.','Emergency contact required');g('htEmPhone').focus();return;}
+  if(emPhone===phone){note('Emergency contact should be different from your own number.','Check emergency contact');g('htEmPhone').focus();return;}
+  saveUserName(name);saveContact({name,phone,email,emName,emPhone});
+  const booking={kind:'hosttrip',hosttrip_id:t.id,trek:t.title,pax:_htvPax,name,email,phone,emergency_name:emName,emergency_phone:emPhone};
   let order;
   try{order=await rzpCall('create',{booking});}
   catch(e){note('Could not reach payment service: '+e,'Payment error');return;}
   if(!order||!order.order_id){note('Could not start payment — '+((order&&order.error)?order.error:'no order returned'),'Payment error');return;}
-  saveUserName(name.trim());
   const rzp=new window.Razorpay({
     key:order.key_id, order_id:order.order_id, amount:order.amount, currency:order.currency||'INR',
     name:'Tripomonk', description:t.title+' — hosted trip', image:'icons/icon-192.png',
-    prefill:{name:name.trim(),email,contact:phone.trim()}, notes:{hosttrip:t.id}, theme:{color:'#2f6bff'},
+    prefill:{name,email,contact:phone}, notes:{hosttrip:t.id}, theme:{color:'#2f6bff'},
     handler:async function(response){
       let res;try{res=await rzpCall('verify',{razorpay_order_id:response.razorpay_order_id,razorpay_payment_id:response.razorpay_payment_id,razorpay_signature:response.razorpay_signature,booking});}catch(e){res=null;}
       if(!res||!res.ok){note('Payment received but we could not verify it instantly. Our team will confirm shortly — payment ID: '+(response.razorpay_payment_id||'—'),'Verification pending');return;}
       const sbk=(res&&res.booking)||{};
-      const b={id:response.razorpay_payment_id,name:name.trim(),trek:sbk.trek||t.title,img:t.img||'',date:sbk.date||t.start_date||'As scheduled',pax:_htvPax,total:sbk.total||(t.price*_htvPax),paid:sbk.paid,ts:Date.now(),status:'Confirmed (advance paid)',checkedIn:false,paymentId:response.razorpay_payment_id};
+      const b={id:response.razorpay_payment_id,name,trek:sbk.trek||t.title,img:t.img||'',date:sbk.date||t.start_date||'As scheduled',pax:_htvPax,total:sbk.total||(t.price*_htvPax),paid:sbk.paid,ts:Date.now(),status:'Confirmed (advance paid)',checkedIn:false,paymentId:response.razorpay_payment_id};
       const all=getBookings();all.unshift(b);saveBookings(all);
       note('Advance paid! '+t.title+' is confirmed. Tripomonk will contact you with the rest.','Booked ✓').then(()=>go('bookings'));
     },
