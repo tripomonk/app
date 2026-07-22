@@ -1812,6 +1812,7 @@ function renderHome(){
   makeCoverflow('homeList',list,trekCardCF,(t)=>openDetail(t.idx));
   /* paint the host slot now (CTA), then swap in the rail if any trips are live */
   renderHomeHosts();
+  renderGiftHome();
   /* seed the rail from the last cached copy so it appears instantly on repeat visits */
   const cLt=swrGet('livehosttrips'),cVh=swrGet('verifiedhosts');
   if(cLt&&Array.isArray(cLt.data))liveHostTrips=cLt.data;
@@ -3584,6 +3585,18 @@ const GIFT_AMOUNTS=[2000,5000,8000,10000,15000];
 let _giftSel=0,_giftAmt=2000;
 function inr(n){return '₹'+Number(n||0).toLocaleString('en-IN');}
 function openGiftCards(){_giftSel=0;_giftAmt=2000;go('giftCards');renderGiftCards();}
+function openGiftCardAt(i){_giftSel=i||0;_giftAmt=2000;go('giftCards');renderGiftCards();}
+/* home-page gift-card preview rail (below Compare Treks) */
+function renderGiftHome(){
+  const el=document.getElementById('gcHome');if(!el)return;
+  el.innerHTML=
+    '<div class="sec" style="margin-top:22px"><h2>Gift Cards</h2><a onclick="openGiftCards()">See all</a></div>'
+    +'<div class="gc-home-sub">Give the gift of adventure — they choose the trek.</div>'
+    +'<div class="gc-home-rail">'
+    +GIFT_CARDS.map((c,i)=>'<div class="gc-home-card" onclick="openGiftCardAt('+i+')"><img src="giftcards/'+c.file+'.svg" alt="'+esc(c.name)+'" loading="lazy"></div>').join('')
+    +'<div class="gc-home-more" onclick="openGiftCards()"><span class="msr">card_giftcard</span><span>Send a<br>gift card</span></div>'
+    +'</div>';
+}
 function renderGiftCards(){
   const row=document.getElementById('gcRow');
   if(row)row.innerHTML=GIFT_CARDS.map((g,i)=>'<div class="gc-card'+(i===_giftSel?' on':'')+'" onclick="selGift('+i+')"><img src="giftcards/'+g.file+'.svg" alt="'+esc(g.name)+'" loading="lazy"/></div>').join('');
