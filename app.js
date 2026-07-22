@@ -282,7 +282,7 @@ async function loadTreks(){ if(!sbOn) return;
        picks up the DB _id so the NEXT edit updates the same row instead of inserting. */
     const dbByName={};
     rows.forEach(d=>{const row={n:d.name,region:d.region,img:d.img,r:d.rating,rev:d.reviews,lvl:d.level,days:d.days,
-      alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,packing:d.packing||null,req:(typeof d.req_score==='number'?d.req_score:null),_id:d.id};
+      alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,packing:d.packing||null,batches:(Array.isArray(d.batches)?d.batches:null),req:(typeof d.req_score==='number'?d.req_score:null),_id:d.id};
       if(d.credit)row.credit=d.credit; dbByName[d.name]=row;});
     const seen=new Set();
     treks.forEach(t=>{const d=dbByName[t.n];if(d){Object.assign(t,d);seen.add(t.n);}});
@@ -4145,6 +4145,7 @@ async function sbWriteChecked(method,path,body){
        (and a packing key). Route to save_packing ONLY when there's no trek name — otherwise a trek
        edit was silently going down the packing path and its price/other fields never saved. */
     else if(method==='PATCH'&&body&&Object.prototype.hasOwnProperty.call(body,'packing')&&!Object.prototype.hasOwnProperty.call(body,'name'))res=await adminCall('save_packing',{id:id,packing:body.packing});
+    else if(method==='PATCH'&&body&&Object.prototype.hasOwnProperty.call(body,'batches')&&!Object.prototype.hasOwnProperty.call(body,'name'))res=await adminCall('save_batches',{id:id,batches:body.batches});
     else if(method==='PATCH')res=await adminCall('save_trek',{id:id,trek:body});
     else if(method==='DELETE')res=await adminCall('delete_trek',{id:id});
   }
@@ -4307,9 +4308,23 @@ function renderAdminTreks(){
 /* ----- Departures (batches) ----- */
 function getBatchMap(){try{return JSON.parse(localStorage.getItem('tmk_batches')||'{}');}catch(e){return {};}}
 function setBatchMap(m){try{localStorage.setItem('tmk_batches',JSON.stringify(m));}catch(e){}}
-function getBatches(name){const m=getBatchMap();if(m[name]&&m[name].length)return m[name];
+/* Departures per trek. Source of truth = the trek's DB `batches` (so they show for
+   everyone). Falls back to the local cache, then to sensible defaults. */
+function getBatches(name){
   const t=treks.find(x=>x.n===name)||{price:0};
+  if(Array.isArray(t.batches)&&t.batches.length)return t.batches;
+  const m=getBatchMap();if(m[name]&&m[name].length)return m[name];
   return [{label:'18 May – 22 May',seats:'Few seats left',price:t.price},{label:'25 May – 29 May',seats:'Available',price:t.price},{label:'01 Jun – 05 Jun',seats:'Available',price:t.price+500}];}
+/* persist a trek's departures to the DB (via the admin function) so every user sees them */
+async function saveBatches(name,list){
+  const t=treks.find(x=>x.n===name);
+  if(t)t.batches=list;                                   /* in-memory now */
+  const m=getBatchMap();m[name]=list;setBatchMap(m);     /* local cache/offline */
+  if(!sbOn){note('Saved on this device only (Supabase not connected).');return;}
+  if(!t||!t._id){note('Save this trek in the Treks tab first, then add its departures.','Trek not in database');return;}
+  const ok=await sbWriteChecked('PATCH','treks?id=eq.'+t._id,{batches:list});
+  if(ok){await loadTreks();note('Departures saved for everyone ✓');}
+}
 /* selected-trek card with a tap-to-change native picker — shared by Departures + Packing */
 function admTrekSelect(selName,onchangeFn){
   const sel=treks.find(t=>t.n===selName)||{};
@@ -4348,20 +4363,22 @@ function fmtBatchDate(iso){
   const d=new Date(iso+'T00:00:00');if(isNaN(d))return '';
   return d.getDate()+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
 }
-function addBatch(){const g=id=>document.getElementById(id);
+async function addBatch(){const g=id=>document.getElementById(id);
   const from=g('bFrom').value, till=g('bTill').value;
   if(!from){note('Pick a start date from the calendar.','Start date needed');return;}
   if(till&&till<from){note('The end date can’t be before the start date.','Check dates');return;}
   const end=till||from;
   const label=fmtBatchDate(from)+' – '+fmtBatchDate(end);
   const t=treks.find(x=>x.n===depTrek)||{price:0};
-  const m=getBatchMap();if(!m[depTrek]||!m[depTrek].length)m[depTrek]=getBatches(depTrek).slice();
-  m[depTrek].push({label,seats:g('bSeats').value.trim()||'Available',price:parseInt(g('bPrice').value)||t.price,start:from,end:end});
-  setBatchMap(m);renderDepartures();}
-function delBatch(i){const m=getBatchMap();if(!m[depTrek]||!m[depTrek].length)m[depTrek]=getBatches(depTrek).slice();
-  m[depTrek].splice(i,1);setBatchMap(m);renderDepartures();}
+  const list=getBatches(depTrek).slice();
+  list.push({label,seats:g('bSeats').value.trim()||'Available',price:parseInt(g('bPrice').value)||t.price,start:from,end:end});
+  await saveBatches(depTrek,list);renderDepartures();}
+async function delBatch(i){
+  const list=getBatches(depTrek).slice();
+  list.splice(i,1);
+  await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='281';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='282';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
