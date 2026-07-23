@@ -1594,6 +1594,25 @@
   .adm-imgprev{width:100%;height:130px;border-radius:12px;background-size:cover;background-position:center;background-color:#16283f;border:1px solid var(--stroke);margin-top:9px}
   .adm-ed-foot{display:flex;gap:10px;margin-top:20px}
   .adm-ed-foot .btn{flex:1}
+  /* ---- home page curation (Admin → Home): featured trek + popular rail ---- */
+  .adm-hm-prev{height:132px;border-radius:14px;background-size:cover;background-position:center;background-color:#16283f;border:1px solid var(--stroke);display:flex;align-items:flex-end;padding:12px;margin-bottom:10px;position:relative;overflow:hidden}
+  .adm-hm-prev::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,10,20,0) 35%,rgba(6,10,20,.88) 100%)}
+  .adm-hm-prev>div{position:relative;z-index:1}
+  .adm-hm-prev span{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--accent);color:#12203a;padding:3px 8px;border-radius:7px;margin-bottom:6px}
+  .adm-hm-prev b{display:block;font-size:18px;color:#fff;line-height:1.15}
+  .adm-hm-prev small{display:block;font-size:11.5px;color:rgba(255,255,255,.78);margin-top:3px}
+  .adm-hm-list{display:flex;flex-direction:column;gap:8px}
+  .adm-hm{display:flex;align-items:center;gap:11px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:8px}
+  .adm-hm.pop{border-color:rgba(47,107,255,.5);background:rgba(47,107,255,.07)}
+  .adm-hm-ph{width:48px;height:48px;border-radius:10px;background-size:cover;background-position:center;background-color:#16283f;flex:none}
+  .adm-hm-bd{flex:1;min-width:0}
+  .adm-hm-bd b{font-size:13.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .adm-hm-bd small{font-size:11px;color:var(--muted);display:block;margin-top:2px}
+  .adm-hm-btn{width:38px;height:38px;flex:none;border-radius:11px;border:1px solid var(--stroke);background:var(--bg);color:var(--muted);display:grid;place-items:center;cursor:pointer;padding:0;transition:transform .12s,color .15s,border-color .15s,background .15s}
+  .adm-hm-btn:active{transform:scale(.92)}
+  .adm-hm-btn .msr{font-size:20px}
+  .adm-hm-btn.star.on{color:var(--accent);border-color:rgba(240,190,80,.55);background:rgba(240,190,80,.14)}
+  .adm-hm-btn.tick.on{color:var(--accent2);border-color:rgba(47,107,255,.55);background:rgba(47,107,255,.16)}
   /* ---- shared trek picker (Departures / Packing) ---- */
   .adm-picker{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:10px;margin-bottom:6px}
   .adm-picker .adm-tc-ph{width:52px;height:52px}

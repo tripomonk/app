@@ -284,7 +284,7 @@ async function loadTreks(){ if(!sbOn) return;
        picks up the DB _id so the NEXT edit updates the same row instead of inserting. */
     const dbByName={};
     rows.forEach(d=>{const row={n:d.name,region:d.region,img:d.img,r:d.rating,rev:d.reviews,lvl:d.level,days:d.days,
-      alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,packing:d.packing||null,batches:(Array.isArray(d.batches)?d.batches:null),req:(typeof d.req_score==='number'?d.req_score:null),_id:d.id};
+      alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,packing:d.packing||null,batches:(Array.isArray(d.batches)?d.batches:null),req:(typeof d.req_score==='number'?d.req_score:null),pop:!!d.popular,feat:!!d.featured,_id:d.id};
       if(d.credit)row.credit=d.credit; dbByName[d.name]=row;});
     const seen=new Set();
     treks.forEach(t=>{const d=dbByName[t.n];if(d){Object.assign(t,d);seen.add(t.n);}});
@@ -1683,7 +1683,9 @@ function wireCoverflowFocus(el){
 }
 function renderHomeHero(){
   const box=document.getElementById('homeHero');if(!box)return;
-  const f=treks.find(t=>!t.soon)||treks[0];if(!f){box.innerHTML='';return;}
+  /* admin's pick (Admin → Home) wins; otherwise fall back to the first live trek */
+  const f=treks.find(t=>t.feat&&!t.soon)||treks.find(t=>t.feat)||treks.find(t=>!t.soon)||treks[0];
+  if(!f){box.innerHTML='';return;}
   box.innerHTML=`<div class="hhero" style="background-image:url('${f.img}')" onclick="openDetail(${f.idx})">
     <span class="hh-price">From ₹${Number(f.price).toLocaleString('en-IN')}</span>
     <div class="hh-c"><span class="hh-tag">Featured trek</span>
@@ -1815,10 +1817,12 @@ function renderHome(){
   if(hav)setAvatarEl(hav,getSavedName()||'Explorer',getSavedPhoto());
   const hg=document.getElementById('homeGreet');if(hg){const nm=getSavedName();hg.textContent=nm?'Hello, '+nm:'Hello there';}
   renderHomeHero();
-  /* Popular Treks is a small featured rail — bookable first, then a few coming-soon.
+  /* Popular Treks is a small featured rail — admin's picks (Admin → Home) float to the
+     front, then bookable, then a few coming-soon. Sorting rather than filtering keeps the
+     rail full even when a difficulty chip excludes every picked trek.
      Capping it is essential: rendering all 130+ treks here crashed iOS Safari (memory). */
   const pool=homeFilter==='All'?treks:treks.filter(t=>t.lvl===homeFilter);
-  const list=[...pool].sort((a,b)=>(a.soon?1:0)-(b.soon?1:0)).slice(0,12);
+  const list=[...pool].sort((a,b)=>(b.pop?1:0)-(a.pop?1:0)||(a.soon?1:0)-(b.soon?1:0)).slice(0,12);
   makeCoverflow('homeList',list,trekCardCF,(t)=>openDetail(t.idx));
   /* paint the host slot now (CTA), then swap in the rail if any trips are live */
   renderHomeHosts();
@@ -4191,14 +4195,15 @@ async function sbWriteChecked(method,path,body){
   if(!res||!res.ok){note((res&&res.error)||'Admin save failed.','Save failed');return false;}
   return true;
 }
-function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null,req_score:(typeof t.req==='number'?t.req:null)};}
+function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null,req_score:(typeof t.req==='number'?t.req:null),popular:!!t.pop,featured:!!t.feat};}
 let editIdx=-1, adminTab='Treks', depTrek=null;
-const ADM_TAB_IC={Bookings:'receipt_long',Treks:'landscape',Departures:'event',Packing:'checklist',Hosts:'groups',Staff:'badge',Settings:'settings'};
+const ADM_TAB_IC={Bookings:'receipt_long',Treks:'landscape',Home:'home',Departures:'event',Packing:'checklist',Hosts:'groups',Staff:'badge',Settings:'settings'};
 function renderAdmin(){
-  document.getElementById('adminTabs').innerHTML=['Bookings','Treks','Departures','Packing','Hosts','Staff','Settings'].map(x=>`<div class="adm-tab ${x===adminTab?'on':''}" onclick="setAdminTab('${x}')"><span class="msr">${ADM_TAB_IC[x]||'circle'}</span>${x}</div>`).join('');
+  document.getElementById('adminTabs').innerHTML=['Bookings','Treks','Home','Departures','Packing','Hosts','Staff','Settings'].map(x=>`<div class="adm-tab ${x===adminTab?'on':''}" onclick="setAdminTab('${x}')"><span class="msr">${ADM_TAB_IC[x]||'circle'}</span>${x}</div>`).join('');
   const f=document.getElementById('adminForm'); if(f){f.style.display='none';f.innerHTML='';}
   if(adminTab==='Bookings')renderAdminBookings();
   else if(adminTab==='Treks')renderAdminTreks();
+  else if(adminTab==='Home')renderAdminHome();
   else if(adminTab==='Departures')renderDepartures();
   else if(adminTab==='Packing')renderAdminPacking();
   else if(adminTab==='Hosts')renderAdminHosts();
@@ -4344,6 +4349,70 @@ function renderAdminTreks(){
     <button class="btn" style="margin-top:14px" onclick="newTrek()"><span class="msr">add</span> Add a trek</button>`;
   hydrate(box);renderAdmTrekList();
 }
+/* ----- Home page curation: the Featured hero + the Popular Treks rail -----
+   Picks are staged in _homeFeat/_homePop and only hit the network on Save, so the
+   admin can tick several treks without a round trip per tap. */
+let _homeQ='',_homeFeat=null,_homePop=null;
+function homeSelInit(){
+  if(_homePop)return;
+  _homePop=new Set(treks.filter(t=>t.pop).map(t=>t.n));
+  const f=treks.find(t=>t.feat);_homeFeat=f?f.n:null;
+}
+function homeSetFeat(n){_homeFeat=(_homeFeat===n?null:n);renderAdminHomeList();}
+function homeTogglePop(n){if(_homePop.has(n))_homePop.delete(n);else _homePop.add(n);renderAdminHomeList();}
+function homeSelReset(){_homePop=null;homeSelInit();renderAdminHome();}
+function admHomeFiltered(){
+  const q=_homeQ.trim().toLowerCase();
+  return treks.filter(t=>!q||((t.n+' '+(t.region||'')).toLowerCase().includes(q)));
+}
+function admHomePreviewHTML(){
+  const t=treks.find(x=>x.n===_homeFeat);
+  if(!t)return '<div class="adm-hint" style="margin:0 0 10px">No featured trek picked — the home banner falls back to the first live trek.</div>';
+  const img=(t.img||'').split('?')[0];
+  return `<div class="adm-hm-prev" style="background-image:url('${esc(img)}')">
+    <div><span>Featured trek</span><b>${esc(t.n)}</b><small>${esc(t.region||'')} · ${esc(t.lvl||'')} · ${t.days||'?'}D · ₹${Number(t.price||0).toLocaleString('en-IN')}</small></div></div>`;
+}
+/* only the list + preview re-render on a keystroke, so the search box keeps focus */
+function renderAdminHomeList(){
+  const wrap=document.getElementById('admHomeList');if(!wrap)return;
+  const list=admHomeFiltered();
+  wrap.innerHTML=list.map(t=>{
+    const on=_homePop.has(t.n),fe=_homeFeat===t.n,img=(t.img||'').split('?')[0];
+    return `<div class="adm-hm${on?' pop':''}">
+      <div class="adm-hm-ph" style="background-image:url('${esc(img)}')"></div>
+      <div class="adm-hm-bd"><b>${esc(t.n)}</b><small>${esc(t.region||'—')} · ${t.soon?'Coming soon':'Live'} · ₹${Number(t.price||0).toLocaleString('en-IN')}</small></div>
+      <button class="adm-hm-btn star${fe?' on':''}" onclick="homeSetFeat('${jsq(t.n)}')" title="Set as the featured trek"><span class="msr">${fe?'star':'star_border'}</span></button>
+      <button class="adm-hm-btn tick${on?' on':''}" onclick="homeTogglePop('${jsq(t.n)}')" title="Show in Popular Treks"><span class="msr">${on?'check_circle':'radio_button_unchecked'}</span></button>
+    </div>`;}).join('')||'<div class="empty"><p>No treks match your search.</p></div>';
+  const c=document.getElementById('admHomeCount');
+  if(c)c.textContent=_homePop.size+' popular · '+(_homeFeat?'featured: '+_homeFeat:'no featured trek');
+  const p=document.getElementById('admHomePreview');
+  if(p)p.innerHTML=admHomePreviewHTML();
+  hydrate(wrap);
+}
+function renderAdminHome(){
+  homeSelInit();
+  const box=document.getElementById('adminBody');
+  box.innerHTML=`
+    <div class="note2" style="margin-bottom:12px">Choose what shows on the <b>home page</b>. The <b>star</b> sets the big <b>Featured trek</b> banner (one trek only). The <b>tick</b> adds a trek to the <b>Popular Treks</b> rail — your picks show first and the rail fills up to 12 with the rest.</div>
+    <div id="admHomePreview">${admHomePreviewHTML()}</div>
+    <div class="adm-count" id="admHomeCount"></div>
+    <div class="adm-search"><span class="msr">search</span><input placeholder="Search treks by name or region…" value="${esc(_homeQ)}" oninput="_homeQ=this.value;renderAdminHomeList()"></div>
+    <div id="admHomeList" class="adm-hm-list"></div>
+    <div class="adm-ed-foot" style="margin-top:14px"><button class="btn ghost" onclick="homeSelReset()">Reset</button><button class="btn" onclick="saveHomePicks()"><span class="msr">check</span> Save home page</button></div>`;
+  hydrate(box);renderAdminHomeList();
+}
+async function saveHomePicks(){
+  const pop=[..._homePop];
+  /* paint it locally first so the home page reflects the change even if offline */
+  treks.forEach(t=>{t.pop=_homePop.has(t.n);t.feat=(t.n===_homeFeat);});
+  renderHome();
+  if(!sbOn){note('Saved on this device only (Supabase not connected).');return;}
+  const res=await adminCall('save_home',{featured:_homeFeat||'',popular:pop});
+  if(!res||!res.ok){note((res&&res.error)||'Could not save the home page.','Save failed');return;}
+  await loadTreks();_homePop=null;homeSelInit();renderHome();renderAdminHome();
+  note('Home page updated for everyone ✓');
+}
 /* ----- Departures (batches) ----- */
 function getBatchMap(){try{return JSON.parse(localStorage.getItem('tmk_batches')||'{}');}catch(e){return {};}}
 function setBatchMap(m){try{localStorage.setItem('tmk_batches',JSON.stringify(m));}catch(e){}}
@@ -4417,7 +4486,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='284';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='285';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
