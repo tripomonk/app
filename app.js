@@ -1602,7 +1602,10 @@ const ADMIN_EMAILS=['vikasupadhyay9@gmail.com'];  /* real admins only */
 function userEmail(){return ((currentUser&&currentUser.email)||'').toLowerCase();}
 function isAdminUser(){return !!userEmail()&&ADMIN_EMAILS.includes(userEmail());}
 let staffSet=new Set();
-async function loadStaff(){const sb=getSupaClient();if(!sb)return;try{const{data}=await sb.from('staff').select('email');staffSet=new Set((data||[]).map(r=>(r.email||'').toLowerCase()));}catch(e){}}
+async function loadStaff(){const sb=getSupaClient();if(!sb)return;
+  try{const{data}=await sb.from('staff').select('email');staffSet=new Set((data||[]).map(r=>(r.email||'').toLowerCase()));}catch(e){}
+  /* the Trip Captain card is gated on staffSet, which only exists once this resolves */
+  try{const h=document.getElementById('staffHub');if(h)h.innerHTML=staffHubCard();}catch(e){}}
 function isStaffUser(){return isAdminUser()||(!!userEmail()&&staffSet.has(userEmail()));}
 /* Escape a value for use inside onclick="fn('HERE')".
    esc() alone is not enough: it leaves backslashes and lets a crafted name break
@@ -3562,6 +3565,29 @@ function hostHubCard(){
     +'<div class="hh-tx"><b>Host with Tripomonk</b>'
     +'<small>Lead treks & earn — we handle operations, safety & payments</small></div>'+chev+'</div>';
 }
+/* Staff tools, shown on the profile directly under the Host Dashboard card.
+   Only rendered for the people who actually have them: the Admin Dashboard for
+   admin emails, Trip Captain check-in for admins + anyone in the staff table.
+   Everyone else gets an empty string, so nothing shifts for a normal trekker. */
+function staffHubCard(){
+  if(!isLoggedIn())return '';
+  const chev='<span class="ch">'+ic('back',16)+'</span>';
+  let h='';
+  const msr=n=>'<span class="msr" style="font-size:22px">'+n+'</span>';
+  if(isAdminUser()){
+    h+='<div class="host-hub staff" onclick="go(\'admin\')">'
+      +'<div class="hh-ic">'+msr('admin_panel_settings')+'</div>'
+      +'<div class="hh-tx"><b>Admin Dashboard</b>'
+      +'<small>Treks, home page, departures, bookings &amp; staff</small></div>'+chev+'</div>';
+  }
+  if(isStaffUser()){
+    h+='<div class="host-hub staff" onclick="go(\'captain\')">'
+      +'<div class="hh-ic">'+msr('verified')+'</div>'
+      +'<div class="hh-tx"><b>Trip Captain Check-in</b>'
+      +'<small>Scan tickets and check trekkers in at the trailhead</small></div>'+chev+'</div>';
+  }
+  return h;
+}
 /* ============================================================
    ACCOUNT & SETTINGS MENU (hamburger) — everything that isn't the
    social profile lives here: bookings, payments, tools, support.
@@ -3615,10 +3641,8 @@ function renderAccountMenu(){
   const box=document.getElementById('accountMenuBody');if(!box)return;
   const row=a=>'<button type="button" class="amrow" onclick="menuGo(\''+jsq(a[2])+'\')"><span class="msr amic">'+a[0]+'</span><span class="amt">'+esc(a[1])+'</span><span class="msr amch">chevron_right</span></button>';
   let html=accountMenuGroups().map(g=>'<div class="amgrp"><div class="amgrp-h">'+esc(g[0])+'</div>'+g[1].map(row).join('')+'</div>').join('');
-  const extra=[];
-  if(isStaffUser())extra.push(['verified','Trip Captain Check-in','captain']);
-  if(isAdminUser())extra.push(['admin_panel_settings','Admin Dashboard','admin']);
-  if(extra.length)html+='<div class="amgrp">'+extra.map(row).join('')+'</div>';
+  /* Admin Dashboard + Trip Captain check-in used to sit here. They're staff tools, so
+     they now live on the profile directly under the Host Dashboard card (staffHubCard). */
   html+=isLoggedIn()
     ? '<button type="button" class="amrow amlogout" onclick="menuGo(\'signout\')"><span class="msr amic">logout</span><span class="amt">Logout</span></button>'
     : '<button type="button" class="amrow amsignin" onclick="menuGo(\'login\')"><span class="msr amic">login</span><span class="amt">Sign in / Create account</span></button>';
@@ -3815,7 +3839,9 @@ function renderProfile(){document.getElementById('pCover').style.backgroundImage
      prompt live here. All account/utility items moved to the hamburger (accountMenu). */
   const pb=document.getElementById('profileBio');
   if(pb){const bio=(_hostApp&&_hostApp.bio)||'';pb.textContent=bio;pb.style.display=bio?'':'none';}
-  let rows=socialLinks(getSavedSocials())+fitnessProfileCard()+'<div id="hostHub">'+hostHubCard()+'</div>';
+  let rows=socialLinks(getSavedSocials())+fitnessProfileCard()
+    +'<div id="hostHub">'+hostHubCard()+'</div>'
+    +'<div id="staffHub">'+staffHubCard()+'</div>';   /* admin / trip-captain, staff only */
   if(isLoggedIn()&&!isPrefsDone())rows+=`<div class="pref-prompt" onclick="go('onboarding')"><span class="msr">interests</span><div><b>Complete your preferences</b><small>Help us connect you with like-minded trekkers</small></div><span class="msr" style="margin-left:auto">chevron_right</span></div>`;
   if(!isLoggedIn())rows+=`<div class="mrow" onclick="go('login')"><span class="ic">${ic('user',20)}</span><span class="t" style="color:var(--accent2)">Sign in / Create account</span><span class="ch">${ic('back',16)}</span></div>`;
   document.getElementById('menu').innerHTML=rows;
@@ -4521,7 +4547,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='286';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='287';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
