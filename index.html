@@ -292,6 +292,32 @@
   .bigcard .reg{font-size:12px;color:rgba(255,255,255,.8);display:flex;align-items:center;gap:4px;margin-top:3px}
   .bigcard .pr{position:absolute;top:12px;left:12px;right:auto;z-index:1;color:#fff;background:rgba(10,18,30,.52);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.18);padding:6px 12px;border-radius:999px;font-size:13px;font-weight:700;letter-spacing:.2px;box-shadow:0 3px 10px -2px rgba(0,0,0,.35)}
   .bigcard .fav{position:absolute;top:12px;left:12px;z-index:1;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.4);backdrop-filter:blur(6px);cursor:pointer}
+
+  /* ---- special tag (Offer / Discount / Festival Special …) ---- */
+  .trek-tag{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+    padding:5px 10px;border-radius:8px;white-space:nowrap;line-height:1;color:#12203a;
+    box-shadow:0 4px 12px -3px rgba(0,0,0,.5)}
+  .trek-tag.gold{background:linear-gradient(135deg,#f7c451,#e0952a)}
+  .trek-tag.green{background:linear-gradient(135deg,#5fd39a,#0f9d58);color:#04231a}
+  .trek-tag.red{background:linear-gradient(135deg,#ff8a8a,#e0453f);color:#2c0605}
+  .trek-tag.blue{background:linear-gradient(135deg,#7fb0ff,#2f6bff);color:#04173f}
+  .trek-tag.violet{background:linear-gradient(135deg,#c89bff,#7c3aed);color:#1b0640}
+  /* on a photo: below the price pill on the big card, top-left elsewhere */
+  .bigcard .trek-tag{position:absolute;top:50px;left:12px;z-index:2}
+  .fcx-img .trek-tag,.hph .trek-tag{position:absolute;top:10px;left:10px;z-index:3}
+  /* on the trek detail header it sits above the title, in flow */
+  #dTag{margin-bottom:7px}
+  /* admin trek list chip */
+  .adm-tc-tag{font-size:10px;font-weight:800;padding:3px 8px;border-radius:8px;white-space:nowrap;color:#12203a}
+  .adm-tc-tag.gold{background:#f7c451}.adm-tc-tag.green{background:#5fd39a;color:#04231a}
+  .adm-tc-tag.red{background:#ff8a8a;color:#2c0605}.adm-tc-tag.blue{background:#7fb0ff;color:#04173f}
+  .adm-tc-tag.violet{background:#c89bff;color:#1b0640}
+  /* admin picker chips — tint the selected one with its own colour */
+  .adm-tagchip.on.gold{border-color:#f7c451;background:rgba(247,196,81,.16);color:#f7c451}
+  .adm-tagchip.on.green{border-color:#5fd39a;background:rgba(95,211,154,.16);color:#5fd39a}
+  .adm-tagchip.on.red{border-color:#ff8a8a;background:rgba(255,138,138,.16);color:#ff8a8a}
+  .adm-tagchip.on.blue{border-color:#7fb0ff;background:rgba(127,176,255,.16);color:#7fb0ff}
+  .adm-tagchip.on.violet{border-color:#c89bff;background:rgba(200,155,255,.16);color:#c89bff}
   .fav.on{color:#ff5a7a}
 
   /* bottom nav — floating pill with raised centre button */
@@ -2450,6 +2476,7 @@
     <div class="dcard">
       <div class="dcard-head">
         <div class="dcard-head-tx">
+          <div id="dTag"></div>
           <h1 id="dName"></h1><div class="reg"><span class="ic" data-i="pin"></span><span id="dReg"></span></div>
           <div class="meta"><span class="star">★</span> <b id="dRate"></b> <span class="g" id="dRev" style="color:var(--muted)"></span></div>
         </div>

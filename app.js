@@ -284,7 +284,7 @@ async function loadTreks(){ if(!sbOn) return;
        picks up the DB _id so the NEXT edit updates the same row instead of inserting. */
     const dbByName={};
     rows.forEach(d=>{const row={n:d.name,region:d.region,img:d.img,r:d.rating,rev:d.reviews,lvl:d.level,days:d.days,
-      alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,packing:d.packing||null,batches:(Array.isArray(d.batches)?d.batches:null),req:(typeof d.req_score==='number'?d.req_score:null),pop:!!d.popular,feat:!!d.featured,_id:d.id};
+      alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,packing:d.packing||null,batches:(Array.isArray(d.batches)?d.batches:null),req:(typeof d.req_score==='number'?d.req_score:null),pop:!!d.popular,feat:!!d.featured,tag:d.tag||'',_id:d.id};
       if(d.credit)row.credit=d.credit; dbByName[d.name]=row;});
     const seen=new Set();
     treks.forEach(t=>{const d=dbByName[t.n];if(d){Object.assign(t,d);seen.add(t.n);}});
@@ -1647,8 +1647,21 @@ function lazyBg(root){
   _lazyScroller=sc;
   sc.addEventListener('scroll',_lazyScroll,{passive:true});
 }
+/* ---- Special tag (Offer / Discount / Festival Special …) ----
+   Stored as ONE free-text column so the admin isn't boxed into a fixed list. The
+   presets below are just the quick picks in the admin panel; the colour is looked up
+   from the label, and anything custom falls back to brand gold. */
+const TREK_TAGS=['Offer','Discount','Festival Special','Bestseller','Filling Fast','New','Early Bird'];
+const TAG_STYLE={'offer':'gold','discount':'green','festival special':'violet','bestseller':'gold',
+  'filling fast':'red','new':'blue','early bird':'green'};
+function tagStyle(v){return TAG_STYLE[String(v||'').trim().toLowerCase()]||'gold';}
+function trekTag(t){return String((t&&t.tag)||'').trim();}
+function tagBadge(t){
+  const v=trekTag(t);if(!v)return '';
+  return '<span class="trek-tag '+tagStyle(v)+'">'+esc(v)+'</span>';
+}
 function bigCard(t){return `<div class="bigcard" onclick="openDetail(${t.idx})" data-bg="${esc(t.img||'')}" style="background-color:#12243f">
-  ${trekScoreBadge(t,'on-photo')}<span class="pr">${t.soon?'Coming Soon':INR(t.price)}</span>
+  ${trekScoreBadge(t,'on-photo')}<span class="pr">${t.soon?'Coming Soon':INR(t.price)}</span>${tagBadge(t)}
   <div class="info"><h3>${t.n}</h3><div class="reg">${ic('pin',12)} ${t.region} · ${t.dur} · ${t.lvl}</div></div></div>`;}
 
 let homeFilter='All';
@@ -1656,7 +1669,7 @@ const diffs=['All','Easy','Moderate','Difficult'];
 const diffIcon={All:'treks',Easy:'pine',Moderate:'altitude',Difficult:'flame'};
 function renderHomeChips(){document.getElementById('homeChips').innerHTML=diffs.map(d=>`<div class="chip ${d===homeFilter?'on':''}" onclick="setHomeFilter('${d}')"><span style="display:grid;place-items:center">${ic(diffIcon[d],20)}</span>${d==='All'?'All Treks':d}</div>`).join('');hydrate(document.getElementById('homeChips'));}
 function setHomeFilter(d){homeFilter=d;renderHomeChips();renderHome();}
-function trekCardH(t){return `<div class="hcard" onclick="openDetail(${t.idx})"><div class="hph" style="background-image:url('${t.img}')">${t.soon?'<span class="soon">Coming Soon</span>':''}${trekScoreBadge(t,'on-photo')}</div>
+function trekCardH(t){return `<div class="hcard" onclick="openDetail(${t.idx})"><div class="hph" style="background-image:url('${t.img}')">${t.soon?'<span class="soon">Coming Soon</span>':''}${tagBadge(t)}${trekScoreBadge(t,'on-photo')}</div>
   <div class="hbd"><h3>${t.n}</h3><div class="reg">${ic('pin',12)} ${t.region}</div>
   <div class="rt"><span class="star">★</span> <b>${t.r}</b> <span style="color:var(--muted)">(${t.rev})</span></div>
   <div class="ft"><span class="tag">${ic('clock',12)} ${t.dur}</span><span class="tag">${t.lvl}</span></div></div></div>`;}
@@ -1664,7 +1677,7 @@ function trekCardH(t){return `<div class="hcard" onclick="openDetail(${t.idx})">
 let _cfMoved=false;
 /* card builders */
 function trekCardCF(t,i){return `<div class="fcx" data-cf="${i}" onclick="cfTapCard(this)">
-  <div class="fcx-img" style="background-image:url('${t.img}')">${t.soon?'<span class="soon">Coming Soon</span>':''}${trekScoreBadge(t,'on-photo')}</div>
+  <div class="fcx-img" style="background-image:url('${t.img}')">${t.soon?'<span class="soon">Coming Soon</span>':''}${tagBadge(t)}${trekScoreBadge(t,'on-photo')}</div>
   <div class="fcx-bd">
     <h3>${esc(t.n)}</h3>
     <div class="fcx-loc">${ic('pin',13)} ${esc(t.region)}</div>
@@ -1945,6 +1958,8 @@ function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
   const _hi=new Image();_hi.onload=_hi.onerror=()=>hh.classList.remove('img-loading');_hi.src=t.img;   /* shimmer skeleton until the hero photo is ready */
   const dc=document.getElementById('dCredit');
   if(dc){if(t.credit){dc.innerHTML='<span class="msr">photo_camera</span> '+esc(t.credit);dc.classList.add('on');}else dc.classList.remove('on');}
+  const dtg=document.getElementById('dTag');
+  if(dtg){dtg.innerHTML=tagBadge(t);dtg.style.display=trekTag(t)?'':'none';}
   document.getElementById('dName').textContent=t.n;
   document.getElementById('dReg').textContent=t.region;
   document.getElementById('dRate').textContent=t.r;
@@ -4256,7 +4271,7 @@ async function sbWriteChecked(method,path,body){
   if(!res||!res.ok){note((res&&res.error)||'Admin save failed.','Save failed');return false;}
   return true;
 }
-function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null,req_score:(typeof t.req==='number'?t.req:null),popular:!!t.pop,featured:!!t.feat};}
+function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null,req_score:(typeof t.req==='number'?t.req:null),popular:!!t.pop,featured:!!t.feat,tag:(t.tag||'').trim()||null};}
 let editIdx=-1, adminTab='Treks', depTrek=null;
 const ADM_TAB_IC={Bookings:'receipt_long',Treks:'landscape',Home:'home',Departures:'event',Packing:'checklist',Hosts:'groups',Staff:'badge',Settings:'settings'};
 function renderAdmin(){
@@ -4382,7 +4397,7 @@ function admTrekCard(t,i){
   return `<div class="adm-tc" onclick="editTrek(${i})">
     <div class="adm-tc-ph" style="background-image:url('${esc(img)}')">${t.soon?'<span class="adm-tc-soon">Soon</span>':''}</div>
     <div class="adm-tc-bd"><b>${esc(t.n)}</b><small>${esc(t.region||'—')} · ${t.days||'?'}d · ₹${Number(t.price||0).toLocaleString('en-IN')}</small>
-      <div class="adm-tc-tags"><span class="adm-tc-lvl">${esc(t.lvl||'—')}</span><span class="adm-tc-req">Score ${req}</span></div></div>
+      <div class="adm-tc-tags"><span class="adm-tc-lvl">${esc(t.lvl||'—')}</span><span class="adm-tc-req">Score ${req}</span>${trekTag(t)?`<span class="adm-tc-tag ${tagStyle(t.tag)}">${esc(t.tag)}</span>`:''}</div></div>
     <div class="adm-tc-act"><button class="adm-ic" onclick="event.stopPropagation();editTrek(${i})" title="Edit"><span class="msr">edit</span></button>
       <button class="adm-ic del" onclick="event.stopPropagation();delTrek(${i})" title="Delete"><span class="msr">delete</span></button></div>
   </div>`;
@@ -4547,7 +4562,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='287';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='288';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -4563,6 +4578,17 @@ function saveSettings(){const g=id=>document.getElementById(id);
   note('Settings saved.');}
 function fld(id,label,val,ph){return `<div class="field"><label>${label}</label><div class="inp"><input id="${id}" value="${esc(val==null?'':val)}" placeholder="${ph||''}"></div></div>`;}
 function admSetStatus(live){const l=document.getElementById('admStatusLive'),s=document.getElementById('admStatusSoon');if(l)l.classList.toggle('on',live);if(s)s.classList.toggle('on',!live);}
+/* The tag chips and the free-text box are ONE field. Tapping a chip fills the box;
+   typing your own de-selects the chips unless the text matches a preset. The box is
+   what gets saved, so a custom tag works exactly like a preset one. */
+function admPickTag(v){const inp=document.getElementById('admTag');if(inp)inp.value=v;admSyncTagChips();}
+function admSyncTagChips(){
+  const inp=document.getElementById('admTag');
+  const cur=((inp&&inp.value)||'').trim().toLowerCase();
+  document.querySelectorAll('#admTagChips .adm-tagchip').forEach(c=>{
+    c.classList.toggle('on',String(c.dataset.tag||'').trim().toLowerCase()===cur);
+  });
+}
 function showAdminForm(t){const f=document.getElementById('adminForm');
   const lv=t.lvl||'Easy', img=(t.img||'').split('?')[0];
   const reqVal=(t.req!=null?t.req:''), reqAuto=t.n?trekReqScore(t):'';
@@ -4576,6 +4602,13 @@ function showAdminForm(t){const f=document.getElementById('adminForm');
       <div class="field"><label>Difficulty</label><div class="inp"><select id="admLvl" style="all:unset;flex:1;color:var(--text)">${['Easy','Moderate','Difficult'].map(o=>`<option ${o===lv?'selected':''} style="color:#000">${o}</option>`).join('')}</select></div></div>
       <div class="field"><label>Status</label><div class="adm-status"><button type="button" class="adm-status-btn ${!t.soon?'on':''}" id="admStatusLive" onclick="admSetStatus(true)">Live</button><button type="button" class="adm-status-btn ${t.soon?'on':''}" id="admStatusSoon" onclick="admSetStatus(false)">Soon</button></div></div>
     </div>
+
+    <div class="adm-sec">Special tag</div>
+    <div class="adm-chips" id="admTagChips">
+      ${['',...TREK_TAGS].map(v=>`<button type="button" class="adm-chip adm-tagchip ${tagStyle(v)} ${((t.tag||'').trim()===v)?'on':''}" data-tag="${esc(v)}" onclick="admPickTag('${jsq(v)}')">${v?esc(v):'None'}</button>`).join('')}
+    </div>
+    ${fld('admTag','Or type your own',t.tag,'e.g. Diwali Special')}
+    <div class="adm-hint">Shows as a coloured badge on this trek everywhere in the app. Leave blank for none.</div>
 
     <div class="adm-sec">Trip details</div>
     <div class="adm-row2">${fld('admDays','Days',t.days,'5')}${fld('admAlt','Max altitude',t.alt,'12,500 ft')}</div>
@@ -4601,6 +4634,8 @@ function showAdminForm(t){const f=document.getElementById('adminForm');
   f.style.display='block';hydrate(f);f.scrollIntoView({behavior:'smooth',block:'start'});
   const imgInp=document.getElementById('admImg');
   if(imgInp)imgInp.addEventListener('input',()=>{const p=document.getElementById('admImgPrev');if(p)p.style.backgroundImage=imgInp.value.trim()?`url('${imgInp.value.split('?')[0].replace(/'/g,'%27')}')`:'';});
+  const tagInp=document.getElementById('admTag');
+  if(tagInp)tagInp.addEventListener('input',admSyncTagChips);
 }
 function newTrek(){editIdx=-1;adminTab='Treks';renderAdmin();showAdminForm({lvl:'Easy',region:'Uttarakhand'});}
 function editTrek(i){editIdx=i;showAdminForm(treks[i]);}
@@ -4613,6 +4648,7 @@ async function saveTrek(){const g=id=>document.getElementById(id);
     price:parseInt(g('admPrice').value)||0,days:parseInt(g('admDays').value)||1,alt:g('admAlt').value.trim(),
     dist:g('admDist').value.trim(),best:g('admBest').value.trim(),r:parseFloat(g('admRate').value)||4.7,
     rev:g('admRev').value.trim()||'0',img:g('admImg').value.trim(),desc:g('admDesc').value.trim(),
+    tag:(g('admTag')?g('admTag').value:'').trim().slice(0,28),
     req:req,soon:soon};
   if(editIdx<0){treks.push(t);} else {t._id=treks[editIdx]._id;treks[editIdx]=t;}
   deriveTreks();renderHomeChips();renderHome();renderQuick();
