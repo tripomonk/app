@@ -1952,6 +1952,15 @@ async function openDetailByName(n){
   if(ht){openHostTripDetail(ht.id);return;}
   note('This trek isn’t available right now.','Not found');
 }
+/* one label+value row for the trek detail sections (Conditions / Good to Know /
+   Getting there). `icon` is either an icon-map key or raw Material glyph via msr: */
+function dStat(icon,val,label,cls){
+  const glyph=String(icon||'').indexOf('msr:')===0
+    ? '<span class="msr" style="font-size:20px">'+icon.slice(4)+'</span>'
+    : ic(icon,20);
+  return '<div class="dstat'+(cls?' '+cls:'')+'"><div class="dst-ic">'+glyph+'</div>'
+    +'<div class="dst-tx"><b>'+esc(val==null?'—':val)+'</b><small>'+esc(label)+'</small></div></div>';
+}
 function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
   const hh=document.getElementById('dHero');hh.style.transform='';
   hh.classList.add('img-loading');hh.style.backgroundImage=`url('${t.img}')`;
@@ -1969,9 +1978,9 @@ function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
   document.getElementById('dDesc').textContent=t.desc;
   const stats=[['altitude',t.alt,'Altitude'],['clock',t.dur,'Duration'],['distance',t.dist,'Distance'],['calendar',t.best,'Best Time']];
   document.getElementById('dStats').innerHTML=stats.map(s=>`<div class="stat"><div class="ic" style="display:grid;place-items:center">${ic(s[0],20)}</div><b>${s[1]}</b><small>${s[2]}</small></div>`).join('');
-  document.getElementById('dHl').innerHTML=t.hl.map(h=>`<div class="hlc"><span class="ic">${ic(h[0],22)}</span>${h[1]}</div>`).join('');
-  document.getElementById('dCond').innerHTML=[['altitude',t.elev,'Elevation'],['cloud',t.climate,'Climate'],['temp',t.temp,'Temp'],['air',t.aqi+' · '+t.aqiVal,'Air Quality']].map((c,j)=>`<div class="stat"><div class="ic" style="display:grid;place-items:center;${j===3?'color:#6ee7a0':''}">${ic(c[0],20)}</div><b style="font-size:11.5px">${c[1]}</b><small>${c[2]}</small></div>`).join('');
-  document.getElementById('dKnow').innerHTML=KNOW.map(k=>`<div class="stat"><div class="ic" style="display:grid;place-items:center">${ic(k[0],20)}</div><b>${k[1]}</b><small>${k[2]}</small></div>`).join('');
+  document.getElementById('dHl').innerHTML=t.hl.map(h=>`<span class="hl-pill"><span class="ic">${ic(h[0],17)}</span>${esc(h[1])}</span>`).join('');
+  document.getElementById('dCond').innerHTML=[['altitude',t.elev,'Elevation'],['cloud',t.climate,'Climate'],['temp',t.temp,'Temp'],['air',t.aqi+' · '+t.aqiVal,'Air Quality']].map((c,j)=>dStat(c[0],c[1],c[2],j===3?'good':'')).join('');
+  document.getElementById('dKnow').innerHTML=KNOW.map(k=>dStat(k[0],k[1],k[2])).join('');
   const incRow=x=>`<div style="display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:var(--muted);padding:5px 0;line-height:1.35"><span class="ic" style="color:#6ee7a0;flex:none;margin-top:1px">${ic('check',15)}</span>${x[1]}</div>`;
   const excRow=x=>`<div style="display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:var(--muted2);padding:5px 0;line-height:1.35"><span style="color:#ff7a7a;font-weight:600;flex:none;width:15px;text-align:center;margin-top:-1px">✕</span><span style="text-decoration:line-through">${x}</span></div>`;
   document.getElementById('dIncl').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
@@ -4190,10 +4199,10 @@ function getDirections(){
 }
 function renderDetailGetting(t){
   const box=document.getElementById('dGetting');if(!box)return;const b=baseInfo(t);
-  box.innerHTML=`<div class="stats">
-    <div class="stat"><div class="ic" style="display:grid;place-items:center">${ic('pin',20)}</div><b>${esc(b.town)}</b><small>Base town</small></div>
-    <div class="stat"><div class="ic" style="display:grid;place-items:center">${ic('distance',20)}</div><b style="font-size:11px">${esc(b.rail)}</b><small>Nearest rail</small></div>
-    <div class="stat"><div class="ic" style="display:grid;place-items:center"><span class="msr" style="font-size:20px;color:var(--accent2)">flight</span></div><b>${esc(b.air)}</b><small>Airport</small></div>
+  box.innerHTML=`<div class="dgrid">
+    ${dStat('pin',b.town,'Base town')}
+    ${dStat('distance',b.rail,'Nearest rail')}
+    ${dStat('msr:flight',b.air,'Airport')}
   </div>
   <button class="btn ghost" style="margin-top:12px" onclick="getDirections()">${ic('pin',16)} Get directions on Google Maps</button>
   <button class="btn ghost" style="margin-top:9px" onclick="openNav(cart.trek)">${ic('distance',16)} Live trail map</button>`;
@@ -4562,7 +4571,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='288';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='289';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>

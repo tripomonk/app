@@ -395,6 +395,29 @@
   .hlc{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:13px 6px;text-align:center;font-size:10.5px;color:var(--muted)}
   .hlc .ic{color:var(--accent2);margin-bottom:6px;display:block;display:grid;place-items:center}
 
+  /* ---- trek detail: Highlights / Conditions / Good to Know / Getting there ----
+     These were four identical grids of narrow centred squares. Long values like
+     "Dehradun (~200 km)" wrapped and clipped out of the fixed 104px tile, and a
+     3-item section left a ragged empty 4th column. Highlights are qualitative, so
+     they're now inline pills; the rest are label+value pairs, so they're horizontal
+     rows on an auto-fit grid — left-aligned text has room to breathe and 3 or 4
+     items both lay out cleanly. */
+  .hl-pills{display:flex;flex-wrap:wrap;gap:8px}
+  .hl-pill{display:inline-flex;align-items:center;gap:7px;background:var(--card);border:1px solid var(--stroke);
+    border-radius:999px;padding:8px 14px 8px 10px;font-size:12px;font-weight:600;color:var(--text);line-height:1}
+  .hl-pill .ic{color:var(--accent2);display:grid;place-items:center;flex:none}
+
+  .dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:9px}
+  .dstat{display:flex;align-items:center;gap:11px;background:var(--card);border:1px solid var(--stroke);
+    border-radius:14px;padding:11px 12px;min-width:0}
+  .dstat .dst-ic{width:36px;height:36px;flex:none;border-radius:11px;display:grid;place-items:center;
+    background:rgba(47,107,255,.13);color:var(--accent2)}
+  .dstat .dst-tx{min-width:0;flex:1}
+  .dstat b{display:block;font-size:13px;font-weight:600;line-height:1.25;overflow-wrap:anywhere}
+  .dstat small{display:block;font-size:10.5px;color:var(--muted);margin-top:2px;line-height:1.2}
+  /* tint the air-quality tile green, it's the one value that reads as a rating */
+  .dstat.good .dst-ic{background:rgba(110,231,160,.14);color:#6ee7a0}
+
   /* sticky bottom CTA */
   .cta{position:sticky;bottom:0;z-index:40;margin:14px -18px calc(var(--safe-bottom)*-1 - 16px);padding:14px 18px calc(var(--safe-bottom) + 16px);background:var(--bg);border-top:1px solid var(--stroke);box-shadow:0 -10px 24px rgba(6,16,28,.55)}
   .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:0;font-weight:600;font-size:15px;padding:16px;border-radius:16px;cursor:pointer}
@@ -2486,9 +2509,9 @@
     </div>
     <div class="blk reveal" style="padding-top:10px"><div id="dReadiness"></div></div>
     <div class="blk reveal"><h2>About the Trek</h2><p id="dDesc"></p></div>
-    <div class="blk reveal"><h2>Highlights</h2><div class="hl" id="dHl"></div></div>
-    <div class="blk reveal"><h2 style="display:flex;justify-content:space-between;align-items:center">Conditions <a style="font-size:12px;color:var(--accent2);cursor:pointer" onclick="openNav(cart.trek)">Trail map →</a></h2><div class="stats" id="dCond"></div></div>
-    <div class="blk reveal"><h2>Good to Know</h2><div class="stats" id="dKnow"></div></div>
+    <div class="blk reveal"><h2>Highlights</h2><div class="hl-pills" id="dHl"></div></div>
+    <div class="blk reveal"><h2 style="display:flex;justify-content:space-between;align-items:center">Conditions <a style="font-size:12px;color:var(--accent2);cursor:pointer" onclick="openNav(cart.trek)">Trail map →</a></h2><div class="dgrid" id="dCond"></div></div>
+    <div class="blk reveal"><h2>Good to Know</h2><div class="dgrid" id="dKnow"></div></div>
     <div class="blk reveal"><h2>Getting there</h2><div id="dGetting"></div></div>
     <div class="blk reveal"><h2>Inclusions &amp; Exclusions</h2><div id="dIncl"></div></div>
     <div class="blk reveal"><h2 style="display:flex;justify-content:space-between;align-items:center">Itinerary <a style="font-size:12px;color:var(--accent2);cursor:pointer" onclick="go('itinerary')">View full →</a></h2><div id="dItinPrev"></div></div>
