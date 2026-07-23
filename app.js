@@ -109,6 +109,8 @@ const treks=[
    desc:"The perfect weekend trek from Dehradun — summit views of the Bandarpunch range in a single night out."},
   {n:"Roopkund",region:"Uttarakhand",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Roopkund_Lake.jpg/1280px-Roopkund_Lake.jpg",credit:"Schwiki · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"410",lvl:"Difficult",days:8,alt:"15,750 ft",dist:"53 km",best:"May – Jun",price:13999,
    desc:"The mysterious skeleton lake — a demanding high-altitude classic for experienced trekkers."},
+  {n:"Yulla Kanda",region:"Himachal",img:U+"1606898296502-40d8c37e994b",r:4.8,rev:"New",lvl:"Moderate",days:5,alt:"11,700 ft",dist:"18 km",best:"May – Oct",price:10500,dep:"Shimla",
+   desc:"A quiet Kinnaur trail to the Yulla Kanda meadow, home to a Lord Krishna temple believed to be the highest of its kind. Apple orchards and cedar give way to open ridges with Kinner Kailash across the valley — and because Kinnaur sits in the rain shadow, it walks well right through the monsoon."},
   /* ---- Coming soon (other regions) ---- */
   {n:"Triund",region:"Himachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Triund_%2822356802630%29.jpg/1280px-Triund_%2822356802630%29.jpg",credit:"Ashish Gupta from Noida, India · CC BY 2.0 · Wikimedia Commons",r:4.6,rev:"—",lvl:"Easy",days:2,alt:"9,350 ft",dist:"14 km",best:"Mar – Jun",price:4999,soon:true,desc:"A short, scenic ridge trek above McLeod Ganj with sweeping views of the Dhauladhar range."},
   {n:"Bhrigu Lake",region:"Himachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Bhrigu_Lake_by_Ahmad_Faiz_Mustafa_%281%29.jpg/1280px-Bhrigu_Lake_by_Ahmad_Faiz_Mustafa_%281%29.jpg",credit:"In Transit · CC BY 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:4,alt:"14,100 ft",dist:"25 km",best:"May – Oct",price:9499,soon:true,desc:"High-altitude alpine lake above Manali, reached through rolling meadows."},
@@ -4415,7 +4417,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='283';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='284';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -5355,7 +5357,7 @@ function clampScore(n){n=Math.round(Number(n)||0);return Math.max(0,Math.min(100
 const TREK_REQ={
   'Triund':35,'Nag Tibba':34,'Kheerganga':36,'Lamadugh':34,'Sham Valley':38,'Chopta Chandrashila':40,'Kareri Lake':44,
   'Valley of Flowers':42,'Dayara Bugyal':45,'Beas Kund':46,'Hemkund Sahib':48,'Patalsu Peak':48,
-  'Kedarkantha':62,'Brahmatal':64,'Kuari Pass':58,'Har Ki Dun':60,'Phulara Ridge':56,'Sar Pass':60,'Pindari Glacier':62,'Sandakphu':60,'Nubra Valley':58,'Bhrigu Lake':58,'Chandrakhani Pass':60,'Dodital Darwa Pass':58,'Seven Lakes':60,
+  'Yulla Kanda':54,'Kedarkantha':62,'Brahmatal':64,'Kuari Pass':58,'Har Ki Dun':60,'Phulara Ridge':56,'Sar Pass':60,'Pindari Glacier':62,'Sandakphu':60,'Nubra Valley':58,'Bhrigu Lake':58,'Chandrakhani Pass':60,'Dodital Darwa Pass':58,'Seven Lakes':60,
   'Hampta Pass':74,'Kashmir Great Lakes':72,'Goecha La':78,'Rupin Pass':76,'Tarsar Marsar':70,'Deo Tibba Base Camp':72,'Miyar Valley':70,'Stok Kangri Base Camp':74,'Lamayuru to Chilling':72,
   'Roopkund':82,'Pin Parvati Pass':88,'Bali Pass':84,'Kedartal':86,'Satopanth Lake':85,'Markha Valley':80,'Chadar Trek':86,'Rumtse to Tso Moriri':84,'Pangarchulla Peak':82,'Borasu Pass':85,'Indrahar Pass':82,'Gaumukh Tapovan':80,'Kugti Pass':84,'Bara Bhangal':86,'Friendship Peak':88,
   'Kang Yatse II':92
