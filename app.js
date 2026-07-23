@@ -662,7 +662,36 @@ async function breaker(run,fallback){
     return fallback;
   }finally{clearTimeout(timer);CB.inflight--;}
 }
-function isLoggedIn(){return!!currentUser;}
+/* Is a Supabase session persisted in storage? Synchronous, unlike getSession(), so the
+   boot path can tell "this device is signed in" BEFORE the async restore finishes.
+   supabase-js keeps its token under `sb-<project-ref>-auth-token`. */
+function hasStoredSession(){
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(k&&/^sb-.+-auth-token$/.test(k)&&localStorage.getItem(k))return true;
+    }
+  }catch(e){}
+  return false;
+}
+/* Optimistic ONLY while initAuth() is still resolving. The boot sequence renders the
+   whole app (and restoreNav() re-opens the last screen) synchronously, so without this
+   an auth-gated screen bounced to the login page on every reload — which read as being
+   silently signed out after each update. Once auth resolves we go strictly by
+   currentUser, so a stale or revoked token can never keep the UI looking signed in. */
+let _authResolved=false;
+function isLoggedIn(){return !!currentUser||(!_authResolved&&hasStoredSession());}
+/* Re-paint everything that depends on who's signed in, once the session really lands. */
+function refreshAuthUI(){
+  try{
+    renderHome();                                   /* header avatar + greeting */
+    if(cur==='profile')renderProfile();
+    else if(cur==='accountMenu')renderAccountMenu();
+    else if(cur==='community')renderFeedIfOpen();
+    else if(cur==='bookings')renderBookings();
+    refreshNotifBadge();
+  }catch(e){}
+}
 function renderFeedIfOpen(){if(cur==='community')renderFeed();else if(cur==='person')renderPerson();}
 /* The live session's user id — never trust a cached currentUser for writes. If the
    session changed underneath us, an insert built from a stale id fails the RLS check
@@ -678,17 +707,21 @@ async function authUid(){
   }catch(e){return currentUser?currentUser.id:null;}
 }
 async function initAuth(){
-  const sb=getSupaClient();if(!sb)return;
+  const sb=getSupaClient();
+  if(!sb){_authResolved=true;return;}
   /* did we just come back from an OAuth (Google) redirect? */
   const fromOAuth=/[#&](access_token|code)=/.test(window.location.hash||'')||/[?&]code=/.test(window.location.search||'');
-  const{data:{session}}=await sb.auth.getSession();
+  let session=null;
+  try{({data:{session}}=await sb.auth.getSession());}catch(e){}
+  currentUser=session?session.user:null;
+  _authResolved=true;          /* from here on isLoggedIn() is strict, not optimistic */
+  refreshAuthUI();             /* repaint the shell that booted before we knew */
   if(session){
-    currentUser=session.user;
     /* restore name/photo/follows BEFORE upserting, or an empty local copy overwrites the stored one */
     await loadProfileFromServer();
     upsertProfile();   /* register this user so others can @mention/follow/notify them */
     loadStaff();       /* role check */
-    if(cur==='profile')renderProfile();
+    refreshAuthUI();   /* again, now that the name/photo are back */
     if(fromOAuth){
       /* clean the token hash out of the URL and land on home */
       try{history.replaceState(null,'',window.location.pathname);}catch(e){}
@@ -701,9 +734,10 @@ async function initAuth(){
   }
   sb.auth.onAuthStateChange(async(evt,session)=>{
     currentUser=session?session.user:null;
+    _authResolved=true;
     /* arrived via a password-reset link — let them set a new password now */
     if(evt==='PASSWORD_RECOVERY'){promptNewPassword();return;}
-    if(!session){_profileLoadedFor=null;}
+    if(!session){_profileLoadedFor=null;refreshAuthUI();}
     /* reload whenever a DIFFERENT account is in play — keyed on the user id, not on
        "was anyone logged in", so switching accounts swaps identity properly.
        Token refreshes keep the same id, so they don't re-fetch. */
@@ -712,6 +746,7 @@ async function initAuth(){
       upsertProfile();
       loadStaff();
       renderFeedIfOpen();
+      refreshAuthUI();
     }
     if(cur==='profile')renderProfile();
     /* catch session arriving after OAuth redirect */
@@ -4486,7 +4521,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='285';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='286';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
