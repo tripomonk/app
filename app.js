@@ -1713,24 +1713,45 @@ function makeCoverflow(elId,list,cardFn,openFn){
 /* center-focus: the centred card is full size, neighbours scale down, fade + tilt in */
 function wireCoverflowFocus(el){
   const cards=[...el.querySelectorAll('.fcx')];if(!cards.length)return;
-  let raf=0;
-  const update=()=>{raf=0;
-    const mid=el.scrollLeft+el.clientWidth/2;
-    cards.forEach(c=>{
-      const cc=c.offsetLeft+c.offsetWidth/2;
-      const d=Math.min(1.4,Math.abs(cc-mid)/(c.offsetWidth||1));   /* 0 = centre */
-      const scale=1-Math.min(d,1)*0.15;
-      const op=1-Math.min(d,1)*0.4;
-      const rot=Math.max(-10,Math.min(10,(cc<mid?1:-1)*d*9));
-      c.style.transform='scale('+scale.toFixed(3)+') rotateY('+rot.toFixed(1)+'deg)';
-      c.style.opacity=op.toFixed(2);
-      c.style.zIndex=String(100-Math.round(Math.min(d,1)*100));
-    });
+  let raf=0,geo=[],half=0;
+  /* Card offsets don't change while scrolling, but reading offsetLeft/offsetWidth per
+     card per frame forced a synchronous layout on every frame — the single biggest
+     cause of the stutter on iPhone. Measure once, re-measure only on resize/rotate. */
+  const measure=()=>{
+    half=el.clientWidth/2;
+    geo=cards.map(c=>({c,mid:c.offsetLeft+c.offsetWidth/2,w:c.offsetWidth||1}));
   };
+  const update=()=>{raf=0;
+    /* The rail is often built while its view is still hidden, so the first measure()
+       can capture a zero-width layout and freeze every card at the off-centre clamp.
+       clientWidth is cheap to read (our transform writes don't dirty layout), so use it
+       as a validity check — it also covers rotation and the view being shown later. */
+    if(!geo.length||el.clientWidth/2!==half)measure();
+    if(!geo.length||!half)return;
+    const mid=el.scrollLeft+half;
+    for(let i=0;i<geo.length;i++){
+      const g=geo[i];
+      const d=Math.min(1.4,Math.abs(g.mid-mid)/g.w);              /* 0 = centre */
+      const k=Math.min(d,1);
+      const scale=1-k*0.15;
+      const rot=Math.max(-10,Math.min(10,(g.mid<mid?1:-1)*d*9));
+      /* translateZ(0) keeps each card on its own compositor layer on iOS, which stops
+         the sub-pixel shimmer you get when a rotateY layer is re-rasterised mid-scroll */
+      g.c.style.transform='translateZ(0) scale('+scale.toFixed(3)+') rotateY('+rot.toFixed(1)+'deg)';
+      g.c.style.opacity=(1-k*0.4).toFixed(2);
+      g.c.style.zIndex=String(100-Math.round(k*100));
+    }
+  };
+  const onScroll=()=>{if(!raf)raf=requestAnimationFrame(update);};
   if(el._cfScroll)el.removeEventListener('scroll',el._cfScroll);
-  el._cfScroll=()=>{if(!raf)raf=requestAnimationFrame(update);};
-  el.addEventListener('scroll',el._cfScroll,{passive:true});
-  update();setTimeout(update,80);setTimeout(update,320);   /* re-run after images size */
+  if(el._cfResize)window.removeEventListener('resize',el._cfResize);
+  el._cfScroll=onScroll;
+  el._cfResize=()=>{measure();update();};
+  el.addEventListener('scroll',onScroll,{passive:true});
+  window.addEventListener('resize',el._cfResize,{passive:true});
+  measure();update();
+  /* images change card height as they load — re-measure, don't just repaint */
+  setTimeout(el._cfResize,80);setTimeout(el._cfResize,320);
 }
 function renderHomeHero(){
   const box=document.getElementById('homeHero');if(!box)return;
@@ -3474,9 +3495,36 @@ async function renderPerson(){if(!curPerson){go('community');return;}const p=get
       ${me?'':`<div class="profile-actions" style="margin:14px 0 0"><button class="${isFollowing(p.n)?'on':''}" data-follow="${esc(p.n)}" onclick="toggleFollow('${jsq(p.n)}')">${isFollowing(p.n)?'Following':'Follow'}</button><button onclick="openChat('${jsq(p.n)}')">Message</button></div>`}
       <div style="margin-top:12px">${socialLinks(me?getSavedSocials():socialsByName[p.n])}</div>
     </div>
+    <div id="personTrips"></div>
     <div class="sec-h" style="margin:18px 4px 8px"><b>Posts</b></div>
     ${posts.length?`<div class="pgrid">${posts.map(gridCell).join('')}</div>`:`<div class="empty"><p>${me?'You have not posted yet.':'No posts yet.'}</p></div>`}`;
-  hydrate(body);}
+  hydrate(body);
+  /* a verified host's trips are the main thing people come here for — load them after
+     the profile paints so the page never waits on a second query */
+  if(hostByName[p.n])renderPersonTrips(p.n);
+}
+/* live trips for one host. Prefer host_id: host_name is a snapshot frozen when the
+   trip was created, so it drifts if the host later renames themselves. */
+async function loadHostTripsFor(name){
+  const sb=getSupaClient();if(!sb)return [];
+  try{
+    const uid=await uidForName(name);
+    const base=sb.from('host_trips').select('*').eq('status','live')
+      .order('start_date',{ascending:true}).limit(20);
+    const r=uid?await base.eq('host_id',uid):await base.eq('host_name',name);
+    return await resolveHostNames(r.data||[]);
+  }catch(e){return [];}
+}
+async function renderPersonTrips(name){
+  const box=document.getElementById('personTrips');if(!box)return;
+  const trips=await loadHostTripsFor(name);
+  if(!document.getElementById('personTrips'))return;   /* navigated away while loading */
+  if(!trips.length){box.innerHTML='';return;}
+  box.innerHTML='<div class="sec-h" style="margin:18px 4px 8px"><b>Hosted trips</b>'
+    +'<span class="sec-count">'+trips.length+'</span></div>'
+    +'<div class="hostrail">'+trips.map(hostTripCard).join('')+'</div>';
+  hydrate(box);
+}
 let pkTab='Essentials',pkDone={},pkTrek='';
 /* per-trek packing: a trek's custom list (stored on the trek) or the default */
 function getPacking(trekName){
@@ -4571,7 +4619,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='289';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='290';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -5954,6 +6002,9 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='hostTrip')renderHostTrip();
   if(id==='hostDash')renderHostDash();
   if(id==='hostProfile')renderHostProfile();
+  /* restoreNav() can land here directly on a reload, so load on demand */
+  if(id==='hosts'){if(_hostsLoaded)renderHostsList();
+    else Promise.all([loadAllHosts(),loadTripCountsByHost()]).then(renderHostsList).catch(()=>{});}
   if(id==='community')renderFeed();
   if(id==='peopleSearch'){_peoplePool=null;setTimeout(()=>{const i=document.getElementById('peopleSearchInput');if(i){i.value='';i.focus();}searchPeople('');},80);}
   if(id==='news')renderNews();
@@ -6442,7 +6493,18 @@ async function submitHostApp(){
      and the applicant never sees that their application actually landed */
   await note('Application received. We usually review within 2–3 days and may message you on WhatsApp.','Submitted ✓');
   await loadHostApp();     /* pull the row back so the status screen is real, not assumed */
-  renderBecomeHost();
+  renderBecomeHost();      /* keep the screen truthful in case they navigate back to it */
+  /* Land them on HOME, not back inside the form they just finished. Nothing more is
+     required of them here, and re-showing the wizard read as "it didn't submit". */
+  go('home');
+  /* Review takes a couple of days — use that time to get their public profile filled in,
+     since that's what trekkers will see next to their trips. */
+  if(!getSavedPhoto()||!getSavedUsername()){
+    setTimeout(()=>{
+      note('While we review, add a photo and pick a username so trekkers recognise you.','Finish your profile')
+        .then(()=>go('editProfile')).catch(()=>{});
+    },600);
+  }
 }
 
 /* ---- admin: review host applications ---- */
@@ -6948,8 +7010,69 @@ function verifiedHostChip(h){
 function renderVerifiedHostsRail(){
   if(!verifiedHosts.length)return '';
   return '<div class="sec" style="margin-top:20px"><h2>Verified Hosts</h2>'
-    +'<a onclick="go(\'becomeHost\')">Become one</a></div>'
+    +'<a onclick="openHosts()">See all</a></div>'
     +'<div class="vhostrail">'+verifiedHosts.map(verifiedHostChip).join('')+'</div>';
+}
+
+/* ============================================================
+   BROWSE ALL VERIFIED HOSTS
+   The home rail is capped at 12 faces; this is the full, searchable list.
+   Tapping a host opens their public profile, which lists their live trips.
+   ============================================================ */
+let allHosts=[],_hostsQ='',_hostsLoaded=false;
+async function loadAllHosts(){
+  const sb=getSupaClient();if(!sb){allHosts=[];return;}
+  try{
+    const r=await sb.from('profiles').select('id,name,username,photo,is_host')
+      .eq('is_host',true).not('name','is',null).order('name',{ascending:true}).limit(300);
+    allHosts=(r.data||[]).filter(h=>String(h.name||'').trim());
+    allHosts.forEach(h=>{hostByName[h.name]=true;if(h.photo)photoByName[h.name]=h.photo;
+      if(h.username)unameByName[h.name]=h.username;});
+    _hostsLoaded=true;
+  }catch(e){allHosts=[];_hostsLoaded=true;}
+}
+/* live trips per host, keyed by name — used on the host list AND their profile */
+let _tripsByHost=null;
+async function loadTripCountsByHost(){
+  const sb=getSupaClient();if(!sb){_tripsByHost={};return;}
+  try{
+    const r=await sb.from('host_trips').select('id,host_id,host_name,status').eq('status','live');
+    const map={};(r.data||[]).forEach(t=>{const n=t.host_name;if(n)map[n]=(map[n]||0)+1;});
+    _tripsByHost=map;
+  }catch(e){_tripsByHost={};}
+}
+async function openHosts(){
+  go('hosts');
+  const box=document.getElementById('hostsBody');
+  if(box&&!allHosts.length)box.innerHTML='<div class="skel skel-card"></div><div class="skel skel-card"></div>';
+  await Promise.all([loadAllHosts(),loadTripCountsByHost()]);
+  try{await loadAuthorPhotos(allHosts.map(h=>h.name));}catch(e){}
+  renderHostsList();
+}
+function hostListCard(h){
+  const n=h.name,trips=(_tripsByHost&&_tripsByHost[n])||0;
+  const un=unameByName[n]||h.username||'';
+  return '<div class="hostcard" onclick="openPerson(\''+jsq(n)+'\')">'
+    +'<div class="vhring sm">'+avatar(n,52)+'</div>'
+    +'<div class="hostcard-bd"><b>'+esc(n)+'<span class="vbadge"><span class="msr">check</span></span></b>'
+    +'<small>'+(un?'@'+esc(un):'Verified Host')+'</small>'
+    +'<span class="hostcard-trips">'+(trips?trips+' live trip'+(trips>1?'s':''):'No live trips yet')+'</span></div>'
+    +'<span class="ch">'+ic('back',16)+'</span></div>';
+}
+function renderHostsList(){
+  const box=document.getElementById('hostsBody');if(!box)return;
+  const q=_hostsQ.trim().toLowerCase();
+  const list=allHosts.filter(h=>!q||((h.name+' '+(unameByName[h.name]||h.username||'')).toLowerCase().includes(q)));
+  if(!list.length){
+    box.innerHTML=_hostsLoaded
+      ? '<div class="empty"><p>'+(q?'No hosts match your search.':'No verified hosts yet.')+'</p>'
+        +(q?'':'<button class="btn sm" style="margin-top:10px" onclick="go(\'becomeHost\')">Become a host</button>')+'</div>'
+      : '<div class="skel skel-card"></div>';
+    hydrate(box);return;
+  }
+  box.innerHTML='<div class="adm-count">'+list.length+' verified host'+(list.length!==1?'s':'')+'</div>'
+    +'<div class="hostlist">'+list.map(hostListCard).join('')+'</div>';
+  hydrate(box);
 }
 function renderHomeHosts(){
   const box=document.getElementById('homeHosts');if(!box)return;
