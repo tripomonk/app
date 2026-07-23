@@ -527,8 +527,12 @@ function handleFor(n){
   if(n==='You'||n===myName()){const u=getSavedUsername();return u||getSavedName()||'You';}
   return unameByName[n]||n;
 }
-/* same, always @-prefixed for the muted sub-line under a name */
-function atHandle(n){const h=handleFor(n);return h?('@'+String(h).replace(/^@/,'')):'';}
+/* same, always @-prefixed for the muted sub-line under a name. A real username can
+   never contain a space (the app strips everything outside a-z0-9._), so a value with
+   a space is the name fallback — return '' rather than render a broken "@Full Name". */
+function atHandle(n){const s=String(handleFor(n)).replace(/^@/,'').trim();
+  if(!s||/\s/.test(s))return '';
+  return '@'+s;}
 function avatar(n,size){size=size||38;const g=AVG[avHash(n)%AVG.length];const fs=Math.round(size*.4);
   const photo=photoFor(n);
   const bg=photo?`background-image:url('${photo}');background-size:cover;background-position:center`:`background:linear-gradient(135deg,${g[0]},${g[1]})`;
@@ -3489,7 +3493,7 @@ async function renderPerson(){if(!curPerson){go('community');return;}const p=get
   const flwr=base+(isFollowing(p.n)?1:0);
   body.innerHTML=`
     <div class="prof-top">${avatar(p.n,84)}
-      <h2>${esc(disp)}${hostBadge(p.n)}</h2><div class="handle">${esc(at||p.h)}</div>
+      <h2>${esc(disp)}${hostBadge(p.n)}</h2>${at?`<div class="handle">${esc(at)}</div>`:''}
       <p class="pbio">${p.bio||''}</p>
       <div class="pstats"><div><b>${posts.length}</b><small>Posts</small></div><div><b id="pFlwr" data-person="${esc(p.n)}" data-base="${base}">${flwr.toLocaleString()}</b><small>Followers</small></div><div><b>${Number(following).toLocaleString()}</b><small>Following</small></div></div>
       ${me?'':`<div class="profile-actions" style="margin:14px 0 0"><button class="${isFollowing(p.n)?'on':''}" data-follow="${esc(p.n)}" onclick="toggleFollow('${jsq(p.n)}')">${isFollowing(p.n)?'Following':'Follow'}</button><button onclick="openChat('${jsq(p.n)}')">Message</button></div>`}
@@ -4619,7 +4623,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='290';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='291';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -6953,13 +6957,29 @@ async function reviewTrip(id,status,title,fromDetail){
    ============================================================ */
 /* verified hosts for the home rail. name is required — a badged profile with a
    null name cannot be rendered or opened, so it is excluded rather than shown blank. */
+/* Collapse profiles that share a display name to ONE card. Test/incomplete accounts
+   (the founder's duplicate "Vikas" sign-ins) otherwise stack up in the rail. Keep the
+   most-complete row: a custom photo beats a username beats bare existence. The real fix
+   is cleaning the duplicate ACCOUNTS in the DB — this just stops the rail looking broken
+   meanwhile, and does NOT hide two genuinely different same-name hosts once both have a
+   photo or username. */
+function dedupeHosts(rows){
+  const score=h=>((h.photo&&String(h.photo).trim())?4:0)+((h.username&&String(h.username).trim())?2:0)+1;
+  const by={};
+  (rows||[]).forEach(h=>{
+    const key=String(h.name||'').trim().toLowerCase();if(!key)return;
+    if(!by[key]||score(h)>score(by[key]))by[key]=h;
+  });
+  return Object.values(by);
+}
 async function loadVerifiedHosts(){
   const sb=getSupaClient();if(!sb){verifiedHosts=[];return;}
   try{
-    const r=await sb.from('profiles').select('name,username,is_host')
-      .eq('is_host',true).not('name','is',null).limit(12);
-    verifiedHosts=(r.data||[]).filter(h=>String(h.name||'').trim());
-    verifiedHosts.forEach(h=>{hostByName[h.name]=true;});
+    const r=await sb.from('profiles').select('name,username,photo,is_host')
+      .eq('is_host',true).not('name','is',null).limit(40);
+    verifiedHosts=dedupeHosts((r.data||[]).filter(h=>String(h.name||'').trim())).slice(0,12);
+    verifiedHosts.forEach(h=>{hostByName[h.name]=true;if(h.photo)photoByName[h.name]=h.photo;
+      if(h.username)unameByName[h.name]=h.username;});
   }catch(e){verifiedHosts=[];}
 }
 /* host_name is a snapshot frozen when each trip was created, so the same host can
@@ -7025,7 +7045,7 @@ async function loadAllHosts(){
   try{
     const r=await sb.from('profiles').select('id,name,username,photo,is_host')
       .eq('is_host',true).not('name','is',null).order('name',{ascending:true}).limit(300);
-    allHosts=(r.data||[]).filter(h=>String(h.name||'').trim());
+    allHosts=dedupeHosts((r.data||[]).filter(h=>String(h.name||'').trim()));
     allHosts.forEach(h=>{hostByName[h.name]=true;if(h.photo)photoByName[h.name]=h.photo;
       if(h.username)unameByName[h.name]=h.username;});
     _hostsLoaded=true;
