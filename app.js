@@ -3608,10 +3608,47 @@ function renderGiftHome(){
     +GIFT_CARDS.map((c,i)=>'<div class="gc-home-card" onclick="openGiftCardAt('+i+')"><img src="giftcards/'+c.file+'.svg" alt="'+esc(c.name)+'" loading="lazy"></div>').join('')
     +'<div class="gc-home-more" onclick="openGiftCards()"><span class="msr">card_giftcard</span><span>Send a<br>gift card</span></div>'
     +'</div>';
+  /* same centred swipe feel as the main gift page */
+  const rail=el.querySelector('.gc-home-rail');
+  if(rail)gcFocusRail(rail,'.gc-home-card',null);
+}
+/* centre a card inside its rail. scrollTo on the rail (not scrollIntoView) so the
+   page behind it never jumps. */
+function gcCenter(rail,i,smooth){
+  const c=rail.querySelectorAll('.gc-card')[i];
+  if(!c)return;
+  const left=c.offsetLeft-(rail.clientWidth-c.offsetWidth)/2;
+  rail.scrollTo({left:Math.max(0,left),behavior:smooth?'smooth':'auto'});
+}
+/* mark whichever card is centred as .on — the CSS scale/glow then animates as you swipe */
+function gcFocusRail(rail,cardSel,onChange){
+  const cards=[...rail.querySelectorAll(cardSel)];if(!cards.length)return;
+  let raf=0;
+  const sync=()=>{raf=0;
+    const mid=rail.scrollLeft+rail.clientWidth/2;
+    let best=0,bd=1e9;
+    cards.forEach((c,i)=>{const cc=c.offsetLeft+c.offsetWidth/2;const d=Math.abs(cc-mid);if(d<bd){bd=d;best=i;}});
+    cards.forEach((c,j)=>c.classList.toggle('on',j===best));
+    if(onChange)onChange(best);
+  };
+  if(rail._gcFocus)rail.removeEventListener('scroll',rail._gcFocus);
+  rail._gcFocus=()=>{if(!raf)raf=requestAnimationFrame(sync);};
+  rail.addEventListener('scroll',rail._gcFocus,{passive:true});
+  sync();setTimeout(sync,80);setTimeout(sync,260);
 }
 function renderGiftCards(){
   const row=document.getElementById('gcRow');
-  if(row)row.innerHTML=GIFT_CARDS.map((g,i)=>'<div class="gc-card'+(i===_giftSel?' on':'')+'" onclick="selGift('+i+')"><img src="giftcards/'+g.file+'.svg" alt="'+esc(g.name)+'" loading="lazy"/></div>').join('');
+  if(row){
+    row.innerHTML=GIFT_CARDS.map((g,i)=>'<div class="gc-card'+(i===_giftSel?' on':'')+'" onclick="selGift('+i+')"><img src="giftcards/'+g.file+'.svg" alt="'+esc(g.name)+'" loading="lazy"/></div>').join('');
+    /* open on the card that was picked (e.g. tapped on the home rail), THEN wire the
+       swipe focus — otherwise the focus pass would snap the selection back to card 1 */
+    const want=_giftSel;
+    gcCenter(row,want,false);
+    requestAnimationFrame(()=>{
+      gcCenter(row,want,false);
+      gcFocusRail(row,'.gc-card',i=>{if(i!==_giftSel){_giftSel=i;renderGiftAmts();}});
+    });
+  }
   renderGiftAmts();
 }
 function renderGiftAmts(){
@@ -3634,8 +3671,8 @@ async function pickGiftAmtCustom(){
 }
 function selGift(i){
   _giftSel=i;
-  document.querySelectorAll('#gcRow .gc-card').forEach((c,j)=>c.classList.toggle('on',j===i));
-  const el=document.querySelectorAll('#gcRow .gc-card')[i];if(el)el.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+  const row=document.getElementById('gcRow');
+  if(row){row.querySelectorAll('.gc-card').forEach((c,j)=>c.classList.toggle('on',j===i));gcCenter(row,i,true);}
   renderGiftAmts();
 }
 /* buy a gift card — priced & credited server-side (booking.kind = 'giftcard') */
@@ -4378,7 +4415,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='282';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='283';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
