@@ -1474,7 +1474,10 @@ async function saveProfile(){
   await upsertProfile();   /* keep the public profile (name/photo/username/socials) in sync */
   restore();
   renderProfile();
-  note('Profile saved successfully!','Saved ✓');
+  /* await the popup, THEN leave the form — staying on the edit screen after "Saved ✓"
+     reads as if it didn't take, and people tap Save again */
+  await note('Profile saved successfully!','Saved ✓');
+  go('profile');
 }
 
 /* profile gallery — only the logged-in user's own posts, filtered by tab */
@@ -4800,7 +4803,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='296';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='297';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
