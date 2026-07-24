@@ -252,9 +252,12 @@ function deriveTreks(){treks.forEach((t,i)=>{t.idx=i;
   const ft=parseInt(String(t.alt).replace(/[^0-9]/g,''))||10000;
   t.elev=t.alt;
   t.climate = ft>14000?'Alpine · Harsh':(ft>11500?'Alpine · Cold':'Himalayan · Cool');
+  /* TYPICAL range for the altitude band — labelled as such in the UI. Live values,
+     when we can fetch them, overwrite t.tempLive / t.aqiLive below.
+     There used to be a `t.aqiVal = 18+((i*9)%34)` here: an "Air Quality" reading
+     derived from the trek's position in the array. It looked like a measurement and
+     was shown as one. Removed — we now show a real number or no number. */
   t.temp = ft>14000?'-8° to 6°C':(ft>11500?'-5° to 10°C':'2° to 15°C');
-  t.aqiVal = 18+((i*9)%34);
-  t.aqi = t.aqiVal<=50?'Good':'Moderate';
 });}
 deriveTreks();
 
@@ -2057,19 +2060,68 @@ function dRow(icon,label,val,cls){
     +'<span class="dfact-l">'+esc(label)+'</span>'
     +'<span class="dfact-v">'+esc(val==null||val===''?'—':val)+'</span></div>';
 }
-function renderDetailFacts(t){
-  const box=document.getElementById('dFacts');if(!box)return;
+/* ---- Live conditions (temperature + air quality) ----
+   Open-Meteo: free, no API key, CORS-enabled, so this needs no new secret and no
+   extra deploy. Cached per rounded coordinate for 3h, so opening ten treks in the
+   same region is one request, and a repeat visit the same morning is zero.
+   NOTE: only the 7 treks in COORDS have real coordinates; everything else falls back
+   to a region centroid, so the reading is regional. The UI says which. */
+const AQI_BANDS=[[50,'Good'],[100,'Moderate'],[150,'Poor'],[200,'Unhealthy'],[300,'Very poor'],[1e9,'Hazardous']];
+function aqiBand(v){for(const b of AQI_BANDS)if(v<=b[0])return b[1];return '—';}
+function condKey(c){return 'cond_'+c[0].toFixed(2)+'_'+c[1].toFixed(2);}
+const COND_TTL=3*60*60*1000;
+async function loadConditions(t){
+  const c=coordsFor(t),key=condKey(c);
+  const cached=swrGet(key);
+  if(cached&&cached.data&&(Date.now()-cached.t<COND_TTL))return cached.data;
+  const q='latitude='+c[0]+'&longitude='+c[1]+'&timezone=auto&forecast_days=1';
+  try{
+    const [w,a]=await Promise.all([
+      fetch('https://api.open-meteo.com/v1/forecast?'+q+'&daily=temperature_2m_max,temperature_2m_min').then(r=>r.json()).catch(()=>null),
+      fetch('https://air-quality-api.open-meteo.com/v1/air-quality?'+q+'&hourly=us_aqi').then(r=>r.json()).catch(()=>null)
+    ]);
+    const d=(w&&w.daily)||{};
+    const tmax=Array.isArray(d.temperature_2m_max)?d.temperature_2m_max[0]:null;
+    const tmin=Array.isArray(d.temperature_2m_min)?d.temperature_2m_min[0]:null;
+    const arr=((a&&a.hourly&&a.hourly.us_aqi)||[]).filter(v=>typeof v==='number');
+    const aqi=arr.length?Math.round(arr.reduce((s,v)=>s+v,0)/arr.length):null;
+    if(tmin==null&&aqi==null)return cached?cached.data:null;   /* nothing usable — keep the old copy */
+    const data={tmin,tmax,aqi,exact:!!COORDS[t.n]};
+    swrSet(key,data);
+    return data;
+  }catch(e){return cached?cached.data:null;}
+}
+function factsHTML(t,live){
   const b=baseInfo(t);
-  box.innerHTML=
-     dRow('altitude','Elevation',t.elev)
+  const tempRow=(live&&live.tmin!=null&&live.tmax!=null)
+    ? dRow('temp','Temperature today',Math.round(live.tmin)+'° to '+Math.round(live.tmax)+'°C')
+    : dRow('temp','Temperature (typical)',t.temp);
+  /* no live reading = no air-quality row at all, rather than a made-up number */
+  const aqiRow=(live&&live.aqi!=null)
+    ? dRow('air','Air quality today',aqiBand(live.aqi)+' · '+live.aqi,'good')
+    : '';
+  return dRow('altitude','Elevation',t.elev)
     +dRow('cloud','Climate',t.climate)
-    +dRow('temp','Temperature',t.temp)
-    +dRow('air','Air quality',t.aqi+' · '+t.aqiVal,'good')
+    +tempRow+aqiRow
     +KNOW.map((k,i)=>dRow(k[0],k[2],k[1],i===0?'gsep':'')).join('')
     +dRow('pin','Base town',b.town,'gsep')
     +dRow('distance','Nearest rail',b.rail)
     +dRow('msr:flight','Airport',b.air);
+}
+function renderDetailFacts(t){
+  const box=document.getElementById('dFacts');if(!box)return;
+  /* paint immediately from what we know, then fill in the live readings */
+  box.innerHTML=factsHTML(t,swrGet(condKey(coordsFor(t)))?swrGet(condKey(coordsFor(t))).data:null);
   hydrate(box);
+  loadConditions(t).then(live=>{
+    if(!live)return;
+    const el=document.getElementById('dFacts');
+    if(!el||cart.trek!==t)return;            /* user moved on while it loaded */
+    el.innerHTML=factsHTML(t,live);
+    const note=el.parentElement&&el.parentElement.querySelector('.dfacts-src');
+    if(note)note.textContent=live.exact?'Today · Open-Meteo':'Today · nearest station in '+(t.region||'the region');
+    hydrate(el);
+  }).catch(()=>{});
 }
 function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
   const hh=document.getElementById('dHero');hh.style.transform='';
@@ -4835,7 +4887,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='301';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='302';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
