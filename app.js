@@ -809,12 +809,91 @@ function requireLogin(returnTo){
 }
 function continueAsGuest(){_loginReturn=null;go(lastTab||'home');}
 
+/* ============================================================
+   DPDP consent (Digital Personal Data Protection Act, 2023)
+   Consent must be a free, specific, informed, UNAMBIGUOUS affirmative action
+   (Section 6) — so it gates sign-in behind an actively ticked box, never a
+   pre-ticked one, and can be withdrawn as easily as it was given (Section 6(4)).
+   The record lives in localStorage immediately and mirrors to profiles.consent
+   once signed in, so it survives across devices and is auditable.
+   Bump CONSENT_VERSION whenever the notice or the purposes change — a stored
+   consent for an older version is treated as not-yet-given, forcing re-consent. */
+const CONSENT_VERSION='2026-07-25.v1';
+const CONSENT_PURPOSES=['account','bookings_payments','trek_safety','service_updates','app_improvement'];
+function getConsent(){try{return JSON.parse(localStorage.getItem('tmk_consent')||'null');}catch(e){return null;}}
+function hasValidConsent(){const c=getConsent();return !!(c&&c.version===CONSENT_VERSION&&c.given&&!c.withdrawn);}
+function recordConsent(){
+  const c={version:CONSENT_VERSION,purposes:CONSENT_PURPOSES,given:true,withdrawn:false,at:new Date().toISOString()};
+  try{localStorage.setItem('tmk_consent',JSON.stringify(c));}catch(e){}
+  /* mirror to the profile if we already have a session (e.g. re-consent after a version bump) */
+  const sb=getSupaClient();
+  if(sb)authUid().then(uid=>{if(uid)sb.from('profiles').upsert({id:uid,consent:c,updated_at:new Date().toISOString()}).then(()=>{},()=>{});}).catch(()=>{});
+  return c;
+}
+function onConsentToggle(){
+  const chk=document.getElementById('consentChk'),btn=document.getElementById('googleBtn'),row=document.getElementById('consentRow');
+  const on=!!(chk&&chk.checked);
+  if(btn){btn.disabled=!on;btn.style.opacity=on?'1':'.5';btn.style.pointerEvents=on?'':'none';}
+  if(row)row.classList.remove('shake');
+}
+/* the sign-in button calls this — belt and braces even though it's disabled until ticked */
+function consentedLogin(){
+  const chk=document.getElementById('consentChk');
+  if(!chk||!chk.checked){
+    const row=document.getElementById('consentRow');
+    if(row){row.classList.remove('shake');void row.offsetWidth;row.classList.add('shake');}
+    note('Please tick the box to continue.','Almost there');
+    return;
+  }
+  recordConsent();
+  socialLogin('google');
+}
 async function socialLogin(provider){
   const sb=getSupaClient();
   if(!sb){note('Backend not connected.','Error');return;}
+  if(!hasValidConsent()){note('Please give consent on the sign-in screen first.','Consent needed');go('login');return;}
   const redirectTo=window.location.origin+window.location.pathname;
   const{error}=await sb.auth.signInWithOAuth({provider,options:{redirectTo}});
   if(error)note(error.message,'Error');
+}
+/* ---- withdrawal + status screen (Menu → Data & privacy) ---- */
+function renderDataPrivacy(){
+  const box=document.getElementById('dataPrivacyBody');if(!box)return;
+  const c=getConsent();
+  const given=hasValidConsent();
+  const when=c&&c.at?new Date(c.at).toLocaleString('en-IN'):'—';
+  const plabels={account:'Creating & running your account',bookings_payments:'Bookings & payments',
+    trek_safety:'Your safety on treks (incl. emergency contact)',service_updates:'Trip-related updates',
+    app_improvement:'Improving the app'};
+  const purposes=(c&&c.purposes||CONSENT_PURPOSES).map(p=>'<li>'+esc(plabels[p]||p)+'</li>').join('');
+  box.innerHTML=
+    '<div class="dp-card '+(given?'ok':'off')+'">'
+      +'<div class="dp-status"><span class="msr">'+(given?'verified_user':'gpp_maybe')+'</span>'
+      +'<div><b>'+(given?'Consent given':(c&&c.withdrawn?'Consent withdrawn':'No consent recorded'))+'</b>'
+      +'<small>'+(given?('On '+esc(when)+' · version '+esc(c.version)):'You have not consented to data processing on this device.')+'</small></div></div>'
+    +'</div>'
+    +'<div class="dp-sec">What you consented to</div>'
+    +'<div class="note2">Under the DPDP Act, 2023, Tripomonk uses your personal data (name, contact, profile, booking &amp; safety details) only for:</div>'
+    +'<ul class="dp-list">'+purposes+'</ul>'
+    +'<div class="dp-sec">Your rights</div>'
+    +'<div class="note2">You can access, correct or erase your data, and withdraw consent at any time. Withdrawing does not affect processing already done, and some data may be kept where the law requires (e.g. booking/tax records).</div>'
+    +'<button class="btn ghost" style="margin-top:14px" onclick="go(\'privacy\')"><span class="msr">description</span> Read the full Privacy Policy</button>'
+    +(given
+      ? '<button class="btn" style="margin-top:10px;background:#c0392b" onclick="withdrawConsent()"><span class="msr">block</span> Withdraw my consent</button>'
+      : '<button class="btn" style="margin-top:10px" onclick="go(\'login\')"><span class="msr">login</span> Give consent &amp; sign in</button>')
+    +'<div class="dp-sec">Grievances</div>'
+    +'<div class="note2">Questions or complaints about your data: <b>grievance@tripomonk.com</b>. You may also complain to the Data Protection Board of India.</div>';
+  hydrate(box);
+}
+async function withdrawConsent(){
+  if(!(await askConfirm('Withdrawing your consent signs you out and stops further data processing on this device. Continue?','Withdraw consent')))return;
+  const c=getConsent()||{version:CONSENT_VERSION};
+  c.given=false;c.withdrawn=true;c.withdrawnAt=new Date().toISOString();
+  try{localStorage.setItem('tmk_consent',JSON.stringify(c));}catch(e){}
+  const sb=getSupaClient();
+  try{const uid=sb?await authUid():null;if(sb&&uid)await sb.from('profiles').upsert({id:uid,consent:c,updated_at:new Date().toISOString()});}catch(e){}
+  await note('Your consent has been withdrawn and you have been signed out.','Consent withdrawn');
+  signOut();
 }
 
 function startJourney(){
@@ -3210,7 +3289,16 @@ async function upsertProfile(){
   const un=getSavedUsername();if(un)row.username=un;
   const cv=getSavedCover();if(cv)row.cover=cv;
   const soc=getSavedSocials();if(soc&&Object.keys(soc).length)row.socials=soc;
-  try{await sb.from('profiles').upsert(row);}catch(e){}
+  const con=getConsent();if(con)row.consent=con;   /* consent record travels with the profile */
+  try{
+    const {error}=await sb.from('profiles').upsert(row);
+    /* if the consent column isn't deployed yet, the WHOLE upsert fails and name/photo
+       would silently not save. Detect that, drop consent, and retry so the rest lands. */
+    if(error&&'consent'in row&&/consent/i.test(error.message||'')){
+      delete row.consent;
+      await sb.from('profiles').upsert(row);
+    }
+  }catch(e){}
 }
 /* everything that identifies ONE person on this device */
 const IDENTITY_KEYS=['tmk_uname','tmk_uhandle','tmk_uphoto','tmk_ucover','tmk_socials','tmk_umobile','tmk_follows','tmk_posts','tmk_likes','tmk_comments','tmk_bookings','tmk_notif_seen','tmk_admin','tmk_admin_key','tmk_captain','tmk_plan'];
@@ -3228,13 +3316,24 @@ async function loadProfileFromServer(){
   if(prev&&prev!==currentUser.id)clearLocalIdentity();
   try{localStorage.setItem('tmk_uid',currentUser.id);}catch(e){}
   try{
-    const{data}=await sb.from('profiles').select('name,photo,prefs,username,cover,socials').eq('id',currentUser.id).maybeSingle();
+    const{data}=await sb.from('profiles').select('name,photo,prefs,username,cover,socials,consent').eq('id',currentUser.id).maybeSingle();
     if(data){
       if(data.name)try{localStorage.setItem('tmk_uname',data.name);}catch(e){}
       if(data.photo)try{localStorage.setItem('tmk_uphoto',data.photo);}catch(e){}
       if(data.username)try{localStorage.setItem('tmk_uhandle',data.username);}catch(e){}
       if(data.cover)try{localStorage.setItem('tmk_ucover',data.cover);}catch(e){}
       if(data.socials)try{localStorage.setItem('tmk_socials',JSON.stringify(data.socials));}catch(e){}
+      /* DPDP consent — get the account association exactly right:
+         - a fresh consent from the sign-in screen has no uid yet: claim it for THIS account
+         - a local consent stamped with a DIFFERENT uid (shared device) must be dropped
+         - otherwise the profile copy is authoritative for a returning account */
+      try{
+        let local=getConsent();
+        if(local&&!local.uid){local.uid=currentUser.id;localStorage.setItem('tmk_consent',JSON.stringify(local));}
+        else if(local&&local.uid&&local.uid!==currentUser.id){local=null;localStorage.removeItem('tmk_consent');}
+        const dbC=data.consent;
+        if(dbC&&(!local||(dbC.at||'')>=(local.at||'')))localStorage.setItem('tmk_consent',JSON.stringify(dbC));
+      }catch(e){}
     }
   }catch(e){}
   await loadFollowsFromServer();
@@ -3866,6 +3965,7 @@ function accountMenuGroups(){
   groups.push(['Support & legal',[
     ['help','Help & Support','help'],
     ['emergency','Emergency Contacts','soon:Emergency contacts'],
+    ['shield','Data & privacy','dataPrivacy'],
     ['lock','Privacy Policy','privacy'],
     ['description','Terms & Conditions','soon:Terms & Conditions'],
     ['settings','Settings','settings']
@@ -4907,7 +5007,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='307';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='311';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -6506,6 +6606,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='peopleSearch'){_peoplePool=null;setTimeout(()=>{const i=document.getElementById('peopleSearchInput');if(i){i.value='';i.focus();}searchPeople('');},80);}
   if(id==='news')renderNews();
   if(id==='passport')renderPassport();
+  if(id==='dataPrivacy')renderDataPrivacy();
   if(id==='packing'){pkTrek=_pkForce||(cart.trek&&cart.trek.n)||'';_pkForce='';renderPacking();}
   if(id==='bookings')renderBookings();
   if(id==='wishlist')renderWishlist();
