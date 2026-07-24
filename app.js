@@ -470,7 +470,11 @@ const ITIN={
   "Hampta Pass":[["Manali to Jobra to Chika","Drive then short trek by the river.","2 km","2 hrs"],["Chika to Balu Ka Ghera","Walk along the Rani river.","7 km","5 hrs"],["Cross Hampta Pass to Shea Goru","The big crossover day.","7 km","8 hrs"],["Shea Goru to Chatru","Descend into Lahaul.","6 km","4 hrs"],["Chandratal & drive back","Visit the moon lake, drive to Manali.","—","8 hrs"]],
   "Har Ki Dun":[["Sankri to Taluka to Gangad","Drive then trek along the Supin.","11 km","6 hrs"],["Gangad to Osla","Through ancient villages.","8 km","5 hrs"],["Osla to Har Ki Dun","Into the valley of gods.","8 km","6 hrs"],["Explore & descend","Marinda Tal and back.","8 km","6 hrs"],["Osla to Taluka","Long descent.","12 km","6 hrs"],["Taluka to Sankri to Dehradun","Drive back.","—","10 hrs"]],
   "Nag Tibba":[["Pantwari to base camp","Trek to the base, bonfire night.","4 km","3–4 hrs"],["Summit & return to Dehradun","Sunrise summit, descend and drive.","8 km","6 hrs"]],
-  "Roopkund":[["Lohajung to Didna","Climb to Didna village.","7 km","5 hrs"],["Didna to Ali Bugyal","Vast alpine meadows.","11 km","6 hrs"],["Ali to Patar Nachauni","Ridge walk over Bedni.","6 km","4 hrs"],["Patar to Bhagwabasa","Climb past Kalu Vinayak.","5 km","5 hrs"],["Summit Roopkund","The mystery lake at dawn.","6 km","8 hrs"],["Descend to Lohajung","Long descent via Wan.","13 km","7 hrs"]]
+  "Roopkund":[["Lohajung to Didna","Climb to Didna village.","7 km","5 hrs"],["Didna to Ali Bugyal","Vast alpine meadows.","11 km","6 hrs"],["Ali to Patar Nachauni","Ridge walk over Bedni.","6 km","4 hrs"],["Patar to Bhagwabasa","Climb past Kalu Vinayak.","5 km","5 hrs"],["Summit Roopkund","The mystery lake at dawn.","6 km","8 hrs"],["Descend to Lohajung","Long descent via Wan.","13 km","7 hrs"]],
+  /* DRAFT — structure matches the trek record (5 days, ~18 km, Shimla base). The staging
+     villages and timings are approximate: confirm them against your recce before this
+     trek is promoted, then correct this entry or attach a real PDF in Admin → Treks. */
+  "Yulla Kanda":[["Shimla to Sarahan","Drive up the Sutlej valley into Kinnaur.","—","8–9 hrs"],["Sarahan to Yulla village","Drive to the roadhead, short walk to the village.","3 km","2 hrs"],["Yulla to Yulla Kanda meadow","Climb through apple orchards and cedar to the meadow camp.","7 km","5–6 hrs"],["Krishna temple & descend","Early visit to the temple, then descend to the village.","8 km","6 hrs"],["Drive back to Shimla","Journey ends.","—","8–9 hrs"]]
 };
 /* pick a scene image per itinerary day from its text, so days look different */
 function dayImg(d,i,trek){
@@ -4666,7 +4670,7 @@ function admTrekCard(t,i){
   return `<div class="adm-tc" onclick="editTrek(${i})">
     <div class="adm-tc-ph" style="background-image:url('${esc(img)}')">${t.soon?'<span class="adm-tc-soon">Soon</span>':''}</div>
     <div class="adm-tc-bd"><b>${esc(t.n)}</b><small>${esc(t.region||'—')} · ${t.days||'?'}d · ₹${Number(t.price||0).toLocaleString('en-IN')}</small>
-      <div class="adm-tc-tags"><span class="adm-tc-lvl">${esc(t.lvl||'—')}</span><span class="adm-tc-req">Score ${req}</span>${trekTag(t)?`<span class="adm-tc-tag ${tagStyle(t.tag)}">${esc(t.tag)}</span>`:''}</div></div>
+      <div class="adm-tc-tags"><span class="adm-tc-lvl">${esc(t.lvl||'—')}</span><span class="adm-tc-req">Score ${req}</span>${trekTag(t)?`<span class="adm-tc-tag ${tagStyle(t.tag)}">${esc(t.tag)}</span>`:''}${hasItinerary(t)?'':'<span class="adm-tc-warn">No itinerary</span>'}</div></div>
     <div class="adm-tc-act"><button class="adm-ic" onclick="event.stopPropagation();editTrek(${i})" title="Edit"><span class="msr">edit</span></button>
       <button class="adm-ic del" onclick="event.stopPropagation();delTrek(${i})" title="Delete"><span class="msr">delete</span></button></div>
   </div>`;
@@ -4831,7 +4835,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='300';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='301';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -5735,22 +5739,50 @@ function captainTestLast(){const b=getBookings()[0];if(!b){note('Make a booking 
 function itinSlug(t){return t.n.toLowerCase().replace(/[^a-z0-9]+/g,'-');}
 /* the itinerary the admin attached in Admin → Treks (an uploaded PDF or a pasted link) */
 function trekItinUrl(t){return String((t&&t.itin)||'').trim();}
+/* a trek "has" an itinerary if it has day-by-day rows OR an attached document */
+function hasItinerary(t){return !!(t&&((ITIN[t.n]&&ITIN[t.n].length)||trekItinUrl(t)));}
 /* Download order: (1) whatever the admin attached for this trek, (2) a PDF placed in
    the repo at itineraries/<slug>.pdf, (3) an auto-generated one. */
-function downloadItinerary(){
+/* Fetch a file and hand it to the OS as a download. `<a download>` is IGNORED for
+   cross-origin URLs, so the old code fell back to navigating — and inside a standalone
+   PWA that replaced the whole app with a chrome-less PDF view the user couldn't leave.
+   A blob download navigates nothing, so there is nothing to come back from. */
+async function saveFileFromUrl(url,filename){
+  try{
+    const r=await fetch(url,{mode:'cors'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const blob=await r.blob();
+    const obj=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=obj;a.download=filename;
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(obj),8000);
+    return true;
+  }catch(e){return false;}
+}
+/* Last resort for links we can't fetch (Drive/Notion pages, CORS-blocked hosts).
+   window.open gives a separate context with its own Done/back affordance; if the
+   browser blocks it we tell the user rather than hijacking the app's own window. */
+function openExternalLink(url){
+  let w=null;try{w=window.open(url,'_blank','noopener');}catch(e){}
+  if(w)return true;
+  note('Your browser blocked opening this itinerary. Copy the link and open it in your browser.','Could not open');
+  return false;
+}
+async function downloadItinerary(){
   const t=cart.trek;if(!t)return;
   const admin=trekItinUrl(t);
   if(admin){
-    /* a Drive/Notion link should open; a real file should download */
-    const a=document.createElement('a');a.href=admin;a.target='_blank';a.rel='noopener';
-    if(/\.pdf($|\?)/i.test(admin))a.setAttribute('download',itinSlug(t)+'.pdf');
-    document.body.appendChild(a);a.click();a.remove();return;
+    /* a real PDF downloads; a page link (Drive viewer etc.) opens in its own context */
+    if(/\.pdf($|\?)/i.test(admin)&&await saveFileFromUrl(admin,itinSlug(t)+'.pdf'))return;
+    openExternalLink(admin);return;
   }
   const url='itineraries/'+itinSlug(t)+'.pdf?t='+Date.now();
-  fetch(url,{method:'HEAD',cache:'no-store'}).then(r=>{
-    if(r.ok){const a=document.createElement('a');a.href=url;a.setAttribute('download',itinSlug(t)+'.pdf');document.body.appendChild(a);a.click();a.remove();}
-    else genItineraryPDF(t);
-  }).catch(()=>genItineraryPDF(t));}
+  try{
+    const r=await fetch(url,{method:'HEAD',cache:'no-store'});
+    if(r.ok&&await saveFileFromUrl(url,itinSlug(t)+'.pdf'))return;
+  }catch(e){}
+  genItineraryPDF(t);   /* jsPDF's doc.save() is also a download, not a navigation */
+}
 function genItineraryPDF(t){
   if(!window.jspdf||!window.jspdf.jsPDF){note('Preparing the PDF tool (needs internet on first use). Please tap again in a moment.');return;}
   const {jsPDF}=window.jspdf, doc=new jsPDF({unit:'pt',format:'a4'});
