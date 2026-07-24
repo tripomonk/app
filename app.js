@@ -4801,13 +4801,19 @@ function renderAdminHomeList(){
 function renderAdminHome(){
   homeSelInit();
   const box=document.getElementById('adminBody');
+  /* The Save bar is STICKY at the bottom. With 141 trek rows the old footer button sat
+     ~13,000px down the page — you'd never scroll to it, so it looked like there was no
+     save button at all. Sticky keeps it on screen no matter where you are in the list. */
   box.innerHTML=`
-    <div class="note2" style="margin-bottom:12px">Choose what shows on the <b>home page</b>. The <b>star</b> sets the big <b>Featured trek</b> banner (one trek only). The <b>tick</b> adds a trek to the <b>Popular Treks</b> rail — your picks show first and the rail fills up to 12 with the rest.</div>
+    <div class="note2" style="margin-bottom:12px">Choose what shows on the <b>home page</b>. The <b>star</b> sets the big <b>Featured trek</b> banner (one trek only). The <b>tick</b> adds a trek to the <b>Popular Treks</b> rail — your picks show first and the rail fills up to 12 with the rest. Tap <b>Save home page</b> at the bottom when done.</div>
     <div id="admHomePreview">${admHomePreviewHTML()}</div>
     <div class="adm-count" id="admHomeCount"></div>
     <div class="adm-search"><span class="msr">search</span><input placeholder="Search treks by name or region…" value="${esc(_homeQ)}" oninput="_homeQ=this.value;renderAdminHomeList()"></div>
     <div id="admHomeList" class="adm-hm-list"></div>
-    <div class="adm-ed-foot" style="margin-top:14px"><button class="btn ghost" onclick="homeSelReset()">Reset</button><button class="btn" onclick="saveHomePicks()"><span class="msr">check</span> Save home page</button></div>`;
+    <div class="adm-savebar">
+      <button class="btn ghost" onclick="homeSelReset()">Reset</button>
+      <button class="btn" onclick="saveHomePicks()"><span class="msr">check</span> Save home page</button>
+    </div>`;
   hydrate(box);renderAdminHomeList();
 }
 async function saveHomePicks(){
@@ -4901,7 +4907,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='304';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='305';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>

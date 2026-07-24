@@ -1728,7 +1728,15 @@
   .adm-hm-prev span{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--accent);color:#12203a;padding:3px 8px;border-radius:7px;margin-bottom:6px}
   .adm-hm-prev b{display:block;font-size:18px;color:#fff;line-height:1.15}
   .adm-hm-prev small{display:block;font-size:11.5px;color:rgba(255,255,255,.78);margin-top:3px}
-  .adm-hm-list{display:flex;flex-direction:column;gap:8px}
+  .adm-hm-list{display:flex;flex-direction:column;gap:8px;padding-bottom:8px}
+  /* sticky save bar — a long list (141 treks) pushed the old footer button thousands of
+     px down, so it read as "no save button". This stays pinned to the bottom of the view. */
+  .adm-savebar{position:sticky;bottom:0;z-index:20;display:flex;gap:10px;
+    margin:8px -16px 0;padding:12px 16px calc(var(--safe-bottom) + 12px);
+    background:linear-gradient(180deg,rgba(10,16,26,0),var(--bg) 34%);border-top:1px solid var(--stroke)}
+  html.light .adm-savebar{background:linear-gradient(180deg,rgba(255,255,255,0),var(--bg) 34%)}
+  .adm-savebar .btn{flex:1}
+  .adm-savebar .btn.ghost{flex:0 0 34%}
   .adm-hm{display:flex;align-items:center;gap:11px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:8px}
   .adm-hm.pop{border-color:rgba(47,107,255,.5);background:rgba(47,107,255,.07)}
   .adm-hm-ph{width:48px;height:48px;border-radius:10px;background-size:cover;background-position:center;background-color:#16283f;flex:none}
