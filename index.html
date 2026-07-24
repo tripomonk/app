@@ -446,6 +446,20 @@
   .dp-status small{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
   .dp-sec{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--accent2);margin:18px 0 8px}
   .dp-list{margin:0;padding-left:18px;font-size:13px;color:var(--muted);line-height:1.7}
+  /* ---- trek leader / guide card (trek detail page) ---- */
+  .gd-card{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:14px}
+  .gd-top{display:flex;align-items:center;gap:13px}
+  .gd-av{width:52px;height:52px;flex:none;border-radius:50%;background:linear-gradient(135deg,#2f6bff,#0a3aa0);
+    background-size:cover;background-position:center;display:grid;place-items:center;font-size:20px;font-weight:700;color:#fff}
+  .gd-id{min-width:0}
+  .gd-id b{display:flex;align-items:center;gap:6px;font-size:15px}
+  .gd-id small{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
+  .gd-verif{width:17px;height:17px;border-radius:50%;background:#0f9d58;display:grid;place-items:center;flex:none}
+  .gd-verif .msr{font-size:12px;color:#fff}
+  .gd-certs{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+  .gd-cert{font-size:10px;font-weight:700;letter-spacing:.02em;padding:4px 9px;border-radius:8px;
+    background:rgba(47,107,255,.13);color:var(--accent2)}
+  .gd-bio{margin:11px 0 0;font-size:12.5px;color:var(--muted);line-height:1.55}
   /* ---- government recognitions on the About page ---- */
   .cert-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .cert{background:#fff;border:1px solid var(--stroke);border-radius:14px;padding:16px 12px 10px;
@@ -2677,6 +2691,7 @@
     </div>
     <div class="blk reveal" style="padding-top:10px"><div id="dReadiness"></div></div>
     <div class="blk reveal"><h2>About the Trek</h2><p id="dDesc"></p></div>
+    <div class="blk reveal" id="dLeaderWrap" style="display:none"><h2>Your trek leader</h2><div id="dLeader"></div></div>
     <div class="blk reveal"><h2>Highlights</h2><div class="hl-pills" id="dHl"></div></div>
     <div class="blk reveal"><h2 style="display:flex;justify-content:space-between;align-items:center">Trek details <a style="font-size:12px;color:var(--accent2);cursor:pointer" onclick="openNav(cart.trek)">Trail map →</a></h2>
       <div class="dfacts" id="dFacts"></div>

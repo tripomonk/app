@@ -295,7 +295,7 @@ function applyTrekRows(rows){
   if(!rows||!rows.length)return false;
   const dbByName={};
   rows.forEach(d=>{const row={n:d.name,region:d.region,img:d.img,r:d.rating,rev:d.reviews,lvl:d.level,days:d.days,
-    alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,packing:d.packing||null,batches:(Array.isArray(d.batches)?d.batches:null),req:(typeof d.req_score==='number'?d.req_score:null),pop:!!d.popular,feat:!!d.featured,tag:d.tag||'',itin:d.itinerary_url||'',hvid:d.hero_video||'',hvideo:!!d.hero_use_video,_id:d.id};
+    alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,packing:d.packing||null,batches:(Array.isArray(d.batches)?d.batches:null),req:(typeof d.req_score==='number'?d.req_score:null),pop:!!d.popular,feat:!!d.featured,tag:d.tag||'',itin:d.itinerary_url||'',hvid:d.hero_video||'',hvideo:!!d.hero_use_video,guide_id:d.guide_id||null,_id:d.id};
     if(d.credit)row.credit=d.credit; dbByName[d.name]=row;});
   const seen=new Set();
   treks.forEach(t=>{const d=dbByName[t.n];if(d){Object.assign(t,d);seen.add(t.n);}});
@@ -2231,6 +2231,8 @@ function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
   const _dl=document.getElementById('dLvl');if(_dl)_dl.textContent=t.lvl;   /* difficulty removed from the header; guarded in case the element returns */
   const dsb=document.getElementById('dScoreBadge');if(dsb)dsb.innerHTML=trekScoreBadge(t,'trek-score-lg')+'<span class="d-score-cap">Trek score</span>';
   document.getElementById('dDesc').textContent=t.desc;
+  renderDetailLeader(t);                       /* paint now if guides are loaded… */
+  if(!_guidesLoaded)loadGuides().then(()=>{if(cart.trek===t)renderDetailLeader(t);});   /* …else fill in when they arrive */
   const stats=[['altitude',t.alt,'Altitude'],['clock',t.dur,'Duration'],['distance',t.dist,'Distance'],['calendar',t.best,'Best Time']];
   document.getElementById('dStats').innerHTML=stats.map(s=>`<div class="stat"><div class="ic" style="display:grid;place-items:center">${ic(s[0],20)}</div><b>${s[1]}</b><small>${s[2]}</small></div>`).join('');
   document.getElementById('dHl').innerHTML=t.hl.map(h=>`<span class="hl-pill"><span class="ic">${ic(h[0],15)}</span>${esc(h[1])}</span>`).join('');
@@ -4599,10 +4601,11 @@ async function sbWriteChecked(method,path,body){
   return true;
 }
 function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null,req_score:(typeof t.req==='number'?t.req:null),popular:!!t.pop,featured:!!t.feat,tag:(t.tag||'').trim()||null,itinerary_url:(t.itin||'').trim()||null,
-  hero_video:(t.hvid||'').trim()||null,hero_use_video:!!t.hvideo};}
+  hero_video:(t.hvid||'').trim()||null,hero_use_video:!!t.hvideo,
+  guide_id:(t.guide_id!=null&&t.guide_id!=='')?t.guide_id:null};}
 let editIdx=-1, adminTab='Treks', depTrek=null;
-const ADM_TAB_IC={Overview:'dashboard',Bookings:'receipt_long',Treks:'landscape',Home:'home',Departures:'event',Packing:'checklist',Hosts:'groups',Training:'fitness_center',Staff:'badge',Settings:'settings'};
-const ADM_TABS=['Overview','Bookings','Treks','Home','Departures','Packing','Hosts','Training','Staff','Settings'];
+const ADM_TAB_IC={Overview:'dashboard',Bookings:'receipt_long',Treks:'landscape',Home:'home',Departures:'event',Packing:'checklist',Guides:'hiking',Hosts:'groups',Training:'fitness_center',Staff:'badge',Settings:'settings'};
+const ADM_TABS=['Overview','Bookings','Treks','Home','Departures','Packing','Guides','Hosts','Training','Staff','Settings'];
 function renderAdmin(){
   document.getElementById('adminTabs').innerHTML=ADM_TABS.map(x=>`<div class="adm-tab ${x===adminTab?'on':''}" onclick="setAdminTab('${x}')"><span class="msr">${ADM_TAB_IC[x]||'circle'}</span>${x}</div>`).join('');
   const f=document.getElementById('adminForm'); if(f){f.style.display='none';f.innerHTML='';}
@@ -4613,6 +4616,7 @@ function renderAdmin(){
   else if(adminTab==='Home')renderAdminHome();
   else if(adminTab==='Departures')renderDepartures();
   else if(adminTab==='Packing')renderAdminPacking();
+  else if(adminTab==='Guides')renderAdminGuides();
   else if(adminTab==='Hosts')renderAdminHosts();
   else if(adminTab==='Staff')renderAdminStaff();
   else renderAdminSettings();
@@ -4724,6 +4728,89 @@ async function renderAdminTraining(){
         <span class="adm-train-last">${x.s.last===today?'today':esc(x.s.last)}</span></div>`).join('')+'</div>'
       :`<div class="empty"><p>${q?'No trekkers match.':'Nobody has ticked a workout yet.'}</p></div>`);
   hydrate(box);
+}
+
+/* ============================================================
+   ADMIN · GUIDES — manage your roster of trek leaders
+   ============================================================ */
+let _guideEdit=null;   /* the guide being edited, or {} for a new one, or null for the list */
+async function renderAdminGuides(){
+  const box=document.getElementById('adminBody');if(!box)return;
+  if(!guides.length&&!_guidesLoaded)box.innerHTML='<div class="skel skel-card"></div><div class="skel skel-card"></div>';
+  await loadGuides(true);
+  if(adminTab!=='Guides')return;
+  if(_guideEdit){renderGuideForm(box);return;}
+  box.innerHTML=
+    `<div class="note2" style="margin-bottom:12px">Your trek leaders. Assign one to a trek in the <b>Treks</b> tab — it shows as “Your trek leader” on the trek page. Only display a certification you can actually verify.</div>`
+    +(guides.length?'<div class="hostlist">'+guides.map(admGuideCard).join('')+'</div>'
+      :'<div class="empty"><p>No guides yet.</p></div>')
+    +'<button class="btn" style="margin-top:14px" onclick="guideNew()"><span class="msr">add</span> Add a guide</button>';
+  hydrate(box);
+}
+function admGuideCard(g){
+  const photo=(g.photo||'').trim();
+  const certs=guideCerts(g).slice(0,3).join(' · ');
+  const uses=treks.filter(t=>String(t.guide_id||'')===String(g.id)).length;
+  return '<div class="hostcard" onclick="guideEdit(\''+jsq(String(g.id))+'\')">'
+    +'<div class="vhring sm"'+(photo?' style="background-image:url(\''+esc(photo)+'\');background-size:cover;background-position:center;color:transparent"':'')+'>'+(photo?'':esc((String(g.name||'G')[0]||'G').toUpperCase()))+'</div>'
+    +'<div class="hostcard-bd"><b>'+esc(g.name||'—')+(g.verified?'<span class="vbadge"><span class="msr">check</span></span>':'')+'</b>'
+    +'<small>'+(certs||'No certifications listed')+'</small>'
+    +'<span class="hostcard-trips">'+(uses?'Leads '+uses+' trek'+(uses>1?'s':''):'Not assigned yet')+'</span></div>'
+    +'<span class="ch" style="transform:scaleX(-1)">'+ic('back',16)+'</span></div>';
+}
+function guideNew(){_guideEdit={name:'',photo:'',certifications:'',languages:'',years:'',treks_led:'',bio:'',verified:false};renderAdminGuides();}
+function guideEdit(id){const g=guideById(id);_guideEdit=g?Object.assign({},g):null;renderAdminGuides();}
+function guideCancel(){_guideEdit=null;renderAdminGuides();}
+function renderGuideForm(box){
+  const g=_guideEdit;const photo=(g.photo||'').trim();
+  box.innerHTML=`<div class="adm-editor">
+    <div class="adm-ed-head"><b>${g.id?'Edit guide':'Add a guide'}</b><button class="adm-ic" onclick="guideCancel()"><span class="msr">close</span></button></div>
+    <div class="adm-sec">Basics</div>
+    ${fld('gdName','Full name',g.name,'e.g. Prakash Rana')}
+    ${fld('gdPhoto','Photo URL',photo,'https://…')}
+    <div class="adm-imgprev" id="gdPhotoPrev" style="${photo?`background-image:url('${esc(photo)}')`:''}"></div>
+    <div class="adm-sec">Credentials</div>
+    ${fld('gdCerts','Certifications',g.certifications,'AMC, WFR, Wilderness First Aid')}
+    <div class="adm-hint">Comma-separated. Shown as badges. Only list what you can verify — an unverified badge is worse than none.</div>
+    <div class="adm-row2">${fld('gdYears','Years leading',g.years,'8')}${fld('gdTreks','Treks led',g.treks_led,'120')}</div>
+    ${fld('gdLangs','Languages',g.languages,'Hindi, English, Garhwali')}
+    <div class="field"><label>Verified guide</label><div class="adm-status">
+      <button type="button" class="adm-status-btn ${g.verified?'on':''}" id="gdVerYes" onclick="gdSetVerified(true)">Verified</button>
+      <button type="button" class="adm-status-btn ${g.verified?'':'on'}" id="gdVerNo" onclick="gdSetVerified(false)">Not yet</button>
+    </div></div>
+    <div class="adm-sec">Bio</div>
+    <div class="field"><textarea id="gdBio" class="adm-ta" placeholder="A short line about this leader…">${esc(g.bio||'')}</textarea></div>
+    <div class="adm-ed-foot">
+      ${g.id?'<button class="btn ghost" style="color:#ff7a7a" onclick="guideDelete()"><span class="msr">delete</span> Delete</button>':'<button class="btn ghost" onclick="guideCancel()">Cancel</button>'}
+      <button class="btn" onclick="saveGuide()"><span class="msr">check</span> Save guide</button>
+    </div></div>`;
+  hydrate(box);
+  const p=document.getElementById('gdPhoto');
+  if(p)p.addEventListener('input',()=>{const pv=document.getElementById('gdPhotoPrev');if(pv)pv.style.backgroundImage=p.value.trim()?`url('${p.value.split('?')[0].replace(/'/g,'%27')}')`:'';});
+}
+function gdSetVerified(v){_guideEdit.verified=v;
+  const y=document.getElementById('gdVerYes'),n=document.getElementById('gdVerNo');
+  if(y)y.classList.toggle('on',v);if(n)n.classList.toggle('on',!v);}
+async function saveGuide(){
+  const v=id=>((document.getElementById(id)||{}).value||'').trim();
+  const name=v('gdName');
+  if(!name){note('A guide needs a name.','Name required');return;}
+  const row={name:name,photo:v('gdPhoto'),certifications:v('gdCerts'),languages:v('gdLangs'),
+    years:v('gdYears'),treks_led:v('gdTreks'),bio:v('gdBio'),verified:!!(_guideEdit&&_guideEdit.verified)};
+  if(_guideEdit&&_guideEdit.id)row.id=_guideEdit.id;
+  const res=await adminCall('save_guide',{guide:row});
+  if(!res||!res.ok){note((res&&res.error)||'Could not save the guide.','Save failed');return;}
+  _guideEdit=null;await loadGuides(true);renderAdminGuides();
+  note('Guide saved ✓');
+}
+async function guideDelete(){
+  const g=_guideEdit;if(!g||!g.id)return;
+  const uses=treks.filter(t=>String(t.guide_id||'')===String(g.id)).length;
+  if(!(await askConfirm(uses?('This guide leads '+uses+' trek'+(uses>1?'s':'')+'. Deleting removes them from those treks. Continue?'):'Delete this guide?','Delete guide')))return;
+  const res=await adminCall('delete_guide',{id:g.id});
+  if(!res||!res.ok){note((res&&res.error)||'Could not delete.','Error');return;}
+  _guideEdit=null;await loadGuides(true);bustTreksCache();await loadTreks(true);renderAdminGuides();
+  note('Guide deleted.');
 }
 
 async function renderAdminStaff(){
@@ -5015,7 +5102,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='315';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='316';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -5147,6 +5234,13 @@ function showAdminForm(t){const f=document.getElementById('adminForm');
     <input type="file" id="admItinFile" accept="application/pdf,.pdf" style="display:none" onchange="admUploadItin(this)">
     <div class="adm-hint">Trekkers get this from the Itinerary screen's download button. Paste any link (Drive, Notion, your site) or upload a PDF. Leave blank to keep the auto-generated one.</div>
 
+    <div class="adm-sec">Trek leader</div>
+    <div class="field"><label>Assign a guide</label><div class="inp"><select id="admGuide" style="all:unset;flex:1;color:var(--text)">
+      <option value="" style="color:#000">— None —</option>
+      ${guides.map(gd=>`<option value="${esc(gd.id)}" ${String(t.guide_id||'')===String(gd.id)?'selected':''} style="color:#000">${esc(gd.name)}${gd.verified?' ✓':''}</option>`).join('')}
+    </select></div></div>
+    <div class="adm-hint">Shown as “Your trek leader” on the trek page. Manage guides in the <b>Guides</b> tab.</div>
+
     <div class="adm-sec">Description</div>
     <div class="field"><textarea id="admDesc" class="adm-ta" placeholder="A short, inviting description of the trek…">${esc(t.desc||'')}</textarea></div>
 
@@ -5160,8 +5254,8 @@ function showAdminForm(t){const f=document.getElementById('adminForm');
   const vidInp=document.getElementById('admVid');
   if(vidInp){vidInp.addEventListener('input',admCheckHeroLink);admCheckHeroLink();}
 }
-function newTrek(){editIdx=-1;adminTab='Treks';renderAdmin();showAdminForm({lvl:'Easy',region:'Uttarakhand'});}
-function editTrek(i){editIdx=i;showAdminForm(treks[i]);}
+function newTrek(){editIdx=-1;adminTab='Treks';renderAdmin();loadGuides().then(()=>showAdminForm({lvl:'Easy',region:'Uttarakhand'}));}
+function editTrek(i){editIdx=i;loadGuides().then(()=>showAdminForm(treks[i]));}
 function closeAdminForm(){const f=document.getElementById('adminForm');f.style.display='none';f.innerHTML='';}
 async function saveTrek(){const g=id=>document.getElementById(id);
   const reqRaw=(g('admReq')?g('admReq').value:'').trim();
@@ -5175,6 +5269,7 @@ async function saveTrek(){const g=id=>document.getElementById(id);
     itin:(g('admItin')?g('admItin').value:'').trim(),
     hvid:(g('admVid')?g('admVid').value:'').trim(),
     hvideo:!!(g('admHeroVid')&&g('admHeroVid').classList.contains('on')),
+    guide_id:(g('admGuide')?g('admGuide').value:'')||null,
     req:req,soon:soon};
   if(editIdx<0){treks.push(t);} else {t._id=treks[editIdx]._id;treks[editIdx]=t;}
   deriveTreks();renderHomeChips();renderHome();renderQuick();
@@ -6010,6 +6105,55 @@ function playHeroVideo(hh,url){
 }
 /* Download order: (1) whatever the admin attached for this trek, (2) a PDF placed in
    the repo at itineraries/<slug>.pdf, (3) an auto-generated one. */
+/* ============================================================
+   TREK LEADERS / GUIDES (Layer 1)
+   A guide is the qualified person who leads a trek — the thing a customer is most
+   anxious about when booking. Guides are admin-managed (your own roster) and assigned
+   per trek (trek.guide_id). Shown on the trek page as "Your trek leader".
+   Public read is fine — a guide profile is a trust signal, like a host badge.
+   ============================================================ */
+let guides=[],_guidesLoaded=false;
+function guideById(id){if(!id)return null;return guides.find(g=>String(g.id)===String(id))||null;}
+async function loadGuides(force){
+  const sb=getSupaClient();if(!sb){_guidesLoaded=true;return guides;}
+  if(guides.length&&!force)return guides;
+  try{
+    const r=await sb.from('guides').select('*').order('sort',{ascending:true});
+    if(!r.error&&Array.isArray(r.data))guides=r.data;
+    _guidesLoaded=true;
+  }catch(e){_guidesLoaded=true;}
+  return guides;
+}
+/* split the certifications text ("AMC, WFR") into short chips */
+function guideCerts(g){return String((g&&g.certifications)||'').split(/[,;]/).map(s=>s.trim()).filter(Boolean);}
+function guideVerifiedBadge(g){return g&&g.verified?'<span class="gd-verif"><span class="msr">verified</span></span>':'';}
+/* the "Your trek leader" card on the trek detail page */
+function guideCardHTML(g){
+  if(!g)return '';
+  const certs=guideCerts(g).map(c=>'<span class="gd-cert">'+esc(c)+'</span>').join('');
+  const facts=[];
+  if(g.years)facts.push(esc(g.years)+(/yr|year/i.test(String(g.years))?'':'+ yrs')+' leading');
+  if(g.treks_led)facts.push(esc(g.treks_led)+(/trek/i.test(String(g.treks_led))?'':'+ treks led'));
+  if(g.languages)facts.push(esc(g.languages));
+  const photo=(g.photo||'').trim();
+  return '<div class="gd-card">'
+    +'<div class="gd-top">'
+      +'<div class="gd-av"'+(photo?' style="background-image:url(\''+esc(photo)+'\')"':'')+'>'+(photo?'':esc((String(g.name||'G')[0]||'G').toUpperCase()))+'</div>'
+      +'<div class="gd-id"><b>'+esc(g.name||'Trek leader')+guideVerifiedBadge(g)+'</b>'
+      +(facts.length?'<small>'+facts.join(' · ')+'</small>':'')+'</div>'
+    +'</div>'
+    +(certs?'<div class="gd-certs">'+certs+'</div>':'')
+    +(g.bio?'<p class="gd-bio">'+esc(g.bio)+'</p>':'')
+    +'</div>';
+}
+function renderDetailLeader(t){
+  const wrap=document.getElementById('dLeaderWrap'),box=document.getElementById('dLeader');
+  if(!wrap||!box)return;
+  const g=guideById(t&&t.guide_id);
+  if(!g){wrap.style.display='none';box.innerHTML='';return;}
+  wrap.style.display='';box.innerHTML=guideCardHTML(g);hydrate(box);
+}
+
 /* Fetch a file and hand it to the OS as a download. `<a download>` is IGNORED for
    cross-origin URLs, so the old code fell back to navigating — and inside a standalone
    PWA that replaced the whole app with a chrome-less PDF view the user couldn't leave.
