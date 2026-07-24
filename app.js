@@ -2010,14 +2010,31 @@ function inclCard(inc,exc){
     +(e?'<div class="incl-h exc'+(i?' sep':'')+'"><span class="msr">do_not_disturb_on</span>Not included</div>'+e:'')
     +'</div>';
 }
-/* one label+value row for the trek detail sections (Conditions / Good to Know /
-   Getting there). `icon` is either an icon-map key or raw Material glyph via msr: */
-function dStat(icon,val,label,cls){
+/* One compact spec row: icon, muted label, value. Conditions / Good to Know / Getting
+   there used to be three headed sections of boxed tiles — ten cards' worth of borders
+   and padding for ten short facts, which made the page roughly twice as tall as the
+   content needed. They're now one plain list under a single heading. */
+function dRow(icon,label,val,cls){
   const glyph=String(icon||'').indexOf('msr:')===0
-    ? '<span class="msr" style="font-size:20px">'+icon.slice(4)+'</span>'
-    : ic(icon,20);
-  return '<div class="dstat'+(cls?' '+cls:'')+'"><div class="dst-ic">'+glyph+'</div>'
-    +'<div class="dst-tx"><b>'+esc(val==null?'—':val)+'</b><small>'+esc(label)+'</small></div></div>';
+    ? '<span class="msr">'+icon.slice(4)+'</span>'
+    : ic(icon,17);
+  return '<div class="dfact'+(cls?' '+cls:'')+'"><span class="dfact-ic">'+glyph+'</span>'
+    +'<span class="dfact-l">'+esc(label)+'</span>'
+    +'<span class="dfact-v">'+esc(val==null||val===''?'—':val)+'</span></div>';
+}
+function renderDetailFacts(t){
+  const box=document.getElementById('dFacts');if(!box)return;
+  const b=baseInfo(t);
+  box.innerHTML=
+     dRow('altitude','Elevation',t.elev)
+    +dRow('cloud','Climate',t.climate)
+    +dRow('temp','Temperature',t.temp)
+    +dRow('air','Air quality',t.aqi+' · '+t.aqiVal,'good')
+    +KNOW.map((k,i)=>dRow(k[0],k[2],k[1],i===0?'gsep':'')).join('')
+    +dRow('pin','Base town',b.town,'gsep')
+    +dRow('distance','Nearest rail',b.rail)
+    +dRow('msr:flight','Airport',b.air);
+  hydrate(box);
 }
 function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
   const hh=document.getElementById('dHero');hh.style.transform='';
@@ -2036,9 +2053,8 @@ function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
   document.getElementById('dDesc').textContent=t.desc;
   const stats=[['altitude',t.alt,'Altitude'],['clock',t.dur,'Duration'],['distance',t.dist,'Distance'],['calendar',t.best,'Best Time']];
   document.getElementById('dStats').innerHTML=stats.map(s=>`<div class="stat"><div class="ic" style="display:grid;place-items:center">${ic(s[0],20)}</div><b>${s[1]}</b><small>${s[2]}</small></div>`).join('');
-  document.getElementById('dHl').innerHTML=t.hl.map(h=>`<span class="hl-pill"><span class="ic">${ic(h[0],17)}</span>${esc(h[1])}</span>`).join('');
-  document.getElementById('dCond').innerHTML=[['altitude',t.elev,'Elevation'],['cloud',t.climate,'Climate'],['temp',t.temp,'Temp'],['air',t.aqi+' · '+t.aqiVal,'Air Quality']].map((c,j)=>dStat(c[0],c[1],c[2],j===3?'good':'')).join('');
-  document.getElementById('dKnow').innerHTML=KNOW.map(k=>dStat(k[0],k[1],k[2])).join('');
+  document.getElementById('dHl').innerHTML=t.hl.map(h=>`<span class="hl-pill"><span class="ic">${ic(h[0],15)}</span>${esc(h[1])}</span>`).join('');
+  renderDetailFacts(t);
   document.getElementById('dIncl').innerHTML=inclCard(INCL,EXCL);
   const dit=ITIN[t.n]||[];
   document.getElementById('dItinPrev').innerHTML=dit.slice(0,3).map((d,i)=>`<div class="tl"><div class="line"><div class="dot"></div>${i<2?'<div class="rod"></div>':''}</div><div class="bd"><div class="d">Day ${i+1}</div><h3>${d[0]}</h3></div></div>`).join('');
@@ -4279,15 +4295,14 @@ function getDirections(){
   const dest=(b.town&&b.town!==t.region)?encodeURIComponent(b.town+', '+t.region+', India'):`${c[0]},${c[1]}`;
   window.open(`https://www.google.com/maps/dir/?api=1&destination=${dest}`,'_blank','noopener');
 }
+/* the base-town / rail / airport facts moved into renderDetailFacts — this is just
+   the two actions that go with them */
 function renderDetailGetting(t){
-  const box=document.getElementById('dGetting');if(!box)return;const b=baseInfo(t);
-  box.innerHTML=`<div class="dgrid">
-    ${dStat('pin',b.town,'Base town')}
-    ${dStat('distance',b.rail,'Nearest rail')}
-    ${dStat('msr:flight',b.air,'Airport')}
-  </div>
-  <button class="btn ghost" style="margin-top:12px" onclick="getDirections()">${ic('pin',16)} Get directions on Google Maps</button>
-  <button class="btn ghost" style="margin-top:9px" onclick="openNav(cart.trek)">${ic('distance',16)} Live trail map</button>`;
+  const box=document.getElementById('dGetting');if(!box)return;
+  box.innerHTML=`<div class="dact-row">
+    <button class="btn ghost sm" onclick="getDirections()">${ic('pin',15)} Directions</button>
+    <button class="btn ghost sm" onclick="openNav(cart.trek)">${ic('distance',15)} Trail map</button>
+  </div>`;
   hydrate(box);
 }
 function hav(a,b,c,d){const R=6371,p=Math.PI/180,x=Math.sin((c-a)*p/2)**2+Math.cos(a*p)*Math.cos(c*p)*Math.sin((d-b)*p/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
@@ -4765,7 +4780,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='294';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='295';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
