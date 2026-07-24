@@ -449,8 +449,16 @@
   .itd-bd h3{margin:5px 0 4px;font-size:15px;line-height:1.3}
   .itd-bd p{margin:0 0 8px;font-size:12.5px;color:var(--muted);line-height:1.5}
   .itd-meta{display:flex;flex-wrap:wrap;gap:7px}
-  .itd-meta span{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;color:var(--muted);
-    background:var(--card);border:1px solid var(--stroke);border-radius:8px;padding:4px 8px;line-height:1}
+  /* DIRECT children only. `.itd-meta span` also matched the icon's own .msr span, so
+     every glyph got the chip's own border, background and 5px/9px padding — a little
+     box drawn around the icon, overlapping the chip it sat in. */
+  .itd-meta>span{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;color:var(--muted);
+    background:var(--card);border:1px solid var(--stroke);border-radius:8px;padding:5px 9px;line-height:1}
+  /* .msr also carries max-width:1.4em + overflow:hidden as a guard for when the icon
+     font fails to load; at this size that clipped the glyph (the clock rendered as a
+     half circle). Give these icons a clean box of their own. */
+  .itd-meta>span>.msr{font-size:13px;max-width:none;overflow:visible;line-height:1;
+    flex:none;background:none;border:0;padding:0;border-radius:0}
   /* admin: attach an itinerary */
   .adm-itin{display:flex;align-items:center;gap:10px;margin:2px 0 6px}
   .adm-itin-st{font-size:11px;color:var(--muted)}
