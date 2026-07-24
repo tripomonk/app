@@ -295,7 +295,7 @@ function applyTrekRows(rows){
   if(!rows||!rows.length)return false;
   const dbByName={};
   rows.forEach(d=>{const row={n:d.name,region:d.region,img:d.img,r:d.rating,rev:d.reviews,lvl:d.level,days:d.days,
-    alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,packing:d.packing||null,batches:(Array.isArray(d.batches)?d.batches:null),req:(typeof d.req_score==='number'?d.req_score:null),pop:!!d.popular,feat:!!d.featured,tag:d.tag||'',itin:d.itinerary_url||'',_id:d.id};
+    alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,packing:d.packing||null,batches:(Array.isArray(d.batches)?d.batches:null),req:(typeof d.req_score==='number'?d.req_score:null),pop:!!d.popular,feat:!!d.featured,tag:d.tag||'',itin:d.itinerary_url||'',hvid:d.hero_video||'',hvideo:!!d.hero_use_video,_id:d.id};
     if(d.credit)row.credit=d.credit; dbByName[d.name]=row;});
   const seen=new Set();
   treks.forEach(t=>{const d=dbByName[t.n];if(d){Object.assign(t,d);seen.add(t.n);}});
@@ -309,11 +309,18 @@ function applyTrekRows(rows){
    Now: paint the last known rows from localStorage immediately (no network), then
    revalidate in the background and only repaint if the payload actually changed. */
 const TREKS_KEY='treks';
-async function loadTreks(){ if(!sbOn) return;
-  const cached=swrGet(TREKS_KEY);
+function bustTreksCache(){try{localStorage.removeItem('tmk_swr_'+TREKS_KEY);}catch(e){}}
+/* fresh=true is used right after an ADMIN WRITE: it skips the paint-from-cache step, so
+   the just-saved change can't be reverted by an older localStorage copy, and it always
+   applies whatever the DB returns (no "unchanged, skip" shortcut). fresh=false is the
+   normal launch path: paint the cache instantly, then repaint only if the DB differs. */
+async function loadTreks(fresh){ if(!sbOn) return;
   let painted='';
-  if(cached&&Array.isArray(cached.data)&&cached.data.length){
-    try{painted=JSON.stringify(cached.data);applyTrekRows(cached.data);}catch(e){}
+  if(!fresh){
+    const cached=swrGet(TREKS_KEY);
+    if(cached&&Array.isArray(cached.data)&&cached.data.length){
+      try{painted=JSON.stringify(cached.data);applyTrekRows(cached.data);}catch(e){}
+    }
   }
   try{let r=await fetch(SB.SUPABASE_URL+'/rest/v1/treks?select=*&order=sort.asc',{headers:sbHeaders(),cache:'no-store'});
     /* table may not have a `sort` column — retry ordering by id */
@@ -321,7 +328,7 @@ async function loadTreks(){ if(!sbOn) return;
     if(!r.ok) return; const rows=await r.json(); if(!rows||!rows.length) return;
     swrSet(TREKS_KEY,rows);
     /* skip the repaint (and the reflow) when nothing actually moved */
-    if(JSON.stringify(rows)===painted) return;
+    if(!fresh&&JSON.stringify(rows)===painted) return;
     applyTrekRows(rows);
   }catch(e){}}
 function saveBookingRemote(b){ if(!sbOn) return;
@@ -2125,8 +2132,7 @@ function renderDetailFacts(t){
 }
 function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
   const hh=document.getElementById('dHero');hh.style.transform='';
-  hh.classList.add('img-loading');hh.style.backgroundImage=`url('${t.img}')`;
-  const _hi=new Image();_hi.onload=_hi.onerror=()=>hh.classList.remove('img-loading');_hi.src=t.img;   /* shimmer skeleton until the hero photo is ready */
+  renderHero(hh,t);   /* shimmer skeleton until the hero photo is ready */
   const dc=document.getElementById('dCredit');
   if(dc){if(t.credit){dc.innerHTML='<span class="msr">photo_camera</span> '+esc(t.credit);dc.classList.add('on');}else dc.classList.remove('on');}
   const dtg=document.getElementById('dTag');
@@ -4484,7 +4490,8 @@ async function sbWriteChecked(method,path,body){
   if(!res||!res.ok){note((res&&res.error)||'Admin save failed.','Save failed');return false;}
   return true;
 }
-function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null,req_score:(typeof t.req==='number'?t.req:null),popular:!!t.pop,featured:!!t.feat,tag:(t.tag||'').trim()||null,itinerary_url:(t.itin||'').trim()||null};}
+function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null,req_score:(typeof t.req==='number'?t.req:null),popular:!!t.pop,featured:!!t.feat,tag:(t.tag||'').trim()||null,itinerary_url:(t.itin||'').trim()||null,
+  hero_video:(t.hvid||'').trim()||null,hero_use_video:!!t.hvideo};}
 let editIdx=-1, adminTab='Treks', depTrek=null;
 const ADM_TAB_IC={Overview:'dashboard',Bookings:'receipt_long',Treks:'landscape',Home:'home',Departures:'event',Packing:'checklist',Hosts:'groups',Training:'fitness_center',Staff:'badge',Settings:'settings'};
 const ADM_TABS=['Overview','Bookings','Treks','Home','Departures','Packing','Hosts','Training','Staff','Settings'];
@@ -4667,7 +4674,7 @@ async function savePackingAdmin(){
   if(!sbOn){note('Saved on this device only (Supabase not connected).');return;}
   if(!t._id){note('This trek isn’t in the database yet — save it in the Treks tab first.','Cannot save');return;}
   const ok=await sbWriteChecked('PATCH','treks?id=eq.'+t._id,{packing:_pkEdit});
-  if(ok){await loadTreks();note('Packing list saved for '+pkAdminTrek+' ✓');}
+  if(ok){bustTreksCache();await loadTreks(true);note('Packing list saved for '+pkAdminTrek+' ✓');}
 }
 async function renderAdminBookings(){
   const box=document.getElementById('adminBody');
@@ -4804,15 +4811,22 @@ function renderAdminHome(){
   hydrate(box);renderAdminHomeList();
 }
 async function saveHomePicks(){
-  const pop=[..._homePop];
+  const pop=[..._homePop];const wantFeat=_homeFeat||'';
   /* paint it locally first so the home page reflects the change even if offline */
   treks.forEach(t=>{t.pop=_homePop.has(t.n);t.feat=(t.n===_homeFeat);});
   renderHome();
   if(!sbOn){note('Saved on this device only (Supabase not connected).');return;}
-  const res=await adminCall('save_home',{featured:_homeFeat||'',popular:pop});
+  const res=await adminCall('save_home',{featured:wantFeat,popular:pop});
   if(!res||!res.ok){note((res&&res.error)||'Could not save the home page.','Save failed');return;}
-  await loadTreks();_homePop=null;homeSelInit();renderHome();renderAdminHome();
-  note('Home page updated for everyone ✓');
+  bustTreksCache();
+  await loadTreks(true);          /* fresh: no stale cache to revert the pick */
+  _homePop=null;homeSelInit();renderHome();renderAdminHome();
+  /* the DB is the source of truth now — verify the pick actually landed there, so a
+     silent persistence failure (missing columns / old function) isn't reported as a win */
+  const featOk=!wantFeat||(treks.find(t=>t.feat)||{}).n===wantFeat;
+  const popOk=pop.every(n=>{const t=treks.find(x=>x.n===n);return t&&t.pop;});
+  if(featOk&&popOk)note('Home page updated for everyone ✓');
+  else note('Saved, but it did not appear in the database. Deploy the latest admin function and run SQL-add-home-picks.sql, then try again.','Not reflected');
 }
 /* ----- Departures (batches) ----- */
 function getBatchMap(){try{return JSON.parse(localStorage.getItem('tmk_batches')||'{}');}catch(e){return {};}}
@@ -4832,7 +4846,7 @@ async function saveBatches(name,list){
   if(!sbOn){note('Saved on this device only (Supabase not connected).');return;}
   if(!t||!t._id){note('Save this trek in the Treks tab first, then add its departures.','Trek not in database');return;}
   const ok=await sbWriteChecked('PATCH','treks?id=eq.'+t._id,{batches:list});
-  if(ok){await loadTreks();note('Departures saved for everyone ✓');}
+  if(ok){bustTreksCache();await loadTreks(true);note('Departures saved for everyone ✓');}
 }
 /* selected-trek card with a tap-to-change native picker — shared by Departures + Packing */
 function admTrekSelect(selName,onchangeFn){
@@ -4887,7 +4901,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='302';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='304';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -4903,6 +4917,35 @@ function saveSettings(){const g=id=>document.getElementById(id);
   note('Settings saved.');}
 function fld(id,label,val,ph){return `<div class="field"><label>${label}</label><div class="inp"><input id="${id}" value="${esc(val==null?'':val)}" placeholder="${ph||''}"></div></div>`;}
 function admSetStatus(live){const l=document.getElementById('admStatusLive'),s=document.getElementById('admStatusSoon');if(l)l.classList.toggle('on',live);if(s)s.classList.toggle('on',!live);}
+/* Photo / Video choice for the trek hero. Kept separate from the link itself so a
+   video can stay attached while the photo is shown. */
+function admSetHero(useVideo){
+  const i=document.getElementById('admHeroImg'),v=document.getElementById('admHeroVid');
+  if(i)i.classList.toggle('on',!useVideo);
+  if(v)v.classList.toggle('on',useVideo);
+  admCheckHeroLink();
+}
+/* tell the admin immediately if the link won't play, instead of at save time */
+function admCheckHeroLink(){
+  const hint=document.getElementById('admVidHint'),inp=document.getElementById('admVid');
+  if(!hint||!inp)return;
+  const url=(inp.value||'').trim();
+  const useVideo=(document.getElementById('admHeroVid')||{classList:{contains:()=>false}}).classList.contains('on');
+  if(!url){
+    hint.textContent=useVideo
+      ? 'Add a video link above, or the trek page falls back to the photo.'
+      : 'The photo is still used as the video’s cover, and as the card image everywhere else. Pick “Video” to show it at the top.';
+    hint.style.color='';return;
+  }
+  const v=parseVideoLink(url);
+  if(!v||v.kind==='link'){
+    hint.textContent='That link isn’t a video we can play. Use YouTube, Instagram, Vimeo or a direct .mp4 URL.';
+    hint.style.color='#ffce1f';
+  }else{
+    hint.textContent='Recognised as '+v.kind+'. '+(useVideo?'It will show at the top of the trek page.':'Pick “Video” to show it at the top.');
+    hint.style.color='#6ee7a0';
+  }
+}
 /* Upload an itinerary PDF to the existing public `community` bucket and drop the URL
    into the link field, so "upload a file" and "paste a link" end up as the same thing. */
 async function admUploadItin(input){
@@ -4969,9 +5012,16 @@ function showAdminForm(t){const f=document.getElementById('adminForm');
     <div class="adm-sec">Ratings</div>
     <div class="adm-row2">${fld('admRate','Rating',t.r,'4.8')}${fld('admRev','Reviews',t.rev,'860')}</div>
 
-    <div class="adm-sec">Media</div>
+    <div class="adm-sec">Hero media</div>
+    <div class="field"><label>Show at the top of the trek page</label>
+      <div class="adm-status">
+        <button type="button" class="adm-status-btn ${t.hvideo?'':'on'}" id="admHeroImg" onclick="admSetHero(false)">Photo</button>
+        <button type="button" class="adm-status-btn ${t.hvideo?'on':''}" id="admHeroVid" onclick="admSetHero(true)">Video</button>
+      </div></div>
     ${fld('admImg','Image URL',img,'https://…')}
     <div class="adm-imgprev" id="admImgPrev" style="${img?`background-image:url('${esc(img)}')`:''}"></div>
+    ${fld('admVid','Video link (YouTube, Instagram, Vimeo or .mp4)',t.hvid,'https://youtube.com/watch?v=…')}
+    <div class="adm-hint" id="admVidHint">The photo is still used as the video's cover, and as the card image everywhere else. Pick “Photo” to keep the video attached but hidden.</div>
 
     <div class="adm-sec">Itinerary PDF</div>
     ${fld('admItin','Link to the itinerary',t.itin,'https://… or upload below')}
@@ -4993,6 +5043,8 @@ function showAdminForm(t){const f=document.getElementById('adminForm');
   if(imgInp)imgInp.addEventListener('input',()=>{const p=document.getElementById('admImgPrev');if(p)p.style.backgroundImage=imgInp.value.trim()?`url('${imgInp.value.split('?')[0].replace(/'/g,'%27')}')`:'';});
   const tagInp=document.getElementById('admTag');
   if(tagInp)tagInp.addEventListener('input',admSyncTagChips);
+  const vidInp=document.getElementById('admVid');
+  if(vidInp){vidInp.addEventListener('input',admCheckHeroLink);admCheckHeroLink();}
 }
 function newTrek(){editIdx=-1;adminTab='Treks';renderAdmin();showAdminForm({lvl:'Easy',region:'Uttarakhand'});}
 function editTrek(i){editIdx=i;showAdminForm(treks[i]);}
@@ -5007,6 +5059,8 @@ async function saveTrek(){const g=id=>document.getElementById(id);
     rev:g('admRev').value.trim()||'0',img:g('admImg').value.trim(),desc:g('admDesc').value.trim(),
     tag:(g('admTag')?g('admTag').value:'').trim().slice(0,28),
     itin:(g('admItin')?g('admItin').value:'').trim(),
+    hvid:(g('admVid')?g('admVid').value:'').trim(),
+    hvideo:!!(g('admHeroVid')&&g('admHeroVid').classList.contains('on')),
     req:req,soon:soon};
   if(editIdx<0){treks.push(t);} else {t._id=treks[editIdx]._id;treks[editIdx]=t;}
   deriveTreks();renderHomeChips();renderHome();renderQuick();
@@ -5016,10 +5070,11 @@ async function saveTrek(){const g=id=>document.getElementById(id);
   const ok = t._id
     ? await sbWriteChecked('PATCH','treks?id=eq.'+t._id,trekToRow(t))
     : await sbWriteChecked('POST','treks',trekToRow(t));
-  if(ok){await loadTreks();note('Saved for everyone ✓');}
+  if(ok){bustTreksCache();await loadTreks(true);note('Saved for everyone ✓');}
 }
 async function delTrek(i){const t=treks[i];if(!(await askConfirm('Delete "'+t.n+'"? This cannot be undone.','Delete trek')))return;
   if(sbOn&&t._id){const ok=await sbWriteChecked('DELETE','treks?id=eq.'+t._id);if(!ok)return;}
+  bustTreksCache();   /* or the deleted trek is resurrected from the stale cache on next load */
   treks.splice(i,1);deriveTreks();renderHomeChips();renderHome();renderQuick();renderAdmin();
   note('Deleted ✓');}
 /* ---- services: rent gear / permits / adventure activities ---- */
@@ -5793,6 +5848,52 @@ function itinSlug(t){return t.n.toLowerCase().replace(/[^a-z0-9]+/g,'-');}
 function trekItinUrl(t){return String((t&&t.itin)||'').trim();}
 /* a trek "has" an itinerary if it has day-by-day rows OR an attached document */
 function hasItinerary(t){return !!(t&&((ITIN[t.n]&&ITIN[t.n].length)||trekItinUrl(t)));}
+
+/* ---- Hero media: photo (default) or a video the admin attached ----
+   The video is NOT auto-played. The hero paints as a poster with a play badge and
+   only swaps in the iframe on tap — autoplaying a hero iframe costs a heavy network
+   fetch on every trek open, and iOS blocks it with sound anyway. Same tap-to-play
+   pattern the community feed already uses, so stopAllMedia() tears it down on
+   navigation and the audio can't follow you to the next screen. */
+function heroVideoUrl(t){
+  if(!t||!t.hvideo)return '';                       /* admin chose the photo */
+  const u=String(t.hvid||'').trim();
+  return parseVideoLink(u)?u:'';                    /* unparseable link = fall back to the photo */
+}
+function renderHero(hh,t){
+  if(!hh||!t)return;
+  const vid=heroVideoUrl(t);
+  const poster=(vid&&videoPoster(vid))||t.img||'';
+  hh.classList.add('img-loading');
+  hh.style.backgroundImage=poster?`url('${poster}')`:'';
+  const pre=new Image();pre.onload=pre.onerror=()=>hh.classList.remove('img-loading');
+  if(poster)pre.src=poster;else hh.classList.remove('img-loading');
+  /* rebuild the play badge each time so switching treks can't leave a stale one */
+  const old=hh.querySelector('.hero-play');if(old)old.remove();
+  const frame=hh.querySelector('.hero-embed');if(frame)frame.remove();
+  if(!vid)return;
+  const v=parseVideoLink(vid);
+  const b=document.createElement('div');
+  b.className='hero-play';
+  b.setAttribute('data-embed',v.embed||vid);
+  b.innerHTML='<span class="msr">play_arrow</span>';
+  b.onclick=e=>{e.stopPropagation();playHeroVideo(hh,vid);};
+  hh.appendChild(b);
+}
+function playHeroVideo(hh,url){
+  const v=parseVideoLink(url);if(!v)return;
+  const badge=hh.querySelector('.hero-play');if(badge)badge.remove();
+  const wrap=document.createElement('div');
+  wrap.className='hero-embed vembed';
+  if(v.kind==='file'){
+    wrap.innerHTML='<video src="'+esc(url)+'#t=0.1" controls autoplay playsinline></video>';
+  }else{
+    const src=v.embed+(v.embed.indexOf('?')>=0?'&':'?')+'autoplay=1';
+    wrap.innerHTML='<iframe src="'+esc(src)+'" title="Trek video" frameborder="0" '
+      +'allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>';
+  }
+  hh.appendChild(wrap);
+}
 /* Download order: (1) whatever the admin attached for this trek, (2) a PDF placed in
    the repo at itineraries/<slug>.pdf, (3) an auto-generated one. */
 /* Fetch a file and hand it to the OS as a download. `<a download>` is IGNORED for
@@ -6345,6 +6446,11 @@ function stopAllMedia(){
   });
   /* generic embeds (trek detail etc.) — blank the src so their audio stops too */
   document.querySelectorAll('.vembed iframe').forEach(f=>{try{f.src='about:blank';}catch(e){}});
+  /* the hero drops back to its poster + play badge, ready for the next open */
+  document.querySelectorAll('.hero-embed').forEach(el=>{
+    const hh=el.parentElement;el.remove();
+    if(hh&&cart.trek&&!hh.querySelector('.hero-play'))renderHero(hh,cart.trek);
+  });
 }
 function go(id){const el=document.getElementById(id);if(!el)return;
   stopAllMedia();
@@ -6472,7 +6578,7 @@ handleDeepLink();     /* open a trek directly from a shared link */
 /* soft refresh — reloads the current screen's data in the background, no page reload / no layout shift */
 async function refreshCurrent(){
   try{
-    await loadTreks();
+    await loadTreks(true);   /* pull-to-refresh is authoritative — go straight to the DB */
     /* pull-to-refresh is authoritative: refetch news and overwrite the SWR cache
        so renderNews() paints the just-fetched copy instead of a stale one */
     _newsCache=null;const freshNews=await loadNews();if(freshNews&&freshNews.length)swrSet('news',freshNews);
