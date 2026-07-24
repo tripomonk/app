@@ -3055,7 +3055,7 @@ async function upsertProfile(){
   try{await sb.from('profiles').upsert(row);}catch(e){}
 }
 /* everything that identifies ONE person on this device */
-const IDENTITY_KEYS=['tmk_uname','tmk_uhandle','tmk_uphoto','tmk_ucover','tmk_socials','tmk_umobile','tmk_follows','tmk_posts','tmk_likes','tmk_comments','tmk_bookings','tmk_notif_seen','tmk_admin','tmk_admin_key','tmk_captain'];
+const IDENTITY_KEYS=['tmk_uname','tmk_uhandle','tmk_uphoto','tmk_ucover','tmk_socials','tmk_umobile','tmk_follows','tmk_posts','tmk_likes','tmk_comments','tmk_bookings','tmk_notif_seen','tmk_admin','tmk_admin_key','tmk_captain','tmk_plan'];
 function clearLocalIdentity(){
   try{IDENTITY_KEYS.forEach(k=>localStorage.removeItem(k));}catch(e){}
   followState={};staffSet=new Set();_prefSkippedSession=false;
@@ -3081,6 +3081,7 @@ async function loadProfileFromServer(){
   }catch(e){}
   await loadFollowsFromServer();
   loadCart();   /* cart is keyed per account — swap to this user's one */
+  planPull();   /* training plan follows the account, not the device */
   _profileLoadedFor=currentUser.id;
 }
 async function uidForName(name){
@@ -4334,11 +4335,14 @@ async function sbWriteChecked(method,path,body){
 }
 function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null,req_score:(typeof t.req==='number'?t.req:null),popular:!!t.pop,featured:!!t.feat,tag:(t.tag||'').trim()||null};}
 let editIdx=-1, adminTab='Treks', depTrek=null;
-const ADM_TAB_IC={Bookings:'receipt_long',Treks:'landscape',Home:'home',Departures:'event',Packing:'checklist',Hosts:'groups',Staff:'badge',Settings:'settings'};
+const ADM_TAB_IC={Overview:'dashboard',Bookings:'receipt_long',Treks:'landscape',Home:'home',Departures:'event',Packing:'checklist',Hosts:'groups',Training:'fitness_center',Staff:'badge',Settings:'settings'};
+const ADM_TABS=['Overview','Bookings','Treks','Home','Departures','Packing','Hosts','Training','Staff','Settings'];
 function renderAdmin(){
-  document.getElementById('adminTabs').innerHTML=['Bookings','Treks','Home','Departures','Packing','Hosts','Staff','Settings'].map(x=>`<div class="adm-tab ${x===adminTab?'on':''}" onclick="setAdminTab('${x}')"><span class="msr">${ADM_TAB_IC[x]||'circle'}</span>${x}</div>`).join('');
+  document.getElementById('adminTabs').innerHTML=ADM_TABS.map(x=>`<div class="adm-tab ${x===adminTab?'on':''}" onclick="setAdminTab('${x}')"><span class="msr">${ADM_TAB_IC[x]||'circle'}</span>${x}</div>`).join('');
   const f=document.getElementById('adminForm'); if(f){f.style.display='none';f.innerHTML='';}
-  if(adminTab==='Bookings')renderAdminBookings();
+  if(adminTab==='Overview')renderAdminOverview();
+  else if(adminTab==='Training')renderAdminTraining();
+  else if(adminTab==='Bookings')renderAdminBookings();
   else if(adminTab==='Treks')renderAdminTreks();
   else if(adminTab==='Home')renderAdminHome();
   else if(adminTab==='Departures')renderDepartures();
@@ -4347,6 +4351,115 @@ function renderAdmin(){
   else if(adminTab==='Staff')renderAdminStaff();
   else renderAdminSettings();
 }
+/* ============================================================
+   ADMIN · OVERVIEW — one console that answers "what needs me today?"
+   Everything here is a count plus a jump; the detail lives in its own tab.
+   ============================================================ */
+let _ovCache=null;
+async function renderAdminOverview(){
+  const box=document.getElementById('adminBody');if(!box)return;
+  const live=treks.filter(t=>!t.soon).length;
+  const paint=d=>{
+    const kpi=(v,l,cls)=>`<div class="adm-kpi ${cls||''}"><b>${v}</b><small>${l}</small></div>`;
+    const act=(n,label,sub,tab,badge)=>`<div class="adm-act" onclick="setAdminTab('${tab}')">
+      <div class="adm-act-ic"><span class="msr">${ADM_TAB_IC[tab]||'circle'}</span></div>
+      <div class="adm-act-tx"><b>${label}${badge?`<span class="adm-pill">${badge}</span>`:''}</b><small>${sub}</small></div>
+      <span class="msr adm-act-ch">chevron_right</span></div>`;
+    box.innerHTML=
+      `<div class="adm-kgrid">
+        ${kpi(d.bookings==null?'—':d.bookings,'Bookings')}
+        ${kpi(d.revenue==null?'—':INR(d.revenue),'Collected')}
+        ${kpi(d.pax==null?'—':d.pax,'Trekkers')}
+      </div>
+      <div class="adm-kgrid">
+        ${kpi(treks.length,'Treks')}
+        ${kpi(live,'Live')}
+        ${kpi(treks.length-live,'Coming soon')}
+      </div>
+      ${(d.pendingApps||d.draftTrips)?`<div class="adm-sec">Needs your review</div>
+        ${d.pendingApps?act('a','Host applications','','Hosts',d.pendingApps+' pending'):''}
+        ${d.draftTrips?act('t','Host trips to publish','','Hosts',d.draftTrips+' draft'+(d.draftTrips>1?'s':'')):''}`:''}
+      <div class="adm-sec">Manage</div>
+      ${act('h','Hosts',(d.hosts==null?'—':d.hosts)+' verified · '+(d.liveTrips==null?'—':d.liveTrips)+' live trips','Hosts')}
+      ${act('k','Treks',treks.length+' total · '+live+' bookable','Treks')}
+      ${act('o','Home page','Featured trek & popular rail','Home')}
+      ${act('d','Departures','Batch dates & seats','Departures')}
+      ${act('r','Training','Who is training for their trek','Training')}
+      <div class="adm-hint" style="margin-top:12px">Build v${APP_BUILD}</div>`;
+    hydrate(box);
+  };
+  if(_ovCache){paint(_ovCache);}
+  else box.innerHTML='<div class="skel skel-card"></div><div class="skel skel-card"></div>';
+  const d={bookings:null,revenue:null,pax:null,hosts:null,pendingApps:0,draftTrips:0,liveTrips:null};
+  const sb=getSupaClient();
+  try{
+    const res=await adminCall('list_bookings');
+    if(res&&res.ok){const rows=res.rows||[];
+      d.bookings=rows.length;
+      d.revenue=rows.reduce((s,b)=>s+(Number(b.paid)||0),0);
+      d.pax=rows.reduce((s,b)=>s+(Number(b.pax)||1),0);}
+  }catch(e){}
+  if(sb){
+    try{const a=await sb.from('host_applications').select('status');
+      const rows=a.data||[];d.pendingApps=rows.filter(x=>x.status==='pending').length;
+      d.hosts=rows.filter(x=>x.status==='approved').length;}catch(e){}
+    try{const t=await sb.from('host_trips').select('status');
+      const rows=t.data||[];d.draftTrips=rows.filter(x=>x.status==='draft').length;
+      d.liveTrips=rows.filter(x=>x.status==='live').length;}catch(e){}
+  }
+  _ovCache=d;
+  if(adminTab==='Overview')paint(d);
+}
+
+/* ============================================================
+   ADMIN · TRAINING — who is actually training, from profiles.training
+   ============================================================ */
+let _trainRows=null,_trainQ='';
+function trainSummary(p){
+  if(!p||typeof p!=='object')return null;
+  const days=p.days||{};
+  const keys=Object.keys(days).filter(k=>Object.keys(days[k]||{}).some(i=>days[k][i]));
+  if(!keys.length)return null;
+  keys.sort();
+  /* streak counted backwards from today over days with ANY completed session */
+  let streak=0;const cur=new Date();
+  for(;;){const k=planDkey(cur);
+    if(keys.indexOf(k)>=0){streak++;cur.setDate(cur.getDate()-1);}else break;}
+  return {days:keys.length,streak,last:keys[keys.length-1],trek:p.trek||'',goal:p.goal||0};
+}
+async function renderAdminTraining(){
+  const box=document.getElementById('adminBody');if(!box)return;
+  const sb=getSupaClient();
+  if(!sb){box.innerHTML='<div class="note2">Connect Supabase to see training activity.</div>';return;}
+  if(!_trainRows)box.innerHTML='<div class="skel skel-card"></div><div class="skel skel-card"></div>';
+  if(!_trainRows){
+    try{const r=await sb.from('profiles').select('name,username,photo,training').not('training','is',null).limit(500);
+      _trainRows=(r.data||[]).map(p=>({name:p.name||'Trekker',username:p.username||'',photo:p.photo||'',s:trainSummary(p.training)}))
+        .filter(x=>x.s).sort((a,b)=>b.s.streak-a.s.streak||b.s.days-a.s.days);
+    }catch(e){_trainRows=[];}
+  }
+  if(adminTab!=='Training')return;
+  const q=_trainQ.trim().toLowerCase();
+  const list=_trainRows.filter(x=>!q||(x.name+' '+x.username).toLowerCase().includes(q));
+  const today=planTodayKey();
+  box.innerHTML=
+    `<div class="adm-kgrid">
+      <div class="adm-kpi"><b>${_trainRows.length}</b><small>Training</small></div>
+      <div class="adm-kpi"><b>${_trainRows.filter(x=>x.s.last===today).length}</b><small>Active today</small></div>
+      <div class="adm-kpi"><b>${_trainRows.filter(x=>x.s.streak>=3).length}</b><small>3+ day streak</small></div>
+    </div>
+    <div class="adm-search"><span class="msr">search</span><input placeholder="Search trekkers…" value="${esc(_trainQ)}" oninput="_trainQ=this.value;renderAdminTraining()"></div>`
+    +(list.length?'<div class="hostlist">'+list.map(x=>
+      `<div class="hostcard" onclick="openPerson('${jsq(x.name)}')">
+        <div class="vhring sm">${avatar(x.name,52)}</div>
+        <div class="hostcard-bd"><b>${esc(x.name)}</b>
+          <small>${x.s.trek?'Training for '+esc(x.s.trek):'General fitness'}${x.s.goal?' · goal '+x.s.goal:''}</small>
+          <span class="hostcard-trips">${x.s.streak} day streak · ${x.s.days} days done</span></div>
+        <span class="adm-train-last">${x.s.last===today?'today':esc(x.s.last)}</span></div>`).join('')+'</div>'
+      :`<div class="empty"><p>${q?'No trekkers match.':'Nobody has ticked a workout yet.'}</p></div>`);
+  hydrate(box);
+}
+
 async function renderAdminStaff(){
   const box=document.getElementById('adminBody');
   await loadStaff();
@@ -4623,7 +4736,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='291';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='293';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -5851,7 +5964,52 @@ function trekByName(n){return treks.find(t=>t.n===n)||(typeof cmpAvail==='functi
 /* --- workout tracking: tick off today's sessions, build a streak, watch progress --- */
 let _planCtx={trek:'',goal:0,total:3,items:[]};
 function planStore(){try{return JSON.parse(localStorage.getItem('tmk_plan')||'null');}catch(e){return null;}}
-function planSave(p){try{localStorage.setItem('tmk_plan',JSON.stringify(p));}catch(e){}}
+/* ---- cross-device sync ----
+   The plan lives in localStorage for instant, offline-capable ticking, and is mirrored
+   to profiles.training so the same person sees one streak on every device (and so the
+   admin can see who is actually training). Writes are debounced — ticking four sessions
+   in a row is one network call, not four. */
+let _planPushT=null;
+function planSave(p,skipPush){
+  p.updatedAt=new Date().toISOString();
+  try{localStorage.setItem('tmk_plan',JSON.stringify(p));}catch(e){}
+  if(skipPush)return;
+  clearTimeout(_planPushT);_planPushT=setTimeout(planPush,900);
+}
+async function planPush(){
+  const sb=getSupaClient();if(!sb)return;
+  const uid=await authUid();if(!uid)return;          /* signed out = local only, by design */
+  const p=planStore();if(!p)return;
+  try{await sb.from('profiles').upsert({id:uid,training:p,updated_at:new Date().toISOString()});}catch(e){}
+}
+/* Union the ticks rather than letting the newer device win outright: a workout ticked
+   on the phone must never be erased by an older copy on the tablet. */
+function planMerge(local,remote){
+  if(!local)return remote;
+  if(!remote)return local;
+  const newer=(remote.updatedAt||'')>(local.updatedAt||'')?remote:local;
+  const out={trek:newer.trek||'',goal:newer.goal||0,updatedAt:newer.updatedAt||'',days:{}};
+  [local.days||{},remote.days||{}].forEach(src=>{
+    Object.keys(src).forEach(k=>{out.days[k]=Object.assign({},out.days[k]||{},src[k]||{});});
+  });
+  /* keep the EARLIEST start so the history (and streak) isn't truncated */
+  out.startISO=[local.startISO,remote.startISO].filter(Boolean).sort()[0]||planTodayKey();
+  return out;
+}
+async function planPull(){
+  const sb=getSupaClient();if(!sb)return;
+  const uid=await authUid();if(!uid)return;
+  try{
+    const{data}=await sb.from('profiles').select('training').eq('id',uid).maybeSingle();
+    const remote=data&&data.training;if(!remote||typeof remote!=='object')return;
+    const local=planStore();
+    const merged=planMerge(local,remote);
+    planSave(merged,true);                            /* don't echo straight back */
+    /* if the union differs from what the server holds, push it so both devices agree */
+    if(JSON.stringify(merged)!==JSON.stringify(remote))planPush();
+    if(cur==='trainingPlan')refreshPlanTracking();
+  }catch(e){}
+}
 function planDkey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function planTodayKey(){return planDkey(new Date());}
 function planLast14(){const a=[];for(let i=13;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);a.push(planDkey(d));}return a;}
@@ -6514,17 +6672,77 @@ async function submitHostApp(){
 /* ---- admin: review host applications ---- */
 const instaUrl=h=>{h=String(h||'').trim();if(/^https?:/i.test(h))return h;return 'https://instagram.com/'+h.replace(/^@/,'');};
 
-async function renderAdminHosts(){
+/* Hosts is three different jobs — reviewing applications, browsing approved hosts and
+   publishing their trips. At a handful of each they fitted in one list; at a few hundred
+   they don't. Split into sub-tabs, each searchable and filterable by status. */
+let _hostSub='Applications',_hostAppQ='',_hostAppStatus='All',_hostTripQ='',_hostTripStatus='All';
+let _appsCache=null,_tripsCache=null;
+function setHostSub(s){_hostSub=s;renderAdminHosts();}
+async function renderAdminHosts(force){
   const box=document.getElementById('adminBody');if(!box)return;
-  box.innerHTML='<div class="skel skel-card" style="height:90px"></div>';
-  const sb=getSupaClient();if(!sb)return;
-  const r=await sb.from('host_applications').select('*').order('created_at',{ascending:false});
-  if(r.error){box.innerHTML='<div class="empty"><p>Could not load applications: '+esc(r.error.message)+'</p></div>';return;}
-  const apps=r.data||[];
-  const pending=apps.filter(a=>a.status==='pending');
-  box.innerHTML=(!apps.length?'<div class="empty" style="padding:20px 0"><p>No host applications yet.</p></div>':'')
-    +(pending.length?'<p class="host-note" style="margin:0 0 12px">'+pending.length+' awaiting review</p>':'')
-    +apps.map(a=>{
+  const sb=getSupaClient();if(!sb){box.innerHTML='<div class="note2">Connect Supabase to manage hosts.</div>';return;}
+  if(force){_appsCache=null;_tripsCache=null;}
+  if(!_appsCache||!_tripsCache)box.innerHTML='<div class="skel skel-card" style="height:90px"></div><div class="skel skel-card" style="height:90px"></div>';
+  if(!_appsCache){
+    const r=await sb.from('host_applications').select('*').order('created_at',{ascending:false});
+    if(r.error){box.innerHTML='<div class="empty"><p>Could not load applications: '+esc(r.error.message)+'</p></div>';return;}
+    _appsCache=r.data||[];
+  }
+  if(!_tripsCache){
+    const r=await sb.from('host_trips').select('*').order('created_at',{ascending:false});
+    _tripsCache=r.error?[]:(r.data||[]);
+    await resolveHostNames(_tripsCache);
+  }
+  if(adminTab!=='Hosts')return;
+  const apps=_appsCache,trips=_tripsCache;
+  const pending=apps.filter(a=>a.status==='pending').length;
+  const approved=apps.filter(a=>a.status==='approved').length;
+  const drafts=trips.filter(t=>t.status==='draft').length;
+  const sub=(n,count)=>`<button class="adm-sub ${n===_hostSub?'on':''}" onclick="setHostSub('${n}')">${n}${count?`<span class="adm-pill">${count}</span>`:''}</button>`;
+  box.innerHTML=
+    `<div class="adm-kgrid">
+      <div class="adm-kpi ${pending?'warn':''}"><b>${pending}</b><small>Pending</small></div>
+      <div class="adm-kpi"><b>${approved}</b><small>Verified hosts</small></div>
+      <div class="adm-kpi ${drafts?'warn':''}"><b>${drafts}</b><small>Trips to review</small></div>
+    </div>
+    <div class="adm-subs">${sub('Applications',pending)}${sub('Trips',drafts)}</div>
+    <div id="admHostBody"></div>`;
+  hydrate(box);
+  renderHostSubBody();
+}
+function renderHostSubBody(){
+  const box=document.getElementById('admHostBody');if(!box)return;
+  if(_hostSub==='Trips')return renderHostTripsAdmin(box);
+  const chip=(v,cur,onc)=>`<button class="adm-chip ${v===cur?'on':''}" onclick="${onc}">${esc(v)}</button>`;
+  const q=_hostAppQ.trim().toLowerCase();
+  const list=(_appsCache||[]).filter(a=>{
+    if(_hostAppStatus!=='All'&&a.status!==_hostAppStatus.toLowerCase())return false;
+    if(q&&!((a.full_name+' '+(a.city||'')+' '+(a.mobile||'')).toLowerCase().includes(q)))return false;
+    return true;});
+  box.innerHTML=
+    `<div class="adm-search"><span class="msr">search</span><input placeholder="Search by name, city or mobile…" value="${esc(_hostAppQ)}" oninput="_hostAppQ=this.value;renderHostSubBody()"></div>
+     <div class="adm-chips">${['All','Pending','Approved','Rejected'].map(v=>chip(v,_hostAppStatus,`_hostAppStatus='${v}';renderHostSubBody()`)).join('')}</div>
+     <div class="adm-count">${list.length} application${list.length!==1?'s':''}</div>`
+    +(list.length?list.map(admHostAppCard).join('')
+      :'<div class="empty"><p>No applications match.</p></div>');
+  hydrate(box);
+}
+function renderHostTripsAdmin(box){
+  const chip=(v,cur,onc)=>`<button class="adm-chip ${v===cur?'on':''}" onclick="${onc}">${esc(v)}</button>`;
+  const q=_hostTripQ.trim().toLowerCase();
+  const list=(_tripsCache||[]).filter(t=>{
+    if(_hostTripStatus!=='All'&&t.status!==_hostTripStatus.toLowerCase())return false;
+    if(q&&!((t.title+' '+(t.destination||'')+' '+(t.host_name||'')).toLowerCase().includes(q)))return false;
+    return true;});
+  box.innerHTML=
+    `<div class="adm-search"><span class="msr">search</span><input placeholder="Search by trip, destination or host…" value="${esc(_hostTripQ)}" oninput="_hostTripQ=this.value;renderHostSubBody()"></div>
+     <div class="adm-chips">${['All','Draft','Live','Rejected'].map(v=>chip(v,_hostTripStatus,`_hostTripStatus='${v}';renderHostSubBody()`)).join('')}</div>
+     <div class="adm-count">${list.length} trip${list.length!==1?'s':''}</div>`
+    +(list.length?list.map(adminTripCard).join('')
+      :'<div class="empty"><p>No trips match.</p></div>');
+  hydrate(box);
+}
+function admHostAppCard(a){
       const links=[a.instagram?'<a href="'+esc(instaUrl(a.instagram))+'" target="_blank" rel="noopener">Instagram</a>':'',
                    a.youtube?'<a href="'+esc(a.youtube)+'" target="_blank" rel="noopener">YouTube</a>':'',
                    a.website?'<a href="'+esc(a.website)+'" target="_blank" rel="noopener">Website</a>':''].filter(Boolean).join(' · ');
@@ -6550,22 +6768,6 @@ async function renderAdminHosts(){
           ? '<button class="no" onclick="reviewHost(\''+esc(a.id)+'\',\'rejected\',\''+jsq(a.full_name)+'\')">Revoke access</button>' : '')
         +'<button onclick="wa(\'Hi '+jsq(a.full_name)+', about your Tripomonk host application —\')">WhatsApp</button>'
         +'</div></div>';
-    }).join('');
-  await renderAdminTrips(box);
-  hydrate(box);
-}
-/* trips submitted by hosts, newest first — drafts get Publish/Reject */
-async function renderAdminTrips(box){
-  const sb=getSupaClient();if(!sb)return;
-  const r=await sb.from('host_trips').select('*').order('created_at',{ascending:false});
-  if(r.error||!r.data||!r.data.length)return;
-  await resolveHostNames(r.data);
-  const drafts=r.data.filter(t=>t.status==='draft').length;
-  box.insertAdjacentHTML('beforeend',
-    '<div class="rv-sec"><h2>Host trips</h2>'
-    +(drafts?'<span class="rv-count">'+drafts+' to review</span>':'')
-    +'</div>'
-    +r.data.map(adminTripCard).join(''));
 }
 /* rich review card for a host-submitted trip — hero image, status, key facts, clear actions */
 function adminTripCard(t){
@@ -6612,7 +6814,8 @@ async function reviewHost(id,status,name){
   /* the public badge is synced by the host_status_sync DB trigger — doing it from
      here silently updated 0 rows, because the admin does not own that profile row */
   await note(name+(status==='approved'?' is now a Verified Host.':' was rejected.'),'Done');
-  renderAdminHosts();
+  _ovCache=null;
+  renderAdminHosts(true);      /* status changed — refetch, don't reuse the cached list */
 }
 
 /* ============================================================
@@ -6947,7 +7150,8 @@ async function reviewTrip(id,status,title,fromDetail){
   const done={live:'is now live.',draft:'moved back to draft.',rejected:'was rejected.'}[status]||'updated.';
   await note('"'+title+'" '+done,'Done');
   if(fromDetail)go('admin');   /* back to the list after acting from the detail view */
-  renderAdminHosts();
+  _ovCache=null;
+  renderAdminHosts(true);      /* status changed — refetch, don't reuse the cached list */
 }
 
 /* ============================================================

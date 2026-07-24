@@ -1646,6 +1646,31 @@
   .adm-imgprev{width:100%;height:130px;border-radius:12px;background-size:cover;background-position:center;background-color:#16283f;border:1px solid var(--stroke);margin-top:9px}
   .adm-ed-foot{display:flex;gap:10px;margin-top:20px}
   .adm-ed-foot .btn{flex:1}
+  /* ---- admin overview / sub-tabs / KPIs ---- */
+  .adm-kgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+  .adm-kpi{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:12px 8px;text-align:center;min-width:0}
+  .adm-kpi b{display:block;font-size:19px;line-height:1.1;overflow-wrap:anywhere}
+  .adm-kpi small{display:block;font-size:10px;color:var(--muted);margin-top:4px}
+  .adm-kpi.warn{border-color:rgba(255,206,31,.42);background:rgba(255,206,31,.08)}
+  .adm-kpi.warn b{color:#ffce1f}
+  .adm-act{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--stroke);
+    border-radius:14px;padding:11px 12px;margin-bottom:8px;cursor:pointer;transition:transform .12s}
+  .adm-act:active{transform:scale(.99)}
+  .adm-act-ic{width:38px;height:38px;flex:none;border-radius:11px;display:grid;place-items:center;
+    background:rgba(47,107,255,.13);color:var(--accent2)}
+  .adm-act-ic .msr{font-size:20px}
+  .adm-act-tx{flex:1;min-width:0}
+  .adm-act-tx b{display:flex;align-items:center;gap:7px;font-size:14px}
+  .adm-act-tx small{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
+  .adm-act-ch{color:var(--muted);flex:none}
+  .adm-pill{flex:none;white-space:nowrap;font-size:9.5px;font-weight:800;padding:3px 7px;border-radius:7px;background:rgba(255,206,31,.18);color:#ffce1f;letter-spacing:.02em}
+  .adm-act-tx b{flex-wrap:wrap}
+  .adm-subs{display:flex;gap:8px;margin:2px 0 12px}
+  .adm-sub{flex:1;font-family:inherit;font-size:12.5px;font-weight:700;padding:10px 8px;border-radius:12px;cursor:pointer;
+    border:1px solid var(--stroke);background:var(--card);color:var(--muted);display:flex;align-items:center;justify-content:center;gap:6px}
+  .adm-sub.on{border-color:var(--accent2);background:rgba(47,107,255,.14);color:var(--accent2)}
+  .adm-train-last{flex:none;font-size:10.5px;color:var(--muted);white-space:nowrap}
+
   /* ---- home page curation (Admin → Home): featured trek + popular rail ---- */
   .adm-hm-prev{height:132px;border-radius:14px;background-size:cover;background-position:center;background-color:#16283f;border:1px solid var(--stroke);display:flex;align-items:flex-end;padding:12px;margin-bottom:10px;position:relative;overflow:hidden}
   .adm-hm-prev::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,10,20,0) 35%,rgba(6,10,20,.88) 100%)}
