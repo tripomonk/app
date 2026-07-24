@@ -1660,14 +1660,22 @@ function renderPrefs(){
   const box=document.getElementById('prefBody');if(!box)return;
   /* Role first — it changes what the rest of the app offers you.
      Choosing Host does NOT make you one; it just routes you to the application. */
-  const roleCards=`<div class="sec" style="margin:6px 2px 10px"><h2 style="font-size:14.5px">How will you use Tripomonk?</h2></div>
+  const roleCards=`<div class="rolepick-h">How will you use Tripomonk?</div>
     <div class="rolerow">
       <div class="rolecard ${_prefRole==='Explorer'?'on':''}" onclick="pickRole('Explorer')">
-        <span class="msr">explore</span><b>Explorer</b><small>Book adventures and join trips</small></div>
-      <div class="rolecard ${_prefRole==='Host'?'on':''}" onclick="pickRole('Host')">
-        <span class="msr">landscape</span><b>Host</b><small>Run trips — we handle operations</small></div>
+        <span class="rc-check msr">check</span>
+        <div class="rc-ic exp"><span class="msr">hiking</span></div>
+        <b>Explorer</b>
+        <small>Book treks, join trips &amp; meet fellow trekkers</small>
+      </div>
+      <div class="rolecard host ${_prefRole==='Host'?'on':''}" onclick="pickRole('Host')">
+        <span class="rc-check msr">check</span>
+        <div class="rc-ic host"><span class="msr">flag</span></div>
+        <b>Host <span class="rc-badge">Earn</span></b>
+        <small>Lead your own trips — keep 90%, we run operations</small>
+      </div>
     </div>
-    ${_prefRole==='Host'?`<p class="host-note" style="margin:-4px 2px 16px">We'll take you to the host application after this.</p>`:''}`;
+    ${_prefRole==='Host'?`<div class="role-hint"><span class="msr">info</span>Choosing Host takes you to a quick application after this — you can still book as an Explorer too.</div>`:''}`;
   const intro=`<div class="pref-intro"><b>🧭 Your trek vibe</b><small>Pick what excites you — we use it to match you with like-minded trekkers and trips.</small></div>`;
   const groups=PREF_GROUPS.map(g=>{
     const n=g[2].filter(o=>_prefSel.includes(o)).length;
@@ -5007,7 +5015,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='311';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='315';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>

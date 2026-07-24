@@ -1,7 +1,7 @@
 /* Tripomonk service worker — caches the app shell so it loads instantly
    and works offline. Bump CACHE when you change index.html / app.js so
    users get the new version. */
-const CACHE = 'tripomonk-v311';
+const CACHE = 'tripomonk-v315';
 const ASSETS = [
   './',
   './index.html',
@@ -90,8 +90,13 @@ self.addEventListener('fetch', e => {
   e.respondWith(
     caches.match(e.request).then(cached => {
       const network = fetch(e.request).then(res => {
-        const copy = res.clone();
-        caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
+        // Only cache SUCCESSFUL responses. Previously a 404 (e.g. an asset that didn't
+        // exist yet, like a logo added later) got cached and then served forever, so the
+        // file stayed "missing" even after it was added. Never store a non-OK response.
+        if (res && res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
+        }
         return res;
       }).catch(() => cached || caches.match('./index.html'));
       return cached || network;
