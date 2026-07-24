@@ -284,7 +284,7 @@ async function loadTreks(){ if(!sbOn) return;
        picks up the DB _id so the NEXT edit updates the same row instead of inserting. */
     const dbByName={};
     rows.forEach(d=>{const row={n:d.name,region:d.region,img:d.img,r:d.rating,rev:d.reviews,lvl:d.level,days:d.days,
-      alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,packing:d.packing||null,batches:(Array.isArray(d.batches)?d.batches:null),req:(typeof d.req_score==='number'?d.req_score:null),pop:!!d.popular,feat:!!d.featured,tag:d.tag||'',_id:d.id};
+      alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,packing:d.packing||null,batches:(Array.isArray(d.batches)?d.batches:null),req:(typeof d.req_score==='number'?d.req_score:null),pop:!!d.popular,feat:!!d.featured,tag:d.tag||'',itin:d.itinerary_url||'',_id:d.id};
       if(d.credit)row.credit=d.credit; dbByName[d.name]=row;});
     const seen=new Set();
     treks.forEach(t=>{const d=dbByName[t.n];if(d){Object.assign(t,d);seen.add(t.n);}});
@@ -2091,10 +2091,30 @@ function handleDeepLink(){
 }
 function toggleFav(el){el.classList.toggle('on');el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop');}
 
+/* Day photos are gone on purpose: they were generic stock shots repeated down the page,
+   so they read as noise, pushed the real content down and cost bandwidth. The day number
+   now lives in the timeline node, which is what people actually scan for. */
 function renderItinerary(){const t=cart.trek,it=ITIN[t.n]||[];
-  document.getElementById('itinList').innerHTML=it.map((d,i)=>`<div class="tl"><div class="line"><div class="dot"></div>${i<it.length-1?'<div class="rod"></div>':''}</div>
-    <div class="ph" style="background-image:url('${dayImg(d,i,t)}')"></div>
-    <div class="bd"><div class="d">Day ${i+1}</div><h3>${d[0]}</h3><p>${d[1]}</p><div class="km"><span>${ic('distance',12)} ${d[2]}</span><span>${ic('clock',12)} ${d[3]}</span></div></div></div>`).join('');
+  const totKm=it.reduce((s,d)=>s+(parseFloat(d[2])||0),0);
+  const head=document.getElementById('itinHead');
+  if(head){
+    head.innerHTML=`<div class="itin-sum">
+        <div><b>${it.length}</b><small>Days</small></div>
+        <div><b>${totKm?totKm.toFixed(0)+' km':'—'}</b><small>Distance</small></div>
+        <div><b>${esc(t.lvl||'—')}</b><small>Grade</small></div>
+      </div>`
+      +(trekItinUrl(t)?`<button class="btn ghost sm itin-dl" onclick="downloadItinerary()">${ic('download',15)} Download full itinerary (PDF)</button>`:'');
+    hydrate(head);
+  }
+  document.getElementById('itinList').innerHTML=it.map((d,i)=>`<div class="itd${i===it.length-1?' last':''}">
+    <div class="itd-rail"><span class="itd-num">${i+1}</span></div>
+    <div class="itd-bd">
+      <div class="itd-day">Day ${i+1}</div>
+      <h3>${esc(d[0])}</h3>
+      <p>${esc(d[1])}</p>
+      <div class="itd-meta">${d[2]?`<span>${ic('distance',12)} ${esc(d[2])}</span>`:''}${d[3]?`<span>${ic('clock',12)} ${esc(d[3])}</span>`:''}</div>
+    </div></div>`).join('')
+    ||'<div class="empty"><p>Day-wise plan shared on confirmation.</p></div>';
   hydrate(document.getElementById('itinList'));
 }
 
@@ -4377,7 +4397,7 @@ async function sbWriteChecked(method,path,body){
   if(!res||!res.ok){note((res&&res.error)||'Admin save failed.','Save failed');return false;}
   return true;
 }
-function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null,req_score:(typeof t.req==='number'?t.req:null),popular:!!t.pop,featured:!!t.feat,tag:(t.tag||'').trim()||null};}
+function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null,req_score:(typeof t.req==='number'?t.req:null),popular:!!t.pop,featured:!!t.feat,tag:(t.tag||'').trim()||null,itinerary_url:(t.itin||'').trim()||null};}
 let editIdx=-1, adminTab='Treks', depTrek=null;
 const ADM_TAB_IC={Overview:'dashboard',Bookings:'receipt_long',Treks:'landscape',Home:'home',Departures:'event',Packing:'checklist',Hosts:'groups',Training:'fitness_center',Staff:'badge',Settings:'settings'};
 const ADM_TABS=['Overview','Bookings','Treks','Home','Departures','Packing','Hosts','Training','Staff','Settings'];
@@ -4780,7 +4800,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='295';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='296';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -4796,6 +4816,28 @@ function saveSettings(){const g=id=>document.getElementById(id);
   note('Settings saved.');}
 function fld(id,label,val,ph){return `<div class="field"><label>${label}</label><div class="inp"><input id="${id}" value="${esc(val==null?'':val)}" placeholder="${ph||''}"></div></div>`;}
 function admSetStatus(live){const l=document.getElementById('admStatusLive'),s=document.getElementById('admStatusSoon');if(l)l.classList.toggle('on',live);if(s)s.classList.toggle('on',!live);}
+/* Upload an itinerary PDF to the existing public `community` bucket and drop the URL
+   into the link field, so "upload a file" and "paste a link" end up as the same thing. */
+async function admUploadItin(input){
+  const file=input&&input.files&&input.files[0];if(!file)return;
+  const st=document.getElementById('admItinSt');
+  const sb=getSupaClient();
+  if(!sb){if(st)st.textContent='Backend not connected';return;}
+  if(file.size>15*1024*1024){note('That PDF is over 15 MB. Please compress it first.','Too large');return;}
+  if(st)st.textContent='Uploading…';
+  try{
+    const name=((document.getElementById('admN')||{}).value||'itinerary').toLowerCase().replace(/[^a-z0-9]+/g,'-');
+    const path='itineraries/'+name+'-'+Date.now()+'.pdf';
+    const up=await sb.storage.from('community').upload(path,file,{cacheControl:'3600',contentType:'application/pdf',upsert:false});
+    if(up.error)throw new Error(up.error.message);
+    const url=sb.storage.from('community').getPublicUrl(path).data.publicUrl;
+    const inp=document.getElementById('admItin');if(inp)inp.value=url;
+    if(st)st.textContent='Uploaded ✓ — now Save the trek';
+  }catch(e){
+    if(st)st.textContent='Upload failed';
+    note('Could not upload: '+e.message,'Upload failed');
+  }finally{input.value='';}
+}
 /* The tag chips and the free-text box are ONE field. Tapping a chip fills the box;
    typing your own de-selects the chips unless the text matches a preset. The box is
    what gets saved, so a custom tag works exactly like a preset one. */
@@ -4844,6 +4886,16 @@ function showAdminForm(t){const f=document.getElementById('adminForm');
     ${fld('admImg','Image URL',img,'https://…')}
     <div class="adm-imgprev" id="admImgPrev" style="${img?`background-image:url('${esc(img)}')`:''}"></div>
 
+    <div class="adm-sec">Itinerary PDF</div>
+    ${fld('admItin','Link to the itinerary',t.itin,'https://… or upload below')}
+    <div class="adm-itin">
+      <button type="button" class="btn ghost sm" onclick="document.getElementById('admItinFile').click()">
+        <span class="msr">upload_file</span> Upload a PDF</button>
+      <span class="adm-itin-st" id="admItinSt">${t.itin?'Attached':'No file attached'}</span>
+    </div>
+    <input type="file" id="admItinFile" accept="application/pdf,.pdf" style="display:none" onchange="admUploadItin(this)">
+    <div class="adm-hint">Trekkers get this from the Itinerary screen's download button. Paste any link (Drive, Notion, your site) or upload a PDF. Leave blank to keep the auto-generated one.</div>
+
     <div class="adm-sec">Description</div>
     <div class="field"><textarea id="admDesc" class="adm-ta" placeholder="A short, inviting description of the trek…">${esc(t.desc||'')}</textarea></div>
 
@@ -4867,6 +4919,7 @@ async function saveTrek(){const g=id=>document.getElementById(id);
     dist:g('admDist').value.trim(),best:g('admBest').value.trim(),r:parseFloat(g('admRate').value)||4.7,
     rev:g('admRev').value.trim()||'0',img:g('admImg').value.trim(),desc:g('admDesc').value.trim(),
     tag:(g('admTag')?g('admTag').value:'').trim().slice(0,28),
+    itin:(g('admItin')?g('admItin').value:'').trim(),
     req:req,soon:soon};
   if(editIdx<0){treks.push(t);} else {t._id=treks[editIdx]._id;treks[editIdx]=t;}
   deriveTreks();renderHomeChips();renderHome();renderQuick();
@@ -5649,9 +5702,20 @@ function captainTestLast(){const b=getBookings()[0];if(!b){note('Make a booking 
 
 /* itinerary PDF (your uploaded PDF, else fallback message) */
 function itinSlug(t){return t.n.toLowerCase().replace(/[^a-z0-9]+/g,'-');}
-/* Download: prefer YOUR uploaded PDF (itineraries/<slug>.pdf); else auto-generate a
-   detailed itinerary PDF for that trek. */
-function downloadItinerary(){const t=cart.trek,url='itineraries/'+itinSlug(t)+'.pdf?t='+Date.now();
+/* the itinerary the admin attached in Admin → Treks (an uploaded PDF or a pasted link) */
+function trekItinUrl(t){return String((t&&t.itin)||'').trim();}
+/* Download order: (1) whatever the admin attached for this trek, (2) a PDF placed in
+   the repo at itineraries/<slug>.pdf, (3) an auto-generated one. */
+function downloadItinerary(){
+  const t=cart.trek;if(!t)return;
+  const admin=trekItinUrl(t);
+  if(admin){
+    /* a Drive/Notion link should open; a real file should download */
+    const a=document.createElement('a');a.href=admin;a.target='_blank';a.rel='noopener';
+    if(/\.pdf($|\?)/i.test(admin))a.setAttribute('download',itinSlug(t)+'.pdf');
+    document.body.appendChild(a);a.click();a.remove();return;
+  }
+  const url='itineraries/'+itinSlug(t)+'.pdf?t='+Date.now();
   fetch(url,{method:'HEAD',cache:'no-store'}).then(r=>{
     if(r.ok){const a=document.createElement('a');a.href=url;a.setAttribute('download',itinSlug(t)+'.pdf');document.body.appendChild(a);a.click();a.remove();}
     else genItineraryPDF(t);
