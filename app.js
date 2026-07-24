@@ -270,28 +270,56 @@ function sbHeaders(extra){return Object.assign({apikey:SB.SUPABASE_ANON_KEY,Auth
    INSTANTLY, then revalidate in the background and repaint only if it actually
    changed. There is no locale/currency variation in this app, so the cache key
    is just the dataset name — add a suffix here if that ever changes. */
-function swrGet(key){try{const v=JSON.parse(localStorage.getItem('tmk_swr_'+key)||'null');return (v&&'data'in v)?v:null;}catch(e){return null;}}
-function swrSet(key,data){try{localStorage.setItem('tmk_swr_'+key,JSON.stringify({t:Date.now(),data}));}catch(e){}}
+/* Bump ONLY when a cached payload's shape changes (a new column the UI depends on).
+   Deliberately not tied to APP_BUILD — that changes every deploy and would throw away
+   the cache each time, which is the opposite of what this is for. */
+const SWR_V=1;
+function swrGet(key){try{const v=JSON.parse(localStorage.getItem('tmk_swr_'+key)||'null');
+  if(!v||!('data'in v))return null;
+  if((v.v||0)!==SWR_V){localStorage.removeItem('tmk_swr_'+key);return null;}   /* stale shape */
+  return v;}catch(e){return null;}}
+function swrSet(key,data){try{localStorage.setItem('tmk_swr_'+key,JSON.stringify({t:Date.now(),v:SWR_V,data}));}
+  catch(e){ /* quota full: drop our own cache entries and retry once */
+    try{Object.keys(localStorage).filter(k=>k.indexOf('tmk_swr_')===0).forEach(k=>localStorage.removeItem(k));
+      localStorage.setItem('tmk_swr_'+key,JSON.stringify({t:Date.now(),v:SWR_V,data}));}catch(e2){}
+  }}
 function swrFresh(key,ttl){const v=swrGet(key);return !!(v&&ttl&&(Date.now()-v.t<ttl));}
+/* DB is the source of truth for editable fields. Merge DB rows OVER the hardcoded
+   fallback by name — so an admin edit persists for everyone even when not all treks
+   were pre-imported, the trek keeps its rich display fields (highlights etc.), and it
+   picks up the DB _id so the NEXT edit updates the same row instead of inserting. */
+function applyTrekRows(rows){
+  if(!rows||!rows.length)return false;
+  const dbByName={};
+  rows.forEach(d=>{const row={n:d.name,region:d.region,img:d.img,r:d.rating,rev:d.reviews,lvl:d.level,days:d.days,
+    alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,packing:d.packing||null,batches:(Array.isArray(d.batches)?d.batches:null),req:(typeof d.req_score==='number'?d.req_score:null),pop:!!d.popular,feat:!!d.featured,tag:d.tag||'',itin:d.itinerary_url||'',_id:d.id};
+    if(d.credit)row.credit=d.credit; dbByName[d.name]=row;});
+  const seen=new Set();
+  treks.forEach(t=>{const d=dbByName[t.n];if(d){Object.assign(t,d);seen.add(t.n);}});
+  rows.forEach(d=>{if(!seen.has(d.name)){treks.push(dbByName[d.name]);seen.add(d.name);}});
+  deriveTreks();
+  renderHomeChips(); renderHome(); renderQuick();
+  if(cur==='explore') renderExplore();
+  return true;
+}
+/* Treks are ~140 rows and every launch re-fetched them before the DB prices could show.
+   Now: paint the last known rows from localStorage immediately (no network), then
+   revalidate in the background and only repaint if the payload actually changed. */
+const TREKS_KEY='treks';
 async function loadTreks(){ if(!sbOn) return;
+  const cached=swrGet(TREKS_KEY);
+  let painted='';
+  if(cached&&Array.isArray(cached.data)&&cached.data.length){
+    try{painted=JSON.stringify(cached.data);applyTrekRows(cached.data);}catch(e){}
+  }
   try{let r=await fetch(SB.SUPABASE_URL+'/rest/v1/treks?select=*&order=sort.asc',{headers:sbHeaders(),cache:'no-store'});
     /* table may not have a `sort` column — retry ordering by id */
     if(!r.ok) r=await fetch(SB.SUPABASE_URL+'/rest/v1/treks?select=*&order=id.asc',{headers:sbHeaders(),cache:'no-store'});
     if(!r.ok) return; const rows=await r.json(); if(!rows||!rows.length) return;
-    /* DB is the source of truth for editable fields. Merge DB rows OVER the hardcoded
-       fallback by name — so an admin edit persists for everyone even when not all treks
-       were pre-imported, the trek keeps its rich display fields (highlights etc.), and it
-       picks up the DB _id so the NEXT edit updates the same row instead of inserting. */
-    const dbByName={};
-    rows.forEach(d=>{const row={n:d.name,region:d.region,img:d.img,r:d.rating,rev:d.reviews,lvl:d.level,days:d.days,
-      alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,packing:d.packing||null,batches:(Array.isArray(d.batches)?d.batches:null),req:(typeof d.req_score==='number'?d.req_score:null),pop:!!d.popular,feat:!!d.featured,tag:d.tag||'',itin:d.itinerary_url||'',_id:d.id};
-      if(d.credit)row.credit=d.credit; dbByName[d.name]=row;});
-    const seen=new Set();
-    treks.forEach(t=>{const d=dbByName[t.n];if(d){Object.assign(t,d);seen.add(t.n);}});
-    rows.forEach(d=>{if(!seen.has(d.name)){treks.push(dbByName[d.name]);seen.add(d.name);}});
-    deriveTreks();
-    renderHomeChips(); renderHome(); renderQuick();
-    if(cur==='explore') renderExplore();
+    swrSet(TREKS_KEY,rows);
+    /* skip the repaint (and the reflow) when nothing actually moved */
+    if(JSON.stringify(rows)===painted) return;
+    applyTrekRows(rows);
   }catch(e){}}
 function saveBookingRemote(b){ if(!sbOn) return;
   fetch(SB.SUPABASE_URL+'/rest/v1/bookings',{method:'POST',headers:sbHeaders({'Content-Type':'application/json',Prefer:'return=minimal'}),
@@ -4803,7 +4831,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='299';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='300';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
