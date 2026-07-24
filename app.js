@@ -1977,6 +1977,39 @@ async function openDetailByName(n){
   if(ht){openHostTripDetail(ht.id);return;}
   note('This trek isn’t available right now.','Not found');
 }
+/* ---- Inclusions / exclusions, icon-based ----
+   Host trips store these as free text (one item per line, from the chips the host
+   ticked). Rendering that as a <p> gave a tall wall of plain words. Split it back into
+   items, give each a meaningful icon, and lay them out two-up. Unknown items still work
+   — they fall back to a tick or a cross. */
+const INCL_ICON={'accommodation':'hotel','stay':'hotel','all meals':'restaurant','meals':'restaurant',
+  'transport':'directions_bus','trek guide':'flag','guide':'flag','permits':'description',
+  'camping equipment':'festival','camping':'festival','first aid':'medical_services','firstaid':'medical_services',
+  'porter support':'backpack','porter':'backpack','bonfire':'local_fire_department','sightseeing':'photo_camera'};
+const EXCL_ICON={'travel to base city':'flight','travel to the base city':'flight','personal expenses':'account_balance_wallet',
+  'insurance':'health_and_safety','tips':'payments','gear rental':'backpack','meals en route':'restaurant',
+  'anything not listed':'more_horiz','anything not in inclusions':'more_horiz'};
+function inclItems(raw){
+  if(Array.isArray(raw))return raw.map(x=>Array.isArray(x)?x[1]:String(x)).filter(Boolean);
+  return String(raw||'').split(/\r?\n|·|,/)               /* hosts type one per line; tolerate , and · */
+    .map(s=>s.replace(/^[•\-•*]\s*/,'').trim()).filter(Boolean);
+}
+function inclGrid(raw,kind){
+  const items=inclItems(raw);if(!items.length)return '';
+  const map=kind==='inc'?INCL_ICON:EXCL_ICON, fb=kind==='inc'?'check':'close';
+  return '<div class="incl-grid">'+items.map(x=>
+    '<div class="incl-item '+kind+'"><span class="incl-ic msr">'+(map[x.toLowerCase()]||fb)+'</span>'
+    +'<span>'+esc(x)+'</span></div>').join('')+'</div>';
+}
+/* one card holding both lists — they're the same question, so they shouldn't be two blocks */
+function inclCard(inc,exc){
+  const i=inclGrid(inc,'inc'),e=inclGrid(exc,'exc');
+  if(!i&&!e)return '';
+  return '<div class="incl-card">'
+    +(i?'<div class="incl-h inc"><span class="msr">check_circle</span>Included</div>'+i:'')
+    +(e?'<div class="incl-h exc'+(i?' sep':'')+'"><span class="msr">do_not_disturb_on</span>Not included</div>'+e:'')
+    +'</div>';
+}
 /* one label+value row for the trek detail sections (Conditions / Good to Know /
    Getting there). `icon` is either an icon-map key or raw Material glyph via msr: */
 function dStat(icon,val,label,cls){
@@ -2006,11 +2039,7 @@ function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
   document.getElementById('dHl').innerHTML=t.hl.map(h=>`<span class="hl-pill"><span class="ic">${ic(h[0],17)}</span>${esc(h[1])}</span>`).join('');
   document.getElementById('dCond').innerHTML=[['altitude',t.elev,'Elevation'],['cloud',t.climate,'Climate'],['temp',t.temp,'Temp'],['air',t.aqi+' · '+t.aqiVal,'Air Quality']].map((c,j)=>dStat(c[0],c[1],c[2],j===3?'good':'')).join('');
   document.getElementById('dKnow').innerHTML=KNOW.map(k=>dStat(k[0],k[1],k[2])).join('');
-  const incRow=x=>`<div style="display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:var(--muted);padding:5px 0;line-height:1.35"><span class="ic" style="color:#6ee7a0;flex:none;margin-top:1px">${ic('check',15)}</span>${x[1]}</div>`;
-  const excRow=x=>`<div style="display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:var(--muted2);padding:5px 0;line-height:1.35"><span style="color:#ff7a7a;font-weight:600;flex:none;width:15px;text-align:center;margin-top:-1px">✕</span><span style="text-decoration:line-through">${x}</span></div>`;
-  document.getElementById('dIncl').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-    <div><div style="font-size:11px;font-weight:600;color:var(--text);opacity:.85;margin-bottom:4px">Included</div>${INCL.map(incRow).join('')}</div>
-    <div><div style="font-size:11px;font-weight:600;color:var(--text);opacity:.85;margin-bottom:4px">Not included</div>${EXCL.map(excRow).join('')}</div></div>`;
+  document.getElementById('dIncl').innerHTML=inclCard(INCL,EXCL);
   const dit=ITIN[t.n]||[];
   document.getElementById('dItinPrev').innerHTML=dit.slice(0,3).map((d,i)=>`<div class="tl"><div class="line"><div class="dot"></div>${i<2?'<div class="rod"></div>':''}</div><div class="bd"><div class="d">Day ${i+1}</div><h3>${d[0]}</h3></div></div>`).join('');
   document.getElementById('dRevPrev').innerHTML=reviewsData.length?reviewsData.slice(0,2).map(reviewCard).join(''):'<div style="font-size:12.5px;color:var(--muted)">No reviews yet — be the first after your trek.</div>';
@@ -4736,7 +4765,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='293';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='294';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -7391,8 +7420,7 @@ async function openHostTripDetail(id){
     +`<div class="stats">${stat('calendar',dateRange,'Dates')}${stat('clock',t.days?t.days+' days':'','Duration')}${stat('altitude',t.difficulty,'Level')}${stat('community',t.max_people?'Max '+t.max_people:'','Group')}</div>`
     +mediaGallery(t.media)
     +(t.description?`<div class="blk" style="padding:0"><h2>About this trip</h2><p>${esc(t.description)}</p></div>`:'')
-    +(t.inclusions?`<div class="blk" style="padding:0"><h2>What's included</h2><p style="white-space:pre-line">${esc(t.inclusions)}</p></div>`:'')
-    +(t.exclusions?`<div class="blk" style="padding:0"><h2>Not included</h2><p style="white-space:pre-line">${esc(t.exclusions)}</p></div>`:'')
+    +((t.inclusions||t.exclusions)?`<div class="blk" style="padding:0"><h2>What's included</h2>${inclCard(t.inclusions,t.exclusions)}</div>`:'')
     +trustCard(t.host_name,t.title)
     +`<div class="lbl">Travellers</div>`
     +`<div class="paxrow"><div class="paxi"><div><b>People</b><small id="htvMax"></small></div>`
