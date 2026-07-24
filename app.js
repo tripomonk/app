@@ -4603,12 +4603,29 @@ async function sbWriteChecked(method,path,body){
 function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null,req_score:(typeof t.req==='number'?t.req:null),popular:!!t.pop,featured:!!t.feat,tag:(t.tag||'').trim()||null,itinerary_url:(t.itin||'').trim()||null,
   hero_video:(t.hvid||'').trim()||null,hero_use_video:!!t.hvideo,
   guide_id:(t.guide_id!=null&&t.guide_id!=='')?t.guide_id:null};}
-let editIdx=-1, adminTab='Treks', depTrek=null;
+let editIdx=-1, adminTab='Treks', depTrek=null, _admHub=true;
 const ADM_TAB_IC={Overview:'dashboard',Bookings:'receipt_long',Treks:'landscape',Home:'home',Departures:'event',Packing:'checklist',Guides:'hiking',Hosts:'groups',Training:'fitness_center',Staff:'badge',Settings:'settings'};
 const ADM_TABS=['Overview','Bookings','Treks','Home','Departures','Packing','Guides','Hosts','Training','Staff','Settings'];
+/* one-line description per section, shown on the hub card */
+const ADM_TAB_DESC={Overview:'Today at a glance',Bookings:'Who has booked',Treks:'Add & edit treks, prices, tags',
+  Home:'Featured trek & popular rail',Departures:'Batch dates & seats',Packing:'Per-trek packing lists',
+  Guides:'Your trek leaders',Hosts:'Applications & host trips',Training:'Who is training',
+  Staff:'Trip-captain access',Settings:'App build & admin'};
+/* Was a horizontally-SWIPED tab strip — sections off the right edge were invisible and
+   the gesture read as flaky. Now a card GRID: tap a card to open that section behind a
+   back header, tap back to return to the grid. */
 function renderAdmin(){
-  document.getElementById('adminTabs').innerHTML=ADM_TABS.map(x=>`<div class="adm-tab ${x===adminTab?'on':''}" onclick="setAdminTab('${x}')"><span class="msr">${ADM_TAB_IC[x]||'circle'}</span>${x}</div>`).join('');
   const f=document.getElementById('adminForm'); if(f){f.style.display='none';f.innerHTML='';}
+  const bar=document.getElementById('adminTabs');
+  if(_admHub){
+    if(bar)bar.innerHTML='';
+    renderAdminHub();
+    return;
+  }
+  if(bar)bar.innerHTML='<button class="adm-secbar" onclick="adminHub()">'
+    +'<span class="msr adm-secback">arrow_back</span>'
+    +'<span class="msr adm-secic">'+(ADM_TAB_IC[adminTab]||'circle')+'</span>'
+    +'<b>'+esc(adminTab)+'</b><span class="adm-secall">All sections</span></button>';
   if(adminTab==='Overview')renderAdminOverview();
   else if(adminTab==='Training')renderAdminTraining();
   else if(adminTab==='Bookings')renderAdminBookings();
@@ -4621,6 +4638,20 @@ function renderAdmin(){
   else if(adminTab==='Staff')renderAdminStaff();
   else renderAdminSettings();
 }
+function renderAdminHub(){
+  const box=document.getElementById('adminBody');if(!box)return;
+  box.innerHTML='<div class="adm-hub">'+ADM_TABS.map(name=>
+    '<button class="adm-hubcard" onclick="openAdminTab(\''+name+'\')">'
+    +'<span class="adm-hubic"><span class="msr">'+(ADM_TAB_IC[name]||'circle')+'</span></span>'
+    +'<b>'+esc(name)+'</b><small>'+esc(ADM_TAB_DESC[name]||'')+'</small></button>').join('')+'</div>';
+  hydrate(box);
+}
+function openAdminTab(t){adminTab=t;_admHub=false;renderAdmin();
+  const el=document.getElementById('admin');if(el)el.scrollTop=0;}
+function adminHub(){_admHub=true;const box=document.getElementById('adminBody');if(box)box.innerHTML='';renderAdmin();
+  const el=document.getElementById('admin');if(el)el.scrollTop=0;}
+/* the top-bar back arrow: leave the current section for the hub, or leave admin from the hub */
+function adminBack(){ if(!_admHub)adminHub(); else back(); }
 /* ============================================================
    ADMIN · OVERVIEW — one console that answers "what needs me today?"
    Everything here is a count plus a jump; the detail lives in its own tab.
@@ -4906,7 +4937,7 @@ function admBookingCard(b){
     </div>
   </div>`;
 }
-function setAdminTab(t){adminTab=t;renderAdmin();}
+function setAdminTab(t){openAdminTab(t);}
 let _admQ='',_admStatus='All',_admRegion='All',_admDiff='All';
 function admTrekFiltered(){
   const q=_admQ.trim().toLowerCase();
@@ -5102,7 +5133,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='316';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='317';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -5254,7 +5285,7 @@ function showAdminForm(t){const f=document.getElementById('adminForm');
   const vidInp=document.getElementById('admVid');
   if(vidInp){vidInp.addEventListener('input',admCheckHeroLink);admCheckHeroLink();}
 }
-function newTrek(){editIdx=-1;adminTab='Treks';renderAdmin();loadGuides().then(()=>showAdminForm({lvl:'Easy',region:'Uttarakhand'}));}
+function newTrek(){editIdx=-1;adminTab='Treks';_admHub=false;renderAdmin();loadGuides().then(()=>showAdminForm({lvl:'Easy',region:'Uttarakhand'}));}
 function editTrek(i){editIdx=i;loadGuides().then(()=>showAdminForm(treks[i]));}
 function closeAdminForm(){const f=document.getElementById('adminForm');f.style.display='none';f.innerHTML='';}
 async function saveTrek(){const g=id=>document.getElementById(id);
@@ -6739,7 +6770,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='health')renderHealth(); else stopHealth();
   if(id==='navmap')renderNav(); else stopNav();
   if(id!=='captain')capStopScan();
-  if(id==='admin')renderAdmin();
+  if(id==='admin'){_admHub=true;renderAdmin();}   /* always land on the section grid */
   if(id==='gear')renderGear();
   if(id==='permits')renderPermits();
   if(id==='activities')renderActivities();

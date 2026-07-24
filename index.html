@@ -1675,14 +1675,26 @@
   .admin-hero .ah-ic .msr{font-size:24px}
   .admin-hero b{display:block;font-size:15.5px;line-height:1.2}
   .admin-hero small{font-size:11.5px;color:var(--muted-strong)}
-  /* segmented tab bar */
-  .adm-tabs{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;margin:0 -18px 16px;padding:2px 18px}
-  .adm-tabs::-webkit-scrollbar{display:none}
-  .adm-tab{flex:none;min-height:38px;padding:0 15px;display:inline-flex;align-items:center;gap:6px;border-radius:999px;
-    font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;transition:.15s;
-    background:var(--card);border:1px solid var(--stroke);color:var(--muted)}
-  .adm-tab .msr{font-size:15px}
-  .adm-tab.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  /* ---- admin hub: a card GRID instead of a swiped tab strip ---- */
+  .adm-hub{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:2px}
+  .adm-hubcard{all:unset;box-sizing:border-box;cursor:pointer;background:var(--card);border:1px solid var(--stroke);
+    border-radius:18px;padding:15px 14px;display:flex;flex-direction:column;gap:2px;min-height:112px;
+    transition:transform .13s,border-color .15s,box-shadow .15s}
+  .adm-hubcard:active{transform:scale(.97)}
+  .adm-hubcard:hover{border-color:var(--accent2)}
+  .adm-hubic{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;margin-bottom:9px;
+    background:rgba(47,107,255,.13);color:var(--accent2)}
+  .adm-hubic .msr{font-size:23px}
+  .adm-hubcard b{font-size:14px;line-height:1.2}
+  .adm-hubcard small{font-size:10.5px;color:var(--muted);line-height:1.35}
+  /* section back header (replaces the tab strip while inside a section) */
+  .adm-secbar{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:10px;width:100%;
+    background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:11px 14px;margin-bottom:14px}
+  .adm-secbar:active{transform:scale(.995)}
+  .adm-secback{font-size:20px;color:var(--muted)}
+  .adm-secic{font-size:19px;color:var(--accent2)}
+  .adm-secbar b{flex:1;font-size:15px}
+  .adm-secall{font-size:11px;font-weight:700;color:var(--accent2)}
   /* rows inside admin get a touch more life */
   #admin .mrow{border-radius:16px}
   #admin .mrow .t b{font-size:13.5px}
@@ -3428,12 +3440,12 @@
 
   <!-- ADMIN · MANAGE TREKS -->
   <section class="view flow" id="admin" data-nonav>
-    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Admin</h1><div class="rb round" onclick="newTrek()"><span class="ic" data-i="plus"></span></div></div>
+    <div class="bar"><div class="rb round" onclick="adminBack()"><span class="ic" data-i="back"></span></div><h1>Admin</h1><div class="rb round" onclick="newTrek()"><span class="ic" data-i="plus"></span></div></div>
     <div class="admin-hero">
       <div class="ah-ic"><span class="msr">admin_panel_settings</span></div>
       <div><b>Control centre</b><small>Manage treks, bookings, hosts &amp; staff</small></div>
     </div>
-    <div class="adm-tabs" id="adminTabs"></div>
+    <div id="adminTabs"></div>
     <div id="adminForm" style="display:none"></div>
     <div id="adminBody"></div>
     <div style="height:calc(var(--safe-bottom) + 20px)"></div>
