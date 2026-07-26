@@ -112,6 +112,19 @@
   .rv-block .rv-it{font-size:12.5px;color:var(--muted);line-height:1.55;margin-bottom:4px}
   .rv-block .rv-it b{color:var(--text);font-weight:600}
   .rv-block .rv-more{font-size:12px;color:var(--accent2);margin-top:6px;cursor:pointer;font-weight:600}
+  /* Rented gear block on Review & Pay */
+  .rg-block .rv-h .rg-edit{margin-left:auto;background:none;border:0;color:var(--accent2);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;padding:2px 2px}
+  .rg-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--stroke)}
+  .rg-ic{font-size:19px;color:var(--accent2);flex:none;width:22px;text-align:center}
+  .rg-tx{flex:1;min-width:0}
+  .rg-tx b{font-size:12.5px;color:var(--text);font-weight:600;display:block}
+  .rg-tx small{font-size:11px;color:var(--muted)}
+  .rg-amt{font-size:12.5px;font-weight:600;color:var(--text);flex:none}
+  .rg-sub{margin-top:2px;border-top:1px dashed var(--stroke)}
+  .rg-empty{cursor:pointer}
+  .rg-link{color:var(--accent2)}
+  .rv-incl{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--muted);background:rgba(15,157,88,.09);border:1px solid rgba(15,157,88,.25);border-radius:12px;padding:9px 12px;margin:2px 0 4px;line-height:1.4}
+  .rv-incl .msr{font-size:17px;color:#0f9d58;flex:none}
   /* document pages (about / privacy) */
   .doc{padding:2px 2px 30px}
   .doc h2{font-size:20px;margin:0 0 8px}
@@ -355,12 +368,10 @@
   .gr-head{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
   .gr-emoji{font-size:18px}
   .gr-head b{font-size:14.5px}
-  .gr-count{margin-left:auto;font-size:10.5px;font-weight:600;color:var(--accent2);background:rgba(47,107,255,.14);border-radius:20px;padding:3px 9px;text-transform:capitalize}
+  .gr-count{font-size:10.5px;font-weight:600;color:var(--accent2);background:rgba(47,107,255,.14);border-radius:20px;padding:3px 9px;text-transform:capitalize}
   .gr-item{display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid var(--stroke);cursor:pointer;-webkit-tap-highlight-color:transparent}
   .gr-item:first-child{border-top:0}
   .gr-item:active{opacity:.75}
-  .gr-item.off .gr-tx b{color:var(--muted)}
-  .gr-item.off .gr-ic{opacity:.4}
   .gr-ic{font-size:22px;color:var(--accent2);flex:none;width:26px;text-align:center}
   .gr-tx{flex:1;min-width:0}
   .gr-tx b{font-size:13px;display:block}
@@ -2804,14 +2815,12 @@
       <div class="rt"><span class="ic" data-i="calendar"></span> <span id="rvDate"></span></div>
       <div class="rt"><span class="ic" data-i="user"></span> <span id="rvPax"></span></div></div></div>
     <div id="rvFitness"></div>
-    <div class="sec"><h2 style="font-size:15px">Add-ons</h2></div>
-    <div class="addon"><span class="ic" data-i="backpack"></span><div class="t">Rent full gear kit<small>Jacket, boots, poles · ₹2,700</small></div><div class="toggle" onclick="addon(this,'gear',2700)"><i></i></div></div>
-    <div class="addon"><span class="ic" data-i="permits"></span><div class="t">Forest permit (assisted)<small>We process it · ₹350</small></div><div class="toggle" onclick="addon(this,'permit',350)"><i></i></div></div>
+    <div id="rvGear"></div>
     <div class="panel" style="margin-top:6px">
       <div class="srow"><span>Trek (<span id="sPax">1</span> ×)</span><span id="sBase"></span></div>
-      <div class="srow" id="sGear" style="display:none"><span>Gear kit</span><span>₹2,700</span></div>
-      <div class="srow" id="sPermit" style="display:none"><span>Forest permit</span><span>₹350</span></div>
+      <div class="srow" id="sGear" style="display:none"><span id="sGearLbl">Rented gear</span><span id="sGearAmt"></span></div>
       <div class="srow tot"><span>Total</span><span id="sTot"></span></div></div>
+    <div class="rv-incl"><span class="msr">verified</span> Forest permit, entry &amp; forest fees are already included in your package — no extra charge.</div>
     <div id="rvDetails"></div>
     <div style="height:20px"></div>
     <div class="cta"><button class="btn" onclick="go('payment')">Proceed to Pay</button></div>

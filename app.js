@@ -2442,13 +2442,12 @@ function reviewDetailsHTML(t){
     <div class="rv-it" style="font-size:15px;color:var(--text)"><b>${INR(Math.round((cart.grand||cart.total)*0.25))}</b> advance (25%) · Total ${INR(cart.grand||cart.total)}</div>
   </div>`;
 }
-function syncReview(){const t=cart.trek;cart.gear=false;cart.permit=false;
+function syncReview(){const t=cart.trek;
   document.getElementById('rvPh').style.backgroundImage=`url('${t.img}')`;
   document.getElementById('rvName').textContent=t.n;
   document.getElementById('rvDate').textContent=cart.date;
   document.getElementById('rvPax').textContent=cart.pax+' trekker'+(cart.pax>1?'s':'');
-  document.querySelectorAll('#review .toggle').forEach(x=>x.classList.remove('on'));
-  document.getElementById('sGear').style.display='none';document.getElementById('sPermit').style.display='none';
+  renderReviewGear(t);          /* the gear the user ticked on the trek page flows in here */
   computeTotal();
   const fc=document.getElementById('rvFitness');if(fc){fc.innerHTML=bookingFitnessHTML(t);hydrate(fc);}
   const d=document.getElementById('rvDetails');if(d){d.innerHTML=reviewDetailsHTML(t);}
@@ -2467,15 +2466,38 @@ function bookingFitnessHTML(t){
     <div class="fit-check-row"><div><small>Your score</small><b class="fit-${rd.k}">${you}</b></div><div><small>Required</small><b>${req}</b></div><div class="fit-check-st fit-${rd.k}"><span class="fit-dot"></span>${rd.label}</div></div>
     ${rd.k==='green'?'<p class="fit-check-p">You\'re ready for this trek. Continue below.</p>':`<p class="fit-check-p">${rd.msg}</p><div class="fit-check-cta"><button class="btn ghost sm" onclick="openTrainingPlan('${jsq(t.n)}')"><span class="msr">calendar_month</span> Prep plan</button><button class="btn ghost sm" onclick="go('home')"><span class="msr">landscape</span> Easier trek</button></div>`}</div>`;
 }
-function addon(el,k,amt){el.classList.toggle('on');cart[k]=el.classList.contains('on');
-  document.getElementById(k==='gear'?'sGear':'sPermit').style.display=cart[k]?'flex':'none';computeTotal();
-  const d=document.getElementById('rvDetails');if(d&&cart.trek){d.innerHTML=reviewDetailsHTML(cart.trek);hydrate(d);}}
-function computeTotal(){const t=cart.trek;let sum=cart.total*cart.pax;if(cart.gear)sum+=2700;if(cart.permit)sum+=350;cart.grand=sum;
-  document.getElementById('sPax').textContent=cart.pax;
-  document.getElementById('sBase').textContent=INR(cart.total*cart.pax);
-  document.getElementById('sTot').textContent=INR(sum);
-  document.getElementById('payAmt').textContent=INR(sum);
-  document.getElementById('payNow').textContent=INR(Math.round(sum*0.25));}
+/* gear rental = the items ticked on the trek page, priced per-day × trek length */
+function gearDaysCount(t){return Math.max(1,parseInt(String(t&&t.days||1),10)||1);}
+function reviewGearTotal(t){const items=t?gearSelected(t):[];const daily=items.reduce((s,g)=>s+g.price,0);return daily*gearDaysCount(t);}
+/* render the "Rented gear" block on the Review & Pay screen from the current selection */
+function renderReviewGear(t){
+  const box=document.getElementById('rvGear');if(!box)return;
+  const items=t?gearSelected(t):[];
+  if(!items.length){
+    box.innerHTML='<div class="rv-block rg-block rg-empty" onclick="editReviewGear()"><div class="rv-h">'+ic('backpack',16)+' Rented gear</div>'
+      +'<div class="rv-it">No rental gear added. <b class="rg-link">Pick gear →</b></div></div>';
+    hydrate(box);return;
+  }
+  const days=gearDaysCount(t),daily=items.reduce((s,g)=>s+g.price,0),tot=daily*days;
+  const rows=items.map(g=>'<div class="rg-row"><span class="msr rg-ic">'+g.icon+'</span>'
+    +'<div class="rg-tx"><b>'+esc(g.name)+'</b><small>'+INR(g.price)+'/day × '+days+'d</small></div>'
+    +'<span class="rg-amt">'+INR(g.price*days)+'</span></div>').join('');
+  box.innerHTML='<div class="rv-block rg-block"><div class="rv-h">'+ic('backpack',16)+' Rented gear · '+items.length+' item'+(items.length>1?'s':'')
+    +'<button type="button" class="rg-edit" onclick="editReviewGear()">Edit</button></div>'
+    +rows
+    +'<div class="rg-row rg-sub"><div class="rg-tx"><b>Gear subtotal</b><small>'+days+'-day rental</small></div><span class="rg-amt">'+INR(tot)+'</span></div></div>';
+  hydrate(box);
+}
+/* jump back to the trek's gear picker to change the selection */
+function editReviewGear(){const t=cart.trek;if(!t)return;openDetail(t);setTimeout(()=>{const el=document.getElementById('dGearBlk');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},350);}
+function computeTotal(){const t=cart.trek;const base=cart.total*cart.pax;const gear=reviewGearTotal(t);const sum=base+gear;cart.grand=sum;cart.gearTotal=gear;
+  const px=document.getElementById('sPax');if(px)px.textContent=cart.pax;
+  const b=document.getElementById('sBase');if(b)b.textContent=INR(base);
+  const sg=document.getElementById('sGear'),sga=document.getElementById('sGearAmt');
+  if(sg){if(gear>0){sg.style.display='flex';if(sga)sga.textContent=INR(gear);}else sg.style.display='none';}
+  const tt=document.getElementById('sTot');if(tt)tt.textContent=INR(sum);
+  const pa=document.getElementById('payAmt');if(pa)pa.textContent=INR(sum);
+  const pn=document.getElementById('payNow');if(pn)pn.textContent=INR(Math.round(sum*0.25));}
 function selPay(el){document.querySelectorAll('#payment .pay').forEach(p=>p.classList.remove('on'));el.classList.add('on');}
 
 /* call the secure Razorpay Edge Function */
@@ -2499,7 +2521,8 @@ async function confirmBooking(){
   if(!c.phone||!c.email||!c.emName||!c.emPhone){note('Please complete your contact and emergency details first.','Details required');go('travellers');return;}
   if(!window.Razorpay){note('Payment gateway is loading — please wait a moment and try again.','Please wait');return;}
   if(!sbOn){note('Payment service not configured. Please contact Tripomonk.','Payment error');return;}
-  const bookingReq={kind:'trek',trek:t.n,date:cart.date,pax:cart.pax,name:name,email:c.email||getUserEmail()||'',phone:c.phone||'',emergency_name:c.emName||'',emergency_phone:c.emPhone||'',addons:{gear:!!cart.gear,permit:!!cart.permit}};
+  const gearIds=(cart.trek?gearSelected(cart.trek):[]).map(g=>g.id);
+  const bookingReq={kind:'trek',trek:t.n,date:cart.date,pax:cart.pax,name:name,email:c.email||getUserEmail()||'',phone:c.phone||'',emergency_name:c.emName||'',emergency_phone:c.emPhone||'',gear_ids:gearIds};
   let advanceAmt=Math.round(total*0.25);
   let pricedBooking=null;
   /* 1) create a server-side order; server calculates the trusted amount */
@@ -5199,7 +5222,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='322';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='324';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -5992,43 +6015,42 @@ function gSeason(t){return String(t&&t.best||'').toLowerCase();}
 function gSnow(t){return gAlt(t)>=13500||(/dec|jan|feb|mar/.test(gSeason(t))&&gAlt(t)>=9000);}
 function gCold(t){return gAlt(t)>=11000||/dec|jan|feb|nov/.test(gSeason(t))||gSnow(t);}
 function gMonsoon(t){return /jul|aug|sep/.test(gSeason(t));}
-/* All gear that fits this trek. Nothing is hidden — items you own are shown but
-   UNCHECKED, so you can pick exactly what to hire and re-check anything. */
+/* All gear that fits this trek. Nothing is pre-selected — the user taps the ones
+   they actually want to hire. */
 function gearApplicable(t){if(!t)return[];return GEAR_CATALOG.filter(g=>{try{return g.when(t);}catch(e){return false;}});}
-/* the set of gear the user has DESELECTED (owns / doesn't want). Global — you own a
-   jacket regardless of trek. Reuses the old key so existing selections carry over. */
-function getSkipGear(){try{return JSON.parse(localStorage.getItem('tmk_owngear')||'[]');}catch(e){return[];}}
-function toggleSkipGear(id){const o=getSkipGear();const i=o.indexOf(id);if(i>=0)o.splice(i,1);else o.push(id);try{localStorage.setItem('tmk_owngear',JSON.stringify(o));}catch(e){}}
-function gearSelected(t){const skip=getSkipGear();return gearApplicable(t).filter(g=>skip.indexOf(g.id)<0);}
-/* reusable card — recommended gear you can pick from, then rent the selected items */
+/* the set of gear the user has picked to hire. Global, starts empty. */
+function getSelGear(){try{return JSON.parse(localStorage.getItem('tmk_gearsel')||'[]');}catch(e){return[];}}
+function toggleSelGear(id){const o=getSelGear();const i=o.indexOf(id);if(i>=0)o.splice(i,1);else o.push(id);try{localStorage.setItem('tmk_gearsel',JSON.stringify(o));}catch(e){}}
+function gearSelected(t){const sel=getSelGear();return gearApplicable(t).filter(g=>sel.indexOf(g.id)>=0);}
+/* reusable card — tap gear to add it to your rental, then rent the selected items */
 function gearRecoCard(t){
   const all=gearApplicable(t);
   if(!all.length)return '';
-  const skip=getSkipGear();
-  const sel=all.filter(g=>skip.indexOf(g.id)<0);
+  const selSet=getSelGear();
+  const sel=all.filter(g=>selSet.indexOf(g.id)>=0);
   const total=sel.reduce((s,g)=>s+g.price,0);
   const kit=Math.max(10,Math.round(total*0.82/10)*10);   /* ~18% bundle discount */
   const save=total-kit;
   const ctx=[t.lvl,gSnow(t)?'snow':(gCold(t)?'cold':''),gMonsoon(t)?'monsoon':''].filter(Boolean).join(' · ');
-  const rows=all.map(g=>{const on=skip.indexOf(g.id)<0;
-    return '<div class="gr-item'+(on?'':' off')+'" onclick="gearToggle(\''+g.id+'\')">'
+  const rows=all.map(g=>{const on=selSet.indexOf(g.id)>=0;
+    return '<div class="gr-item" onclick="gearToggle(\''+g.id+'\')">'
+      +'<span class="gr-check'+(on?' on':'')+'">'+ic('check',14)+'</span>'
       +'<span class="msr gr-ic">'+g.icon+'</span>'
-      +'<div class="gr-tx"><b>'+esc(g.name)+'</b><small>₹'+g.price+'/day · '+esc(g.why)+'</small></div>'
-      +'<span class="gr-check'+(on?' on':'')+'">'+ic('check',14)+'</span></div>';
+      +'<div class="gr-tx"><b>'+esc(g.name)+'</b><small>₹'+g.price+'/day · '+esc(g.why)+'</small></div></div>';
   }).join('');
   const footer=sel.length
     ? '<div class="gr-kit"><div class="gr-kit-tx"><b>Rent selected · '+sel.length+' item'+(sel.length>1?'s':'')+'</b>'
       +'<small>₹'+kit+'/day'+(save>0?' · <span class="gr-save">save ₹'+save+'</span>':'')+'</small></div>'
       +'<button class="btn gr-add" onclick="rentKit(\''+jsq(t.n)+'\')">Rent</button></div>'
-    : '<div class="gr-kit" style="justify-content:center"><small style="color:var(--muted)">Tap items to add them to your rental.</small></div>';
+    : '<div class="gr-kit" style="justify-content:center"><small style="color:var(--muted)">Tap the gear you want to hire.</small></div>';
   return '<div class="gearreco">'
     +'<div class="gr-head"><span class="gr-emoji">🎒</span><b>Recommended Gear</b><span class="gr-count">'+sel.length+' of '+all.length+' selected'+(ctx?' · '+esc(ctx):'')+'</span></div>'
     +'<div class="gr-list">'+rows+'</div>'
     +footer
-    +'<p class="gr-note">Suggested for '+esc(t.n)+' by altitude, season & difficulty. Uncheck anything you already own — you rent only what stays ticked.</p>'
+    +'<p class="gr-note">Suggested for '+esc(t.n)+' by altitude, season & difficulty. Tap the gear you want to hire.</p>'
     +'</div>';
 }
-function gearToggle(id){toggleSkipGear(id);if(cart.trek)refreshGearReco(cart.trek);}
+function gearToggle(id){toggleSelGear(id);if(cart.trek)refreshGearReco(cart.trek);}
 function refreshGearReco(t){
   const el=document.getElementById('dGear');if(!el)return;
   const blk=document.getElementById('dGearBlk');
