@@ -4454,7 +4454,8 @@ async function renderNotifications(){
       </div>`;
     }).join('');
   } else {
-    activity=`<div class="empty" style="padding:30px 0;font-size:13px"><span class="msr" style="font-size:32px;display:block;opacity:.35;margin-bottom:8px">notifications_none</span>No activity yet. Likes, comments and follows will show here.</div>`;
+    activity=`<div class="noti-empty"><div class="noti-empty-ic"><span class="msr">notifications_none</span></div>`
+      +`<b>You're all caught up</b><small>Likes, comments and new followers will show up here.</small></div>`;
   }
   box.innerHTML=`<div style="color:var(--muted);font-size:12px;margin:0 2px 10px">Activity</div>${activity}`;
   hydrate(box);
@@ -5183,7 +5184,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='320';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='321';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -7930,7 +7931,17 @@ async function loadTripCountsByHost(){
   const sb=getSupaClient();if(!sb){_tripsByHost={};return;}
   try{
     const r=await sb.from('host_trips').select('id,host_id,host_name,status').eq('status','live');
-    const map={};(r.data||[]).forEach(t=>{const n=t.host_name;if(n)map[n]=(map[n]||0)+1;});
+    const raw=r.data||[];
+    const orig=raw.map(t=>t.host_name);                 /* frozen name, before resolve */
+    const resolved=await resolveHostNames(raw);          /* host_name -> the host's CURRENT profile name by host_id */
+    /* index each trip under BOTH its current name and its frozen name, using a Set of
+       ids so a host is never double-counted. Fixes "No live trips yet" when the trip's
+       stored host_name differs from the deduped name shown in the list. */
+    const byName={};
+    resolved.forEach((t,i)=>{
+      [t.host_name,orig[i]].filter(Boolean).forEach(nm=>{(byName[nm]=byName[nm]||new Set()).add(t.id);});
+    });
+    const map={};Object.keys(byName).forEach(nm=>{map[nm]=byName[nm].size;});
     _tripsByHost=map;
   }catch(e){_tripsByHost={};}
 }
@@ -7947,7 +7958,7 @@ function hostListCard(h){
   const un=unameByName[n]||h.username||'';
   return '<div class="hostcard" onclick="openPerson(\''+jsq(n)+'\')">'
     +'<div class="vhring sm">'+avatar(n,52)+'</div>'
-    +'<div class="hostcard-bd"><b>'+esc(n)+'<span class="vbadge"><span class="msr">check</span></span></b>'
+    +'<div class="hostcard-bd"><b><span class="hostcard-name">'+esc(n)+'</span><span class="vbadge"><span class="msr">check</span></span></b>'
     +'<small>'+(un?'@'+esc(un):'Verified Host')+'</small>'
     +'<span class="hostcard-trips">'+(trips?trips+' live trip'+(trips>1?'s':''):'No live trips yet')+'</span></div>'
     +'<span class="ch">'+ic('back',16)+'</span></div>';
