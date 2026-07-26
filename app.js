@@ -2490,14 +2490,21 @@ function renderReviewGear(t){
 }
 /* jump back to the trek's gear picker to change the selection */
 function editReviewGear(){const t=cart.trek;if(!t)return;openDetail(t);setTimeout(()=>{const el=document.getElementById('dGearBlk');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},350);}
-function computeTotal(){const t=cart.trek;const base=cart.total*cart.pax;const gear=reviewGearTotal(t);const sum=base+gear;cart.grand=sum;cart.gearTotal=gear;
+function computeTotal(){const t=cart.trek;const base=cart.total*cart.pax;const gear=reviewGearTotal(t);const sum=base+gear;const now=Math.round(sum*0.25);const bal=sum-now;cart.grand=sum;cart.gearTotal=gear;
+  /* Review & Pay summary */
   const px=document.getElementById('sPax');if(px)px.textContent=cart.pax;
   const b=document.getElementById('sBase');if(b)b.textContent=INR(base);
   const sg=document.getElementById('sGear'),sga=document.getElementById('sGearAmt');
   if(sg){if(gear>0){sg.style.display='flex';if(sga)sga.textContent=INR(gear);}else sg.style.display='none';}
   const tt=document.getElementById('sTot');if(tt)tt.textContent=INR(sum);
+  /* Payment screen breakdown — total is the FULL amount incl. rented gear */
   const pa=document.getElementById('payAmt');if(pa)pa.textContent=INR(sum);
-  const pn=document.getElementById('payNow');if(pn)pn.textContent=INR(Math.round(sum*0.25));}
+  const pyB=document.getElementById('pyBase');if(pyB)pyB.textContent=INR(base);
+  const pyG=document.getElementById('pyGear'),pyGr=document.getElementById('pyGearRow');
+  if(pyGr){if(gear>0){pyGr.style.display='flex';if(pyG)pyG.textContent=INR(gear);}else pyGr.style.display='none';}
+  const pyN=document.getElementById('pyNow');if(pyN)pyN.textContent=INR(now);
+  const pyBal=document.getElementById('pyBal');if(pyBal)pyBal.textContent=INR(bal);
+  const pn=document.getElementById('payNow');if(pn)pn.textContent=INR(now);}
 function selPay(el){document.querySelectorAll('#payment .pay').forEach(p=>p.classList.remove('on'));el.classList.add('on');}
 
 /* call the secure Razorpay Edge Function */
@@ -5222,7 +5229,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='324';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='325';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -6947,7 +6954,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,addon,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections,addStaff,removeStaff,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections,addStaff,removeStaff,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab});
 
 /* init */
 applyTheme();   /* dark / light / system theme */

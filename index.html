@@ -626,6 +626,16 @@
   .pay .ic{color:var(--accent2)}.pay .t{flex:1}.pay .t b{font-size:14px;display:block}.pay .t small{color:var(--muted);font-size:11px}
   .radio{width:20px;height:20px;border-radius:50%;border:2px solid var(--stroke2);display:grid;place-items:center}
   .pay.on .radio{border-color:var(--accent)}.pay.on .radio:after{content:"";width:10px;height:10px;border-radius:50%;background:var(--accent)}
+  /* Payment screen amount breakdown */
+  .paysum{margin-bottom:16px}
+  .paysum-head{display:flex;justify-content:space-between;align-items:center}
+  .paysum-head small{color:var(--muted);font-size:11px}
+  .paysum-big{font-size:27px;font-weight:700;margin:3px 0 12px;color:var(--text);letter-spacing:-.5px}
+  .paysum-rows{border-top:1px solid var(--stroke);padding-top:8px}
+  .paysum .ps-row{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--muted);padding:5px 0}
+  .paysum .ps-row span:last-child{color:var(--text);font-weight:600}
+  .paysum .ps-now{margin-top:2px;padding-top:9px;border-top:1px dashed var(--stroke);font-weight:600;color:var(--accent2)}
+  .paysum .ps-now span:last-child{color:var(--accent2);font-weight:700;font-size:14px}
 
   /* community */
   .post{background:var(--card);border:1px solid var(--stroke);border-radius:18px;padding:14px;margin-bottom:14px}
@@ -2830,7 +2840,16 @@
   <section class="view flow" id="payment" data-nonav>
     <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Payment</h1></div>
     <div class="steps"><i class="on"></i><i class="on"></i><i class="on"></i></div>
-    <div class="panel" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div><small style="color:var(--muted);font-size:11px">Amount payable</small><div style="font-size:20px;font-weight:600" id="payAmt"></div></div><span class="tag"><span class="ic" data-i="lock"></span> Razorpay</span></div>
+    <div class="panel paysum">
+      <div class="paysum-head"><small>Total amount payable</small><span class="tag"><span class="ic" data-i="lock"></span> Razorpay</span></div>
+      <div class="paysum-big" id="payAmt">₹0</div>
+      <div class="paysum-rows">
+        <div class="ps-row"><span>Trek fee</span><span id="pyBase"></span></div>
+        <div class="ps-row" id="pyGearRow" style="display:none"><span>Rented gear</span><span id="pyGear"></span></div>
+        <div class="ps-row ps-now"><span>Booking amount · 25% now</span><span id="pyNow"></span></div>
+        <div class="ps-row ps-bal"><span>Balance before the trek</span><span id="pyBal"></span></div>
+      </div>
+    </div>
     <div class="pay on" onclick="selPay(this)"><span class="ic" data-i="upi"></span><div class="t"><b>UPI</b><small>GPay, PhonePe, Paytm</small></div><div class="radio"></div></div>
     <div class="pay" onclick="selPay(this)"><span class="ic" data-i="card"></span><div class="t"><b>Card</b><small>Credit / Debit</small></div><div class="radio"></div></div>
     <div class="pay" onclick="selPay(this)"><span class="ic" data-i="bank"></span><div class="t"><b>Netbanking</b><small>All major banks</small></div><div class="radio"></div></div>
