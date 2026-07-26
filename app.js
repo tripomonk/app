@@ -578,7 +578,9 @@ function atHandle(n){const s=String(handleFor(n)).replace(/^@/,'').trim();
 function avatar(n,size){size=size||38;const g=AVG[avHash(n)%AVG.length];const fs=Math.round(size*.4);
   const photo=photoFor(n);
   const bg=photo?`background-image:url('${photo}');background-size:cover;background-position:center`:`background:linear-gradient(135deg,${g[0]},${g[1]})`;
-  return `<div class="av-i" onclick="openPerson('${jsq(n)}')" style="width:${size}px;height:${size}px;font-size:${fs}px;${bg}">${photo?'':initials(n)}</div>`;}
+  /* border-radius + overflow are baked in inline so the avatar is ALWAYS a circle, even
+     if the stylesheet is stale/partial on a device — a square photo was the symptom. */
+  return `<div class="av-i" onclick="openPerson('${jsq(n)}')" style="width:${size}px;height:${size}px;font-size:${fs}px;border-radius:50%;overflow:hidden;${bg}">${photo?'':initials(n)}</div>`;}
 
 let postSeq=2;
 const feed=[];  /* real posts come from the database, not demo data */
@@ -5263,7 +5265,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='330';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='333';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -8042,8 +8044,10 @@ async function openHosts(){
 function hostListCard(h){
   const n=h.name,trips=(_tripsByHost&&_tripsByHost[n])||0;
   const un=unameByName[n]||h.username||'';
+  /* plain circular avatar — no gradient ring — to match the clean Find Trekkers rows.
+     The ✓ badge beside the name already signals "verified", so the ring was redundant. */
   return '<div class="hostcard" onclick="openPerson(\''+jsq(n)+'\')">'
-    +'<div class="vhring sm">'+avatar(n,52)+'</div>'
+    +'<div class="hostcard-av">'+avatar(n,52)+'</div>'
     +'<div class="hostcard-bd"><b><span class="hostcard-name">'+esc(properName(n))+'</span><span class="vbadge"><span class="msr">check</span></span></b>'
     +(un?'<small>@'+esc(un)+'</small>':'')
     +'<span class="hostcard-trips">'+(trips?trips+' live trip'+(trips>1?'s':''):'No live trips yet')+'</span></div>'
