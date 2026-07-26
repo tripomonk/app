@@ -939,6 +939,40 @@ function togglePw(){
   if(!p)return;const show=p.type==='password';p.type=show?'text':'password';
   if(t)t.textContent=show?'visibility_off':'visibility';
 }
+/* reveal the email/password sign-in form on the login card */
+function showPwLogin(){
+  _authMode='signin';
+  const f=document.getElementById('pwLoginForm'),b=document.getElementById('pwOpenBtn');
+  if(f)f.style.display='';if(b)b.style.display='none';
+  const e=document.getElementById('emailInput');if(e)setTimeout(()=>e.focus(),50);
+}
+/* same consent gate as Google sign-in, then run the existing (secure) password auth */
+function pwLoginGated(){
+  const chk=document.getElementById('consentChk');
+  if(!chk||!chk.checked){
+    const row=document.getElementById('consentRow');
+    if(row){row.classList.remove('shake');void row.offsetWidth;row.classList.add('shake');}
+    note('Please tick the box to continue.','Almost there');return;
+  }
+  recordConsent();_authMode='signin';passwordAuth();
+}
+/* set / change a password for the CURRENT signed-in account. Supabase Auth hashes and
+   stores it — the app never sees or keeps the raw password. Lets the user then sign in
+   with email + password on any device. */
+async function setMyPassword(){
+  const sb=getSupaClient();const uid=sb?await authUid():null;
+  if(!sb||!uid){note('Please sign in first, then set a password.','Sign in required');return;}
+  const pw=await askCode('Set a password',{password:true,placeholder:'New password (min 8)'});
+  if(pw==null)return;
+  if(pw.length<8){await note('Use at least 8 characters.','Too short');return setMyPassword();}
+  const pw2=await askCode('Confirm password',{password:true,placeholder:'Re-enter password'});
+  if(pw2==null)return;
+  if(pw!==pw2){await note('The two entries did not match.','Try again');return setMyPassword();}
+  const{error}=await sb.auth.updateUser({password:pw});
+  if(error){note(error.message,'Could not set password');return;}
+  const email=(currentUser&&currentUser.email)||(typeof getUserEmail==='function'?getUserEmail():'')||'your email';
+  note('Password set. You can now sign in with '+email+' and this password on any device. It is stored securely (hashed) by our sign-in provider — we never see it.','Password saved ✓');
+}
 /* email + password signup, or username/email + password login */
 async function passwordAuth(){
   const id=(document.getElementById('emailInput').value||'').trim();
@@ -1198,7 +1232,7 @@ function getSavedPhoto(){try{return localStorage.getItem('tmk_uphoto')||'';}catc
 function setAvatarEl(el,name,photo){
   if(!el)return;
   const letter=(String(name||'E').trim()[0]||'E').toUpperCase();
-  el.textContent=letter;el.style.backgroundImage='';
+  el.textContent=letter;el.style.backgroundImage='';el.classList.remove('has-photo');
   if(!photo||!/^(data:image\/|https?:\/\/|blob:)/i.test(photo))return;
   const im=new Image();
   im.onload=()=>{
@@ -1207,7 +1241,7 @@ function setAvatarEl(el,name,photo){
        photo to its top-left corner (looked like the image "not showing"). */
     el.style.backgroundImage="url('"+photo.replace(/'/g,'%27')+"')";
     el.style.backgroundSize='cover';el.style.backgroundPosition='center';
-    el.textContent='';
+    el.textContent='';el.classList.add('has-photo');
   };
   im.onerror=()=>{el.style.backgroundImage='';el.textContent=letter;};
   im.src=photo;
@@ -3771,20 +3805,31 @@ async function renderPerson(){if(!curPerson){go('community');return;}const p=get
     <div class="sec-h" style="margin:18px 4px 8px"><b>Posts</b></div>
     ${posts.length?`<div class="pgrid">${posts.map(gridCell).join('')}</div>`:`<div class="empty"><p>${me?'You have not posted yet.':'No posts yet.'}</p></div>`}`;
   hydrate(body);
-  /* a verified host's trips are the main thing people come here for — load them after
-     the profile paints so the page never waits on a second query */
-  if(hostByName[p.n])renderPersonTrips(p.n);
+  /* a host's trips are the main thing people come here for — load them after the
+     profile paints so the page never waits on a second query. Always attempt: the
+     hostByName flag isn't always set (e.g. profile opened via a deep link), and
+     renderPersonTrips hides itself when there are no live trips anyway. */
+  renderPersonTrips(p.n);
 }
-/* live trips for one host. Prefer host_id: host_name is a snapshot frozen when the
-   trip was created, so it drifts if the host later renames themselves. */
+/* live trips for one host. Match by BOTH the frozen host_name AND the resolved
+   host_id, then merge — because either can miss on its own:
+   - host_name is a snapshot from trip-creation time, so it drifts if the host renames;
+   - uidForName() can resolve to the WRONG profile when duplicate profiles share a name
+     (limit 1), which made a host's live trips vanish on their profile even though they
+     showed in the home rail (that rail doesn't filter by host). */
 async function loadHostTripsFor(name){
-  const sb=getSupaClient();if(!sb)return [];
+  const sb=getSupaClient();if(!sb||!name)return [];
   try{
     const uid=await uidForName(name);
-    const base=sb.from('host_trips').select('*').eq('status','live')
-      .order('start_date',{ascending:true}).limit(20);
-    const r=uid?await base.eq('host_id',uid):await base.eq('host_name',name);
-    return await resolveHostNames(r.data||[]);
+    const live=()=>sb.from('host_trips').select('*').eq('status','live').limit(20);
+    const out=[];
+    const byName=await live().eq('host_name',name);
+    if(byName&&byName.data)out.push(...byName.data);
+    if(uid){const byId=await live().eq('host_id',uid);if(byId&&byId.data)out.push(...byId.data);}
+    const seen=new Set(),trips=[];
+    out.forEach(t=>{if(t&&!seen.has(t.id)){seen.add(t.id);trips.push(t);}});
+    trips.sort((a,b)=>String(a.start_date||'').localeCompare(String(b.start_date||'')));
+    return await resolveHostNames(trips);
   }catch(e){return [];}
 }
 async function renderPersonTrips(name){
@@ -4367,7 +4412,12 @@ function renderSettings(){
     <span class="ic"><span class="msr" style="font-size:20px">volume_up</span></span>
     <span class="t">Sound effects</span>
     <span class="tgl ${soundOn()?'on':''}" id="soundToggle"><i></i></span></div>`;
-  document.getElementById('setList').innerHTML=soundRow+setList.map(s=>{
+  /* set/change a password for the current account (signed-in users only) */
+  const pwRow=isLoggedIn()?`<div class="mrow" onclick="setMyPassword()">
+    <span class="ic"><span class="msr" style="font-size:20px">password</span></span>
+    <span class="t"><b style="display:block;font-size:13.5px">Password &amp; sign-in</b><small style="color:var(--muted)">Set a password to sign in without Google</small></span>
+    <span class="ch" style="transform:scaleX(-1)">${ic('back',16)}</span></div>`:'';
+  document.getElementById('setList').innerHTML=soundRow+pwRow+setList.map(s=>{
     const action=s[2]?`go('${s[2]}')`:`note('${s[1]} - coming soon')`;
     return `<div class="mrow" onclick="${action}"><span class="ic">${ic(s[0],20)}</span><span class="t">${s[1]}</span><span class="ch" style="transform:scaleX(-1)">${ic('back',16)}</span></div>`;
   }).join('');
@@ -5133,7 +5183,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='317';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='320';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
