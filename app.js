@@ -1782,6 +1782,11 @@ function isStaffUser(){return isAdminUser()||(!!userEmail()&&staffSet.has(userEm
    out of the quoted JS string. Strip the dangerous chars, then HTML-escape. */
 function jsq(s){return esc(String(s==null?'':s).replace(/[\'"`<>]/g,''));}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+/* Tidy a user-entered display name: trim, collapse runs of spaces, and capitalize the
+   first letter of each word so "sawan kumar verma" shows as "Sawan Kumar Verma". Only
+   the first letter is touched, so intentional casing (e.g. "McDonald") is preserved.
+   DISPLAY ONLY — never use for lookups; the raw name is still the key everywhere. */
+function properName(n){return String(n==null?'':n).trim().replace(/\s+/g,' ').replace(/(^|\s)([a-z])/g,(m,s,c)=>s+c.toUpperCase());}
 const INR=n=>'₹'+Number(n).toLocaleString('en-IN');
 
 /* ---------- render ---------- */
@@ -3830,7 +3835,7 @@ function gridCell(p){
 async function renderPerson(){if(!curPerson){go('community');return;}const p=getPerson(curPerson);if(!p)return;
   const me=p.n==='You'||p.n===myName();
   const body=document.getElementById('personBody');
-  body.innerHTML=`<div class="prof-top">${avatar(p.n,84)}<h2>${esc(p.n)}</h2><div class="handle">${esc(p.h)}</div></div><div class="skel skel-card" style="height:120px;margin:16px 0"></div>`;
+  body.innerHTML=`<div class="prof-top">${avatar(p.n,84)}<h2>${esc(properName(p.n))}</h2><div class="handle">${esc(p.h)}</div></div><div class="skel skel-card" style="height:120px;margin:16px 0"></div>`;
   const posts=await loadUserPosts(p.n);
   await Promise.all([loadEngagement(posts.map(x=>x.id)),loadAuthorPhotos([p.n])]);
   const disp=handleFor(p.n),at=atHandle(p.n);
@@ -3850,7 +3855,7 @@ async function renderPerson(){if(!curPerson){go('community');return;}const p=get
   const flwr=base+(isFollowing(p.n)?1:0);
   body.innerHTML=`
     <div class="prof-top">${avatar(p.n,84)}
-      <h2>${esc(disp)}${hostBadge(p.n)}</h2>${at?`<div class="handle">${esc(at)}</div>`:''}
+      <h2>${esc(properName(disp))}${hostBadge(p.n)}</h2>${at?`<div class="handle">${esc(at)}</div>`:''}
       <p class="pbio">${p.bio||''}</p>
       <div class="pstats"><div><b>${posts.length}</b><small>Posts</small></div><div><b id="pFlwr" data-person="${esc(p.n)}" data-base="${base}">${flwr.toLocaleString()}</b><small>Followers</small></div><div><b>${Number(following).toLocaleString()}</b><small>Following</small></div></div>
       ${me?'':`<div class="profile-actions" style="margin:14px 0 0"><button class="${isFollowing(p.n)?'on':''}" data-follow="${esc(p.n)}" onclick="toggleFollow('${jsq(p.n)}')">${isFollowing(p.n)?'Following':'Follow'}</button><button onclick="openChat('${jsq(p.n)}')">Message</button></div>`}
@@ -3875,16 +3880,26 @@ async function renderPerson(){if(!curPerson){go('community');return;}const p=get
 async function loadHostTripsFor(name){
   const sb=getSupaClient();if(!sb||!name)return [];
   try{
+    const key=String(name).trim().toLowerCase();
     const uid=await uidForName(name);
-    const live=()=>sb.from('host_trips').select('*').eq('status','live').limit(20);
-    const out=[];
-    const byName=await live().eq('host_name',name);
-    if(byName&&byName.data)out.push(...byName.data);
-    if(uid){const byId=await live().eq('host_id',uid);if(byId&&byId.data)out.push(...byId.data);}
+    /* Match EXACTLY like loadTripCountsByHost so the profile shows the same trips the
+       "N live trips" count promised. Pull every live trip, resolve each to the host's
+       CURRENT profile name, then keep any trip that matches on the current name, the
+       frozen host_name, OR the host_id — case-insensitive. This survives host renames
+       and the duplicate-profile problem, which used to make a host's trips vanish here
+       even though the count on the list said 2. */
+    const r=await sb.from('host_trips').select('*').eq('status','live').limit(200);
+    const raw=r.data||[];
+    const orig=raw.map(t=>t.host_name);
+    const resolved=await resolveHostNames(raw);
     const seen=new Set(),trips=[];
-    out.forEach(t=>{if(t&&!seen.has(t.id)){seen.add(t.id);trips.push(t);}});
+    resolved.forEach((t,i)=>{
+      const names=[t.host_name,orig[i]].filter(Boolean).map(s=>String(s).trim().toLowerCase());
+      const match=names.includes(key)||(uid&&t.host_id===uid);
+      if(match&&!seen.has(t.id)){seen.add(t.id);trips.push(t);}
+    });
     trips.sort((a,b)=>String(a.start_date||'').localeCompare(String(b.start_date||'')));
-    return await resolveHostNames(trips);
+    return trips;
   }catch(e){return [];}
 }
 async function renderPersonTrips(name){
@@ -5248,7 +5263,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='328';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='330';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -7969,7 +7984,7 @@ function hostTripCard(t){
 function verifiedHostChip(h){
   return '<div class="vhost" onclick="openPerson(\''+jsq(h.name)+'\')">'
     +'<div class="vhring">'+avatar(h.name,54)+'</div>'
-    +'<small>'+esc(String(h.name).split(' ')[0])+'</small>'
+    +'<small>'+esc(properName(h.name).split(' ')[0])+'</small>'
     +'<span class="vhtick"><span class="msr">check</span></span></div>';
 }
 function renderVerifiedHostsRail(){
@@ -8029,8 +8044,8 @@ function hostListCard(h){
   const un=unameByName[n]||h.username||'';
   return '<div class="hostcard" onclick="openPerson(\''+jsq(n)+'\')">'
     +'<div class="vhring sm">'+avatar(n,52)+'</div>'
-    +'<div class="hostcard-bd"><b><span class="hostcard-name">'+esc(n)+'</span><span class="vbadge"><span class="msr">check</span></span></b>'
-    +'<small>'+(un?'@'+esc(un):'Verified Host')+'</small>'
+    +'<div class="hostcard-bd"><b><span class="hostcard-name">'+esc(properName(n))+'</span><span class="vbadge"><span class="msr">check</span></span></b>'
+    +(un?'<small>@'+esc(un)+'</small>':'')
     +'<span class="hostcard-trips">'+(trips?trips+' live trip'+(trips>1?'s':''):'No live trips yet')+'</span></div>'
     +'<span class="ch">'+ic('back',16)+'</span></div>';
 }
