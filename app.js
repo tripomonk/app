@@ -2439,7 +2439,7 @@ function reviewDetailsHTML(t){
     <div class="rv-it">Carry a valid government photo ID. Start light cardio 2–3 weeks before. Mobile network is limited on the trail. Follow your trek leader's safety instructions at all times.</div>
   </div>
   <div class="rv-block" style="background:rgba(47,107,255,.1);border-color:rgba(47,107,255,.3)"><div class="rv-h">${ic('card',16)} Amount payable now</div>
-    <div class="rv-it" style="font-size:15px;color:var(--text)"><b>${INR(Math.round((cart.grand||cart.total)*0.25))}</b> advance (25%) · Total ${INR(cart.grand||cart.total)}</div>
+    <div class="rv-it" style="font-size:15px;color:var(--text)"><b>${INR(cart.payNow||Math.round((cart.grand||cart.total)*0.25))}</b> due now (gear + 25% trek) · Total ${INR(cart.grand||cart.total)}</div>
   </div>`;
 }
 function syncReview(){const t=cart.trek;
@@ -2490,7 +2490,10 @@ function renderReviewGear(t){
 }
 /* jump back to the trek's gear picker to change the selection */
 function editReviewGear(){const t=cart.trek;if(!t)return;openDetail(t);setTimeout(()=>{const el=document.getElementById('dGearBlk');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},350);}
-function computeTotal(){const t=cart.trek;const base=cart.total*cart.pax;const gear=reviewGearTotal(t);const sum=base+gear;const now=Math.round(sum*0.25);const bal=sum-now;cart.grand=sum;cart.gearTotal=gear;
+function computeTotal(){const t=cart.trek;const base=cart.total*cart.pax;const gear=reviewGearTotal(t);const sum=base+gear;
+  /* Pay-now = rental gear IN FULL + 25% of the trek fee. Gear is a small rental we
+     collect upfront; only the trek carries a 25% deposit. Balance = the other 75% of trek. */
+  const now=gear+Math.round(base*0.25);const bal=sum-now;cart.grand=sum;cart.gearTotal=gear;cart.payNow=now;
   /* Review & Pay summary */
   const px=document.getElementById('sPax');if(px)px.textContent=cart.pax;
   const b=document.getElementById('sBase');if(b)b.textContent=INR(base);
@@ -5229,7 +5232,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='325';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='327';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -6036,8 +6039,6 @@ function gearRecoCard(t){
   const selSet=getSelGear();
   const sel=all.filter(g=>selSet.indexOf(g.id)>=0);
   const total=sel.reduce((s,g)=>s+g.price,0);
-  const kit=Math.max(10,Math.round(total*0.82/10)*10);   /* ~18% bundle discount */
-  const save=total-kit;
   const ctx=[t.lvl,gSnow(t)?'snow':(gCold(t)?'cold':''),gMonsoon(t)?'monsoon':''].filter(Boolean).join(' · ');
   const rows=all.map(g=>{const on=selSet.indexOf(g.id)>=0;
     return '<div class="gr-item" onclick="gearToggle(\''+g.id+'\')">'
@@ -6045,10 +6046,12 @@ function gearRecoCard(t){
       +'<span class="msr gr-ic">'+g.icon+'</span>'
       +'<div class="gr-tx"><b>'+esc(g.name)+'</b><small>₹'+g.price+'/day · '+esc(g.why)+'</small></div></div>';
   }).join('');
+  /* No WhatsApp "Rent" CTA — the selection is paid at checkout with the trek. This is
+     just a running summary; the full daily total flows into the booking total. */
   const footer=sel.length
-    ? '<div class="gr-kit"><div class="gr-kit-tx"><b>Rent selected · '+sel.length+' item'+(sel.length>1?'s':'')+'</b>'
-      +'<small>₹'+kit+'/day'+(save>0?' · <span class="gr-save">save ₹'+save+'</span>':'')+'</small></div>'
-      +'<button class="btn gr-add" onclick="rentKit(\''+jsq(t.n)+'\')">Rent</button></div>'
+    ? '<div class="gr-kit gr-kit-sel"><span class="gr-kit-ic msr">shopping_bag</span>'
+      +'<div class="gr-kit-tx"><b>'+sel.length+' item'+(sel.length>1?'s':'')+' selected · ₹'+total+'/day</b>'
+      +'<small>Added to your booking at checkout</small></div></div>'
     : '<div class="gr-kit" style="justify-content:center"><small style="color:var(--muted)">Tap the gear you want to hire.</small></div>';
   return '<div class="gearreco">'
     +'<div class="gr-head"><span class="gr-emoji">🎒</span><b>Recommended Gear</b><span class="gr-count">'+sel.length+' of '+all.length+' selected'+(ctx?' · '+esc(ctx):'')+'</span></div>'
@@ -6064,13 +6067,6 @@ function refreshGearReco(t){
   const html=gearRecoCard(t);
   if(html){el.innerHTML=html;if(blk)blk.style.display='';hydrate(el);}
   else if(blk){blk.style.display='none';}
-}
-function rentKit(trekName){
-  const t=(treks||[]).find(x=>x.n===trekName)||cart.trek;
-  const list=t?gearSelected(t):[];
-  if(!list.length){toast&&toast('Tap the gear you want to hire first');return;}
-  const lines=list.map(g=>'• '+g.name+' (₹'+g.price+'/day)');
-  wa('Hi Tripomonk, I want to hire this gear for '+trekName+':\n'+lines.join('\n')+'\n\nPlease confirm availability and delivery / pickup.');
 }
 function renderQuick(){const q=[['pin','Destinations','dests'],['backpack','Rent Gear','gear'],['permits','Permits','permits'],['para','Activities','activities']];const el=document.getElementById('quick');if(!el)return;el.style.gridTemplateColumns='repeat(4,1fr)';el.innerHTML=q.map(a=>`<div class="qa" onclick="go('${a[2]}')"><div class="qi">${ic(a[0],20)}</div><span>${a[1]}</span></div>`).join('');hydrate(el);}
 let gearCat='All',gearQ='';
