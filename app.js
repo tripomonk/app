@@ -2508,6 +2508,22 @@ function computeTotal(){const t=cart.trek;const base=cart.total*cart.pax;const g
   const pyN=document.getElementById('pyNow');if(pyN)pyN.textContent=INR(now);
   const pyBal=document.getElementById('pyBal');if(pyBal)pyBal.textContent=INR(bal);
   const pn=document.getElementById('payNow');if(pn)pn.textContent=INR(now);}
+/* Ask the server for the AUTHORITATIVE price when the payment screen opens, then show
+   exactly that — so the amount shown always equals what Razorpay charges, even if the
+   client's cached trek price is stale. Silent no-op (keeps client numbers) if the
+   server is old / offline; the charge itself is always the server's number anyway. */
+async function refreshPayQuote(){
+  const t=cart.trek;if(!t)return;
+  const gearIds=(gearSelected(t)||[]).map(g=>g.id);
+  let q;try{q=await rzpCall('quote',{booking:{trek:t.n,date:cart.date,pax:cart.pax,gear_ids:gearIds}});}catch(e){return;}
+  if(!q||q.error||typeof q.paid!=='number'||typeof q.total!=='number')return;
+  const base=Number(q.base)||0,gear=Number(q.gearTotal)||0,sum=Number(q.total)||0,now=Number(q.paid)||0,bal=sum-now;
+  cart.grand=sum;cart.gearTotal=gear;cart.payNow=now;
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=INR(v);};
+  set('payAmt',sum);set('pyBase',base);
+  const gr=document.getElementById('pyGearRow');if(gr){if(gear>0){gr.style.display='flex';set('pyGear',gear);}else gr.style.display='none';}
+  set('pyNow',now);set('pyBal',bal);set('payNow',now);
+}
 function selPay(el){document.querySelectorAll('#payment .pay').forEach(p=>p.classList.remove('on'));el.classList.add('on');}
 
 /* call the secure Razorpay Edge Function */
@@ -5232,7 +5248,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='327';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='328';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -6864,6 +6880,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='selectDate')renderSelectDate();
   if(id==='travellers'){trav(0);prefillTravellers();}
   if(id==='review')syncReview();
+  if(id==='payment')refreshPayQuote();
   if(id==='community')renderFeed();
   if(id==='person')renderPerson();
   if(id==='search')renderSearch();
