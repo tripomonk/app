@@ -2281,7 +2281,7 @@ function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
   else{cta.innerHTML='View Dates &amp; Price&nbsp; →';cta.onclick=()=>go('selectDate');}
   const rd=document.getElementById('dReadiness');if(rd){rd.innerHTML=readinessCardHTML(t);hydrate(rd);}
   renderDetailGetting(t);
-  refreshGearReco(t);          /* AI recommended gear, personalised to this trek */
+  refreshGearReco(t);          /* recommended gear, selected for this trek */
   renderDetailNews(t.n);
   go('detail');
 }
@@ -3392,6 +3392,11 @@ async function uidForName(name){
   const{data:d2}=await sb.from('community_posts').select('user_id').eq('author_name',name).not('user_id','is',null).limit(1);
   return(d2&&d2[0])?d2[0].user_id:null;
 }
+/* Notifications the user swiped away. The DB delete can be a no-op (the table has
+   no delete RLS policy on older projects), so we also remember dismissals locally
+   and never re-show them. Capped so it can't grow without bound. */
+function getDismissedNotifs(){try{return JSON.parse(localStorage.getItem('tmk_notif_dismissed')||'[]');}catch(e){return[];}}
+function dismissNotifLocal(id){if(!id&&id!==0)return;id=String(id);const d=getDismissedNotifs();if(d.indexOf(id)<0){d.push(id);if(d.length>400)d.splice(0,d.length-400);try{localStorage.setItem('tmk_notif_dismissed',JSON.stringify(d));}catch(e){}}}
 async function loadNotifsRemote(){
   const sb=getSupaClient();if(!sb)return null;
   const name=myName();
@@ -3401,7 +3406,8 @@ async function loadNotifsRemote(){
     else q=q.eq('recipient_name',name);
     const{data,error}=await q;
     if(error)throw error;
-    return data||[];
+    const dis=getDismissedNotifs();
+    return (data||[]).filter(n=>dis.indexOf(String(n.id))<0);   /* hide anything swiped away */
   });
 }
 const NOTIF_ICON={like:'favorite',comment:'chat_bubble',follow:'person_add',mention:'alternate_email'};
@@ -4039,14 +4045,16 @@ function renderAccountMenu(){
   box.innerHTML=html;
 }
 /* ---- gift cards (welcome-gift picker) ---- */
+/* Each card carries its OWN perk — a themed inclusion shown on the card and
+   honoured at booking. perkIc = a material-symbol glyph for the badge. */
 const GIFT_CARDS=[
-  {file:'escape-together',name:'Escape Together'},
-  {file:'explorer-buddy',name:'The Explorer Buddy'},
-  {file:'solo-warrior',name:'The Solo Warrior'},
-  {file:'soul-sisters',name:'The Soul Sisters'},
-  {file:'story-collector',name:'The Story Collector'},
-  {file:'unscripted-wanderer',name:'The Unscripted Wanderer'},
-  {file:'wanderer-queen',name:'The Wanderer Queen'}
+  {file:'escape-together',name:'Escape Together',perkIc:'favorite',perk:'Couple’s tent upgrade',perkDesc:'A private tent for two on your trek — on us'},
+  {file:'explorer-buddy',name:'The Explorer Buddy',perkIc:'group_add',perk:'Bring a friend',perkDesc:'Your +1 gets 10% off the same departure'},
+  {file:'solo-warrior',name:'The Solo Warrior',perkIc:'hiking',perk:'Solo safety kit',perkDesc:'Free gear rental for one trek — headlamp, poles & gaiters'},
+  {file:'soul-sisters',name:'The Soul Sisters',perkIc:'diversity_3',perk:'Squad discount',perkDesc:'Groups of 3+ get an extra 8% off'},
+  {file:'story-collector',name:'The Story Collector',perkIc:'photo_camera',perk:'Trek photo album',perkDesc:'Free pro photos from your departure'},
+  {file:'unscripted-wanderer',name:'The Unscripted Wanderer',perkIc:'event_repeat',perk:'Flexi reschedule',perkDesc:'Change your trek date once, no fee'},
+  {file:'wanderer-queen',name:'The Wanderer Queen',perkIc:'workspace_premium',perk:'VIP arrival',perkDesc:'Priority booking + a welcome hamper on arrival'}
 ];
 const GIFT_AMOUNTS=[2000,5000,8000,10000,15000];
 let _giftSel=0,_giftAmt=2000;
@@ -4107,7 +4115,13 @@ function renderGiftCards(){
   renderGiftAmts();
 }
 function renderGiftAmts(){
-  const nm=document.getElementById('gcName');if(nm)nm.textContent=GIFT_CARDS[_giftSel].name;
+  const card=GIFT_CARDS[_giftSel];
+  const nm=document.getElementById('gcName');if(nm)nm.textContent=card.name;
+  const pk=document.getElementById('gcPerk');
+  if(pk){pk.innerHTML=card.perk
+    ? '<span class="gc-perk-ic msr">'+(card.perkIc||'redeem')+'</span><span class="gc-perk-tx"><b>'+esc(card.perk)+'</b><small>'+esc(card.perkDesc||'')+'</small></span>'
+    : '';
+  }
   const el=document.getElementById('gcAmts');
   if(el){
     const custom=!GIFT_AMOUNTS.includes(_giftAmt);
@@ -4140,7 +4154,7 @@ async function buyGiftCard(){
   const btn=document.getElementById('gcBuyBtn');if(btn){btn.disabled=true;btn.textContent='Starting payment…';}
   const restore=()=>{if(btn)btn.disabled=false;renderGiftAmts();};
   const email=getUserEmail()||'',name=getSavedName()||'Trekker';
-  const gc={kind:'giftcard',amount,card:card.file,card_name:card.name,name,email,phone:getSavedMobile()||''};
+  const gc={kind:'giftcard',amount,card:card.file,card_name:card.name,card_perk:card.perk||'',name,email,phone:getSavedMobile()||''};
   const token=await authToken();
   let order;try{order=await rzpCall('create',{booking:gc,token});}catch(e){order=null;}
   if(!order||!order.order_id){restore();note((order&&order.error)?order.error:'Could not start payment — the gift-card service may not be enabled on the server yet.','Payment error');return;}
@@ -4153,7 +4167,7 @@ async function buyGiftCard(){
       if(!res||!res.ok){note('Payment received — your gift code is being generated. If it doesn\'t appear, contact us with payment ID: '+(response.razorpay_payment_id||'—'),'Almost done');return;}
       const code=res.code||'';
       try{if(code&&navigator.clipboard)navigator.clipboard.writeText(code);}catch(e){}
-      note('Your '+inr(amount)+' '+card.name+' gift card is ready 🎁  Code: '+code+' (copied). Redeem it in your Wallet, or share the code with a friend to gift it.','Gift card ready').then(()=>go('wallet'));
+      note('Your '+inr(amount)+' '+card.name+' gift card is ready 🎁  Code: '+code+' (copied).'+(card.perk?' Includes: '+card.perk+' — quote it when booking.':'')+' Redeem it in your Wallet, or share the code with a friend to gift it.','Gift card ready').then(()=>go('wallet'));
     },
     modal:{ondismiss:function(){restore();note('Payment cancelled — nothing was charged.','Cancelled');}}
   });
@@ -4502,6 +4516,7 @@ async function openNotif(nid,type,postId,actor){
 /* remove one notification (swipe or the reveal button) — optimistic, server delete after */
 async function deleteNotif(nid,sw){
   if(sw)sw.remove();
+  dismissNotifLocal(nid);   /* remember locally so it never comes back on refresh */
   const sb=getSupaClient();const uid=await authUid();
   if(sb&&uid){try{await sb.from('notifications').delete().eq('id',nid);}catch(e){}}
   const list=document.getElementById('notiList');
@@ -5184,7 +5199,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='321';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='322';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -5977,30 +5992,43 @@ function gSeason(t){return String(t&&t.best||'').toLowerCase();}
 function gSnow(t){return gAlt(t)>=13500||(/dec|jan|feb|mar/.test(gSeason(t))&&gAlt(t)>=9000);}
 function gCold(t){return gAlt(t)>=11000||/dec|jan|feb|nov/.test(gSeason(t))||gSnow(t);}
 function gMonsoon(t){return /jul|aug|sep/.test(gSeason(t));}
-/* gear the user already owns — excluded from every recommendation */
-function getOwnedGear(){try{return JSON.parse(localStorage.getItem('tmk_owngear')||'[]');}catch(e){return[];}}
-function toggleOwnGear(id){const o=getOwnedGear();const i=o.indexOf(id);if(i>=0)o.splice(i,1);else o.push(id);try{localStorage.setItem('tmk_owngear',JSON.stringify(o));}catch(e){}}
-function recommendGear(t){if(!t)return[];const own=getOwnedGear();return GEAR_CATALOG.filter(g=>{try{return g.when(t)&&own.indexOf(g.id)<0;}catch(e){return false;}});}
-/* reusable card — the same component everywhere gear is upsold */
+/* All gear that fits this trek. Nothing is hidden — items you own are shown but
+   UNCHECKED, so you can pick exactly what to hire and re-check anything. */
+function gearApplicable(t){if(!t)return[];return GEAR_CATALOG.filter(g=>{try{return g.when(t);}catch(e){return false;}});}
+/* the set of gear the user has DESELECTED (owns / doesn't want). Global — you own a
+   jacket regardless of trek. Reuses the old key so existing selections carry over. */
+function getSkipGear(){try{return JSON.parse(localStorage.getItem('tmk_owngear')||'[]');}catch(e){return[];}}
+function toggleSkipGear(id){const o=getSkipGear();const i=o.indexOf(id);if(i>=0)o.splice(i,1);else o.push(id);try{localStorage.setItem('tmk_owngear',JSON.stringify(o));}catch(e){}}
+function gearSelected(t){const skip=getSkipGear();return gearApplicable(t).filter(g=>skip.indexOf(g.id)<0);}
+/* reusable card — recommended gear you can pick from, then rent the selected items */
 function gearRecoCard(t){
-  const list=recommendGear(t);
-  if(!list.length)return '';
-  const total=list.reduce((s,g)=>s+g.price,0);
+  const all=gearApplicable(t);
+  if(!all.length)return '';
+  const skip=getSkipGear();
+  const sel=all.filter(g=>skip.indexOf(g.id)<0);
+  const total=sel.reduce((s,g)=>s+g.price,0);
   const kit=Math.max(10,Math.round(total*0.82/10)*10);   /* ~18% bundle discount */
   const save=total-kit;
   const ctx=[t.lvl,gSnow(t)?'snow':(gCold(t)?'cold':''),gMonsoon(t)?'monsoon':''].filter(Boolean).join(' · ');
-  const rows=list.map(g=>'<div class="gr-item"><span class="msr gr-ic">'+g.icon+'</span>'
-    +'<div class="gr-tx"><b>'+esc(g.name)+'</b><small>₹'+g.price+'/day · '+esc(g.why)+'</small></div>'
-    +'<button class="gr-own" type="button" onclick="ownGear(\''+g.id+'\')" title="I already own this">'+ic('check',13)+'</button></div>').join('');
+  const rows=all.map(g=>{const on=skip.indexOf(g.id)<0;
+    return '<div class="gr-item'+(on?'':' off')+'" onclick="gearToggle(\''+g.id+'\')">'
+      +'<span class="msr gr-ic">'+g.icon+'</span>'
+      +'<div class="gr-tx"><b>'+esc(g.name)+'</b><small>₹'+g.price+'/day · '+esc(g.why)+'</small></div>'
+      +'<span class="gr-check'+(on?' on':'')+'">'+ic('check',14)+'</span></div>';
+  }).join('');
+  const footer=sel.length
+    ? '<div class="gr-kit"><div class="gr-kit-tx"><b>Rent selected · '+sel.length+' item'+(sel.length>1?'s':'')+'</b>'
+      +'<small>₹'+kit+'/day'+(save>0?' · <span class="gr-save">save ₹'+save+'</span>':'')+'</small></div>'
+      +'<button class="btn gr-add" onclick="rentKit(\''+jsq(t.n)+'\')">Rent</button></div>'
+    : '<div class="gr-kit" style="justify-content:center"><small style="color:var(--muted)">Tap items to add them to your rental.</small></div>';
   return '<div class="gearreco">'
-    +'<div class="gr-head"><span class="gr-emoji">🎒</span><b>AI Recommended Gear</b><span class="gr-count">'+list.length+' item'+(list.length>1?'s':'')+(ctx?' · '+esc(ctx):'')+'</span></div>'
+    +'<div class="gr-head"><span class="gr-emoji">🎒</span><b>Recommended Gear</b><span class="gr-count">'+sel.length+' of '+all.length+' selected'+(ctx?' · '+esc(ctx):'')+'</span></div>'
     +'<div class="gr-list">'+rows+'</div>'
-    +'<div class="gr-kit"><div class="gr-kit-tx"><b>Rent the complete kit</b><small>₹'+kit+'/day'+(save>0?' · <span class="gr-save">save ₹'+save+'</span>':'')+'</small></div>'
-    +'<button class="btn gr-add" onclick="rentKit(\''+jsq(t.n)+'\')">Rent kit</button></div>'
-    +'<p class="gr-note">Personalised for '+esc(t.n)+' by altitude, season & difficulty. Tap ✓ on anything you already own.</p>'
+    +footer
+    +'<p class="gr-note">Suggested for '+esc(t.n)+' by altitude, season & difficulty. Uncheck anything you already own — you rent only what stays ticked.</p>'
     +'</div>';
 }
-function ownGear(id){toggleOwnGear(id);if(cart.trek)refreshGearReco(cart.trek);}
+function gearToggle(id){toggleSkipGear(id);if(cart.trek)refreshGearReco(cart.trek);}
 function refreshGearReco(t){
   const el=document.getElementById('dGear');if(!el)return;
   const blk=document.getElementById('dGearBlk');
@@ -6010,9 +6038,10 @@ function refreshGearReco(t){
 }
 function rentKit(trekName){
   const t=(treks||[]).find(x=>x.n===trekName)||cart.trek;
-  const list=t?recommendGear(t):[];
+  const list=t?gearSelected(t):[];
+  if(!list.length){toast&&toast('Tap the gear you want to hire first');return;}
   const lines=list.map(g=>'• '+g.name+' (₹'+g.price+'/day)');
-  wa('Hi Tripomonk, I want to rent the recommended gear kit for '+trekName+':\n'+lines.join('\n')+'\n\nPlease confirm availability and delivery / pickup.');
+  wa('Hi Tripomonk, I want to hire this gear for '+trekName+':\n'+lines.join('\n')+'\n\nPlease confirm availability and delivery / pickup.');
 }
 function renderQuick(){const q=[['pin','Destinations','dests'],['backpack','Rent Gear','gear'],['permits','Permits','permits'],['para','Activities','activities']];const el=document.getElementById('quick');if(!el)return;el.style.gridTemplateColumns='repeat(4,1fr)';el.innerHTML=q.map(a=>`<div class="qa" onclick="go('${a[2]}')"><div class="qi">${ic(a[0],20)}</div><span>${a[1]}</span></div>`).join('');hydrate(el);}
 let gearCat='All',gearQ='';
