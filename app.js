@@ -5466,7 +5466,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='339';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='340';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -6533,11 +6533,10 @@ function trekItinUrl(t){return String((t&&t.itin)||'').trim();}
 function hasItinerary(t){return !!(t&&((ITIN[t.n]&&ITIN[t.n].length)||trekItinUrl(t)));}
 
 /* ---- Hero media: photo (default) or a video the admin attached ----
-   The video is NOT auto-played. The hero paints as a poster with a play badge and
-   only swaps in the iframe on tap — autoplaying a hero iframe costs a heavy network
-   fetch on every trek open, and iOS blocks it with sound anyway. Same tap-to-play
-   pattern the community feed already uses, so stopAllMedia() tears it down on
-   navigation and the audio can't follow you to the next screen. */
+   A YouTube / Vimeo / uploaded-file cover autoplays MUTED and looping the moment the
+   trek opens (browsers only allow muted autoplay); tap the speaker to hear it with
+   sound + controls. Instagram can't be autoplayed or shown chrome-free, so it keeps a
+   tap-to-play badge and we crop its post UI down to mainly the reel video. */
 function heroVideoUrl(t){
   if(!t||!t.hvideo)return '';                       /* admin chose the photo */
   const u=String(t.hvid||'').trim();
@@ -6551,29 +6550,68 @@ function renderHero(hh,t){
   hh.style.backgroundImage=poster?`url('${poster}')`:'';
   const pre=new Image();pre.onload=pre.onerror=()=>hh.classList.remove('img-loading');
   if(poster)pre.src=poster;else hh.classList.remove('img-loading');
-  /* rebuild the play badge each time so switching treks can't leave a stale one */
-  const old=hh.querySelector('.hero-play');if(old)old.remove();
-  const frame=hh.querySelector('.hero-embed');if(frame)frame.remove();
+  /* tear down any prior video state so switching treks never leaves a stale one */
+  hh.querySelectorAll('.hero-play,.hero-embed,.hero-sound').forEach(e=>e.remove());
   if(!vid)return;
-  const v=parseVideoLink(vid);
+  const v=parseVideoLink(vid);if(!v)return;
+  /* YouTube / Vimeo / uploaded file play as a MUTED, LOOPING cover video the moment
+     the trek opens (browsers only autoplay when muted). Tap the speaker to open it
+     with sound + controls. Instagram can't autoplay, so it keeps a play badge. */
+  if(v.kind==='file'||v.kind==='youtube'||v.kind==='vimeo'){
+    autoplayHeroCover(hh,v,vid);
+    return;
+  }
   const b=document.createElement('div');
   b.className='hero-play';
-  b.setAttribute('data-embed',v.embed||vid);
   b.innerHTML='<span class="msr">play_arrow</span>';
   b.onclick=e=>{e.stopPropagation();playHeroVideo(hh,vid);};
   hh.appendChild(b);
 }
+/* muted, controls-hidden, looping cover video — autoplays on open */
+function autoplayHeroCover(hh,v,url){
+  const wrap=document.createElement('div');
+  wrap.className='hero-embed hero-cover';
+  if(v.kind==='file'){
+    wrap.innerHTML='<video src="'+esc(url)+'" autoplay muted loop playsinline preload="metadata"></video>';
+  }else if(v.kind==='youtube'){
+    const src='https://www.youtube.com/embed/'+v.id+'?autoplay=1&mute=1&loop=1&playlist='+v.id
+      +'&controls=0&modestbranding=1&rel=0&playsinline=1&iv_load_policy=3&disablekb=1&fs=0';
+    wrap.innerHTML='<iframe src="'+esc(src)+'" title="Trek video" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture" scrolling="no"></iframe>';
+  }else{ /* vimeo background mode = clean muted autoplay loop, no chrome */
+    const src='https://player.vimeo.com/video/'+v.id+'?autoplay=1&muted=1&loop=1&background=1&dnt=1';
+    wrap.innerHTML='<iframe src="'+esc(src)+'" title="Trek video" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture" scrolling="no"></iframe>';
+  }
+  hh.appendChild(wrap);
+  if(v.kind!=='file')coverHeroIframe(hh,wrap.querySelector('iframe'),16/9);
+  /* tap the speaker to hear it — opens the full player with sound */
+  const sb=document.createElement('button');
+  sb.type='button';sb.className='hero-sound';
+  sb.innerHTML='<span class="msr">volume_off</span>';
+  sb.onclick=e=>{e.stopPropagation();playHeroVideo(hh,url);};
+  hh.appendChild(sb);
+}
+/* size a 16:9 iframe so it COVERS the hero box (crop the overflow) instead of letterboxing */
+function coverHeroIframe(hh,ifr,aspect){
+  if(!ifr)return;
+  const fit=()=>{const cw=hh.offsetWidth||360,ch=hh.offsetHeight||320;let w,h;
+    if(cw/ch>aspect){w=cw;h=Math.ceil(cw/aspect);}else{h=ch;w=Math.ceil(ch*aspect);}
+    ifr.style.position='absolute';ifr.style.left='50%';ifr.style.top='50%';
+    ifr.style.transform='translate(-50%,-50%)';ifr.style.width=w+'px';ifr.style.height=h+'px';};
+  requestAnimationFrame(fit);setTimeout(fit,350);
+}
 function playHeroVideo(hh,url){
   const v=parseVideoLink(url);if(!v)return;
-  const badge=hh.querySelector('.hero-play');if(badge)badge.remove();
+  hh.querySelectorAll('.hero-play,.hero-embed,.hero-sound').forEach(e=>e.remove());
   const wrap=document.createElement('div');
-  wrap.className='hero-embed vembed';
+  /* Instagram embeds carry the full post UI (avatar, handle, likes, caption, "view on
+     Instagram"). We crop that chrome away so mainly the reel video shows. */
+  wrap.className='hero-embed vembed'+(v.kind==='instagram'?' hero-ig-crop':'');
   if(v.kind==='file'){
     wrap.innerHTML='<video src="'+esc(url)+'#t=0.1" controls autoplay playsinline></video>';
   }else{
     const src=v.embed+(v.embed.indexOf('?')>=0?'&':'?')+'autoplay=1';
     wrap.innerHTML='<iframe src="'+esc(src)+'" title="Trek video" frameborder="0" '
-      +'allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>';
+      +'allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen scrolling="no"></iframe>';
   }
   hh.appendChild(wrap);
 }
