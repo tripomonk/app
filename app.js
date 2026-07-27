@@ -5466,7 +5466,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='340';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='341';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -6582,7 +6582,9 @@ function autoplayHeroCover(hh,v,url){
     wrap.innerHTML='<iframe src="'+esc(src)+'" title="Trek video" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture" scrolling="no"></iframe>';
   }
   hh.appendChild(wrap);
-  if(v.kind!=='file')coverHeroIframe(hh,wrap.querySelector('iframe'),16/9);
+  /* YouTube always shows a title + logo at the very edges; oversizing the iframe pushes
+     those out of the visible frame (Vimeo background mode + mp4 have no chrome, so 1x). */
+  if(v.kind!=='file')coverHeroIframe(hh,wrap.querySelector('iframe'),16/9,v.kind==='youtube'?1.3:1);
   /* tap the speaker to hear it — opens the full player with sound */
   const sb=document.createElement('button');
   sb.type='button';sb.className='hero-sound';
@@ -6591,10 +6593,13 @@ function autoplayHeroCover(hh,v,url){
   hh.appendChild(sb);
 }
 /* size a 16:9 iframe so it COVERS the hero box (crop the overflow) instead of letterboxing */
-function coverHeroIframe(hh,ifr,aspect){
-  if(!ifr)return;
+function coverHeroIframe(hh,ifr,aspect,scale){
+  if(!ifr)return;scale=scale||1;
   const fit=()=>{const cw=hh.offsetWidth||360,ch=hh.offsetHeight||320;let w,h;
+    /* fill by the SHORT side and overflow the long side — keeps the video's real aspect
+       (no horizontal squish), then scale up to crop platform branding at the edges */
     if(cw/ch>aspect){w=cw;h=Math.ceil(cw/aspect);}else{h=ch;w=Math.ceil(ch*aspect);}
+    w=Math.ceil(w*scale);h=Math.ceil(h*scale);
     ifr.style.position='absolute';ifr.style.left='50%';ifr.style.top='50%';
     ifr.style.transform='translate(-50%,-50%)';ifr.style.width=w+'px';ifr.style.height=h+'px';};
   requestAnimationFrame(fit);setTimeout(fit,350);
