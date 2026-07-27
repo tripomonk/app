@@ -5466,7 +5466,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='341';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='342';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -6585,12 +6585,7 @@ function autoplayHeroCover(hh,v,url){
   /* YouTube always shows a title + logo at the very edges; oversizing the iframe pushes
      those out of the visible frame (Vimeo background mode + mp4 have no chrome, so 1x). */
   if(v.kind!=='file')coverHeroIframe(hh,wrap.querySelector('iframe'),16/9,v.kind==='youtube'?1.3:1);
-  /* tap the speaker to hear it — opens the full player with sound */
-  const sb=document.createElement('button');
-  sb.type='button';sb.className='hero-sound';
-  sb.innerHTML='<span class="msr">volume_off</span>';
-  sb.onclick=e=>{e.stopPropagation();playHeroVideo(hh,url);};
-  hh.appendChild(sb);
+  /* no unmute button — the cover plays silently on loop, like a moving cover photo */
 }
 /* size a 16:9 iframe so it COVERS the hero box (crop the overflow) instead of letterboxing */
 function coverHeroIframe(hh,ifr,aspect,scale){
