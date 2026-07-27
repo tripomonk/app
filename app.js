@@ -5466,7 +5466,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='335';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='336';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -5952,6 +5952,26 @@ function recalcAct(){
   const btn=document.getElementById('actAdd');
   if(btn)btn.disabled=false;
 }
+/* Direct booking for an adventure activity — no "add to adventure" cart step.
+   Confirms date/slot/party, then opens a booking request with all the details so the
+   operator can lock the slot and take payment. */
+function bookActNow(){
+  const a=actById(curAct);if(!a)return;
+  recalcAct();
+  if(!actSel.date){note('Please choose a date for your activity.','Pick a date');return;}
+  if(!actSel.slot){note('Please choose a time slot.','Pick a slot');return;}
+  if(actPax()<1){note('Add at least one participant.','Who\'s going?');return;}
+  const d=destById(a.dest);
+  const who=actSel.adults+' adult'+(actSel.adults>1?'s':'')+(actSel.children?' + '+actSel.children+' child'+(actSel.children>1?'ren':''):'');
+  const lines=[
+    'Activity: '+a.n+(d?' — '+d.n:''),
+    'Date: '+actSel.date+'  ·  Slot: '+actSel.slot,
+    'People: '+who,
+    'Experience: '+actSel.exp,
+    'Approx total: '+INR(actSubtotal())+' ('+INR(a.price)+'/person)'
+  ];
+  wa('Hi Tripomonk, I want to BOOK this activity:\n'+lines.join('\n')+'\n\nPlease confirm availability and share the payment link.');
+}
 
 /* ============================================================
    PRICING ENGINE
@@ -6193,9 +6213,14 @@ function cartCheckout(){
 /* ---- destinations grid ---- */
 function destCard(d){
   const n=actsFor(d.id).length;
+  const season=d.best?String(d.best).split('(')[0].trim():'';
   return `<div class="dcell" onclick="openDest('${d.id}')" style="background-image:url('${d.img+Q}')">
-    <span class="dcell-n">${n}</span>
-    <div class="dcell-b"><b>${esc(d.n)}</b><small>${esc(d.state)}</small></div></div>`;
+    ${n?`<span class="dcell-n"><span class="msr">bolt</span>${n}</span>`:''}
+    <div class="dcell-b">
+      <b>${esc(d.n)}</b>
+      <small><span class="msr">place</span>${esc(d.state)}</small>
+      ${season?`<span class="dcell-season"><span class="msr">wb_sunny</span>${esc(season)}</span>`:''}
+    </div></div>`;
 }
 function renderDests(){
   const el=document.getElementById('destList');if(!el)return;
@@ -6221,10 +6246,11 @@ function renderDest(){
   const acts=actsFor(d.id);
   document.getElementById('destActs').innerHTML=acts.length
     ?acts.map(a=>`<div class="arow" onclick="openAct('${a.id}')">
-      <div class="aph" style="background-image:url('${a.img+Q}')"></div>
-      <div class="abd"><h4>${esc(a.n)}</h4><small>${esc(a.cat)} · ${esc(a.grade||'')}</small>
-        <div class="atags"><i>${ic('clock',10)} ${esc(a.dur)}</i><i>${esc(a.lvl)}</i><i>Age ${a.minAge}+</i></div></div>
-      <div class="apr"><b>${INR(a.price)}</b><small>per person</small></div></div>`).join('')
+      <div class="aph" style="background-image:url('${a.img+Q}')"><span class="aph-cat">${esc(a.cat)}</span></div>
+      <div class="abd"><h4>${esc(a.n)}</h4>
+        <div class="atags"><i>${ic('clock',10)} ${esc(a.dur)}</i><i>${ic('altitude',10)} ${esc(a.lvl)}</i><i>${ic('user',10)} ${a.minAge}+</i></div>
+        <div class="apr-in"><span class="apr-p"><small>from</small> <b>${INR(a.price)}</b><small>/person</small></span><span class="abook">Book ${ic('back',12)}</span></div>
+      </div></div>`).join('')
     :`<div class="empty"><p>No activities listed here yet.</p></div>`;
   /* attractions / tips / nearby */
   document.getElementById('destAttr').innerHTML=(d.attractions||[]).map(a=>`<span>${esc(a)}</span>`).join('');
@@ -6348,7 +6374,7 @@ function renderPermits(q){const lq=(q||'').toLowerCase().trim();
   ).join(''):'<div class="empty"><p>No permits match your search.</p></div>';
   hydrate(document.getElementById('permits'));}
 const ACT_GRAD=['linear-gradient(135deg,#2f6bff,#0a3aa0)','linear-gradient(135deg,#1f9e6b,#0c6b48)','linear-gradient(135deg,#ff7a59,#c43b1b)','linear-gradient(135deg,#5a8cff,#2f4fd0)','linear-gradient(135deg,#e0a200,#b06b00)','linear-gradient(135deg,#16b3c9,#0a6b88)'];
-function renderActivities(){const el=document.getElementById('actList');el.className='';el.innerHTML=activitiesData.map((a,i)=>`<div class="atile"><div class="ai-banner" style="background:${ACT_GRAD[i%ACT_GRAD.length]}"><span class="msr">${IMAP[a[0]]||'sports'}</span></div><b>${a[1]}</b><small>${a[2]}</small><div class="ap">${a[3]}<button class="bk" onclick="bookActivity('${a[1].replace(/'/g,'')}','${a[3]}')">Book</button></div></div>`).join('');hydrate(document.getElementById('activities'));}
+function renderActivities(){const el=document.getElementById('actList');el.className='';el.innerHTML=activitiesData.map((a,i)=>`<div class="atile"><div class="ai-banner" style="background:${ACT_GRAD[i%ACT_GRAD.length]}"><span class="msr">${IMAP[a[0]]||'sports'}</span></div><b>${esc(a[1])}</b><small><span class="msr">place</span>${esc(a[2])}</small><div class="ap"><span class="ap-p"><b>${esc(a[3])}</b><i>/person</i></span><button class="bk" onclick="bookActivity('${a[1].replace(/'/g,'')}','${a[3]}')">Book</button></div></div>`).join('');hydrate(document.getElementById('activities'));}
 async function bookActivity(name,priceStr){
   const amount=parseInt(String(priceStr).replace(/[^\d]/g,''))||0;
   if(amount<1){note('This activity is not bookable online yet — please contact us.','Unavailable');return;}

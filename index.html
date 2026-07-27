@@ -178,9 +178,13 @@
   .atile .ai-banner{height:96px;margin:0 -15px 12px;display:grid;place-items:center}
   .atile .ai-banner .msr{font-size:46px;color:rgba(255,255,255,.95)}
   .atile .ai{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:rgba(47,107,255,.16);color:var(--accent2);margin-bottom:10px}
-  .atile b{font-size:14px;display:block}.atile small{font-size:11px;color:var(--muted)}
-  .atile .ap{margin-top:11px;display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:13px}
-  .atile .bk{background:var(--accent);color:#fff;border:0;font-size:11px;font-weight:600;padding:6px 12px;border-radius:999px;cursor:pointer}
+  .atile b{font-size:14px;display:block}
+  .atile small{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:3px;margin-top:2px}
+  .atile small .msr{font-size:12px;color:var(--accent2)}
+  .atile .ap{margin-top:12px;display:flex;justify-content:space-between;align-items:center}
+  .atile .ap-p b{font-size:15px;font-weight:700}
+  .atile .ap-p i{font-style:normal;font-size:9.5px;color:var(--muted2);margin-left:2px}
+  .atile .bk{background:var(--accent);color:#fff;border:0;font-size:11.5px;font-weight:700;padding:7px 15px;border-radius:999px;cursor:pointer}
   .perm{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:15px;margin-bottom:11px}
   .perm b{font-size:14px}.perm p{font-size:12px;color:var(--muted);margin:5px 0 0;line-height:1.5}
   .perm .pf{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
@@ -1174,17 +1178,23 @@
   /* compact destination grid — 12 places, so cards stay small */
   .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
   @media(min-width:520px){.dgrid{grid-template-columns:repeat(3,1fr)}}
-  .dcell{position:relative;aspect-ratio:1/1.08;border-radius:16px;overflow:hidden;cursor:pointer;
+  .dcell{position:relative;aspect-ratio:1/1.18;border-radius:18px;overflow:hidden;cursor:pointer;
     background-size:cover;background-position:center;display:flex;align-items:flex-end;
-    border:1px solid var(--stroke);transition:transform .14s}
+    border:1px solid var(--stroke);transition:transform .14s,box-shadow .2s;box-shadow:0 10px 26px -18px rgba(0,0,0,.7)}
   .dcell:active{transform:scale(.96)}
-  .dcell::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 42%,rgba(4,10,20,.85) 100%)}
-  .dcell-b{position:relative;z-index:1;padding:10px;width:100%;min-width:0}
-  .dcell-b b{display:block;font-size:13px;color:#fff;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .dcell-b small{font-size:10px;color:rgba(255,255,255,.75)}
-  .dcell-n{position:absolute;top:8px;right:8px;z-index:1;min-width:22px;height:22px;padding:0 6px;border-radius:999px;
-    background:rgba(4,10,20,.6);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.2);
-    color:#fff;font-size:10.5px;font-weight:700;display:grid;place-items:center}
+  .dcell::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 30%,rgba(4,10,20,.55) 62%,rgba(4,10,20,.92) 100%)}
+  .dcell-b{position:relative;z-index:1;padding:11px 12px 12px;width:100%;min-width:0}
+  .dcell-b b{display:block;font-size:14.5px;font-weight:700;color:#fff;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:0 1px 8px rgba(0,0,0,.6)}
+  .dcell-b small{display:flex;align-items:center;gap:3px;font-size:10.5px;color:rgba(255,255,255,.82);margin-top:2px}
+  .dcell-b small .msr{font-size:12px}
+  .dcell-season{display:inline-flex;align-items:center;gap:4px;margin-top:7px;font-size:9.5px;font-weight:600;
+    color:#fff;background:rgba(255,255,255,.16);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.16);
+    padding:3px 8px;border-radius:999px;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  .dcell-season .msr{font-size:11px;color:#ffd66b}
+  .dcell-n{position:absolute;top:9px;right:9px;z-index:1;height:24px;padding:0 9px 0 6px;border-radius:999px;gap:2px;
+    background:rgba(47,107,255,.9);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.25);
+    color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center}
+  .dcell-n .msr{font-size:13px}
   .chiprow{display:flex;flex-wrap:wrap;gap:8px}
   .chiprow span{font-size:11.5px;font-weight:600;color:var(--accent2);background:rgba(47,107,255,.12);
     border:1px solid rgba(47,107,255,.2);padding:7px 11px;border-radius:999px}
@@ -1194,18 +1204,24 @@
   .tiplist div{display:flex;gap:9px;font-size:12.5px;color:var(--muted);line-height:1.5}
   .tiplist .msr{font-size:15px;color:var(--accent2);flex:none;margin-top:1px}
   /* activity row inside a destination */
-  .arow{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--stroke);
-    border-radius:16px;padding:10px;margin-bottom:10px;cursor:pointer}
-  .arow .aph{width:74px;height:74px;flex:none;border-radius:12px;background-size:cover;background-position:center}
-  .arow .abd{flex:1;min-width:0}
-  .arow .abd h4{margin:0 0 3px;font-size:13.5px;font-weight:600;line-height:1.3}
-  .arow .abd small{display:block;font-size:11px;color:var(--muted);margin-bottom:5px}
+  .arow{display:flex;gap:12px;align-items:stretch;background:var(--card);border:1px solid var(--stroke);
+    border-radius:16px;padding:10px;margin-bottom:10px;cursor:pointer;transition:transform .12s,border-color .15s}
+  .arow:active{transform:scale(.99)}
+  .arow:hover{border-color:var(--stroke2)}
+  .arow .aph{position:relative;width:86px;align-self:stretch;min-height:86px;flex:none;border-radius:12px;background-size:cover;background-position:center;overflow:hidden}
+  .arow .aph-cat{position:absolute;left:5px;bottom:5px;font-size:8.5px;font-weight:700;letter-spacing:.02em;color:#fff;
+    background:rgba(4,10,20,.6);backdrop-filter:blur(4px);padding:2px 7px;border-radius:999px}
+  .arow .abd{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+  .arow .abd h4{margin:0;font-size:14px;font-weight:700;line-height:1.25}
   .arow .atags{display:flex;flex-wrap:wrap;gap:5px}
-  .arow .atags i{font-style:normal;font-size:10px;font-weight:600;color:var(--muted);
+  .arow .atags i{font-style:normal;display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;color:var(--muted);
     background:var(--card2);border:1px solid var(--stroke);padding:3px 7px;border-radius:7px}
-  .arow .apr{flex:none;text-align:right}
-  .arow .apr b{display:block;font-size:14px}
-  .arow .apr small{font-size:9.5px;color:var(--muted2)}
+  .arow .apr-in{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto}
+  .arow .apr-p small{font-size:9.5px;color:var(--muted2)}
+  .arow .apr-p b{font-size:15px;color:var(--text);margin:0 2px}
+  .arow .abook{flex:none;display:inline-flex;align-items:center;gap:3px;font-size:11.5px;font-weight:700;color:#fff;
+    background:var(--accent);padding:6px 12px;border-radius:999px}
+  .arow .abook svg{transform:scaleX(-1)}
 
   /* ---- cart / build your adventure ---- */
   .cart-fab{display:none;place-items:center}
@@ -3402,7 +3418,7 @@
 
     <div class="cta">
       <div class="ctarow"><div><small id="actPriceSub"></small><b id="actTotal">₹0</b></div>
-        <button class="btn" id="actAdd" onclick="addActToCart()" style="width:auto;padding:0 22px">Add to my adventure</button></div>
+        <button class="btn" id="actAdd" onclick="bookActNow()" style="width:auto;padding:0 24px"><span class="msr" style="font-size:18px;vertical-align:-3px;margin-right:5px">bolt</span>Book now</button></div>
     </div>
   </section>
 
