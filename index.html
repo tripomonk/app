@@ -174,17 +174,40 @@
   .gitem .chk{width:22px;height:22px;border-radius:7px;border:2px solid var(--stroke2);display:grid;place-items:center;color:transparent;flex:none}
   .gitem.sel .chk{background:var(--accent);border-color:var(--accent);color:#fff}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .atile{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:0 15px 15px;overflow:hidden}
-  .atile .ai-banner{height:96px;margin:0 -15px 12px;display:grid;place-items:center}
-  .atile .ai-banner .msr{font-size:46px;color:rgba(255,255,255,.95)}
-  .atile .ai{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:rgba(47,107,255,.16);color:var(--accent2);margin-bottom:10px}
-  .atile b{font-size:14px;display:block}
-  .atile small{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:3px;margin-top:2px}
+  .atile{background:var(--card);border:1px solid var(--stroke);border-radius:18px;overflow:hidden;box-shadow:0 10px 24px -18px rgba(0,0,0,.6)}
+  .atile .ai-banner{height:100px;display:grid;place-items:center;position:relative;overflow:hidden}
+  .atile .ai-banner::after{content:'';position:absolute;inset:0;background:radial-gradient(120% 100% at 50% 15%,rgba(255,255,255,.22),transparent 55%)}
+  .atile .ai-ic{position:relative;z-index:1;width:58px;height:58px;border-radius:50%;display:grid;place-items:center;
+    background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.34);backdrop-filter:blur(3px);box-shadow:0 6px 16px -8px rgba(0,0,0,.5)}
+  .atile .ai-ic .msr{font-size:30px;color:#fff}
+  .atile .ai-bd{padding:13px 15px 15px}
+  .atile b{font-size:15px;font-weight:700;display:block;line-height:1.25}
+  .atile small{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:3px;margin-top:3px}
   .atile small .msr{font-size:12px;color:var(--accent2)}
-  .atile .ap{margin-top:12px;display:flex;justify-content:space-between;align-items:center}
-  .atile .ap-p b{font-size:15px;font-weight:700}
+  .atile .ap{margin-top:13px;display:flex;justify-content:space-between;align-items:center}
+  .atile .ap-p b{font-size:16px;font-weight:700}
   .atile .ap-p i{font-style:normal;font-size:9.5px;color:var(--muted2);margin-left:2px}
-  .atile .bk{background:var(--accent);color:#fff;border:0;font-size:11.5px;font-weight:700;padding:7px 15px;border-radius:999px;cursor:pointer}
+  .atile .bk{display:inline-flex;align-items:center;gap:3px;background:var(--accent);color:#fff;border:0;font-size:11.5px;font-weight:700;padding:8px 15px;border-radius:999px;cursor:pointer}
+  .atile .bk .msr{font-size:14px}
+  /* photo activity cards — 2 per row, reference-style */
+  .acard{position:relative;aspect-ratio:1/1.34;border-radius:20px;overflow:hidden;cursor:pointer;
+    background-size:cover;background-position:center;background-color:var(--card2);
+    box-shadow:0 14px 30px -18px rgba(0,0,0,.75);transition:transform .14s}
+  .acard:active{transform:scale(.97)}
+  .acard::after{content:'';position:absolute;inset:0;
+    background:linear-gradient(180deg,rgba(4,10,20,.18) 0%,rgba(4,10,20,0) 34%,rgba(4,10,20,.55) 68%,rgba(4,10,20,.92) 100%)}
+  .acard-go{position:absolute;top:10px;right:10px;z-index:2;width:32px;height:32px;border-radius:50%;
+    background:rgba(255,255,255,.92);color:#0a1420;display:grid;place-items:center;box-shadow:0 4px 12px -4px rgba(0,0,0,.5)}
+  .acard-go .msr{font-size:18px}
+  .acard-b{position:absolute;left:0;right:0;bottom:0;z-index:1;padding:12px 13px 13px}
+  .acard-b b{display:block;color:#fff;font-size:14.5px;font-weight:700;line-height:1.18;text-shadow:0 1px 8px rgba(0,0,0,.55)}
+  .acard-b small{display:flex;align-items:center;gap:3px;color:rgba(255,255,255,.85);font-size:10.5px;margin-top:4px;
+    overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  .acard-b small .msr{font-size:12px;flex:none}
+  .acard-ft{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px}
+  .acard-p{color:#fff;font-weight:700;font-size:14.5px;white-space:nowrap}
+  .acard-p i{font-style:normal;font-size:9px;color:rgba(255,255,255,.72);margin-left:1px}
+  .acard-bk{flex:none;font-size:11px;font-weight:700;color:#fff;background:var(--accent);padding:6px 13px;border-radius:999px}
   .perm{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:15px;margin-bottom:11px}
   .perm b{font-size:14px}.perm p{font-size:12px;color:var(--muted);margin:5px 0 0;line-height:1.5}
   .perm .pf{display:flex;justify-content:space-between;align-items:center;margin-top:12px}

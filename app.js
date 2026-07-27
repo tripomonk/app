@@ -5466,7 +5466,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='336';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='338';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -5952,25 +5952,45 @@ function recalcAct(){
   const btn=document.getElementById('actAdd');
   if(btn)btn.disabled=false;
 }
-/* Direct booking for an adventure activity — no "add to adventure" cart step.
-   Confirms date/slot/party, then opens a booking request with all the details so the
-   operator can lock the slot and take payment. */
-function bookActNow(){
+/* Direct online booking for an adventure activity via Razorpay — no cart, no WhatsApp.
+   Confirms date/slot/party, then takes payment (priced server-side by activity ID). */
+async function bookActNow(){
   const a=actById(curAct);if(!a)return;
   recalcAct();
   if(!actSel.date){note('Please choose a date for your activity.','Pick a date');return;}
   if(!actSel.slot){note('Please choose a time slot.','Pick a slot');return;}
-  if(actPax()<1){note('Add at least one participant.','Who\'s going?');return;}
-  const d=destById(a.dest);
-  const who=actSel.adults+' adult'+(actSel.adults>1?'s':'')+(actSel.children?' + '+actSel.children+' child'+(actSel.children>1?'ren':''):'');
-  const lines=[
-    'Activity: '+a.n+(d?' — '+d.n:''),
-    'Date: '+actSel.date+'  ·  Slot: '+actSel.slot,
-    'People: '+who,
-    'Experience: '+actSel.exp,
-    'Approx total: '+INR(actSubtotal())+' ('+INR(a.price)+'/person)'
-  ];
-  wa('Hi Tripomonk, I want to BOOK this activity:\n'+lines.join('\n')+'\n\nPlease confirm availability and share the payment link.');
+  const pax=actPax();
+  if(pax<1){note('Add at least one participant.','Who\'s going?');return;}
+  if(!isLoggedIn()){note('Please sign in to book this activity.','Sign in required').then(()=>{_loginReturn='act';go('login');});return;}
+  if(!window.Razorpay){note('Payment gateway is still loading — please wait a few seconds and tap Book again.','Please wait');return;}
+  if(!sbOn){note('Payment service not configured. Please contact Tripomonk.','Payment error');return;}
+  const leadName=getSavedName()||(getUserEmail()?getUserEmail().split('@')[0]:'Guest');
+  const when=actSel.date+' · '+actSel.slot;
+  const bk={kind:'activity',act_id:a.id,activity:a.n,trek:a.n,pax,date:when,name:leadName,email:getUserEmail()||'',phone:getSavedMobile()||''};
+  const btn=document.getElementById('actAdd');
+  if(btn){btn.disabled=true;btn.textContent='Starting payment…';}
+  const restore=()=>{if(btn)btn.disabled=false;renderAct();};
+  let order;
+  try{order=await rzpCall('create',{booking:bk});}
+  catch(e){restore();note('Could not reach payment service: '+e,'Payment error');return;}
+  if(!order||!order.order_id){restore();note('Could not start payment — '+((order&&order.error)?order.error:'no order returned'),'Payment error');return;}
+  const rzp=new window.Razorpay({
+    key:order.key_id, order_id:order.order_id, amount:order.amount, currency:order.currency||'INR',
+    name:'Tripomonk', description:a.n+' — Adventure Activity', image:'icons/icon-192.png',
+    prefill:{name:leadName, email:getUserEmail()||'', contact:getSavedMobile()||''}, notes:{activity:a.n,date:when}, theme:{color:'#2f6bff'},
+    handler:async function(response){
+      let res;
+      try{res=await rzpCall('verify',{razorpay_order_id:response.razorpay_order_id,razorpay_payment_id:response.razorpay_payment_id,razorpay_signature:response.razorpay_signature,booking:bk});}catch(e){res=null;}
+      if(!res||!res.ok){note('Payment received but we could not verify it instantly. Our team will confirm shortly — payment ID: '+(response.razorpay_payment_id||'—'),'Verification pending');return;}
+      saveUserName(leadName);
+      const sbk=(res&&res.booking)||{};
+      const b={id:response.razorpay_payment_id,name:leadName,trek:sbk.trek||a.n+' (Activity)',img:a.img||'',date:sbk.date||when,pax:sbk.pax||pax,total:sbk.total||actSubtotal(),paid:sbk.paid||actSubtotal(),ts:Date.now(),status:'Confirmed',checkedIn:false,paymentId:response.razorpay_payment_id};
+      const all=getBookings();all.unshift(b);saveBookings(all);
+      note('Payment successful! '+a.n+' is booked for '+when+'.','Booked ✓').then(()=>go('bookings'));
+    },
+    modal:{ondismiss:function(){restore();note('Payment cancelled — your activity is not yet booked.','Cancelled');}}
+  });
+  rzp.open();restore();
 }
 
 /* ============================================================
@@ -6374,7 +6394,23 @@ function renderPermits(q){const lq=(q||'').toLowerCase().trim();
   ).join(''):'<div class="empty"><p>No permits match your search.</p></div>';
   hydrate(document.getElementById('permits'));}
 const ACT_GRAD=['linear-gradient(135deg,#2f6bff,#0a3aa0)','linear-gradient(135deg,#1f9e6b,#0c6b48)','linear-gradient(135deg,#ff7a59,#c43b1b)','linear-gradient(135deg,#5a8cff,#2f4fd0)','linear-gradient(135deg,#e0a200,#b06b00)','linear-gradient(135deg,#16b3c9,#0a6b88)'];
-function renderActivities(){const el=document.getElementById('actList');el.className='';el.innerHTML=activitiesData.map((a,i)=>`<div class="atile"><div class="ai-banner" style="background:${ACT_GRAD[i%ACT_GRAD.length]}"><span class="msr">${IMAP[a[0]]||'sports'}</span></div><b>${esc(a[1])}</b><small><span class="msr">place</span>${esc(a[2])}</small><div class="ap"><span class="ap-p"><b>${esc(a[3])}</b><i>/person</i></span><button class="bk" onclick="bookActivity('${a[1].replace(/'/g,'')}','${a[3]}')">Book</button></div></div>`).join('');hydrate(document.getElementById('activities'));}
+/* photo per activity, mapped from its icon to a category image */
+const ACT_ICON_CAT={raft:'Water',para:'Air',bungee:'Air',ski:'Snow',camp:'Camp',kayak:'Water'};
+function renderActivities(){
+  const el=document.getElementById('actList');if(!el)return;
+  el.className='grid2';   /* 2 cards per row */
+  el.innerHTML=activitiesData.map((a)=>{
+    const img=(CAT_IMG[ACT_ICON_CAT[a[0]]||'Trek']||CAT_IMG.Trek)+Q;
+    const nm=a[1].replace(/'/g,'');
+    return `<div class="acard" onclick="bookActivity('${nm}','${a[3]}')" style="background-image:url('${img}')">`
+      +`<span class="acard-go"><span class="msr">arrow_outward</span></span>`
+      +`<div class="acard-b"><b>${esc(a[1])}</b>`
+      +`<small><span class="msr">place</span>${esc(a[2])}</small>`
+      +`<div class="acard-ft"><span class="acard-p">${esc(a[3])}<i>/person</i></span><span class="acard-bk">Book</span></div>`
+      +`</div></div>`;
+  }).join('');
+  hydrate(document.getElementById('activities'));
+}
 async function bookActivity(name,priceStr){
   const amount=parseInt(String(priceStr).replace(/[^\d]/g,''))||0;
   if(amount<1){note('This activity is not bookable online yet — please contact us.','Unavailable');return;}
