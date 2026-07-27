@@ -2413,6 +2413,36 @@ function prefillTravellers(){
 const DEP_CITIES=['Delhi','Rishikesh','Dehradun'];
 const TREK_DEP={'Kedarkantha':'Dehradun','Har Ki Dun':'Dehradun','Brahmatal':'Dehradun','Roopkund':'Dehradun','Nag Tibba':'Dehradun','Valley of Flowers':'Rishikesh','Hampta Pass':'Delhi'};
 function depCity(t){return (t&&(t.dep||TREK_DEP[t.n]))||'Dehradun';}
+/* Region-aware pickup / assembly city for the booking flow. The gateway city where
+   trekkers gather before the road transfer to the base town — NOT the North-only
+   Dehradun/Rishikesh chain, which was wrong for Sikkim, the Northeast and the South. */
+const REGION_PICKUP={
+  'Uttarakhand':{city:'Dehradun',alt:['Rishikesh','Haridwar','Delhi']},
+  'Himachal':{city:'Manali',alt:['Chandigarh','Delhi']},
+  'Ladakh':{city:'Leh',alt:[]},
+  'Kashmir':{city:'Srinagar',alt:[]},
+  'Sikkim':{city:'Siliguri / NJP',alt:['Bagdogra','Gangtok']},
+  'Arunachal':{city:'Guwahati',alt:['Tezpur']},
+  'Meghalaya':{city:'Guwahati',alt:['Shillong']},
+  'Nagaland':{city:'Dimapur',alt:['Kohima']},
+  'West Bengal':{city:'Siliguri / NJP',alt:['Bagdogra']},
+  'Maharashtra':{city:'Pune',alt:['Mumbai']},
+  'Karnataka':{city:'Bengaluru',alt:['Mangaluru']},
+  'Tamil Nadu':{city:'Coimbatore',alt:['Ooty']}
+};
+/* within-region pickup exceptions (a trek far from the region's main gateway) */
+const TREK_PICKUP={
+  'Roopkund':'Kathgodam','Brahmatal':'Kathgodam','Pindari Glacier':'Kathgodam',
+  'Triund':'Dharamshala','Indrahar Pass':'Dharamshala','Kareri Lake':'Dharamshala','Bara Bhangal':'Dharamshala','Kugti Pass':'Dharamshala',
+  'Yulla Kanda':'Shimla','Parang La':'Manali'
+};
+function pickupInfo(t){
+  const name=t&&t.n;
+  const r=REGION_PICKUP[t&&t.region]||{city:(t&&t.region)||'—',alt:[]};
+  const city=(t&&t.dep)||TREK_PICKUP[name]||TREK_DEP[name]||r.city;
+  const alt=(r.alt||[]).filter(c=>c!==city);
+  return {city,alt};
+}
 /* standard cancellation policy */
 const CANCELLATION=[
   'More than 30 days before departure — full refund (less payment-gateway charges).',
@@ -2423,7 +2453,7 @@ const CANCELLATION=[
   'Refunds are processed to the original payment method within 7–10 working days.'
 ];
 function reviewDetailsHTML(t){
-  const city=depCity(t);
+  const pk=pickupInfo(t);const city=pk.city;
   const itin=(ITIN[t.n]||[]).slice(0,3);
   return `
   <div class="sec" style="margin-top:18px"><h2 style="font-size:15px">Trip summary</h2></div>
@@ -2431,8 +2461,8 @@ function reviewDetailsHTML(t){
     ${itin.length?itin.map((d,i)=>`<div class="rv-it"><b>Day ${i+1}:</b> ${esc(d[0])}</div>`).join('')+(ITIN[t.n].length>3?`<div class="rv-more" onclick="go('itinerary')">View full itinerary →</div>`:''):'<div class="rv-it">Detailed day-wise plan shared on confirmation.</div>'}
   </div>
   <div class="rv-block"><div class="rv-h">${ic('pin',16)} Pickup &amp; reporting</div>
-    <div class="rv-it"><b>Pickup city:</b> ${city} (also boardable from ${DEP_CITIES.filter(c=>c!==city).join(' / ')} en route)</div>
-    <div class="rv-it"><b>Reporting:</b> by 6:30 AM on Day 1 at the ${city} pickup point (exact spot shared after booking)</div>
+    <div class="rv-it"><b>Pickup city:</b> ${esc(city)}${pk.alt.length?' (also boardable from '+pk.alt.map(esc).join(' / ')+' en route)':''}</div>
+    <div class="rv-it"><b>Reporting:</b> by 6:30 AM on Day 1 at the ${esc(city)} pickup point (exact spot shared after booking)</div>
   </div>
   <div class="rv-block"><div class="rv-h">${ic('check',16)} Inclusions</div>
     <div class="rv-it">Accommodation, all meals on trek, certified trek leader &amp; guides, permits &amp; forest fees, safety equipment and first-aid.</div>
@@ -4634,17 +4664,188 @@ const COORDS={"Kedarkantha":[31.13,78.20],"Brahmatal":[30.10,79.62],"Valley of F
 const REGION_C={Himachal:[32.24,77.19],Uttarakhand:[30.73,79.07],Kashmir:[34.10,75.30],Ladakh:[34.20,77.60],Sikkim:[27.50,88.30]};
 let _map=null,_base=null,_uM=null,_acc=null,_last=null,navOn=false,navDist=0,navTrek=null;
 function coordsFor(t){return (t&&COORDS[t.n])||(t&&REGION_C[t.region])||[30.73,79.07];}
-/* base town + nearest rail/air per trek, for "Getting there" + directions */
-const BASE={
-  'Kedarkantha':{town:'Sankri',rail:'Dehradun (~200 km)',air:'Dehradun'},
-  'Har Ki Dun':{town:'Sankri',rail:'Dehradun (~200 km)',air:'Dehradun'},
-  'Brahmatal':{town:'Lohajung',rail:'Kathgodam (~215 km)',air:'Dehradun'},
-  'Roopkund':{town:'Lohajung',rail:'Kathgodam (~215 km)',air:'Dehradun'},
-  'Valley of Flowers':{town:'Govindghat',rail:'Rishikesh (~275 km)',air:'Dehradun'},
-  'Nag Tibba':{town:'Pantwari',rail:'Dehradun (~90 km)',air:'Dehradun'},
-  'Hampta Pass':{town:'Manali',rail:'Chandigarh (~310 km)',air:'Bhuntar / Kullu'}
+/* base town + nearest rail/air per trek, for "Getting there" + directions.
+   Rail/air default to the region's usual gateway (REGION_GATEWAY) and are only
+   overridden per-trek when the nearest railhead/airport actually differs. Every trek
+   gets a real roadhead "town" — the point you start from after the road journey. */
+const REGION_GATEWAY={
+  'Uttarakhand':{rail:'Dehradun',air:'Dehradun (Jolly Grant)'},
+  'Himachal':{rail:'Chandigarh',air:'Bhuntar / Kullu'},
+  'Ladakh':{rail:'Jammu Tawi (~700 km)',air:'Leh (Kushok Bakula Rimpochee)'},
+  'Kashmir':{rail:'Jammu Tawi',air:'Srinagar'},
+  'Sikkim':{rail:'New Jalpaiguri (NJP)',air:'Bagdogra / Pakyong'},
+  'Arunachal':{rail:'Naharlagun',air:'Guwahati'},
+  'Meghalaya':{rail:'Guwahati',air:'Shillong (Umroi) / Guwahati'},
+  'Nagaland':{rail:'Dimapur',air:'Dimapur'},
+  'West Bengal':{rail:'New Jalpaiguri (NJP)',air:'Bagdogra'},
+  'Maharashtra':{rail:'Pune',air:'Pune / Mumbai'},
+  'Karnataka':{rail:'Mangaluru',air:'Mangaluru / Bengaluru'},
+  'Tamil Nadu':{rail:'Coimbatore',air:'Coimbatore'}
 };
-function baseInfo(t){return BASE[t.n]||{town:t.region,rail:'Nearest major railhead',air:'Nearest airport'};}
+const BASE={
+  /* ---- Uttarakhand (Garhwal rail = Dehradun/Rishikesh/Haridwar; Kumaon rail = Kathgodam, air = Pantnagar) ---- */
+  'Kedarkantha':{town:'Sankri',rail:'Dehradun (~200 km)'},
+  'Har Ki Dun':{town:'Sankri / Taluka',rail:'Dehradun (~210 km)'},
+  'Bali Pass':{town:'Sankri',rail:'Dehradun (~200 km)'},
+  'Phulara Ridge':{town:'Sankri',rail:'Dehradun (~200 km)'},
+  'Borasu Pass':{town:'Sankri',rail:'Dehradun (~200 km)'},
+  'Rupin Pass':{town:'Dhaula (start) → Sankri (end)',rail:'Dehradun (~200 km)'},
+  'Nag Tibba':{town:'Pantwari',rail:'Dehradun (~90 km)'},
+  'Dayara Bugyal':{town:'Raithal / Barsu',rail:'Dehradun (~180 km)'},
+  'Dodital Darwa Pass':{town:'Sangam Chatti (Uttarkashi)',rail:'Dehradun (~150 km)'},
+  'Gaumukh Tapovan':{town:'Gangotri',rail:'Dehradun (~240 km)'},
+  'Kedartal':{town:'Gangotri',rail:'Dehradun (~240 km)'},
+  'Valley of Flowers':{town:'Govindghat / Pulna',rail:'Rishikesh (~275 km)'},
+  'Hemkund Sahib':{town:'Govindghat',rail:'Rishikesh (~275 km)'},
+  'Satopanth Lake':{town:'Mana (Badrinath)',rail:'Rishikesh (~295 km)'},
+  'Kuari Pass':{town:'Joshimath / Auli',rail:'Rishikesh (~250 km)'},
+  'Pangarchulla Peak':{town:'Joshimath',rail:'Rishikesh (~250 km)'},
+  'Chopta Chandrashila':{town:'Chopta / Sari',rail:'Rishikesh (~200 km)'},
+  'Brahmatal':{town:'Lohajung',rail:'Kathgodam (~215 km)',air:'Pantnagar / Dehradun'},
+  'Roopkund':{town:'Lohajung',rail:'Kathgodam (~215 km)',air:'Pantnagar / Dehradun'},
+  'Pindari Glacier':{town:'Loharkhet / Song',rail:'Kathgodam (~180 km)',air:'Pantnagar'},
+  /* ---- Himachal ---- */
+  'Hampta Pass':{town:'Manali (Jobra roadhead)',rail:'Chandigarh (~310 km)',air:'Bhuntar / Kullu (~50 km)'},
+  'Bhrigu Lake':{town:'Gulaba (Manali)',air:'Bhuntar / Kullu'},
+  'Beas Kund':{town:'Solang (Manali)',air:'Bhuntar / Kullu'},
+  'Lamadugh':{town:'Manali',air:'Bhuntar / Kullu'},
+  'Patalsu Peak':{town:'Solang (Manali)',air:'Bhuntar / Kullu'},
+  'Friendship Peak':{town:'Solang (Manali)',air:'Bhuntar / Kullu'},
+  'Deo Tibba Base Camp':{town:'Jagatsukh (Manali)',air:'Bhuntar / Kullu'},
+  'Seven Lakes':{town:'Manali',air:'Bhuntar / Kullu'},
+  'Chandrakhani Pass':{town:'Naggar / Rumsu',air:'Bhuntar / Kullu'},
+  'Sar Pass':{town:'Kasol / Grahan',air:'Bhuntar / Kullu'},
+  'Kheerganga':{town:'Barsheni (Kasol)',air:'Bhuntar / Kullu'},
+  'Pin Parvati Pass':{town:'Barsheni (Kasol)',air:'Bhuntar / Kullu'},
+  'Triund':{town:'McLeodganj (Dharamshala)',rail:'Pathankot (~90 km)',air:'Gaggal / Dharamshala (~20 km)'},
+  'Indrahar Pass':{town:'McLeodganj (Dharamshala)',rail:'Pathankot (~90 km)',air:'Gaggal / Dharamshala'},
+  'Kareri Lake':{town:'Kareri village (Dharamshala)',rail:'Pathankot (~90 km)',air:'Gaggal / Dharamshala'},
+  'Bara Bhangal':{town:'Bir (Baijnath)',rail:'Pathankot',air:'Gaggal / Dharamshala'},
+  'Kugti Pass':{town:'Kugti village (Bharmour, Chamba)',rail:'Pathankot',air:'Gaggal / Dharamshala'},
+  'Miyar Valley':{town:'Udaipur (Lahaul)',air:'Bhuntar / Kullu'},
+  'Yulla Kanda':{town:'Sarahan → Yulla (Kinnaur)',rail:'Shimla (~230 km)',air:'Shimla / Chandigarh'},
+  /* ---- Ladakh (fly to Leh; no nearby railhead) ---- */
+  'Markha Valley':{town:'Chilling / Skiu'},
+  'Chadar Trek':{town:'Chilling / Tilat Sumdo'},
+  'Chadar':{town:'Chilling / Tilat Sumdo'},
+  'Sham Valley':{town:'Likir'},
+  'Stok Kangri Base Camp':{town:'Stok village'},
+  'Kang Yatse II':{town:'Chilling / Skiu'},
+  'Rumtse to Tso Moriri':{town:'Rumtse'},
+  'Lamayuru to Chilling':{town:'Lamayuru'},
+  'Nubra Valley':{town:'Diskit / Hunder'},
+  'Dzo Jongo':{town:'Chilling'},
+  'Stok La':{town:'Spituk / Stok'},
+  'Snow Leopard':{town:'Zingchen (Hemis NP)'},
+  'Parang La':{town:'Kibber (Spiti) → Korzok',air:'Leh / Bhuntar'},
+  /* ---- Kashmir (fly to Srinagar) ---- */
+  'Kashmir Great Lakes':{town:'Sonamarg (Shitkadi)'},
+  'Tarsar Marsar':{town:'Aru (Pahalgam)'},
+  'Nafran Valley':{town:'Aru (Pahalgam)'},
+  'Tulian Lake':{town:'Pahalgam'},
+  'Lidderwat':{town:'Aru (Pahalgam)'},
+  'Great Kolahoi Glacier':{town:'Aru (Pahalgam)'},
+  'Kousarnag Lake':{town:'Aharbal'},
+  'Sunset Peak':{town:'Pahalgam'},
+  'Gangbal Lake':{town:'Naranag'},
+  'Naranag Mahlish':{town:'Naranag'},
+  'Harmukh Peak Base Camp':{town:'Naranag'},
+  'Gurez Valley':{town:'Dawar (Bandipora)'},
+  /* ---- Sikkim (rail NJP, air Bagdogra/Pakyong) ---- */
+  'Goecha La':{town:'Yuksom'},
+  'Goechala':{town:'Yuksom'},
+  'Dzongri':{town:'Yuksom'},
+  'Kanchenjunga Base Camp':{town:'Yuksom'},
+  'Green Lake':{town:'Lachen'},
+  'Sandakphu':{town:'Manebhanjan'},
+  'Singalila Ridge':{town:'Manebhanjan'},
+  'Phoktey Dara':{town:'Uttarey (West Sikkim)'},
+  'Kasturi Orar':{town:'Uttarey (West Sikkim)'},
+  'Barsey Rhododendron':{town:'Hilley / Okhrey'},
+  'Varsey':{town:'Hilley / Okhrey'},
+  'Tendong Hill':{town:'Damthang (Namchi)'},
+  'Maenam Hill':{town:'Ravangla'},
+  /* ---- Arunachal ---- */
+  'Tawang':{town:'Tawang town',rail:'Tezpur / Rangapara',air:'Tezpur / Guwahati'},
+  'Bum La':{town:'Tawang',rail:'Tezpur / Rangapara',air:'Tezpur / Guwahati'},
+  'Bailey Trail':{town:'Tawang / Jang',rail:'Tezpur / Rangapara',air:'Tezpur / Guwahati'},
+  'Gorichen Base Camp':{town:'Jang (Tawang)',rail:'Tezpur / Rangapara',air:'Tezpur / Guwahati'},
+  'Mechuka':{town:'Aalo → Mechuka',rail:'Silapathar',air:'Dibrugarh / Guwahati'},
+  'Talley Valley':{town:'Ziro',rail:'Naharlagun',air:'Lilabari / Guwahati'},
+  'Ziro Valley':{town:'Ziro',rail:'Naharlagun',air:'Lilabari / Guwahati'},
+  'Namdapha Rainforest':{town:'Miao / Deban',rail:'Tinsukia / Ledo',air:'Dibrugarh'},
+  'Pangsau Pass':{town:'Nampong (Jairampur)',rail:'Tinsukia / Ledo',air:'Dibrugarh'},
+  'Dong Valley':{town:'Walong / Dong',rail:'Tinsukia',air:'Dibrugarh'},
+  /* ---- Meghalaya (rail Guwahati, air Shillong/Guwahati) ---- */
+  'David Scott Trail':{town:'Mawphlang → Ladmawphlang'},
+  'Living Root Bridge':{town:'Tyrna (Cherrapunji)'},
+  'Double Decker Root Bridge':{town:'Tyrna → Nongriat'},
+  'Nongriat':{town:'Tyrna (Cherrapunji)'},
+  'Mawryngkhang Bamboo':{town:'Wahkhen'},
+  'Laitlum Canyon':{town:'Smit (Shillong)'},
+  'Sohra Waterfall':{town:'Sohra / Cherrapunji'},
+  'Mawphlang Sacred Forest':{town:'Mawphlang'},
+  'Shnongpdeng Riverside':{town:'Shnongpdeng (Dawki)'},
+  'Balpakram National Park':{town:'Baghmara (South Garo Hills)',air:'Guwahati'},
+  /* ---- Nagaland (rail + air Dimapur) ---- */
+  'Dzukou Valley':{town:'Viswema / Zakhama (Kohima)'},
+  'Japfu Peak':{town:'Kigwema (Kohima)'},
+  'Puliebadze':{town:'Kohima'},
+  'Mount Saramati':{town:'Thanamir village (Kiphire)'},
+  'Benreu':{town:'Benreu village (Peren)'},
+  'Intanki National Park':{town:'Peren'},
+  /* ---- West Bengal (Darjeeling hills — rail NJP, air Bagdogra) ---- */
+  'Phalut':{town:'Manebhanjan / Sepi'},
+  'Tonglu':{town:'Manebhanjan'},
+  'Senchal Wildlife':{town:'Darjeeling'},
+  'Tiger Hill Sunrise':{town:'Darjeeling'},
+  'Neora Valley':{town:'Lava (Kalimpong)'},
+  'Lava Lolegaon':{town:'Lava'},
+  /* ---- Maharashtra (Sahyadris) ---- */
+  'Harishchandragad':{town:'Khireshwar / Pachnai',rail:'Kalyan / Igatpuri',air:'Mumbai / Pune'},
+  'Kalsubai Peak':{town:'Bari village',rail:'Kasara / Igatpuri',air:'Mumbai / Pune'},
+  'Ratangad':{town:'Ratanwadi',rail:'Kasara / Igatpuri',air:'Mumbai / Pune'},
+  'Alang Madan Kulang':{town:'Ambewadi',rail:'Kasara / Igatpuri',air:'Mumbai / Pune'},
+  'Rajmachi':{town:'Udhewadi (Lonavala)',rail:'Lonavala'},
+  'Lohagad Fort':{town:'Malavli',rail:'Malavli / Lonavala'},
+  'Visapur Fort':{town:'Malavli',rail:'Malavli / Lonavala'},
+  'Torna Fort':{town:'Velhe',rail:'Pune'},
+  'Rajgad Fort':{town:'Gunjavane (Velhe)',rail:'Pune'},
+  'Andharban Forest':{town:'Pimpri (Tamhini)',rail:'Pune'},
+  'Kalavantin Durg':{town:'Prabalmachi (Panvel)',rail:'Panvel',air:'Mumbai'},
+  'Peb Fort':{town:'Neral',rail:'Neral',air:'Mumbai'},
+  /* ---- Karnataka (Western Ghats) ---- */
+  'Kumara Parvatha':{town:'Kukke Subramanya',rail:'Subrahmanya Road'},
+  'Kudremukh':{town:'Kalasa / Samse'},
+  'Ettina Bhuja':{town:'Kalasa'},
+  'Ballalarayana Durga':{town:'Sunkasale (Kalasa)'},
+  'Narasimha Parvatha':{town:'Agumbe',rail:'Shivamogga / Udupi'},
+  'Kodachadri':{town:'Kollur / Nagara',rail:'Shivamogga / Kundapura'},
+  'Mullayanagiri':{town:'Chikkamagaluru',rail:'Kadur / Birur',air:'Mangaluru / Bengaluru'},
+  'Tadiandamol':{town:'Kakkabe (Coorg)',rail:'Mysuru',air:'Mangaluru / Mysuru'},
+  'Nishani Motte':{town:'Madikeri (Coorg)',rail:'Mysuru',air:'Mangaluru / Mysuru'},
+  'Gokarna Beach':{town:'Gokarna',rail:'Gokarna Road',air:'Goa (Dabolim) / Mangaluru'},
+  /* ---- Tamil Nadu (Nilgiris / Western Ghats) ---- */
+  'Mukurthi National Park':{town:'Ooty (Udhagamandalam)',rail:'Mettupalayam / Ooty'},
+  'Ooty Peak':{town:'Ooty (Doddabetta)',rail:'Mettupalayam / Ooty'},
+  'Kotagiri Longwood':{town:'Kotagiri',rail:'Mettupalayam'},
+  'Velliangiri Hills':{town:'Poondi (Coimbatore)',rail:'Coimbatore'},
+  'Perumal Peak':{town:'Kodaikanal',rail:'Kodai Road / Palani',air:'Madurai'},
+  'Thalaiyar Falls':{town:'Batlagundu (Kodaikanal)',rail:'Kodai Road',air:'Madurai'},
+  'Meghamalai':{town:'Chinnamanur (Theni)',rail:'Theni / Madurai',air:'Madurai'},
+  'Top Station':{town:'Kurangani / Munnar',rail:'Madurai',air:'Madurai'},
+  'Kolukkumalai':{town:'Suryanelli / Munnar',rail:'Madurai',air:'Madurai / Kochi'}
+};
+/* Merge the trek's roadhead with its region gateway; per-trek rail/air win when set. */
+function baseInfo(t){
+  const g=REGION_GATEWAY[t&&t.region]||{rail:'Nearest major railhead',air:'Nearest airport'};
+  const b=(t&&BASE[t.n])||{};
+  return {
+    town: b.town || (t&&(t.dep||(typeof TREK_DEP!=='undefined'&&TREK_DEP[t.n]))) || (t&&t.region) || '—',
+    rail: b.rail || g.rail,
+    air:  b.air  || g.air
+  };
+}
 function getDirections(){
   const t=cart.trek;if(!t)return;const b=baseInfo(t);const c=coordsFor(t);
   const dest=(b.town&&b.town!==t.region)?encodeURIComponent(b.town+', '+t.region+', India'):`${c[0]},${c[1]}`;
@@ -5265,7 +5466,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='333';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='335';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
