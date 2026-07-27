@@ -5466,7 +5466,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='338';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='339';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -6390,9 +6390,51 @@ function permitIcon(name){name=String(name||'').toLowerCase();
 function renderPermits(q){const lq=(q||'').toLowerCase().trim();
   const list=lq?permitTypes.filter(p=>(p[0]+' '+p[1]).toLowerCase().includes(lq)):permitTypes;
   document.getElementById('permitList').innerHTML=list.length?list.map(p=>
-    `<div class="pcard"><div class="p-ic">${ic(permitIcon(p[0]),22)}</div><div class="p-bd"><b>${esc(p[0])}</b><p>${esc(p[1])}</p><div class="p-ft"><span class="p-badge">${ic('clock',12)} ${esc(p[2])} · ${esc(p[3])}</span><button class="p-apply" onclick="wa('I need the ${jsq(p[0])} — please assist.')">Apply</button></div></div></div>`
+    `<div class="pcard"><div class="p-ic">${ic(permitIcon(p[0]),22)}</div><div class="p-bd"><b>${esc(p[0])}</b><p>${esc(p[1])}</p><div class="p-ft"><span class="p-badge">${ic('clock',12)} ${esc(p[2])} · ${esc(p[3])}</span><button class="p-apply" onclick="applyPermit('${jsq(p[0])}')">Apply</button></div></div></div>`
   ).join(''):'<div class="empty"><p>No permits match your search.</p></div>';
   hydrate(document.getElementById('permits'));}
+/* Apply for a permit -> collect details in a form, THEN send a complete request to
+   WhatsApp (instead of a bare "I need X" message). */
+let _pmPermit='';
+function applyPermit(permitName){
+  _pmPermit=permitName||'permit';
+  const g=id=>document.getElementById(id);
+  const m=g('permitModal');if(!m)return;
+  g('pmPermit').textContent=_pmPermit;
+  g('pmName').value=getSavedName()||'';
+  g('pmPhone').value=getSavedMobile()||'';
+  g('pmTrek').value=(cart.trek&&cart.trek.n)||'';
+  g('pmDates').value=cart.date||'';
+  g('pmPax').value=String(cart.pax||1);
+  g('pmNat').value=/foreign/i.test(_pmPermit)?'':'Indian';
+  m.classList.add('show');
+  const close=()=>{m.classList.remove('show');g('pmCancel').onclick=g('pmSend').onclick=m.onclick=null;};
+  g('pmCancel').onclick=close;
+  m.onclick=e=>{if(e.target===m)close();};
+  g('pmSend').onclick=()=>{
+    const name=(g('pmName').value||'').trim();
+    const phone=(g('pmPhone').value||'').replace(/\D/g,'');
+    const trek=(g('pmTrek').value||'').trim();
+    const dates=(g('pmDates').value||'').trim();
+    const pax=Math.max(1,parseInt(g('pmPax').value||'1',10)||1);
+    const nat=(g('pmNat').value||'').trim();
+    if(!name){note('Please enter your name.','Name needed');return;}
+    if(phone.length<10){note('Please enter a valid 10-digit WhatsApp number.','Number needed');return;}
+    if(!trek){note('Please enter the trek / place you need the permit for.','Trek needed');return;}
+    if(name)saveUserName(name);
+    const lines=[
+      'Permit: '+_pmPermit,
+      'Name: '+name,
+      'WhatsApp: '+phone,
+      'Trek / place: '+trek,
+      dates?('Dates: '+dates):'',
+      'People: '+pax,
+      nat?('Nationality: '+nat):''
+    ].filter(Boolean);
+    close();
+    wa('Hi Tripomonk, I want to apply for a permit:\n'+lines.join('\n')+'\n\nPlease guide me through the process and documents needed.');
+  };
+}
 const ACT_GRAD=['linear-gradient(135deg,#2f6bff,#0a3aa0)','linear-gradient(135deg,#1f9e6b,#0c6b48)','linear-gradient(135deg,#ff7a59,#c43b1b)','linear-gradient(135deg,#5a8cff,#2f4fd0)','linear-gradient(135deg,#e0a200,#b06b00)','linear-gradient(135deg,#16b3c9,#0a6b88)'];
 /* photo per activity, mapped from its icon to a category image */
 const ACT_ICON_CAT={raft:'Water',para:'Air',bungee:'Air',ski:'Snow',camp:'Camp',kayak:'Water'};

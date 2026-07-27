@@ -1131,6 +1131,17 @@
   .modal-card input{width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.24);border-radius:13px;padding:14px;color:#fff;font-size:15px;outline:none;margin:8px 0 18px}
   .modal-card input:focus{border-color:var(--accent);background:rgba(255,255,255,.12)}
   .modal-actions{display:flex;gap:10px}.modal-actions .btn{flex:1;padding:13px}
+  /* permit application form */
+  .pm-form{text-align:left;margin:2px 0 16px}
+  .pm-form label{display:block;font-size:11px;color:var(--muted);font-weight:600;margin:0 0 4px}
+  .pm-form input{width:100%;margin:0 0 12px;padding:11px 13px;font-size:14px;
+    background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.24);border-radius:12px;color:#fff;outline:none}
+  .pm-form input:focus{border-color:var(--accent);background:rgba(255,255,255,.12)}
+  .pm-row{display:flex;gap:10px}
+  .pm-row>div{flex:1;min-width:0}
+  .pm-row input{margin-bottom:0}
+  html.light .pm-form input{background:#f2f5fa;border-color:rgba(12,24,44,.14);color:var(--text)}
+  html.light .pm-form label{color:var(--muted)}
   .post-card{max-width:380px}
   .post-card textarea{width:100%;min-height:120px;resize:none;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.24);border-radius:14px;padding:14px;color:#fff;font-size:15px;font-family:inherit;line-height:1.5;outline:none;margin:6px 0 12px}
   .post-card textarea:focus{border-color:var(--accent);background:rgba(255,255,255,.12)}
@@ -3607,6 +3618,29 @@
       <p id="modalSub" style="display:none"></p>
       <input id="modalInput" autocomplete="off"/>
       <div class="modal-actions"><button class="btn ghost" id="modalCancel">Cancel</button><button class="btn" id="modalOk">OK</button></div>
+    </div>
+  </div>
+
+  <!-- PERMIT APPLICATION FORM -->
+  <div class="modal" id="permitModal">
+    <div class="modal-card">
+      <h3>Permit application</h3>
+      <p id="pmPermit" style="display:block;color:var(--accent2);font-weight:600;margin-bottom:14px"></p>
+      <div class="pm-form">
+        <label>Full name</label>
+        <input id="pmName" placeholder="Your name" autocomplete="name"/>
+        <label>WhatsApp number</label>
+        <input id="pmPhone" placeholder="10-digit mobile" inputmode="tel" autocomplete="tel"/>
+        <label>Trek / place</label>
+        <input id="pmTrek" placeholder="e.g. Kedarkantha"/>
+        <label>Trek dates</label>
+        <input id="pmDates" placeholder="e.g. 15–20 Aug"/>
+        <div class="pm-row">
+          <div><label>People</label><input id="pmPax" type="number" min="1" value="1" inputmode="numeric"/></div>
+          <div><label>Nationality</label><input id="pmNat" placeholder="Indian / other" autocomplete="off"/></div>
+        </div>
+      </div>
+      <div class="modal-actions"><button class="btn ghost" id="pmCancel">Cancel</button><button class="btn" id="pmSend"><span class="msr" style="font-size:17px;vertical-align:-3px;margin-right:4px">chat</span>Send request</button></div>
     </div>
   </div>
 
