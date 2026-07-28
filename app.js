@@ -2620,6 +2620,7 @@ async function confirmBooking(){
       const sbk=(res&&res.booking)||pricedBooking||bookingReq;
       const b={id:response.razorpay_payment_id,name:sbk.name||name,trek:sbk.trek||t.n,img:t.img,date:sbk.date||cart.date,pax:sbk.pax||cart.pax,total:sbk.total||total,paid:sbk.paid||advanceAmt,ts:Date.now(),status:'Confirmed',checkedIn:false,paymentId:response.razorpay_payment_id};
       const all=getBookings();all.unshift(b);saveBookings(all);cart.booking=b;
+      if(window.fbTrack)window.fbTrack('Purchase',{value:Number(b.total)||Number(b.paid)||0,currency:'INR',content_name:b.trek||'',content_type:'product'});
       document.getElementById('scName').textContent=t.n;
       showTicket(b);go('success');
     },
@@ -5481,7 +5482,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='345';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='347';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -6001,6 +6002,7 @@ async function bookActNow(){
       const sbk=(res&&res.booking)||{};
       const b={id:response.razorpay_payment_id,name:leadName,trek:sbk.trek||a.n+' (Activity)',img:a.img||'',date:sbk.date||when,pax:sbk.pax||pax,total:sbk.total||actSubtotal(),paid:sbk.paid||actSubtotal(),ts:Date.now(),status:'Confirmed',checkedIn:false,paymentId:response.razorpay_payment_id};
       const all=getBookings();all.unshift(b);saveBookings(all);
+      if(window.fbTrack)window.fbTrack('Purchase',{value:Number(b.total)||Number(b.paid)||0,currency:'INR',content_name:b.trek||'',content_type:'product'});
       note('Payment successful! '+a.n+' is booked for '+when+'.','Booked ✓').then(()=>go('bookings'));
     },
     modal:{ondismiss:function(){restore();note('Payment cancelled — your activity is not yet booked.','Cancelled');}}
@@ -6492,6 +6494,7 @@ async function bookActivity(name,priceStr){
       const sbk=(res&&res.booking)||{};
       const b={id:response.razorpay_payment_id,name:leadName,trek:sbk.trek||name+' (Activity)',img:'',date:sbk.date||'To be scheduled',pax:1,total:sbk.total||amount,paid:sbk.paid||amount,ts:Date.now(),status:'Confirmed',checkedIn:false,paymentId:response.razorpay_payment_id};
       const all=getBookings();all.unshift(b);saveBookings(all);
+      if(window.fbTrack)window.fbTrack('Purchase',{value:Number(b.total)||Number(b.paid)||0,currency:'INR',content_name:b.trek||'',content_type:'product'});
       note('Payment successful! '+name+' is booked. Our team will contact you to schedule the date.','Booked ✓').then(()=>go('bookings'));
     },
     modal:{ondismiss:function(){note('Payment cancelled — your activity is not yet booked.','Cancelled');}}
@@ -7243,7 +7246,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if((id==='admin'||id==='adminTrip')&&!isAdminUser()){note('Admin access is restricted to the account owner.','Restricted');return;}
   /* hide any live news banner when entering the login/signup flow */
   if(NO_BANNER_SCREENS.includes(id)){const b=document.getElementById('alertBanner');if(b)b.className='';}
-  if(id!==cur){trackScreenLeave();hist.push(cur);try{history.pushState({s:id},'');}catch(e){}}cur=id;if(el.dataset.tab)lastTab=el.dataset.tab;
+  if(id!==cur){trackScreenLeave();hist.push(cur);try{history.pushState({s:id},'');}catch(e){}if(window.fbTrack)window.fbTrack('PageView');}cur=id;if(el.dataset.tab)lastTab=el.dataset.tab;
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));el.classList.add('active');
   const nav=document.getElementById('nav');nav.classList.toggle('hide',el.hasAttribute('data-nonav'));
   if(el.dataset.tab)document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===el.dataset.tab));
@@ -7767,6 +7770,7 @@ async function submitHostApp(){
     return;
   }
   sfx('repost');
+  if(window.fbTrack)window.fbTrack('Lead',{content_name:'Host application'});
   /* await, then re-render — otherwise the status screen paints behind the modal
      and the applicant never sees that their application actually landed */
   await note('Application received. We usually review within 2–3 days and may message you on WhatsApp.','Submitted ✓');
@@ -8611,6 +8615,7 @@ async function htPay(){
       const sbk=(res&&res.booking)||{};
       const b={id:response.razorpay_payment_id,name,trek:sbk.trek||t.title,img:t.img||'',date:sbk.date||t.start_date||'As scheduled',pax:_htvPax,total:sbk.total||(t.price*_htvPax),paid:sbk.paid,ts:Date.now(),status:'Confirmed (advance paid)',checkedIn:false,paymentId:response.razorpay_payment_id};
       const all=getBookings();all.unshift(b);saveBookings(all);
+      if(window.fbTrack)window.fbTrack('Purchase',{value:Number(b.total)||Number(b.paid)||0,currency:'INR',content_name:b.trek||'',content_type:'product'});
       note('Advance paid! '+t.title+' is confirmed. Tripomonk will contact you with the rest.','Booked ✓').then(()=>go('bookings'));
     },
     modal:{ondismiss:function(){note('Payment cancelled — the trip is not booked yet.','Cancelled');}}

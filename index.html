@@ -71,6 +71,23 @@
  y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script",CLARITY_ID);
 })();
 </script>
+<!-- Meta (Facebook) Pixel. Paste your Pixel ID (Events Manager → Data Sources) into
+     META_PIXEL_ID below. Until then it stays dormant and does nothing. It fires a
+     PageView on load; the app fires PageView on every screen change + Purchase/Lead on
+     bookings via window.fbTrack(). -->
+<script>
+(function(){var META_PIXEL_ID="1255299368497790";
+ if(!META_PIXEL_ID||META_PIXEL_ID==="PASTE_YOUR_META_PIXEL_ID")return;
+ !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+ n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+ n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+ t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script',
+ 'https://connect.facebook.net/en_US/fbevents.js');
+ window.fbq('init',META_PIXEL_ID);window.fbq('track','PageView');
+})();
+/* safe wrapper the app calls for SPA pageviews + conversion events */
+window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,params||{});}catch(e){}};
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
