@@ -4020,19 +4020,34 @@ async function coverPickPhoto(input){
   if(!isLoggedIn()){note('Please sign in to set a cover.','Sign in required');return;}
   const sb=getSupaClient();const uid=sb?await authUid():null;
   if(!sb||!uid){note('Please sign in to set a cover.','Sign in required');return;}
+  const hideModal=()=>{const m=document.getElementById('modal');if(m)m.classList.remove('show');};
+  const netErr=m=>/failed to fetch|network|load failed/i.test(String(m||''));
   note('Updating your cover…','Just a moment');
   try{
     const small=await compressImage(file,{maxW:1280,quality:.8});
-    const path='covers/'+Date.now()+'_'+Math.random().toString(36).slice(2)+'.jpg';
-    const up=await sb.storage.from('community').upload(path,small,{cacheControl:'3600',upsert:false});
-    if(up.error)throw new Error(up.error.message);
+    /* store under the user's own folder so it satisfies a folder-scoped storage RLS
+       policy (auth.uid() as the 2nd path segment) as well as a permissive one */
+    const path='covers/'+uid+'/'+Date.now()+'.jpg';
+    const doUpload=()=>sb.storage.from('community').upload(path,small,{cacheControl:'3600',upsert:true})
+      .catch(e=>({error:{message:String((e&&e.message)||e)}}));
+    let up=await doUpload();
+    /* mobile networks drop mid-upload — one quiet retry on a bare network failure */
+    if(up.error&&netErr(up.error.message)){await new Promise(r=>setTimeout(r,900));up=await doUpload();}
+    if(up.error)throw new Error('storage upload — '+up.error.message);
     const url=sb.storage.from('community').getPublicUrl(path).data.publicUrl;
     try{localStorage.setItem('tmk_ucover',url);}catch(e){}
-    await sb.from('profiles').update({cover:url}).eq('id',uid);
-    document.getElementById('modal').classList.remove('show');
-    renderProfile();
-    note('Cover updated.','Saved ✓');
-  }catch(e){document.getElementById('modal').classList.remove('show');note('Could not update cover: '+e.message,'Error');}
+    const upd=await sb.from('profiles').update({cover:url}).eq('id',uid)
+      .catch(e=>({error:{message:String((e&&e.message)||e)}}));
+    hideModal();renderProfile();
+    if(upd&&upd.error)note('Cover uploaded, but saving it to your profile failed: '+upd.error.message,'Almost there');
+    else note('Cover updated.','Saved ✓');
+  }catch(e){
+    hideModal();
+    const msg=String((e&&e.message)||e);
+    note('Could not update cover: '+(netErr(msg)
+      ? 'couldn’t reach storage — check your connection and try again. If it keeps failing, the community storage bucket / upload policy needs setup (run the SQL below).'
+      : msg),'Error');
+  }
 }
 /* one adaptive Hosting hub for the profile — apply / under-review / dashboard */
 function hostHubCard(){
@@ -5466,7 +5481,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='342';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='343';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
