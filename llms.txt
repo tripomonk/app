@@ -1,0 +1,105 @@
+# Tripomonk
+
+> Tripomonk is an adventure and trekking company based in Uttarakhand, India. It offers guided Himalayan treks with certified trek leaders, fixed departures, rental gear and safety-first, acclimatisation-aware itineraries across Uttarakhand, Himachal, Ladakh, Kashmir, Sikkim, the Northeast and the Western Ghats. Trekkers can browse treks, check fitness readiness, rent gear, apply for permits and book online.
+
+## About
+- Founded in Uttarakhand, India; focused on the Indian Himalaya and beyond.
+- Recognitions: NIDHI, Startup India, Startup UP, MSME.
+- Every trek includes a certified leader, safety equipment, permits & forest fees, meals on trek and accommodation.
+- Booking: 25% advance to reserve a seat, balance before the trek; free cancellation up to 15 days prior.
+- Rental gear and assisted permit applications are available.
+
+## Bookable treks (live)
+- **Kedarkantha** (Uttarakhand) — 5-day easy trek, max altitude 12,500 ft, best Dec – Apr, from ₹6,499. Base: Sankri; nearest rail Dehradun (~200 km), airport Dehradun (Jolly Grant).
+- **Brahmatal** (Uttarakhand) — 6-day moderate trek, max altitude 12,250 ft, best Dec – Mar, from ₹8,999. Base: Lohajung; nearest rail Kathgodam (~215 km), airport Pantnagar / Dehradun.
+- **Valley of Flowers** (Uttarakhand) — 6-day moderate trek, max altitude 14,100 ft, best Jul – Sep, from ₹9,499. Base: Govindghat / Pulna; nearest rail Rishikesh (~275 km), airport Dehradun (Jolly Grant).
+- **Har Ki Dun** (Uttarakhand) — 7-day moderate trek, max altitude 11,700 ft, best Apr – Jun, from ₹10,499. Base: Sankri / Taluka; nearest rail Dehradun (~210 km), airport Dehradun (Jolly Grant).
+- **Nag Tibba** (Uttarakhand) — 2-day easy trek, max altitude 9,915 ft, best Oct – Mar, from ₹3,499. Base: Pantwari; nearest rail Dehradun (~90 km), airport Dehradun (Jolly Grant).
+- **Roopkund** (Uttarakhand) — 8-day difficult trek, max altitude 15,750 ft, best May – Jun, from ₹13,999. Base: Lohajung; nearest rail Kathgodam (~215 km), airport Pantnagar / Dehradun.
+- **Yulla Kanda** (Himachal) — 5-day moderate trek, max altitude 11,700 ft, best May – Oct, from ₹10,500. Base: Sarahan → Yulla (Kinnaur); nearest rail Shimla (~230 km), airport Shimla / Chandigarh.
+
+## More treks (opening soon)
+- Hampta Pass (Himachal) — 5-day moderate, 14,100 ft, best Jun – Sep.
+- Triund (Himachal) — 2-day easy, 9,350 ft, best Mar – Jun.
+- Bhrigu Lake (Himachal) — 4-day moderate, 14,100 ft, best May – Oct.
+- Kashmir Great Lakes (Kashmir) — 7-day moderate, 13,800 ft, best Jul – Sep.
+- Tarsar Marsar (Kashmir) — 6-day moderate, 13,000 ft, best Jul – Sep.
+- Markha Valley (Ladakh) — 7-day difficult, 17,060 ft, best Jun – Sep.
+- Chadar Trek (Ladakh) — 9-day difficult, 11,150 ft, best Jan – Feb.
+- Goecha La (Sikkim) — 10-day difficult, 16,200 ft, best Apr – May.
+- Sandakphu (Sikkim) — 6-day moderate, 11,930 ft, best Oct – Dec.
+- Hemkund Sahib (Uttarakhand) — 6-day moderate, 15,200 ft, best May – Oct.
+- Dayara Bugyal (Uttarakhand) — 5-day moderate, 12,100 ft, best May – Jun, Oct – Nov.
+- Kuari Pass (Uttarakhand) — 6-day moderate, 12,500 ft, best Mar – Jun, Oct – Feb.
+- Chopta Chandrashila (Uttarakhand) — 3-day easy, 13,100 ft, best Apr – Jun, Sep – Nov.
+- Pangarchulla Peak (Uttarakhand) — 7-day difficult, 15,100 ft, best Apr – May.
+- Satopanth Lake (Uttarakhand) — 8-day difficult, 15,100 ft, best May – Jun, Sep – Oct.
+- Bali Pass (Uttarakhand) — 8-day difficult, 16,200 ft, best May – Jun, Sep – Oct.
+- Dodital Darwa Pass (Uttarakhand) — 7-day moderate, 13,500 ft, best Apr – Jun, Sep – Nov.
+- Gaumukh Tapovan (Uttarakhand) — 8-day difficult, 14,600 ft, best May – Jun, Sep – Oct.
+- Pindari Glacier (Uttarakhand) — 7-day moderate, 12,300 ft, best Apr – Jun, Sep – Oct.
+- Kedartal (Uttarakhand) — 7-day difficult, 15,500 ft, best May – Jun, Sep – Oct.
+- Rupin Pass (Uttarakhand) — 8-day difficult, 15,250 ft, best May – Jun, Sep – Oct.
+- Phulara Ridge (Uttarakhand) — 6-day moderate, 12,100 ft, best May – Jun, Sep – Nov.
+- Borasu Pass (Uttarakhand) — 8-day difficult, 17,224 ft, best May – Jun, Sep – Oct.
+- Beas Kund (Himachal) — 3-day easy, 12,700 ft, best May – Oct.
+- Pin Parvati Pass (Himachal) — 11-day difficult, 17,450 ft, best Jul – Sep.
+- Sar Pass (Himachal) — 5-day moderate, 13,800 ft, best May – Jun.
+- Kareri Lake (Himachal) — 3-day moderate, 9,650 ft, best May – Jul, Sep – Nov.
+- Indrahar Pass (Himachal) — 5-day difficult, 14,245 ft, best May – Oct.
+- Kheerganga (Himachal) — 2-day easy, 9,700 ft, best Apr – Jun, Sep – Oct.
+- Chandrakhani Pass (Himachal) — 5-day moderate, 12,030 ft, best May – Oct.
+- Deo Tibba Base Camp (Himachal) — 6-day moderate, 14,700 ft, best May – Oct.
+- Friendship Peak (Himachal) — 8-day difficult, 17,350 ft, best May – Oct.
+- Bara Bhangal (Himachal) — 9-day difficult, 16,000 ft, best Jun – Oct.
+- Miyar Valley (Himachal) — 7-day moderate, 13,800 ft, best Jun – Sep.
+- Lamadugh (Himachal) — 2-day easy, 9,900 ft, best Apr – Jun, Sep – Dec.
+- Patalsu Peak (Himachal) — 3-day moderate, 13,845 ft, best May – Oct.
+- Seven Lakes (Himachal) — 6-day moderate, 13,800 ft, best May – Jun, Sep – Oct.
+- Kugti Pass (Himachal) — 8-day difficult, 16,600 ft, best Mid-Jun – Mid-Oct.
+- Sham Valley (Ladakh) — 3-day easy, 12,500 ft, best May – Sep.
+- Stok Kangri Base Camp (Ladakh) — 5-day moderate, 16,500 ft, best Jul – Sep.
+- Kang Yatse II (Ladakh) — 9-day difficult, 20,500 ft, best Jun – Sep.
+- Rumtse to Tso Moriri (Ladakh) — 8-day difficult, 17,500 ft, best Jun – Sep.
+- Lamayuru to Chilling (Ladakh) — 5-day moderate, 16,800 ft, best Jun – Sep.
+- Nubra Valley (Ladakh) — 6-day moderate, 17,000 ft, best Jun – Sep.
+- Dzo Jongo (Ladakh) — 8-day difficult, 20,000 ft, best Jul – Sep.
+- Stok La (Ladakh) — 5-day moderate, 16,600 ft, best Jun – Sep.
+- Snow Leopard (Ladakh) — 8-day moderate, 15,500 ft, best Nov – Apr.
+- Parang La (Ladakh) — 12-day difficult, 18,300 ft, best Jun – Sep.
+- Nafran Valley (Kashmir) — 7-day moderate, 13,100 ft, best Jul – Sep.
+- Tulian Lake (Kashmir) — 4-day moderate, 12,900 ft, best May – Oct.
+- Gangbal Lake (Kashmir) — 5-day moderate, 11,800 ft, best Jun – Sep.
+- Lidderwat (Kashmir) — 3-day easy, 9,100 ft, best Apr – Oct.
+- Gurez Valley (Kashmir) — 6-day moderate, 11,500 ft, best Jul – Sep.
+- Naranag Mahlish (Kashmir) — 6-day moderate, 12,800 ft, best Jun – Sep.
+- Great Kolahoi Glacier (Kashmir) — 6-day difficult, 12,500 ft, best Jun – Sep.
+- Sunset Peak (Kashmir) — 7-day difficult, 15,000 ft, best Jul – Sep.
+- Harmukh Peak Base Camp (Kashmir) — 5-day moderate, 13,000 ft, best Jun – Sep.
+- Kousarnag Lake (Kashmir) — 5-day moderate, 13,200 ft, best Jun – Sep.
+- Dzongri (Sikkim) — 6-day moderate, 13,200 ft, best Mar – May, Sep – Nov.
+- Green Lake (Sikkim) — 11-day difficult, 16,000 ft, best Apr – May, Oct – Nov.
+- Singalila Ridge (Sikkim) — 7-day moderate, 12,000 ft, best Mar – May, Oct – Nov.
+- Kanchenjunga Base Camp (Sikkim) — 12-day difficult, 17,200 ft, best Mar – May, Sep – Nov.
+- Kasturi Orar (Sikkim) — 9-day difficult, 16,200 ft, best Apr – May, Oct – Nov.
+- Phoktey Dara (Sikkim) — 6-day moderate, 12,300 ft, best Mar – May, Oct – Jan.
+- Barsey Rhododendron (Sikkim) — 3-day easy, 10,000 ft, best Mar – May.
+- Varsey (Sikkim) — 2-day easy, 10,000 ft, best Mar – May.
+- Tendong Hill (Sikkim) — 2-day easy, 8,530 ft, best Mar – May, Oct – Nov.
+- Maenam Hill (Sikkim) — 2-day easy, 10,600 ft, best Mar – May.
+- Tawang (Arunachal) — 6-day moderate, 11,500 ft, best Mar – Jun.
+- Gorichen Base Camp (Arunachal) — 10-day difficult, 15,500 ft, best Apr – Jun, Sep – Oct.
+- Bailey Trail (Arunachal) — 12-day difficult, 13,500 ft, best Apr – Jun, Oct – Nov.
+- Mechuka (Arunachal) — 5-day moderate, 10,500 ft, best Mar – Jun, Sep – Nov.
+- Talley Valley (Arunachal) — 4-day easy, 8,000 ft, best Oct – Apr.
+- Ziro Valley (Arunachal) — 3-day easy, 5,600 ft, best Mar – May, Sep – Nov.
+- Namdapha Rainforest (Arunachal) — 6-day moderate, 4,500 ft, best Nov – Feb.
+- Dong Valley (Arunachal) — 4-day moderate, 8,000 ft, best Oct – Apr.
+- Pangsau Pass (Arunachal) — 5-day moderate, 3,700 ft, best Oct – Apr.
+- Bum La (Arunachal) — 2-day moderate, 15,200 ft, best May – Oct.
+- David Scott Trail (Meghalaya) — 2-day easy, 4,900 ft, best Oct – Apr.
+- Living Root Bridge (Meghalaya) — 1-day easy, 2,400 ft, best Oct – Apr.
+
+## Contact & booking
+- Book online in the Tripomonk app: https://app.tripomonk.com/
+- Support & permit help via WhatsApp through the app.
