@@ -3870,7 +3870,7 @@ async function renderPerson(){if(!curPerson){go('community');return;}const p=get
   body.innerHTML=`<div class="prof-top">${avatar(p.n,84)}<h2>${esc(properName(p.n))}</h2><div class="handle">${esc(p.h)}</div></div><div class="skel skel-card" style="height:120px;margin:16px 0"></div>`;
   const posts=await loadUserPosts(p.n);
   await Promise.all([loadEngagement(posts.map(x=>x.id)),loadAuthorPhotos([p.n])]);
-  const disp=handleFor(p.n),at=atHandle(p.n);
+  const at=atHandle(p.n);
   /* real follower / following counts for THIS person from the follows table */
   let followers=0,following=me?followCount():0;
   const sb=getSupaClient();
@@ -3887,7 +3887,7 @@ async function renderPerson(){if(!curPerson){go('community');return;}const p=get
   const flwr=base+(isFollowing(p.n)?1:0);
   body.innerHTML=`
     <div class="prof-top">${avatar(p.n,84)}
-      <h2>${esc(properName(disp))}${hostBadge(p.n)}</h2>${at?`<div class="handle">${esc(at)}</div>`:''}
+      <h2>${esc(properName(p.n))}${hostBadge(p.n)}</h2>${at?`<div class="handle">${esc(at)}</div>`:''}
       <p class="pbio">${p.bio||''}</p>
       <div class="pstats"><div><b>${posts.length}</b><small>Posts</small></div><div><b id="pFlwr" data-person="${esc(p.n)}" data-base="${base}">${flwr.toLocaleString()}</b><small>Followers</small></div><div><b>${Number(following).toLocaleString()}</b><small>Following</small></div></div>
       ${me?'':`<div class="profile-actions" style="margin:14px 0 0"><button class="${isFollowing(p.n)?'on':''}" data-follow="${esc(p.n)}" onclick="toggleFollow('${jsq(p.n)}')">${isFollowing(p.n)?'Following':'Follow'}</button><button onclick="openChat('${jsq(p.n)}')">Message</button></div>`}
@@ -5481,7 +5481,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='343';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='344';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
