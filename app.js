@@ -1231,10 +1231,14 @@ function getSavedPhoto(){try{return localStorage.getItem('tmk_uphoto')||'';}catc
    person's initial when there's no photo, a junk value ("null"), or the image
    fails to load (broken / expired storage URL). Never leaves a blank tile —
    this was the "profile picture invisible" bug in light mode. */
+/* set the avatar's letter/clear its text WITHOUT dropping a .pav-cam badge child
+   (the tappable "change photo" affordance on the profile avatar) */
+function setAvKeepCam(el,txt){const cam=el.querySelector('.pav-cam');el.textContent=txt;if(cam)el.appendChild(cam);}
+function editAvatarTap(){if(!isLoggedIn()){go('login');return;}const i=document.getElementById('profilePhoto');if(i)i.click();}
 function setAvatarEl(el,name,photo){
   if(!el)return;
   const letter=(String(name||'E').trim()[0]||'E').toUpperCase();
-  el.textContent=letter;el.style.backgroundImage='';el.classList.remove('has-photo');
+  setAvKeepCam(el,letter);el.style.backgroundImage='';el.classList.remove('has-photo');
   if(!photo||!/^(data:image\/|https?:\/\/|blob:)/i.test(photo))return;
   const im=new Image();
   im.onload=()=>{
@@ -1243,7 +1247,7 @@ function setAvatarEl(el,name,photo){
        photo to its top-left corner (looked like the image "not showing"). */
     el.style.backgroundImage="url('"+photo.replace(/'/g,'%27')+"')";
     el.style.backgroundSize='cover';el.style.backgroundPosition='center';
-    el.textContent='';el.classList.add('has-photo');
+    setAvKeepCam(el,'');el.classList.add('has-photo');
   };
   im.onerror=()=>{el.style.backgroundImage='';el.textContent=letter;};
   im.src=photo;
@@ -4400,7 +4404,13 @@ function renderProfile(){document.getElementById('pCover').style.backgroundImage
   const ce=document.getElementById('coverEdit');if(ce)ce.classList.toggle('on',isLoggedIn());
   const uname=getSavedName()||'Explorer';const photo=getSavedPhoto();
   const pav=document.getElementById('profileAv');
-  if(pav){pav.style.backgroundSize='cover';pav.style.backgroundPosition='center';setAvatarEl(pav,uname,photo);}
+  if(pav){pav.style.backgroundSize='cover';pav.style.backgroundPosition='center';setAvatarEl(pav,uname,photo);
+    /* camera badge = the "tap to change your photo" affordance, for everyone */
+    const hasCam=pav.querySelector('.pav-cam');
+    if(isLoggedIn()){if(!hasCam)pav.insertAdjacentHTML('beforeend','<span class="pav-cam"><span class="msr">photo_camera</span></span>');}
+    else if(hasCam)hasCam.remove();
+    hydrate(pav);
+  }
   const pname=document.getElementById('profileName');if(pname)pname.textContent=isLoggedIn()?uname:'Guest';
   /* the Hosting hub card adapts to host status once the application loads */
   if(isLoggedIn())loadHostApp().then(()=>{const h=document.getElementById('hostHub');if(h)h.innerHTML=hostHubCard();}).catch(()=>{});
@@ -5553,7 +5563,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='350';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='352';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -7701,6 +7711,7 @@ const HOST_WIZARD=[
   {key:'basic',title:'Basic details',sub:'Mobile, WhatsApp, email and date of birth are required (hosts must be 18+)',type:'form',fields:[['bd_name','Full name','text',true],['bd_mobile','Mobile number','tel',true],['bd_whatsapp','WhatsApp number','tel',true],['bd_email','Email address','email',true],['bd_city','City','text',false],['bd_dob','Date of birth','date',true]]},
   {key:'socials',title:'Social profiles',sub:'Add any you like',type:'form',fields:[['so_insta','Instagram','text',false],['so_yt','YouTube','text',false],['so_fb','Facebook','text',false],['so_li','LinkedIn','text',false],['so_web','Website (optional)','text',false]]},
   {key:'bio',title:'Tell us about yourself',sub:'A short bio — max 300 characters',type:'bio'},
+  {key:'commission',title:'How you earn',sub:'Please read and agree before you submit',type:'consent'},
   {key:'review',title:'Review & submit',sub:'Check your details, then submit for verification',type:'review'}
 ];
 let _hwStep=0,_hwAns={};
@@ -7714,13 +7725,14 @@ function hwCheckDob(el){
     el.value='';if(_hwAns.basic)_hwAns.basic.bd_dob='';
   }else if(_hwAns.basic){_hwAns.basic.bd_dob=el.value;}
 }
-function hwReset(){_hwStep=0;_hwAns={host_type:'',experiences:[],destinations:[],experience_level:'',group_size:'',languages:[],hosting_style:[],acquisition:[],audience_size:'',why_host:'',basic:{},socials:{},bio:''};
+function hwReset(){_hwStep=0;_hwAns={host_type:'',experiences:[],destinations:[],experience_level:'',group_size:'',languages:[],hosting_style:[],acquisition:[],audience_size:'',why_host:'',basic:{},socials:{},bio:'',consent:false};
   /* prefill basic + socials from the signed-in profile */
   _hwAns.basic={bd_name:getSavedName()||'',bd_mobile:getSavedMobile()||'',bd_whatsapp:getSavedMobile()||'',bd_email:getUserEmail()||'',bd_city:'',bd_dob:''};
   const soc=getSavedSocials()||{};
   _hwAns.socials={so_insta:soc.instagram||'',so_yt:soc.youtube||'',so_fb:soc.facebook||'',so_li:soc.linkedin||'',so_web:soc.website||''};
 }
 function hwPick(key,val){_hwAns[key]=val;renderHostWizard();}
+function hwToggleConsent(){_hwAns.consent=!_hwAns.consent;renderHostWizard();}
 function hwToggle(key,val,max){
   const arr=_hwAns[key]||(_hwAns[key]=[]);const i=arr.indexOf(val);
   if(i>=0)arr.splice(i,1);
@@ -7740,13 +7752,14 @@ function hwStepValid(){
   const st=HOST_WIZARD[_hwStep];
   if(st.type==='single')return !!_hwAns[st.key];
   if(st.type==='multi')return (_hwAns[st.key]||[]).length>0;
+  if(st.type==='consent')return !!_hwAns.consent;
   if(st.type==='form'){hwSaveForm();return st.fields.filter(f=>f[3]).every(f=>(_hwAns[st.key][f[0]]||'').trim());}
   return true;
 }
 function hwNext(){
   const st=HOST_WIZARD[_hwStep];
   if(st.type==='form')hwSaveForm();if(st.type==='bio')hwSaveBio();
-  if(!hwStepValid()){toast(st.type==='multi'?'Please select at least one':'Please complete this step');return;}
+  if(!hwStepValid()){toast(st.type==='consent'?'Please tick the box to agree':st.type==='multi'?'Please select at least one':'Please complete this step');return;}
   if(_hwStep<HOST_WIZARD.length-1){_hwStep++;renderHostWizard();document.querySelector('.view.active').scrollTop=0;}
 }
 function hwBack(){
@@ -7779,6 +7792,28 @@ function renderHostWizard(){
     }).join('');
   }else if(st.type==='bio'){
     inner=`<textarea id="hwBio" class="hw-bio" maxlength="300" placeholder="e.g. I'm an avid Himalayan trekker who has led 30+ beginner-friendly treks…" oninput="document.getElementById('hwBioC').textContent=this.value.length">${esc(_hwAns.bio||'')}</textarea><div class="hw-bioc"><span id="hwBioC">${(_hwAns.bio||'').length}</span>/300</div>`;
+  }else if(st.type==='consent'){
+    const on=!!_hwAns.consent;
+    inner='<div class="hw-fee">'
+      +'<div class="hw-fee-hero"><div class="hw-fee-big">90%</div><div class="hw-fee-lbl">of the <b>profit</b> is yours<br>Tripomonk keeps <b>10%</b> — profit-share only</div></div>'
+      +'<div class="hw-fee-ex"><span>How it works — example figures</span>'
+        +'<div class="hw-fee-rows">'
+          +'<div class="hw-fee-row"><small>Trip booking</small><b>₹10,000</b></div>'
+          +'<div class="hw-fee-row"><small>− Operations cost (stay, food, transport, guides, permits)</small><b>−₹6,000</b></div>'
+          +'<div class="hw-fee-row profit"><small>= Profit</small><b>₹4,000</b></div>'
+        +'</div>'
+        +'<div class="hw-fee-split"><div><small>You keep · 90%</small><b>₹3,600</b></div><div><small>Tripomonk · 10%</small><b>₹400</b></div></div>'
+        +'<p class="hw-fee-note">Illustrative only — actual operations cost is agreed with you per trip and can differ.</p>'
+      +'</div>'
+      +'<ul class="hw-fee-list">'
+        +'<li><span class="msr">receipt_long</span>Operations costs are agreed with you, then deducted first</li>'
+        +'<li><span class="msr">handshake</span>Only the remaining <b>profit</b> is shared — never your costs</li>'
+        +'<li><span class="msr">campaign</span>Tripomonk brings payments, marketing &amp; support</li>'
+        +'<li><span class="msr">account_balance</span>Payout after your trip is completed</li>'
+      +'</ul>'
+      +'<label class="hw-consent'+(on?' on':'')+'" onclick="hwToggleConsent()"><span class="hw-check msr">'+(on?'check_box':'check_box_outline_blank')+'</span>'
+        +'<span>I understand this is <b>profit-sharing only</b>: operations costs are covered first, then the remaining profit is split <b>90% to me / 10% to Tripomonk</b>. Final costs &amp; commercials are confirmed on my verification call.</span></label>'
+    +'</div>';
   }else if(st.type==='review'){
     const rev=(l,v)=>v&&v.length?`<div class="hw-rev"><small>${l}</small><b>${esc(Array.isArray(v)?v.join(', '):v)}</b></div>`:'';
     const b=_hwAns.basic||{},s=_hwAns.socials||{};
@@ -7794,6 +7829,7 @@ function renderHostWizard(){
       +rev('Name',b.bd_name)+rev('Mobile',b.bd_mobile)+rev('City',b.bd_city)
       +rev('Instagram',s.so_insta)+rev('Website',s.so_web)
       +rev('Bio',_hwAns.bio)
+      +(_hwAns.consent?'<div class="hw-rev"><small>Profit share</small><b>90% to you (after ops cost) — agreed ✓</b></div>':'')
       +'</div><p class="host-note">Government ID, PAN and bank/payout details are collected securely on your verification call after approval — never in the app.</p>';
   }
   const isLast=_hwStep===n-1;
@@ -7819,6 +7855,7 @@ async function submitHostApp(){
   if(!phoneOk(whatsapp)){note('Please enter a valid WhatsApp number.','WhatsApp required');return;}
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){note('Please enter a valid email address.','Email required');return;}
   if(!dobIsAdult(b.bd_dob)){note('You need to be 18 or older to host trips on Tripomonk.','18+ required');return;}
+  if(!_hwAns.consent){note('Please agree to the profit-share terms (90/10 after operations cost) to continue.','Consent required');_hwStep=HOST_WIZARD.findIndex(s=>s.type==='consent');renderHostWizard();return;}
   const sb=getSupaClient();const uid=sb?await authUid():null;
   if(!sb||!uid){note('Please sign in to apply.','Sign in required');return;}
   const btn=document.querySelector('#hostBody .hw-nav .btn:not(.ghost)');
@@ -7828,7 +7865,7 @@ async function submitHostApp(){
     instagram:s.so_insta||'',youtube:s.so_yt||'',website:s.so_web||'',
     languages:(_hwAns.languages||[]).join(', '),experience:_hwAns.experience_level||'',
     trip_types:(_hwAns.experiences||[]).join(', '),destinations:(_hwAns.destinations||[]).join(', '),
-    about:_hwAns.bio||'',status:'pending',commission_pct:10,commission_consent:true,consent_at:new Date().toISOString(),
+    about:_hwAns.bio||'',status:'pending',commission_pct:10,commission_basis:'profit_after_ops',commission_consent:!!_hwAns.consent,consent_at:_hwAns.consent?new Date().toISOString():null,
     answers:{host_type:_hwAns.host_type,experiences:_hwAns.experiences,destinations:_hwAns.destinations,
       experience_level:_hwAns.experience_level,group_size:_hwAns.group_size,languages:_hwAns.languages,
       hosting_style:_hwAns.hosting_style,acquisition:_hwAns.acquisition,audience_size:_hwAns.audience_size,
@@ -8016,6 +8053,10 @@ async function reviewHost(id,status,name){
    that rule is enforced by RLS, not by this screen.
    ============================================================ */
 const HT_DIFF=['Easy','Moderate','Difficult'];
+const HT_MAX_OPTS=[6,8,10,12,15,20,25,30,40];
+const HT_DEST_POP=['Uttarakhand','Himachal','Kashmir','Ladakh','Spiti','Sikkim','Meghalaya','Nepal'];
+function pickHtMax(n){const el=document.getElementById('htMax');if(el)el.value=n;renderHostTrip();}
+function pickHtDest(x){const el=document.getElementById('htDest');if(el)el.value=x;renderHostTrip();}
 
 function htChip(list,sel,fn){
   return list.map(o=>'<span class="tap '+(sel.includes(o)?'sel':'')+'" onclick="'+fn+'(\''+jsq(o)+'\')">'+esc(o)+'</span>').join('');
@@ -8025,6 +8066,13 @@ function toggleExc(o){const i=_htExc.indexOf(o);i>=0?_htExc.splice(i,1):_htExc.p
 function renderHostTrip(){
   const d=document.getElementById('htDiff');
   if(d)d.innerHTML=HT_DIFF.map(x=>'<span class="tap '+(_htDiff===x?'sel':'')+'" onclick="pickHtDiff(\''+x+'\')">'+x+'</span>').join('');
+  /* tap-to-fill quick picks — a host should mostly select, not type */
+  const mx=document.getElementById('htMaxChips');
+  if(mx){const cur=(document.getElementById('htMax')||{}).value;
+    mx.innerHTML=HT_MAX_OPTS.map(x=>'<span class="tap '+(String(cur)===String(x)?'sel':'')+'" onclick="pickHtMax('+x+')">'+x+'</span>').join('');}
+  const dc=document.getElementById('htDestChips');
+  if(dc){const cur=((document.getElementById('htDest')||{}).value||'').trim();
+    dc.innerHTML=HT_DEST_POP.map(x=>'<span class="tap '+(cur===x?'sel':'')+'" onclick="pickHtDest(\''+jsq(x)+'\')">'+esc(x)+'</span>').join('');}
   /* destination suggestions + inclusion/exclusion pickers */
   const dl=document.getElementById('htDestList');
   if(dl&&typeof DESTS!=='undefined')dl.innerHTML=DESTS.map(x=>'<option value="'+esc(x.n)+'">').join('');

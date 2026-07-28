@@ -1641,6 +1641,38 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .hw-nav .btn{flex:1}.hw-nav .btn.ghost{flex:.7}
   .hd-level{color:#ffce1f;font-weight:800}
   html.light .hd-level{color:#b07d00}
+  /* --- Host onboarding: commission disclosure + consent --- */
+  .hw-fee{display:flex;flex-direction:column;gap:14px}
+  .hw-fee-hero{display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,rgba(47,107,255,.14),rgba(47,107,255,.04));border:1.5px solid var(--accent);border-radius:16px;padding:18px}
+  .hw-fee-big{font-size:40px;font-weight:800;color:var(--accent2);line-height:1;flex:none}
+  .hw-fee-lbl{font-size:13.5px;color:var(--muted);line-height:1.5}
+  .hw-fee-lbl b{color:var(--text);font-weight:700}
+  .hw-fee-ex{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:14px}
+  .hw-fee-ex>span{font-size:12px;color:var(--muted);font-weight:600}
+  .hw-fee-split{display:flex;gap:10px;margin-top:10px}
+  .hw-fee-split>div{flex:1;background:var(--bg);border:1px solid var(--stroke);border-radius:12px;padding:10px 12px}
+  .hw-fee-split small{display:block;font-size:11px;color:var(--muted2)}
+  .hw-fee-split b{font-size:17px;font-weight:800}
+  .hw-fee-split>div:first-child b{color:#2fbf6c}
+  .hw-fee-rows{margin-top:10px;display:flex;flex-direction:column;gap:7px}
+  .hw-fee-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:12.5px}
+  .hw-fee-row small{color:var(--muted)}
+  .hw-fee-row b{font-weight:700;color:var(--text);flex:none}
+  .hw-fee-row.profit{border-top:1px dashed var(--stroke);padding-top:8px;margin-top:2px}
+  .hw-fee-row.profit small,.hw-fee-row.profit b{color:var(--text);font-weight:800}
+  .hw-fee-note{font-size:11px;color:var(--muted2);margin-top:9px;line-height:1.45}
+  .hw-fee-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
+  .hw-fee-list li{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+  .hw-fee-list li .msr{font-size:19px;color:var(--accent2);flex:none}
+  .hw-consent{display:flex;align-items:flex-start;gap:11px;background:var(--card);border:1.5px solid var(--stroke);border-radius:14px;padding:14px;cursor:pointer;font-size:13px;line-height:1.5;color:var(--muted);transition:border-color .15s,background .15s}
+  .hw-consent.on{border-color:var(--accent);background:rgba(47,107,255,.08);color:var(--text)}
+  .hw-consent b{color:var(--text);font-weight:700}
+  .hw-check{font-size:24px;color:var(--muted2);flex:none;line-height:1}
+  .hw-consent.on .hw-check{color:var(--accent)}
+  /* --- tappable profile avatar: change photo from anywhere --- */
+  .pav-cam{position:absolute;right:0;bottom:0;width:28px;height:28px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);display:grid;place-items:center;pointer-events:none;z-index:2}
+  .pav-cam .msr{font-size:15px;color:#fff;line-height:1}
+  #profile .pav{cursor:pointer}
   /* --- Compare Treks motion (Premium: rise+fade, signature cubic-bezier(.2,0,0,1)) --- */
   @media(prefers-reduced-motion:no-preference){
     .cmp-table-wrap{animation:cmpRise .42s cubic-bezier(.2,0,0,1) both}
@@ -3152,7 +3184,8 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
       <button class="cover-menu" id="pMenuBtn" aria-label="Account & settings" title="Account & settings" onclick="openAccountMenu()"><span class="msr">menu</span></button>
       <button class="cover-edit" id="coverEdit" aria-label="Change cover photo" title="Change cover" onclick="document.getElementById('coverPhoto').click()"><span class="msr">photo_camera</span></button><input type="file" id="coverPhoto" accept="image/*" hidden onchange="coverPickPhoto(this)"/></div>
     <div class="pwrap">
-      <div class="pav" id="profileAv">E</div>
+      <div class="pav" id="profileAv" onclick="editAvatarTap()">E</div>
+      <input type="file" id="profilePhoto" accept="image/*" hidden onchange="epPickPhoto(this)"/>
       <div class="prow"><div style="min-width:0"><h1 id="profileName">Explorer</h1><div class="lv" id="profileSub">Sign in to track your treks</div><div class="pbio" id="profileBio"></div></div></div>
       <div class="profile-actions"><button onclick="go('editProfile')">Edit Profile</button><button onclick="go('messages')">Messages</button></div>
       <div class="pstats" id="pStats"></div>
@@ -3648,15 +3681,13 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
 
     <div class="tform-sec"><span class="msr">edit</span><b>The basics</b></div>
     <div class="field"><label>Trip title *</label><div class="inp"><input id="htTitle" placeholder="e.g. Spiti Winter Expedition" oninput="htPreview()"/></div></div>
-    <div class="field"><label>Destination *</label><div class="inp"><span class="msr" style="font-size:18px;color:var(--muted)">pin_drop</span><input id="htDest" list="htDestList" placeholder="Pick or type a place" oninput="htPreview()"/></div><datalist id="htDestList"></datalist></div>
+    <div class="field"><label>Destination *</label><div class="chiprow" id="htDestChips" style="margin-bottom:8px"></div><div class="inp"><span class="msr" style="font-size:18px;color:var(--muted)">pin_drop</span><input id="htDest" list="htDestList" placeholder="Tap a region above, or type a place" oninput="htPreview()"/></div><datalist id="htDestList"></datalist></div>
 
     <div class="tform-sec"><span class="msr">event</span><b>When &amp; who</b></div>
     <div class="field"><label>Start date *</label><div class="inp dateinp" onclick="openPicker('htDate')"><span class="msr" style="font-size:19px;color:var(--muted)">event</span><input type="date" id="htDate" onchange="htEndFromStart();htPreview()"/></div></div>
     <div class="field"><label>End date *</label><div class="inp dateinp" onclick="openPicker('htEnd')"><span class="msr" style="font-size:19px;color:var(--muted)">event_available</span><input type="date" id="htEnd" onchange="htDaysFromRange();htPreview()"/></div></div>
-    <div class="trow2" style="margin-bottom:14px">
-      <div class="field"><label>Days (auto)</label><div class="inp"><input type="number" id="htDays" min="1" max="60" placeholder="—" readonly style="opacity:.7"/></div></div>
-      <div class="field"><label>Max people *</label><div class="inp"><input type="number" id="htMax" min="1" max="50" placeholder="12" oninput="htPreview()"/></div></div>
-    </div>
+    <div class="field"><label>Days (auto)</label><div class="inp"><input type="number" id="htDays" min="1" max="60" placeholder="—" readonly style="opacity:.7"/></div></div>
+    <div class="field"><label>Max people *</label><div class="chiprow" id="htMaxChips" style="margin-bottom:8px"></div><div class="inp"><input type="number" id="htMax" min="1" max="50" placeholder="Or type a custom size" oninput="htPreview()"/></div></div>
     <div class="field"><label>Difficulty</label><div class="chiprow" id="htDiff"></div></div>
 
     <div class="tform-sec"><span class="msr">payments</span><b>Price</b><small>per person</small></div>
