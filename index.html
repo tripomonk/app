@@ -210,10 +210,21 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .phone{position:relative;width:100%;max-width:560px;height:100dvh;margin:0 auto;background:var(--bg);overflow:hidden}
   .screen{position:relative;width:100%;height:100%;overflow:hidden;
     background:radial-gradient(120% 60% at 50% -10%, #15314f 0%, transparent 55%), linear-gradient(180deg,#0b1a2c 0%, #0a1626 60%, #091322 100%)}
-  /* on screens wider than the column, give it a subtle edge so it reads as an app */
+  /* On screens wider than the column, don't leave the app on a dead-black void —
+     give the surround a branded Himalayan-dark backdrop and lift the column. */
   @media(min-width:560px){
-    body{background:#06101c}
-    .phone{box-shadow:0 0 0 1px rgba(255,255,255,.06),0 24px 70px rgba(0,0,0,.6)}
+    body{background:
+      radial-gradient(46% 40% at 12% 14%, rgba(47,107,255,.16), transparent 60%),
+      radial-gradient(44% 46% at 88% 88%, rgba(24,170,201,.11), transparent 62%),
+      linear-gradient(160deg,#0a1628 0%, #081221 55%, #050b15 100%);
+      background-attachment:fixed}
+    .phone{box-shadow:0 0 0 1px rgba(255,255,255,.07), 0 40px 110px -24px rgba(0,0,0,.75)}
+  }
+  /* Desktop: float the app as a rounded "device" with breathing room top & bottom. */
+  @media(min-width:920px){
+    body{padding:26px 0}
+    .phone{height:min(calc(100dvh - 52px), 940px);max-height:940px;border-radius:34px}
+    .screen{border-radius:34px}
   }
   .ic{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;flex:none}
   .ic svg{display:block}
