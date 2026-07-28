@@ -2652,6 +2652,7 @@ function bookingCard(b){
       <div class="bk-meta"><span>${ic('calendar',13)} ${esc(b.date)}</span><span>${ic('ticket',13)} ${esc(b.id)}</span></div>
       <div class="bk-actions">
         <button class="bk-btn primary" onclick="openTicket('${b.id}')">${ic('ticket',15)} E-Ticket</button>
+        <button class="bk-btn bk-guard" onclick="openGuardian('${b.id}')"><span class="msr">shield</span> Guardian</button>
         <button class="bk-btn" onclick="openPackingFor('${trekName}')">${ic('list',15)} Packing</button>
       </div>
     </div></div>`;
@@ -2660,6 +2661,76 @@ function bkPopCard(t,i){
   return `<div class="bk-pop-c" onclick="openDetail(${i})">
     <div class="bk-pop-img" style="background-image:url('${esc(t.img||'')}')"></div>
     <div class="bk-pop-tx"><b>${esc(t.n)}</b><small>${esc(t.region||'')} · ${INR(t.price||0)}</small></div></div>`;
+}
+/* ============================================================
+   TREK GUARDIAN — an OFFLINE safety companion for a booked trek.
+   Reads only client data (the saved booking, the trek, baseInfo, ITIN) +
+   constants, so it works with NO signal on the trail. tel: links and this
+   whole page work offline; sharing/SOS need signal (that's the whole point
+   of "if you don't hear from me…").
+   ============================================================ */
+const GUARDIAN_SOS=[
+  ['112','Emergency — police · fire · medical'],
+  ['108','Ambulance / medical response'],
+  ['1070','State disaster (SDRF) helpline']
+];
+const AMS_SIGNS=['Headache that water &amp; rest won’t shift','Nausea or vomiting','Dizziness / feeling unsteady','Breathless even while resting','No appetite on the climb','Poor sleep, unusual exhaustion'];
+const AMS_DO=['Stop — do NOT climb any higher','Rest, hydrate, tell your trek leader','If it gets worse, DESCEND at once','Never leave someone with AMS alone'];
+let _guardBk=null;
+function openGuardian(id){const b=getBookings().find(x=>x.id===id);if(!b){note('Booking not found.','Trek Guardian');return;}_guardBk=b;go('guardian');}
+function guardianTrek(){const b=_guardBk;if(!b)return null;return treks.find(x=>x.n===String(b.trek||'').replace(' (Activity)',''))||null;}
+function renderGuardian(){
+  const b=_guardBk;const box=document.getElementById('guardianBody');if(!box)return;
+  if(!b){box.innerHTML='<div class="empty" style="padding:30px 6px"><p>Open Trek Guardian from one of your bookings.</p><button class="btn sm" style="margin-top:10px" onclick="go(\'bookings\')">My bookings</button></div>';return;}
+  const t=guardianTrek();const base=t?baseInfo(t):{town:'—',rail:'—',air:'—'};
+  const itin=(t&&ITIN[t.n])||[];const wnum=getWa();
+  const trekName=esc(String(b.trek||'').replace(' (Activity)',''));
+  box.innerHTML=`
+    <div class="gd-note"><span class="msr">wifi_off</span> Works offline — open it on the trail even with no signal. Keep the app installed and screenshot this page before you start.</div>
+    <div class="gd-card gd-trek">
+      <div class="gd-trek-top"><span class="msr gd-shield">shield</span><div class="gd-trek-tx"><b>${trekName}</b><small>${esc(b.date||'')} · ${b.pax||1} trekker${(b.pax||1)>1?'s':''}</small></div></div>
+      <div class="gd-facts">
+        <div class="gd-fact"><span class="msr">pin_drop</span><small>Base town</small><b>${esc(base.town)}</b></div>
+        <div class="gd-fact"><span class="msr">directions_railway</span><small>Nearest rail</small><b>${esc(base.rail)}</b></div>
+        <div class="gd-fact"><span class="msr">flight</span><small>Nearest airport</small><b>${esc(base.air)}</b></div>
+      </div>
+    </div>
+    <div class="gd-actions">
+      <button class="gd-sos-btn" onclick="guardianSOS()"><span class="msr">sos</span> SOS — alert Tripomonk</button>
+      <div class="gd-sos-hint"><span class="msr">priority_high</span> Life-threatening? Call <b>112</b> first — it's the first contact below.</div>
+      <button class="gd-share" onclick="shareMyTrek()"><span class="msr">share_location</span> Share my trek with family</button>
+    </div>
+    <div class="gd-h"><span class="msr">contact_phone</span>Emergency contacts<small>tap to call — works offline</small></div>
+    <div class="gd-card gd-contacts">
+      ${GUARDIAN_SOS.map(c=>`<a class="gd-con" href="tel:${c[0]}"><span class="gd-con-ic msr">call</span><div class="gd-con-tx"><b>${c[0]}</b><small>${c[1]}</small></div><span class="msr gd-chev">chevron_right</span></a>`).join('')}
+      <a class="gd-con" href="tel:+${esc(wnum)}"><span class="gd-con-ic msr">support_agent</span><div class="gd-con-tx"><b>Tripomonk support</b><small>+${esc(wnum)}</small></div><span class="msr gd-chev">chevron_right</span></a>
+      <div class="gd-con gd-con-note"><span class="gd-con-ic msr">hiking</span><div class="gd-con-tx"><b>Your trek leader</b><small>Number is shared on WhatsApp before departure — save it in your phone.</small></div></div>
+    </div>
+    <div class="gd-h"><span class="msr">landscape</span>Altitude sickness (AMS)<small>know the signs</small></div>
+    <div class="gd-card gd-ams">
+      <div class="gd-ams-col"><div class="gd-ams-t warn"><span class="msr">warning</span> Watch for</div>${AMS_SIGNS.map(s=>`<div class="gd-ams-i">${s}</div>`).join('')}</div>
+      <div class="gd-ams-col"><div class="gd-ams-t ok"><span class="msr">health_and_safety</span> What to do</div>${AMS_DO.map(s=>`<div class="gd-ams-i">${esc(s)}</div>`).join('')}</div>
+    </div>
+    ${itin.length?`<div class="gd-h"><span class="msr">map</span>Route &amp; itinerary</div><div class="gd-card gd-itin">${itin.map((d,i)=>`<div class="gd-day"><span class="gd-day-n">${i+1}</span><div class="gd-day-b"><b>${esc(d[0])}</b>${(d[2]||d[3])?`<small>${esc(d[2]||'')}${d[2]&&d[3]?' · ':''}${esc(d[3]||'')}</small>`:''}</div></div>`).join('')}</div>`:''}
+    <div style="height:24px"></div>`;
+  hydrate(box);
+}
+function shareMyTrek(){
+  const b=_guardBk;if(!b)return;const t=guardianTrek();const base=t?baseInfo(t):{town:''};
+  const msg='🏔️ I’m going trekking with Tripomonk.\n'
+    +'Trek: '+String(b.trek||'').replace(' (Activity)','')+'\n'
+    +'Dates: '+(b.date||'')+'\n'
+    +(base.town&&base.town!=='—'?('Base: '+base.town+'\n'):'')
+    +'Booking: '+b.id+'\n\n'
+    +'Mobile network is limited on the trail — I may be out of touch for a few days. If you don’t hear from me by the end date, contact Tripomonk at +'+getWa()+'.';
+  if(navigator.share){navigator.share({title:'My trek — Tripomonk',text:msg}).catch(()=>{try{wa(msg);}catch(e){}});}
+  else wa(msg);
+}
+function guardianSOS(){
+  const b=_guardBk;const name=String((b&&b.trek)||'my trek').replace(' (Activity)','');
+  /* fire synchronously from the tap so the WhatsApp window isn't popup-blocked;
+     112 is right above as a one-tap call for a true life-threatening emergency */
+  wa('🆘 SOS — I need help on '+name+'.\nBooking: '+((b&&b.id)||'—')+'\nPlease call me / send help. If this is life-threatening I am also calling 112.');
 }
 function renderBookings(){
   const bs=getBookings();const box=document.getElementById('bookList');
@@ -5482,7 +5553,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='348';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='350';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -7292,6 +7363,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='dataPrivacy')renderDataPrivacy();
   if(id==='packing'){pkTrek=_pkForce||(cart.trek&&cart.trek.n)||'';_pkForce='';renderPacking();}
   if(id==='bookings')renderBookings();
+  if(id==='guardian')renderGuardian();
   if(id==='wishlist')renderWishlist();
   if(id==='profile')renderProfile();
   if(id==='accountMenu')renderAccountMenu();
