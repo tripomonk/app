@@ -1997,7 +1997,7 @@ function doCompare(){
 }
 function cmpSearch(v){_cmpQ=v||'';renderCompare();}
 function shareTrekByName(name){
-  const url=window.location.origin+window.location.pathname.replace(/index\.html$/,'')+'#trek='+encodeURIComponent(name);
+  const url=window.location.origin+'/t/'+slugify(name);
   const data={title:'Tripomonk — '+name,text:'Check out the '+name+' trek on Tripomonk 🏔️',url};
   if(navigator.share){navigator.share(data).catch(()=>{});return;}
   try{navigator.clipboard.writeText(url);toast('Trek link copied');}catch(e){note(url,'Share');}
@@ -2298,7 +2298,8 @@ function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
 }
 async function shareTrek(){
   const t=cart.trek;if(!t)return;
-  const url=window.location.origin+window.location.pathname+'#trek='+encodeURIComponent(t.n);
+  /* path URL (not #hash) so it gets a rich share card via the /t/ edge function */
+  const url=window.location.origin+'/t/'+slugify(t.n);
   const data={title:'Tripomonk — '+t.n,text:`Check out the ${t.n} trek (${t.region}) on Tripomonk`,url};
   if(navigator.share){try{await navigator.share(data);return;}catch(e){if(e&&e.name==='AbortError')return;}}
   try{await navigator.clipboard.writeText(url);note('Trip link copied — share it anywhere!','Link copied');}
@@ -5034,8 +5035,8 @@ function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?'
   hero_video:(t.hvid||'').trim()||null,hero_use_video:!!t.hvideo,
   guide_id:(t.guide_id!=null&&t.guide_id!=='')?t.guide_id:null};}
 let editIdx=-1, adminTab='Treks', depTrek=null, _admHub=true;
-const ADM_TAB_IC={Overview:'dashboard',Bookings:'receipt_long',Treks:'landscape',Home:'home',Departures:'event',Packing:'checklist',Guides:'hiking',Hosts:'groups',Training:'fitness_center',Staff:'badge',Settings:'settings'};
-const ADM_TABS=['Overview','Bookings','Treks','Home','Departures','Packing','Guides','Hosts','Training','Staff','Settings'];
+const ADM_TAB_IC={Overview:'dashboard',Bookings:'receipt_long',Treks:'landscape',Home:'home',Destinations:'travel_explore',Departures:'event',Packing:'checklist',Guides:'hiking',Hosts:'groups',Training:'fitness_center',Staff:'badge',Settings:'settings'};
+const ADM_TABS=['Overview','Bookings','Treks','Home','Destinations','Departures','Packing','Guides','Hosts','Training','Staff','Settings'];
 /* one-line description per section, shown on the hub card */
 const ADM_TAB_DESC={Overview:'Today at a glance',Bookings:'Who has booked',Treks:'Add & edit treks, prices, tags',
   Home:'Featured trek & popular rail',Departures:'Batch dates & seats',Packing:'Per-trek packing lists',
@@ -5061,6 +5062,7 @@ function renderAdmin(){
   else if(adminTab==='Bookings')renderAdminBookings();
   else if(adminTab==='Treks')renderAdminTreks();
   else if(adminTab==='Home')renderAdminHome();
+  else if(adminTab==='Destinations')renderAdminDestinations();
   else if(adminTab==='Departures')renderDepartures();
   else if(adminTab==='Packing')renderAdminPacking();
   else if(adminTab==='Guides')renderAdminGuides();
@@ -5272,6 +5274,136 @@ async function guideDelete(){
   if(!res||!res.ok){note((res&&res.error)||'Could not delete.','Error');return;}
   _guideEdit=null;await loadGuides(true);bustTreksCache();await loadTreks(true);renderAdminGuides();
   note('Guide deleted.');
+}
+
+/* ============================================================
+   DESTINATIONS — custom places for the Adventure section.
+   Stored in the `destinations` table (public read, admin-only write via
+   RLS). They merge OVER the built-in DESTS list by id, so an admin can add
+   brand-new places or override a built-in one. See SQL-add-destinations.sql.
+   ============================================================ */
+let _BUILTIN_DESTS=null,_destLoaded=false,_dbDestIds=new Set();
+async function loadDestinations(force){
+  const sb=getSupaClient();if(!sb){_destLoaded=true;return DESTS;}
+  if(_destLoaded&&!force)return DESTS;
+  try{
+    const r=await sb.from('destinations').select('*').order('sort',{ascending:true});
+    if(!r.error&&Array.isArray(r.data))mergeDestinations(r.data);
+    _destLoaded=true;
+  }catch(e){_destLoaded=true;}
+  return DESTS;
+}
+function mergeDestinations(rows){
+  if(!_BUILTIN_DESTS)_BUILTIN_DESTS=DESTS.slice();   /* snapshot the code defaults once */
+  const map={};_BUILTIN_DESTS.forEach(d=>{map[d.id]=d;});
+  _dbDestIds=new Set();
+  (rows||[]).forEach(r=>{
+    if(!r||!r.id)return;
+    _dbDestIds.add(r.id);
+    map[r.id]={id:r.id,n:r.name||r.id,state:r.state||'',img:r.img||'',best:r.best||'',lvl:r.lvl||'',budget:r.budget||'',
+      blurb:r.blurb||'',attractions:Array.isArray(r.attractions)?r.attractions:[],tips:Array.isArray(r.tips)?r.tips:[],
+      near:Array.isArray(r.near)?r.near:[],soon:!!r.soon};
+  });
+  DESTS.length=0;Object.keys(map).forEach(k=>DESTS.push(map[k]));
+}
+
+/* ---- admin: add / edit / delete destinations ---- */
+let _destEdit=null;
+async function renderAdminDestinations(){
+  const box=document.getElementById('adminBody');if(!box)return;
+  if(!_destLoaded)box.innerHTML='<div class="skel skel-card"></div><div class="skel skel-card"></div>';
+  await loadDestinations(true);
+  if(adminTab!=='Destinations')return;
+  if(_destEdit){renderDestForm(box);return;}
+  box.innerHTML=
+    '<div class="note2" style="margin-bottom:12px">Places shown in the <b>Adventure</b> section. Add a new destination or edit any existing one. Custom places you add are saved to your database; built-in ones can be overridden here.</div>'
+    +(DESTS.length?'<div class="hostlist">'+DESTS.map(admDestCard).join('')+'</div>':'<div class="empty"><p>No destinations yet.</p></div>')
+    +'<button class="btn" style="margin-top:14px" onclick="destNew()"><span class="msr">add</span> Add a destination</button>';
+  hydrate(box);
+}
+function admDestCard(d){
+  const custom=_dbDestIds.has(d.id);
+  const acts=(typeof actsFor==='function')?actsFor(d.id).length:0;
+  return '<div class="hostcard" onclick="destEdit(\''+jsq(String(d.id))+'\')">'
+    +'<div class="vhring sm"'+(d.img?' style="background-image:url(\''+esc(d.img)+'\');background-size:cover;background-position:center;color:transparent"':'')+'>'+(d.img?'':esc((String(d.n||'D')[0]||'D').toUpperCase()))+'</div>'
+    +'<div class="hostcard-bd"><b>'+esc(d.n||'—')+(d.soon?' <span class="adm-tc-soon">Soon</span>':'')+'</b>'
+    +'<small>'+esc(d.state||'—')+(acts?' · '+acts+' activity'+(acts>1?'s':''):'')+'</small>'
+    +'<span class="hostcard-trips">'+(custom?'Custom':'Built-in')+'</span></div>'
+    +'<span class="ch" style="transform:scaleX(-1)">'+ic('back',16)+'</span></div>';
+}
+function destNew(){_destEdit={id:'',n:'',state:'',img:'',best:'',lvl:'',budget:'',blurb:'',attractions:[],tips:[],near:[],soon:false,_new:true};renderAdminDestinations();}
+function destEdit(id){const d=destById(id);_destEdit=d?Object.assign({_new:false},d):null;renderAdminDestinations();}
+function destCancel(){_destEdit=null;renderAdminDestinations();}
+function dstSetSoon(v){if(_destEdit)_destEdit.soon=v;const no=document.getElementById('dsSoonNo'),ys=document.getElementById('dsSoonYes');if(no)no.classList.toggle('on',!v);if(ys)ys.classList.toggle('on',v);}
+function renderDestForm(box){
+  const d=_destEdit;const img=(d.img||'').trim();
+  const isDb=_dbDestIds.has(d.id);
+  const isBuiltin=!!(_BUILTIN_DESTS&&_BUILTIN_DESTS.some(b=>b.id===d.id));
+  box.innerHTML=`<div class="adm-editor">
+    <div class="adm-ed-head"><b>${d._new?'Add a destination':'Edit destination'}</b><button class="adm-ic" onclick="destCancel()"><span class="msr">close</span></button></div>
+    <div class="adm-sec">Basics</div>
+    ${fld('dsName','Name',d.n,'e.g. Rishikesh')}
+    ${fld('dsState','State / region',d.state,'e.g. Uttarakhand')}
+    ${fld('dsImg','Photo URL',img,'https://…')}
+    <div class="adm-imgprev" id="dsImgPrev" style="${img?`background-image:url('${esc(img)}')`:''}"></div>
+    <div class="adm-hint">Paste a landscape photo URL (Unsplash, Wikimedia, or your own Supabase upload).</div>
+    <div class="adm-sec">At a glance</div>
+    ${fld('dsBest','Best time',d.best,'e.g. Sep – Jun')}
+    ${fld('dsLvl','Level',d.lvl,'e.g. Beginner friendly')}
+    ${fld('dsBudget','Avg budget / day',d.budget,'e.g. Rs 2,000 - 5,000 / day')}
+    <div class="field"><label>Availability</label><div class="adm-status">
+      <button type="button" class="adm-status-btn ${d.soon?'':'on'}" id="dsSoonNo" onclick="dstSetSoon(false)">Live</button>
+      <button type="button" class="adm-status-btn ${d.soon?'on':''}" id="dsSoonYes" onclick="dstSetSoon(true)">Coming soon</button>
+    </div></div>
+    <div class="adm-sec">About</div>
+    <div class="field"><textarea id="dsBlurb" class="adm-ta" placeholder="One or two lines about this place…">${esc(d.blurb||'')}</textarea></div>
+    <div class="adm-sec">Details</div>
+    ${fld('dsAttr','Top attractions',(d.attractions||[]).join(', '),'Laxman Jhula, Triveni Ghat, Neer Waterfall')}
+    <div class="adm-hint">Comma-separated.</div>
+    <div class="field"><label>Traveller tips</label><textarea id="dsTips" class="adm-ta" placeholder="One tip per line">${esc((d.tips||[]).join('\n'))}</textarea></div>
+    <div class="adm-hint">One tip per line.</div>
+    ${fld('dsNear','Nearby places',(d.near||[]).join(', '),'Comma-separated destination names')}
+    <div class="adm-ed-foot">
+      ${(!d._new&&isDb)?'<button class="btn ghost" style="color:#ff7a7a" onclick="destDelete()"><span class="msr">'+(isBuiltin?'restart_alt':'delete')+'</span> '+(isBuiltin?'Reset to default':'Delete')+'</button>':'<button class="btn ghost" onclick="destCancel()">Cancel</button>'}
+      <button class="btn" onclick="saveDestination()"><span class="msr">check</span> Save destination</button>
+    </div></div>`;
+  hydrate(box);
+  const p=document.getElementById('dsImg');
+  if(p)p.addEventListener('input',()=>{const pv=document.getElementById('dsImgPrev');if(pv)pv.style.backgroundImage=p.value.trim()?`url('${p.value.split('?')[0].replace(/'/g,'%27')}')`:'';});
+}
+async function saveDestination(){
+  const v=id=>((document.getElementById(id)||{}).value||'').trim();
+  const name=v('dsName');
+  if(!name){note('A destination needs a name.','Name required');return;}
+  const sb=getSupaClient();const uid=sb?await authUid():null;
+  if(!sb||!uid){note('Please sign in as admin to save.','Sign in required');return;}
+  const csv=s=>String(s||'').split(',').map(x=>x.trim()).filter(Boolean);
+  const lines=s=>String(s||'').split('\n').map(x=>x.trim()).filter(Boolean);
+  const id=(_destEdit&&_destEdit.id)||slugify(name)||('dest-'+Date.now());
+  const row={id:id,name:name,state:v('dsState'),img:v('dsImg'),best:v('dsBest'),lvl:v('dsLvl'),budget:v('dsBudget'),
+    blurb:v('dsBlurb'),attractions:csv(v('dsAttr')),
+    tips:lines((document.getElementById('dsTips')||{}).value),near:csv(v('dsNear')),
+    soon:!!(_destEdit&&_destEdit.soon)};
+  const btn=document.querySelector('.adm-ed-foot .btn:not(.ghost)');if(btn){btn.disabled=true;btn.textContent='Saving…';}
+  const r=await sb.from('destinations').upsert(row,{onConflict:'id'}).select('id');
+  if(btn){btn.disabled=false;}
+  if(r.error){note('Could not save: '+r.error.message,'Save failed');return;}
+  if(!r.data||!r.data.length){note('Nothing was saved — make sure you are signed in as the admin.','Not saved');return;}
+  _destEdit=null;await loadDestinations(true);renderAdminDestinations();
+  try{if(document.querySelector('#dests.active'))renderDests();}catch(e){}
+  note('Destination saved ✓');
+}
+async function destDelete(){
+  const d=_destEdit;if(!d||!d.id)return;
+  const isBuiltin=!!(_BUILTIN_DESTS&&_BUILTIN_DESTS.some(b=>b.id===d.id));
+  if(!(await askConfirm(isBuiltin?'Reset this built-in destination to its default? Your custom changes will be removed.':'Delete this destination?',isBuiltin?'Reset destination':'Delete destination')))return;
+  const sb=getSupaClient();const uid=sb?await authUid():null;
+  if(!sb||!uid){note('Please sign in as admin.','Sign in required');return;}
+  const r=await sb.from('destinations').delete().eq('id',d.id).select('id');
+  if(r.error){note('Could not delete: '+r.error.message,'Error');return;}
+  _destEdit=null;await loadDestinations(true);renderAdminDestinations();
+  try{if(document.querySelector('#dests.active'))renderDests();}catch(e){}
+  note(isBuiltin?'Reset to default.':'Destination deleted.');
 }
 
 async function renderAdminStaff(){
@@ -5563,7 +5695,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='353';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='355';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -7355,7 +7487,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='gear')renderGear();
   if(id==='permits')renderPermits();
   if(id==='activities')renderActivities();
-  if(id==='dests')renderDests();
+  if(id==='dests'){renderDests();loadDestinations().then(()=>renderDests()).catch(()=>{});}
   if(id==='dest')renderDest();
   if(id==='act')renderAct();
   if(id==='cart')renderCart();
@@ -7442,6 +7574,7 @@ hydrate();
 restoreNav();   /* stay on the last screen after a refresh */
 try{history.replaceState({s:cur},'');history.pushState({s:cur},'');}catch(e){} /* buffer so device back navigates in-app instead of closing */
 loadTreks();    /* pull live treks from Supabase if configured (else built-in) */
+loadDestinations().then(()=>{try{if(document.querySelector('#dests.active'))renderDests();}catch(e){}}).catch(()=>{});
 renderHomeNews();     /* trek news & alerts strip on home */
 refreshNotifBadge();  /* show red dot if there's new community activity */
 setInterval(refreshNotifBadge,60000);  /* poll for new activity every minute */
@@ -8841,9 +8974,9 @@ function slugify(s){return String(s||'').toLowerCase().trim().replace(/[^a-z0-9]
 /* clean, readable shareable link — e.g. app.tripomonk.com/#trip=kedarkantha-winter-summit
    (no index.html, no raw UUID). Falls back to the id if the title has no usable slug. */
 function hostTripUrl(id,title){
-  const base=window.location.origin+window.location.pathname.replace(/index\.html$/,'');
   const slug=slugify(title);
-  return base+'#trip='+(slug||encodeURIComponent(id));
+  /* path URL (not #hash) so shared trip links get a rich card via the /trip/ edge function */
+  return window.location.origin+'/trip/'+(slug||encodeURIComponent(id));
 }
 /* open a host trip from a shared slug (or id) */
 async function openHostTripBySlug(key){
