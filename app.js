@@ -577,7 +577,7 @@ function atHandle(n){const s=String(handleFor(n)).replace(/^@/,'').trim();
   return '@'+s;}
 function avatar(n,size){size=size||38;const g=AVG[avHash(n)%AVG.length];const fs=Math.round(size*.4);
   const photo=photoFor(n);
-  const bg=photo?`background-image:url('${photo}');background-size:cover;background-position:center`:`background:linear-gradient(135deg,${g[0]},${g[1]})`;
+  const bg=photo?`background-image:url('${esc(photo)}');background-size:cover;background-position:center`:`background:linear-gradient(135deg,${g[0]},${g[1]})`;
   /* border-radius + overflow are baked in inline so the avatar is ALWAYS a circle, even
      if the stylesheet is stale/partial on a device — a square photo was the symptom. */
   return `<div class="av-i" onclick="openPerson('${jsq(n)}')" style="width:${size}px;height:${size}px;font-size:${fs}px;border-radius:50%;overflow:hidden;${bg}">${photo?'':initials(n)}</div>`;}
@@ -1249,7 +1249,7 @@ function setAvatarEl(el,name,photo){
     el.style.backgroundSize='cover';el.style.backgroundPosition='center';
     setAvKeepCam(el,'');el.classList.add('has-photo');
   };
-  im.onerror=()=>{el.style.backgroundImage='';el.textContent=letter;};
+  im.onerror=()=>{el.style.backgroundImage='';setAvKeepCam(el,letter);};
   im.src=photo;
 }
 function getSavedUsername(){try{return localStorage.getItem('tmk_uhandle')||'';}catch(e){return'';}}
@@ -1662,7 +1662,7 @@ async function renderProfileGallery(){
       const vid=(!poster&&String(c.src).startsWith('data:video'))?`<video src="${esc(c.src)}" muted playsinline style="width:100%;height:100%;object-fit:cover"></video>`:'';
       return `<div class="pg" style="${bg}" onclick="openPostDetail('${c.post.id}')">${vid}<span class="msr pg-play">play_arrow</span></div>`;
     }
-    return `<div class="pg" style="background-image:url('${c.src}${String(c.src).startsWith('http')?Q:''}')" onclick="openPostDetail('${c.post.id}')"></div>`;
+    return `<div class="pg" style="background-image:url('${esc(c.src)}${String(c.src).startsWith('http')?Q:''}')" onclick="openPostDetail('${c.post.id}')"></div>`;
   }).join(''):`<div class="empty" style="grid-column:1/-1">${_profTab==='All'?'You haven\'t posted yet. Share your first trek moment!':'No '+_profTab.toLowerCase()+' yet.'}</div>`;
 }
 
@@ -3055,7 +3055,7 @@ function mediaItem(src){
       <video src="${esc(src)}" playsinline preload="metadata" loop></video>
       <div class="play-ic"><span class="msr" style="font-size:44px;color:rgba(255,255,255,.9);text-shadow:0 2px 12px rgba(0,0,0,.5)">play_circle</span></div>
     </div>`;}
-  const url=src.startsWith('data:')?src:src+Q;
+  const url=src.startsWith('data:')?esc(src):esc(src)+Q;
   return `<div class="slide" style="background-image:url('${url}')"></div>`;}
 /* --- Feed media keeps its OWN shape ---------------------------------------
    Instead of force-cropping every post into a fixed 4:5 box, each carousel adopts
@@ -3929,7 +3929,7 @@ async function loadUserPosts(name){
 function gridCell(p){
   const media=(p.imgs&&p.imgs.length)?p.imgs[0]:'';
   const isVid=media&&isAnyVideo(media);
-  const url=media?(media.startsWith('data:')?media:media+Q):'';
+  const url=media?(media.startsWith('data:')?esc(media):esc(media)+Q):'';
   const badge=p.imgs&&p.imgs.length>1?`<span class="g-multi msr">filter_none</span>`:(isVid?`<span class="g-multi msr">play_arrow</span>`:'');
   let inner;
   if(!media)inner=`<div class="g-img g-txt">${esc((p.txt||'').slice(0,40))}</div>`;
@@ -3964,7 +3964,7 @@ async function renderPerson(){if(!curPerson){go('community');return;}const p=get
   body.innerHTML=`
     <div class="prof-top">${avatar(p.n,84)}
       <h2>${esc(properName(p.n))}${hostBadge(p.n)}</h2>${at?`<div class="handle">${esc(at)}</div>`:''}
-      <p class="pbio">${p.bio||''}</p>
+      <p class="pbio">${esc(p.bio||'')}</p>
       <div class="pstats"><div><b>${posts.length}</b><small>Posts</small></div><div><b id="pFlwr" data-person="${esc(p.n)}" data-base="${base}">${flwr.toLocaleString()}</b><small>Followers</small></div><div><b>${Number(following).toLocaleString()}</b><small>Following</small></div></div>
       ${me?'':`<div class="profile-actions" style="margin:14px 0 0"><button class="${isFollowing(p.n)?'on':''}" data-follow="${esc(p.n)}" onclick="toggleFollow('${jsq(p.n)}')">${isFollowing(p.n)?'Following':'Follow'}</button><button onclick="openChat('${jsq(p.n)}')">Message</button></div>`}
       <div style="margin-top:12px">${socialLinks(me?getSavedSocials():socialsByName[p.n])}</div>
@@ -5563,7 +5563,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='352';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='353';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
