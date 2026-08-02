@@ -329,7 +329,7 @@ function sbHeaders(extra){return Object.assign({apikey:SB.SUPABASE_ANON_KEY,Auth
 /* Bump ONLY when a cached payload's shape changes (a new column the UI depends on).
    Deliberately not tied to APP_BUILD — that changes every deploy and would throw away
    the cache each time, which is the opposite of what this is for. */
-const SWR_V=1;
+const SWR_V=2;   /* v2: weather forecast is now 7 days (was 5) — invalidate the old cached payloads */
 function swrGet(key){try{const v=JSON.parse(localStorage.getItem('tmk_swr_'+key)||'null');
   if(!v||!('data'in v))return null;
   if((v.v||0)!==SWR_V){localStorage.removeItem('tmk_swr_'+key);return null;}   /* stale shape */
@@ -715,7 +715,7 @@ const menu=[['bookings','My Bookings','bookings'],['shield','Trek Passport','pas
 const setList=[['user','Account & security','account'],['bell','Notifications','notifPrefs'],['globe','Language','language'],['card','Payment methods','payments'],['shield','Privacy Policy','privacy'],['help','About Tripomonk','about']];
 /* demo notifications removed — the notifications screen shows only real activity now */
 const faqs=[['How do I book a trek?','Pick a trek, choose a batch on Select Date, add travellers and pay 25% to confirm your seat.'],['What is the cancellation policy?','Free cancellation up to 15 days before departure (full refund). Within 15 days, a 50% charge applies.'],['Do you provide gear on rent?','Yes — add the gear kit (jacket, boots, poles) as an add-on at checkout.'],['Are permits included?','We arrange forest / eco-zone permits for you as an assisted service.'],['What fitness level do I need?','Easy treks suit beginners; Moderate+ need regular cardio for 3–4 weeks before.']];
-const reviewsData=[];  /* real reviews only — demo reviews removed */
+let reviewsData=[];  /* {id,trek,author,rating,body,ts,date} — loaded from Supabase / localStorage (see loadReviews) */
 const KNOW=[['community','8–15','Group size'],['user','10+ yrs','Min age'],['altitude','Moderate','Fitness']];
 const EXCL=['Personal expenses','Travel to the base city','Anything not in inclusions'];
 
@@ -2150,6 +2150,7 @@ function renderHome(){
   const list=[...pool].sort((a,b)=>(b.pop?1:0)-(a.pop?1:0)||(a.soon?1:0)-(b.soon?1:0)).slice(0,12);
   makeCoverflow('homeList',list,trekCardCF,(t)=>openDetail(t.idx));
   renderHomeTours();   /* Road Trips & Tours rail (hidden until a tour exists) */
+  renderInspire('homeInspire');   /* rotating travel quotes + trek fun facts, below Trek News */
   /* paint the host slot now (CTA), then swap in the rail if any trips are live */
   renderHomeHosts();
   renderGiftHome();
@@ -2212,19 +2213,29 @@ function renderTours(){
   hydrate(box);lazyBg(box);
 }
 /* the home rail — only shows once at least one tour exists */
+/* one premium road-trip card — shared by the home "Featured Road Trips" rail
+   and the destination "Road trip packages" list, so both look identical.
+   Image-forward, warm-orange identity, tap opens the trip detail (#trip). */
+function roadTripCard(t){
+  const meta=[t.days?esc(String(t.days))+'D':'',t.lvl?esc(t.lvl):'',t.best?esc(t.best):''].filter(Boolean);
+  const of=(t.offer||'').trim();
+  const img=normalizeImageUrl(t.img||'');
+  return `<div class="rtcard" onclick="openDetail(${t.idx})" style="background-image:url('${img}')">
+      <span class="rt-dep">${esc(depLabel(t))}</span>
+      ${of?`<span class="rt-offer"><span class="msr">local_offer</span>${esc(of)}</span>`:''}
+      <div class="rt-b">
+        <b>${esc(t.n)}</b>
+        <div class="rt-meta">${meta.map(m=>'<span>'+m+'</span>').join('<i>·</i>')}</div>
+        <div class="rt-ft"><span class="rt-p"><small>from</small> <b>${INR(t.price||0)}</b></span><span class="rt-go">View trip ${ic('back',13)}</span></div>
+      </div></div>`;
+}
 function renderHomeTours(){
   const sec=document.getElementById('homeToursSec'),rail=document.getElementById('homeTours');
   if(!rail)return;
   const list=tourList();
   if(!list.length){if(sec)sec.style.display='none';rail.innerHTML='';return;}
   if(sec)sec.style.display='';
-  /* a distinct VERTICAL road-trip card (not the trek card look) */
-  rail.innerHTML=list.slice(0,10).map(t=>`<div class="trcard" onclick="openTourHome(${t.idx})">
-      <div class="trcard-ph" style="background-image:url('${t.img}')"><span class="trcard-tag">ROAD TRIP</span></div>
-      <div class="trcard-bd"><b>${esc(t.n)}</b>
-        <small>${ic('pin',11)} ${esc((destById(t.dest_id)||{}).n||t.region||'')}</small>
-        <div class="trcard-ft"><span>${t.days?esc(String(t.days))+' days':''}${t.lvl?' · '+esc(t.lvl):''}</span><span class="trcard-p">${INR(t.price||0)}</span></div>
-      </div></div>`).join('');
+  rail.innerHTML=list.slice(0,10).map(roadTripCard).join('');
   hydrate(rail);
 }
 
@@ -2324,13 +2335,13 @@ async function loadConditions(t){
   const q='latitude='+c[0]+'&longitude='+c[1]+'&timezone=auto';
   try{
     const [w,a]=await Promise.all([
-      fetch('https://api.open-meteo.com/v1/forecast?'+q+'&forecast_days=5&daily=weathercode,temperature_2m_max,temperature_2m_min').then(r=>r.json()).catch(()=>null),
+      fetch('https://api.open-meteo.com/v1/forecast?'+q+'&forecast_days=7&daily=weathercode,temperature_2m_max,temperature_2m_min').then(r=>r.json()).catch(()=>null),
       fetch('https://air-quality-api.open-meteo.com/v1/air-quality?'+q+'&forecast_days=1&hourly=us_aqi').then(r=>r.json()).catch(()=>null)
     ]);
     const d=(w&&w.daily)||{};
     const tmax=Array.isArray(d.temperature_2m_max)?d.temperature_2m_max[0]:null;
     const tmin=Array.isArray(d.temperature_2m_min)?d.temperature_2m_min[0]:null;
-    /* 5-day forecast for the strip */
+    /* 7-day forecast for the strip */
     const days=(Array.isArray(d.time)?d.time:[]).map((dt,i)=>({date:dt,code:(d.weathercode||[])[i],tmax:(d.temperature_2m_max||[])[i],tmin:(d.temperature_2m_min||[])[i]}));
     const arr=((a&&a.hourly&&a.hourly.us_aqi)||[]).filter(v=>typeof v==='number');
     const aqi=arr.length?Math.round(arr.reduce((s,v)=>s+v,0)/arr.length):null;
@@ -2345,7 +2356,14 @@ function wxIcon(code){code=+code||0;if(code===0)return '☀️';if(code<=3)retur
 function forecastStrip(days){
   if(!Array.isArray(days)||!days.length)return '';
   const dn=d=>{try{return new Date(d+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short'});}catch(e){return '';}};
-  return '<div class="fc-strip">'+days.slice(0,5).map((d,i)=>`<div class="fc-day"><span class="fc-dn">${i===0?'Today':esc(dn(d.date))}</span><span class="fc-ic">${wxIcon(d.code)}</span><span class="fc-t">${d.tmax!=null?Math.round(d.tmax)+'°':'—'}</span><span class="fc-tl">${d.tmin!=null?Math.round(d.tmin)+'°':''}</span></div>`).join('')+'</div>';
+  const dd=d=>{try{return new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});}catch(e){return '';}};
+  return '<div class="fc-strip">'+days.slice(0,7).map((d,i)=>`<div class="fc-day${i===0?' today':''}">`
+    +`<span class="fc-dn">${i===0?'Today':esc(dn(d.date))}</span>`
+    +`<span class="fc-dd">${esc(dd(d.date))}</span>`
+    +`<span class="fc-ic">${wxIcon(d.code)}</span>`
+    +`<span class="fc-t">${d.tmax!=null?Math.round(d.tmax)+'°':'—'}</span>`
+    +`<span class="fc-tl">${d.tmin!=null?Math.round(d.tmin)+'°':''}</span>`
+    +`</div>`).join('')+'</div>';
 }
 function factsHTML(t,live){
   const fc=(live&&live.days)?forecastStrip(live.days):'';
@@ -2394,7 +2412,60 @@ function renderDetailFacts(t){
     hydrate(el);
   }).catch(()=>{});
 }
-function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
+/* ============================================================
+   INSPIRE — travel quotes + trek fun facts, shown below the news
+   section as a swipeable, auto-rotating carousel. Users can swipe back
+   to re-read; auto-advance pauses right after a manual swipe and while
+   the view is hidden.
+   ============================================================ */
+const INSPO=[
+  {t:'quote',x:'The mountains are calling and I must go.',a:'John Muir'},
+  {t:'fact', x:'The Himalayas are still growing — India pushes north about 5 cm a year, nudging the peaks a few millimetres taller each year.'},
+  {t:'quote',x:'It is not the mountain we conquer, but ourselves.',a:'Sir Edmund Hillary'},
+  {t:'fact', x:'At 4,000 m the air holds roughly 40% less oxygen than at sea level — exactly why we build in acclimatisation days.'},
+  {t:'quote',x:'Jobs fill your pocket, but adventures fill your soul.',a:'Jaime Lyn Beatty'},
+  {t:'fact', x:'Uttarakhand’s Valley of Flowers bursts into over 500 species of wild alpine flowers every monsoon.'},
+  {t:'quote',x:'Not all those who wander are lost.',a:'J. R. R. Tolkien'},
+  {t:'fact', x:'Descending is often harder on your knees than climbing — trekking poles can cut the load by up to 25%.'},
+  {t:'quote',x:'Travel far enough, you meet yourself.',a:'David Mitchell'},
+  {t:'fact', x:'Chandratal — “Moon Lake” in Spiti at 4,300 m — shifts from turquoise to deep blue through the day.'},
+  {t:'quote',x:'The journey of a thousand miles begins with a single step.',a:'Lao Tzu'},
+  {t:'fact', x:'Trekking at altitude can burn 400–700 calories an hour — eat well and keep sipping water.'},
+  {t:'quote',x:'Life is either a daring adventure or nothing at all.',a:'Helen Keller'},
+  {t:'fact', x:'The Ganga begins as a glacier snout at Gaumukh, nearly 4,000 m up in the Uttarakhand Himalaya.'}
+];
+const _inspoIv={};
+function renderInspire(id){
+  const box=document.getElementById(id);if(!box)return;
+  /* shuffle a copy so it doesn't always open on the same line */
+  const list=INSPO.slice();for(let i=list.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));const tmp=list[i];list[i]=list[j];list[j]=tmp;}
+  box.innerHTML='<div class="insp-track" id="'+id+'_tr">'+list.map(q=>
+      '<div class="insp-slide '+q.t+'">'
+      +'<span class="insp-badge">'+(q.t==='quote'?'<span class="msr">format_quote</span>Travel wisdom':'<span class="msr">lightbulb</span>Trek fact')+'</span>'
+      +'<p class="insp-x">'+esc(q.x)+'</p>'
+      +(q.a?'<div class="insp-a">— '+esc(q.a)+'</div>':'')
+      +'</div>').join('')
+    +'</div>';
+  hydrate(box);
+  const tr=document.getElementById(id+'_tr');
+  let idx=0,paused=false,pauseT=null,prog=false,progT=null;
+  const jump=i=>{i=(i+list.length)%list.length;idx=i;prog=true;clearTimeout(progT);
+    tr.scrollTo({left:i*tr.clientWidth,behavior:'smooth'});progT=setTimeout(()=>{prog=false;},700);};
+  tr.addEventListener('scroll',()=>{
+    const i=Math.round(tr.scrollLeft/Math.max(1,tr.clientWidth));
+    if(i>=0&&i<list.length&&i!==idx)idx=i;
+    if(prog)return;                       /* ignore our own smooth-scroll */
+    paused=true;clearTimeout(pauseT);pauseT=setTimeout(()=>{paused=false;},9000);
+  },{passive:true});
+  clearInterval(_inspoIv[id]);
+  _inspoIv[id]=setInterval(()=>{
+    if(paused||!tr.offsetParent)return;   /* skip after a recent swipe, or while the view is hidden */
+    jump(idx+1);
+  },6500);
+}
+function openDetail(i){const t=treks[i];if(!t)return;
+  if(isTour(t)){openTrip(i);return;}   /* road trips get their own distinct detail view */
+  cart.trek=t;
   const hh=document.getElementById('dHero');hh.style.transform='';
   renderHero(hh,t);   /* shimmer skeleton until the hero photo is ready */
   const dc=document.getElementById('dCredit');
@@ -2422,7 +2493,7 @@ function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
   document.getElementById('dIncl').innerHTML=inclCard(INCL,EXCL);
   const dit=trekItin(t);
   document.getElementById('dItinPrev').innerHTML=dit.slice(0,3).map((d,i)=>`<div class="tl"><div class="line"><div class="dot"></div>${i<2?'<div class="rod"></div>':''}</div><div class="bd"><div class="d">Day ${i+1}</div><h3>${d[0]}</h3></div></div>`).join('');
-  document.getElementById('dRevPrev').innerHTML=reviewsData.length?reviewsData.slice(0,2).map(reviewCard).join(''):'<div style="font-size:12.5px;color:var(--muted)">No reviews yet — be the first after your trek.</div>';
+  document.getElementById('dRevPrev').innerHTML=reviewPreviewHTML(t);
   document.getElementById('dFav').classList.remove('on');
   const cta=document.getElementById('dCta');
   if(t.soon){cta.innerHTML=ic('bell',16)+' Coming Soon · Notify me';cta.onclick=()=>wa(t.n+' — please notify me when it goes live.');}
@@ -2433,6 +2504,81 @@ function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
   refreshGearReco(t);          /* recommended gear, selected for this trek */
   renderDetailNews(t.n);
   go('detail');
+}
+/* ============================================================
+   ROAD TRIP DETAIL (#trip) — a distinct layout from the trek page.
+   Same data + booking engine, but a route timeline is the centrepiece,
+   the facts are a compact chip band, and a sticky booking bar carries
+   the price + "Book this trip". Reached via openDetail() routing tours here.
+   ============================================================ */
+function openTrip(i){const t=treks[i];if(!t)return;renderTrip(t);go('trip');}
+function renderTrip(t){
+  cart.trek=t;
+  const g=id=>document.getElementById(id);
+  const hh=g('tripHero');if(hh){hh.style.transform='';renderHero(hh,t);}
+  const cr=g('tripCredit');
+  if(cr){if(t.credit){cr.innerHTML='<span class="msr">photo_camera</span> '+esc(t.credit);cr.classList.add('on');}else cr.classList.remove('on');}
+  const db=g('tripDepBadge');if(db){db.textContent=depLabel(t);db.style.display=depLabel(t)?'':'none';}
+  g('tripName').textContent=t.n;
+  g('tripReg').textContent=(destById(t.dest_id)||{}).n||t.region||'';
+  g('tripRate').textContent=t.r;
+  g('tripRev').textContent='('+t.rev+' reviews)';
+  /* compact fact band instead of the trek 4-stat grid */
+  const q=[['clock',t.dur||((t.days||'')+' days')],['altitude',t.lvl||'—'],['calendar',t.best||'—'],['community',((typeof KNOW!=='undefined'&&KNOW[0]&&KNOW[0][1])||'8–15')+' group']];
+  g('tripQuick').innerHTML=q.map(x=>`<span class="tq"><span class="ic">${ic(x[0],14)}</span>${esc(String(x[1]))}</span>`).join('');
+  /* offer banner */
+  const of=g('tripOffer'),ov=(t.offer||'').trim();
+  if(of){if(ov){of.innerHTML='<span class="msr">local_offer</span><div><b>Offer</b><span>'+esc(ov)+'</span></div>';of.style.display='flex';of.parentElement.style.display='';}else{of.style.display='none';of.parentElement.style.display='none';}}
+  g('tripDesc').textContent=t.desc||'';
+  renderTripWeather(t);
+  g('tripRoute').innerHTML=routeTimeline(t);
+  g('tripIncl').innerHTML=inclCard(INCL,EXCL);
+  g('tripPickup').innerHTML=pickupBlockHTML(t);
+  g('tripHl').innerHTML=(t.hl||[]).map(h=>`<span class="hl-pill"><span class="ic">${ic(h[0],15)}</span>${esc(h[1])}</span>`).join('');
+  g('tripRevPrev').innerHTML=reviewPreviewHTML(t);
+  const fv=g('tripFav');if(fv)fv.classList.remove('on');
+  /* sticky booking bar */
+  const cta=g('tripCta'),cap=g('tripCtaCap'),pr=g('tripCtaPrice');
+  if(pr)pr.textContent=INR(t.price||0);
+  if(t.soon){if(cta){cta.innerHTML=ic('bell',16)+' Notify me';cta.onclick=()=>wa(t.n+' — please notify me when it goes live.');}if(cap)cap.textContent='coming soon';}
+  else{if(cta){cta.innerHTML='Book this trip&nbsp; →';cta.onclick=()=>openTourDepart(t.idx);}if(cap)cap.textContent='from';}
+  hydrate(g('trip'));
+}
+/* live 5-day forecast strip; hide the block if there's nothing to show */
+function renderTripWeather(t){
+  const box=document.getElementById('tripWx'),blk=document.getElementById('tripWxBlk');if(!box)return;
+  const paint=live=>{
+    const fc=(live&&live.days)?forecastStrip(live.days):'';
+    if(!fc){if(blk)blk.style.display='none';return;}
+    if(blk)blk.style.display='';
+    box.innerHTML=fc+'<div class="dfacts-src" style="margin-top:8px">'+(live.exact?'Open-Meteo · updated today':'Nearest station in '+esc(t.region||'the region'))+'</div>';
+  };
+  const cached=swrGet(condKey(coordsFor(t)));
+  paint(cached?cached.data:null);
+  loadConditions(t).then(live=>{if(live&&cart.trek===t)paint(live);}).catch(()=>{});
+}
+/* the signature element: a dashed "road" timeline of day-by-day stops */
+function routeTimeline(t){
+  const it=trekItin(t);
+  if(!it.length)return '<div class="route-empty">The full day-by-day route is shared on confirmation. Tap “Book this trip” or chat with us for the detailed plan.</div>';
+  return '<div class="route-track">'+it.map((d,i)=>{
+    const last=i===it.length-1;
+    return '<div class="route-stop'+(last?' last':'')+'">'
+      +'<div class="route-node"><span>'+(i+1)+'</span></div>'
+      +'<div class="route-bd"><div class="route-day">Day '+(i+1)+'</div>'
+      +'<h4>'+esc(d[0])+'</h4>'
+      +(d[1]?'<p>'+esc(d[1])+'</p>':'')
+      +'</div></div>';
+  }).join('')+'</div>';
+}
+/* pickup / drop-off card (reuses pickupInfo — admin-set values win) */
+function pickupBlockHTML(t){
+  const pk=pickupInfo(t);
+  return '<div class="pickup-card">'
+    +'<div class="pickup-row"><span class="pickup-ic msr">trip_origin</span><div><small>Pickup</small><b>'+esc(pk.city)+'</b>'+(pk.alt.length?'<span class="pickup-alt">Also boardable en route: '+pk.alt.map(esc).join(' · ')+'</span>':'')+'</div></div>'
+    +(pk.drop?'<div class="pickup-row"><span class="pickup-ic msr">place</span><div><small>Drop-off</small><b>'+esc(pk.drop)+'</b></div></div>':'')
+    +(pk.map?'<a class="pickup-map" href="'+esc(pk.map)+'" target="_blank" rel="noopener"><span class="msr">map</span>Open pickup point in Maps →</a>':'')
+    +'</div>';
 }
 async function shareTrek(){
   const t=cart.trek;if(!t)return;
@@ -3071,7 +3217,95 @@ async function deleteCurrentStory(){
   closeStory();
   await loadStories();renderStories();
 }
-function reviewCard(r){return `<div class="panel" style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:7px"><div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#ffd27a,#ff7a59);display:grid;place-items:center;font-weight:600;color:#5a2a00">${r[0][0]}</div><div><b style="font-size:13px">${r[0]}</b><div class="star" style="font-size:11px">${'★'.repeat(r[1])}${'☆'.repeat(5-r[1])} <span style="color:var(--muted2)">· ${r[3]}</span></div></div></div><p style="margin:0;font-size:12.5px;color:var(--muted);line-height:1.55">${r[2]}</p></div>`;}
+/* ============================================================
+   REVIEWS — stored in the Supabase `reviews` table when available, with a
+   localStorage cache so new reviews REFLECT instantly (and work in preview /
+   before the table is deployed). Users write reviews from the Reviews screen;
+   admin adds them manually from Admin → Reviews. Every field is escaped on
+   render (reviews are user-generated).
+   ============================================================ */
+function reviewCard(r){
+  const nm=String(r.author||'Trekker');const rt=Math.max(1,Math.min(5,+r.rating||5));
+  return `<div class="panel" style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:7px"><div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#ffd27a,#ff7a59);display:grid;place-items:center;font-weight:600;color:#5a2a00">${esc((nm[0]||'T').toUpperCase())}</div><div style="min-width:0"><b style="font-size:13px">${esc(nm)}</b><div class="star" style="font-size:11px">${'★'.repeat(rt)}${'☆'.repeat(5-rt)} <span style="color:var(--muted2)">· ${esc(r.date||'')}${r.trek?' · '+esc(r.trek):''}</span></div></div></div><p style="margin:0;font-size:12.5px;color:var(--muted);line-height:1.55">${esc(r.body||'')}</p></div>`;
+}
+function reviewsLocal(){try{return JSON.parse(localStorage.getItem('tmk_reviews')||'[]');}catch(e){return[];}}
+function reviewsSaveLocal(a){try{localStorage.setItem('tmk_reviews',JSON.stringify((a||[]).slice(0,200)));}catch(e){}}
+function reviewDateLabel(ts){try{return new Date(ts).toLocaleDateString('en-IN',{month:'short',year:'numeric'});}catch(e){return '';}}
+function reviewsForTrek(name){name=String(name||'');return reviewsData.filter(r=>!r.trek||r.trek===name);}
+function reviewPreviewHTML(t){
+  const list=reviewsForTrek(t&&t.n);
+  return list.length?list.slice(0,2).map(reviewCard).join('')
+    :'<div style="font-size:12.5px;color:var(--muted)">No reviews yet — be the first after your '+(isTour(t)?'trip':'trek')+'.</div>';
+}
+function repaintReviews(){
+  if(cur==='reviews')renderReviews();
+  if(cur==='detail'&&cart.trek){const el=document.getElementById('dRevPrev');if(el){el.innerHTML=reviewPreviewHTML(cart.trek);hydrate(el);}}
+  if(cur==='trip'&&cart.trek){const el=document.getElementById('tripRevPrev');if(el){el.innerHTML=reviewPreviewHTML(cart.trek);hydrate(el);}}
+  if(cur==='admin'&&adminTab==='Reviews'){const el=document.getElementById('arList');if(el)renderAdminReviewList();}
+}
+async function loadReviews(){
+  let list=reviewsLocal();
+  const sb=getSupaClient();
+  if(sb){try{
+    const{data}=await sb.from('reviews').select('id,trek,author,rating,body,created_at').order('created_at',{ascending:false}).limit(200);
+    if(Array.isArray(data)){
+      list=data.map(r=>({id:r.id,trek:r.trek||'',author:r.author||'Trekker',rating:Math.max(1,Math.min(5,+r.rating||5)),body:r.body||'',ts:r.created_at?Date.parse(r.created_at):Date.now(),date:reviewDateLabel(r.created_at||Date.now())}));
+      reviewsSaveLocal(list);
+    }
+  }catch(e){/* table not deployed yet, or offline — fall back to the local cache */}}
+  reviewsData=list.map(r=>({...r,date:r.date||reviewDateLabel(r.ts||Date.now())}));
+  repaintReviews();
+  return reviewsData;
+}
+/* add a review (used by both the user modal and admin manual entry). Optimistic:
+   it reflects instantly from the local cache, then syncs to Supabase if present. */
+async function addReview(o){
+  o=o||{};
+  const author=String(o.author||getSavedName()||'Trekker').trim()||'Trekker';
+  const rating=Math.max(1,Math.min(5,+o.rating||5));
+  const body=String(o.body||'').trim();
+  if(!body)return false;
+  const ts=Date.now();
+  const rec={id:'loc_'+ts+'_'+Math.floor(Math.random()*1e4),trek:String(o.trek||'').trim(),author,rating,body,ts,date:reviewDateLabel(ts)};
+  reviewsData=[rec].concat(reviewsData);
+  reviewsSaveLocal(reviewsData);
+  repaintReviews();
+  const sb=getSupaClient();
+  if(sb){try{
+    const uid=(currentUser&&currentUser.id)||null;
+    const{data,error}=await sb.from('reviews').insert({trek:rec.trek,author:rec.author,rating:rec.rating,body:rec.body,user_id:uid}).select('id').single();
+    if(!error&&data&&data.id){rec.id=data.id;reviewsSaveLocal(reviewsData);}
+  }catch(e){}}
+  return true;
+}
+async function delReview(id){
+  reviewsData=reviewsData.filter(r=>String(r.id)!==String(id));
+  reviewsSaveLocal(reviewsData);
+  const sb=getSupaClient();
+  if(sb&&String(id).indexOf('loc_')!==0){try{await sb.from('reviews').delete().eq('id',id);}catch(e){}}
+  repaintReviews();
+}
+/* ---- user "Write a review" modal ---- */
+let _revRating=5;
+function setRevStars(n){_revRating=Math.max(1,Math.min(5,+n||5));const el=document.getElementById('revStars');if(!el)return;
+  el.innerHTML=[1,2,3,4,5].map(i=>'<span class="rv-star'+(i<=_revRating?' on':'')+'" onclick="setRevStars('+i+')">★</span>').join('');}
+function openReviewModal(){
+  const m=document.getElementById('reviewModal');if(!m)return;
+  _revRating=5;setRevStars(5);
+  const nm=document.getElementById('revName');if(nm)nm.value=getSavedName()||'';
+  const bd=document.getElementById('revBody');if(bd)bd.value='';
+  const tn=document.getElementById('revTrekName');
+  if(tn){if(cart.trek){tn.textContent='For '+cart.trek.n;tn.style.display='';}else{tn.textContent='';tn.style.display='none';}}
+  m.classList.add('show');
+}
+function closeReviewModal(){const m=document.getElementById('reviewModal');if(m)m.classList.remove('show');}
+async function submitReview(){
+  const body=document.getElementById('revBody').value,name=document.getElementById('revName').value;
+  if(!body.trim()){note('Please write a few words for your review.','Add a review');return;}
+  await addReview({trek:(cart.trek&&cart.trek.n)||'',author:name,rating:_revRating,body});
+  closeReviewModal();
+  toast('Thanks — your review is live!');
+}
 /* "Trekkers to follow" strip */
 /* ---- people search ---- */
 async function loadPeopleRemote(){
@@ -4913,7 +5147,18 @@ function wireNotifSwipe(){
       openNotif(sw.dataset.nid,card.dataset.type,card.dataset.post,card.dataset.actor);});
   });
 }
-function renderReviews(){document.getElementById('reviewList').innerHTML=reviewsData.length?reviewsData.map(reviewCard).join(''):'<div class="empty"><p>No reviews yet. Be the first to review after your trek!</p></div>';hydrate(document.getElementById('reviewList'));}
+function renderReviews(){
+  const box=document.getElementById('reviewList');if(!box)return;
+  const list=reviewsData;
+  box.innerHTML='<button class="btn" style="margin-bottom:16px" onclick="openReviewModal()"><span class="msr" style="font-size:18px">rate_review</span> Write a review</button>'
+    +(list.length?list.map(reviewCard).join(''):'<div class="empty"><p>No reviews yet. Be the first to review after your trek!</p></div>');
+  const avg=list.length?(list.reduce((s,r)=>s+(+r.rating||0),0)/list.length):0;
+  const av=document.getElementById('revAvg'),ac=document.getElementById('revCount'),as=document.getElementById('revStarRow');
+  if(av)av.textContent=list.length?avg.toFixed(1):'—';
+  if(as){const full=Math.round(avg);as.textContent=list.length?('★'.repeat(full)+'☆'.repeat(5-full)):'☆☆☆☆☆';}
+  if(ac)ac.textContent=list.length?('Based on '+list.length+' review'+(list.length!==1?'s':'')):'Be the first to review';
+  hydrate(box);
+}
 function renderHelp(){document.getElementById('faqList').innerHTML=faqs.map(f=>`<div class="panel" style="margin-bottom:10px"><b style="font-size:13.5px;display:block;margin-bottom:6px">${f[0]}</b><span style="font-size:12.5px;color:var(--muted);line-height:1.55">${f[1]}</span></div>`).join('');hydrate(document.getElementById('help'));}
 function wa(msg){saveEnquiry('whatsapp',msg||'');window.open('https://wa.me/'+getWa()+'?text='+encodeURIComponent(msg||'Hi Tripomonk'),'_blank');}
 /* ---- Trek Health (live HR via Web Bluetooth where supported; else demo) ---- */
@@ -5218,12 +5463,12 @@ function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?'
   hero_video:(t.hvid||'').trim()||null,hero_use_video:!!t.hvideo,
   guide_id:(t.guide_id!=null&&t.guide_id!=='')?t.guide_id:null};}
 let editIdx=-1, adminTab='Treks', depTrek=null, _admHub=true;
-const ADM_TAB_IC={Overview:'dashboard',Bookings:'receipt_long',Treks:'landscape',Home:'home',Destinations:'travel_explore',Departures:'event',Packing:'checklist',Guides:'hiking',Hosts:'groups',Training:'fitness_center',Staff:'badge',Settings:'settings'};
-const ADM_TABS=['Overview','Bookings','Treks','Home','Destinations','Departures','Packing','Guides','Hosts','Training','Staff','Settings'];
+const ADM_TAB_IC={Overview:'dashboard',Bookings:'receipt_long',Treks:'landscape',Home:'home',Destinations:'travel_explore',Departures:'event',Packing:'checklist',Guides:'hiking',Reviews:'reviews',Hosts:'groups',Training:'fitness_center',Staff:'badge',Settings:'settings'};
+const ADM_TABS=['Overview','Bookings','Treks','Home','Destinations','Departures','Packing','Guides','Reviews','Hosts','Training','Staff','Settings'];
 /* one-line description per section, shown on the hub card */
 const ADM_TAB_DESC={Overview:'Today at a glance',Bookings:'Who has booked',Treks:'Add & edit treks, prices, tags',
   Home:'Featured trek & popular rail',Departures:'Batch dates & seats',Packing:'Per-trek packing lists',
-  Guides:'Your trek leaders',Hosts:'Applications & host trips',Training:'Who is training',
+  Guides:'Your trek leaders',Reviews:'Add & manage reviews',Hosts:'Applications & host trips',Training:'Who is training',
   Staff:'Trip-captain access',Settings:'App build & admin'};
 /* Was a horizontally-SWIPED tab strip — sections off the right edge were invisible and
    the gesture read as flaky. Now a card GRID: tap a card to open that section behind a
@@ -5249,6 +5494,7 @@ function renderAdmin(){
   else if(adminTab==='Departures')renderDepartures();
   else if(adminTab==='Packing')renderAdminPacking();
   else if(adminTab==='Guides')renderAdminGuides();
+  else if(adminTab==='Reviews')renderAdminReviews();
   else if(adminTab==='Hosts')renderAdminHosts();
   else if(adminTab==='Staff')renderAdminStaff();
   else renderAdminSettings();
@@ -5882,8 +6128,56 @@ async function delBatch(i){
   const list=getBatches(depTrek).slice();
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
+/* ----- Admin · Reviews (add manually + manage) ----- */
+function renderAdminReviews(){
+  const box=document.getElementById('adminBody');if(!box)return;
+  const opts='<option value="">General (shows on all treks)</option>'
+    +treks.filter(t=>!t.soon).map(t=>'<option value="'+esc(t.n)+'">'+esc(t.n)+(isTour(t)?' (road trip)':'')+'</option>').join('');
+  box.innerHTML='<div class="panel">'
+    +'<h3 style="margin:0 0 4px;font-size:16px">Add a review</h3>'
+    +'<p style="margin:0 0 8px;font-size:12px;color:var(--muted)">Reviews you add here show on the trek page and the Reviews screen right away.</p>'
+    +'<label class="rv-lbl">Trek / trip</label><select id="arTrek">'+opts+'</select>'
+    +'<label class="rv-lbl">Reviewer name</label><input id="arName" placeholder="e.g. Ananya S.">'
+    +'<label class="rv-lbl">Rating</label><select id="arRate"><option value="5">★★★★★ (5)</option><option value="4">★★★★ (4)</option><option value="3">★★★ (3)</option><option value="2">★★ (2)</option><option value="1">★ (1)</option></select>'
+    +'<label class="rv-lbl">Review</label><textarea id="arBody" rows="3" placeholder="What did they say about the experience?"></textarea>'
+    +'<button class="btn" style="margin-top:12px" onclick="adminAddReview()"><span class="msr">add</span> Add review</button>'
+    +'</div>'
+    +'<h3 style="margin:20px 0 10px;font-size:15px">All reviews (<span id="arCount">'+reviewsData.length+'</span>)</h3>'
+    +'<div id="arList"></div>';
+  renderAdminReviewList();
+  hydrate(box);
+  if(getSupaClient())loadReviews();   /* pull the latest so the list is authoritative */
+}
+function renderAdminReviewList(){
+  const el=document.getElementById('arList');if(!el)return;
+  const c=document.getElementById('arCount');if(c)c.textContent=reviewsData.length;
+  el.innerHTML=reviewsData.length?reviewsData.map(r=>{
+    const rt=Math.max(1,Math.min(5,+r.rating||5));
+    return '<div class="panel" style="margin-bottom:10px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">'
+      +'<b style="font-size:13px">'+esc(r.author||'Trekker')+' <span style="color:#ffce1f;font-size:12px">'+'★'.repeat(rt)+'</span></b>'
+      +'<button onclick="adminDelReview(\''+jsq(String(r.id))+'\')" style="background:none;border:0;color:#ff5a5a;font-size:12px;font-weight:600;cursor:pointer;flex:none">Delete</button></div>'
+      +(r.trek?'<div style="font-size:11px;color:var(--accent2);margin-top:2px">'+esc(r.trek)+'</div>':'<div style="font-size:11px;color:var(--muted2);margin-top:2px">General</div>')
+      +'<p style="margin:6px 0 0;font-size:12.5px;color:var(--muted);line-height:1.5">'+esc(r.body||'')+'</p>'
+      +'</div>';
+  }).join(''):'<div class="empty"><p>No reviews yet. Add one above.</p></div>';
+}
+async function adminAddReview(){
+  const g=id=>document.getElementById(id);
+  const name=(g('arName').value||'').trim(),body=(g('arBody').value||'').trim();
+  if(!name||!body){note('Enter a reviewer name and the review text.','Add review');return;}
+  await addReview({trek:g('arTrek').value,author:name,rating:g('arRate').value,body,silent:true});
+  toast('Review added');
+  renderAdminReviews();
+}
+async function adminDelReview(id){
+  const ok=await askConfirm('Delete this review? This cannot be undone.','Delete review');
+  if(!ok)return;
+  await delReview(id);
+  renderAdminReviewList();
+}
 /* ----- Settings ----- */
-const APP_BUILD='373';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='381';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -6738,7 +7032,9 @@ function openDest(id){
   loadDestinations(true).then(()=>{if(cur==='dest'&&curDest===id)renderDest();}).catch(()=>{});
 }
 function renderDest(){
-  const d=destById(curDest);if(!d)return;
+  /* curDest is set by openDest before this runs; if it's missing (e.g. a stale
+     saved-nav restore that lost the destination context) show home, not a blank page */
+  const d=destById(curDest);if(!d){go(lastTab||'home');return;}
   const hero=document.getElementById('destHero');if(hero)hero.style.backgroundImage=`url('${d.img+Q}')`;
   document.getElementById('destName').textContent=d.n;
   document.getElementById('destState').textContent=d.state;
@@ -6750,12 +7046,7 @@ function renderDest(){
   const trips=toursForDest(d.id);
   const rb=document.getElementById('destTripsBlk'),rt=document.getElementById('destTrips');
   if(rb)rb.style.display=trips.length?'':'none';
-  if(rt)rt.innerHTML=trips.map(t=>`<div class="rtcard" onclick="openDetail(${t.idx})" style="background-image:url('${t.img}')">
-      <span class="rt-badge">${esc(depLabel(t))}</span>
-      <div class="rt-b"><b>${esc(t.n)}</b>
-        <small>${t.days?esc(String(t.days))+' days':''}${t.lvl?' · '+esc(t.lvl):''}${t.best?' · '+esc(t.best):''}</small>
-        <div class="rt-ft"><span class="rt-p"><small>from</small> <b>${INR(t.price||0)}</b></span><span class="rt-go">View trip ${ic('back',12)}</span></div>
-      </div></div>`).join('');
+  if(rt)rt.innerHTML=trips.map(roadTripCard).join('');
   /* activities */
   const acts=actsFor(d.id);
   document.getElementById('destActs').innerHTML=acts.length
@@ -7772,7 +8063,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='messages')renderMessages();
   if(id==='chat')renderChat();
   if(id==='notifications')renderNotifications();
-  if(id==='reviews')renderReviews();
+  if(id==='reviews'){renderReviews();loadReviews();}
   if(id==='help')renderHelp();
   if(id==='health')renderHealth(); else stopHealth();
   if(id==='navmap')renderNav(); else stopNav();
@@ -7829,7 +8120,7 @@ function _showPrev(){stopAllMedia();const p=hist.pop();if(p){cur=p;document.quer
 /* device/browser back button handling */
 window.addEventListener('popstate',function(){_showPrev();});
 /* remember the current screen + context so a refresh stays put */
-function saveNav(){try{localStorage.setItem('tmk_nav',JSON.stringify({s:cur,t:(cart.trek?cart.trek.idx:0),b:(cart.booking?cart.booking.id:'')}));}catch(e){}}
+function saveNav(){try{localStorage.setItem('tmk_nav',JSON.stringify({s:cur,t:(cart.trek?cart.trek.idx:0),b:(cart.booking?cart.booking.id:''),d:(typeof curDest!=='undefined'?curDest:'')}));}catch(e){}}
 function restoreNav(){try{const n=JSON.parse(localStorage.getItem('tmk_nav')||'null');if(!n||!n.s||n.s==='splash')return;
   if(typeof n.t==='number'&&treks[n.t])cart.trek=treks[n.t];
   if(!document.getElementById(n.s))return;
@@ -7838,6 +8129,14 @@ function restoreNav(){try{const n=JSON.parse(localStorage.getItem('tmk_nav')||'n
   if(n.s==='captain'){isCaptain()?go('captain'):go('profile');return;}
   if(n.s==='admin'){isAdmin()?go('admin'):go('profile');return;}
   if(n.s==='person'){go('community');return;}
+  /* road trip detail needs its trek re-rendered (go('trip') alone paints nothing) */
+  if(n.s==='trip'){const t=treks[n.t||0];if(t&&isTour(t)){openTrip(n.t||0);return;}go(lastTab||'home');return;}
+  /* destination page needs curDest, which isn't a view id — restore it, else fall home */
+  if(n.s==='dest'){
+    if(n.d&&typeof destById==='function'&&destById(n.d)){openDest(n.d);return;}
+    if(n.d&&typeof loadDestinations==='function'){loadDestinations(true).then(()=>{(n.d&&destById(n.d))?openDest(n.d):go(lastTab||'home');}).catch(()=>go(lastTab||'home'));return;}
+    go(lastTab||'home');return;
+  }
   go(n.s);
 }catch(e){}}
 /* ---------- motion layer ---------- */
@@ -7854,7 +8153,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections,addStaff,removeStaff,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections,addStaff,removeStaff,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab,openReviewModal,closeReviewModal,submitReview,setRevStars,adminAddReview,adminDelReview});
 
 /* init */
 applyTheme();   /* dark / light / system theme */
@@ -7871,6 +8170,7 @@ try{history.replaceState({s:cur},'');history.pushState({s:cur},'');}catch(e){} /
 loadTreks();    /* pull live treks from Supabase if configured (else built-in) */
 loadDestinations().then(()=>{try{if(document.querySelector('#dests.active'))renderDests();}catch(e){}}).catch(()=>{});
 renderHomeNews();     /* trek news & alerts strip on home */
+loadReviews();        /* pull reviews so trek pages + the Reviews screen reflect them */
 refreshNotifBadge();  /* show red dot if there's new community activity */
 setInterval(refreshNotifBadge,60000);  /* poll for new activity every minute */
 handleDeepLink();     /* open a trek directly from a shared link */

@@ -516,38 +516,65 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   #destStats .stat b{font-size:11.5px;line-height:1.3}
   /* explore search: pin the filter control to the right edge as a tappable chip */
   .search .search-filter{margin-left:auto;flex:none;color:var(--accent2);padding:7px;border-radius:10px;background:rgba(47,107,255,.14);display:grid;place-items:center;cursor:pointer}
-  /* road trip package cards — headline offering on a destination, bolder than activity rows */
-  .rt-sub{display:block;color:var(--muted2);font-size:12px;margin:-4px 0 10px}
-  .rt-list{display:flex;flex-direction:column;gap:12px}
-  .rtcard{position:relative;border-radius:18px;overflow:hidden;min-height:172px;background:#12243f center/cover no-repeat;cursor:pointer;box-shadow:0 12px 30px -14px rgba(0,0,0,.7);display:flex;align-items:flex-end}
-  .rtcard::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,12,24,.04) 28%,rgba(6,12,24,.55) 62%,rgba(6,12,24,.93))}
-  .rt-badge{position:absolute;top:12px;left:12px;z-index:2;background:var(--accent);color:#fff;font-size:11px;font-weight:700;padding:5px 11px;border-radius:999px}
-  .rt-b{position:relative;z-index:2;padding:14px 16px;width:100%;color:#fff}
-  .rt-b>b{font-size:18px;font-weight:800;display:block;line-height:1.2}
-  .rt-b>small{display:block;color:rgba(255,255,255,.85);font-size:12px;margin-top:3px}
-  .rt-ft{display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:10px}
-  .rt-p{font-size:13px;color:rgba(255,255,255,.9)}.rt-p b{font-size:17px;font-weight:800;color:#fff}
-  .rt-go{display:inline-flex;align-items:center;gap:5px;background:var(--accent);color:#fff;font-size:13px;font-weight:800;padding:9px 16px;border-radius:999px;flex:none;box-shadow:0 6px 18px -6px rgba(47,107,255,.95);animation:rtPulse 2.2s ease-in-out infinite}
+  /* ============================================================
+     ROAD TRIP CARDS — one premium card, shared by the destination
+     "Road trip packages" list and the home "Featured Road Trips" rail
+     (roadTripCard() in app.js renders both). Warm-orange identity that
+     matches the trip detail page; image-forward with an overlaid CTA.
+     ============================================================ */
+  .rt-sub{display:block;color:var(--muted2);font-size:12px;margin:-4px 0 12px}
+  .rt-list{display:flex;flex-direction:column;gap:14px}
+  .rtcard{position:relative;border-radius:20px;overflow:hidden;min-height:214px;background:#12243f center/cover no-repeat;cursor:pointer;box-shadow:0 16px 34px -16px rgba(0,0,0,.75);display:flex;align-items:flex-end;transition:transform .12s ease}
+  .rtcard::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,12,24,0) 20%,rgba(6,12,24,.48) 54%,rgba(4,9,18,.95))}
+  .rtcard:active{transform:scale(.985)}
+  .hrow .rtcard{flex:none;width:286px;scroll-snap-align:start}
+  .rt-dep{position:absolute;top:12px;right:12px;z-index:2;background:rgba(8,15,28,.55);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.24);color:#fff;font-size:10.5px;font-weight:700;padding:5px 11px;border-radius:999px}
+  /* OFFER is the only loud highlight on a road trip — bright yellow, shown only when set */
+  .rt-offer{position:absolute;top:12px;left:12px;z-index:2;display:inline-flex;align-items:center;gap:5px;max-width:74%;background:#ffff00;color:#1a1a00;font-size:10.5px;font-weight:800;padding:5px 10px;border-radius:8px;box-shadow:0 6px 16px -6px rgba(0,0,0,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rt-offer .msr{font-size:13px}
+  .rt-b{position:relative;z-index:2;padding:16px 16px 15px;width:100%;color:#fff}
+  .rt-b>b{font-size:19px;font-weight:800;display:block;line-height:1.18;letter-spacing:-.01em;text-shadow:0 2px 12px rgba(0,0,0,.5)}
+  .rt-meta{display:flex;flex-wrap:wrap;align-items:center;gap:7px;color:rgba(255,255,255,.9);font-size:12px;font-weight:600;margin-top:6px}
+  .rt-meta i{opacity:.45;font-style:normal}
+  .rt-ft{display:flex;align-items:center;justify-content:space-between;margin-top:13px;gap:10px}
+  .rt-p{font-size:12px;color:rgba(255,255,255,.82);display:inline-flex;align-items:baseline;gap:3px}
+  .rt-p small{opacity:.85}
+  .rt-p b{font-size:19px;font-weight:800;color:#fff}
+  .rt-go{display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:12.5px;font-weight:800;padding:9px 15px;border-radius:999px;flex:none;box-shadow:0 8px 20px -6px rgba(47,107,255,.9)}
   .rt-go .ic{transform:scaleX(-1)}
-  @keyframes rtPulse{0%,100%{box-shadow:0 6px 18px -6px rgba(47,107,255,.9);transform:scale(1)}50%{box-shadow:0 8px 28px -2px rgba(47,107,255,1);transform:scale(1.04)}}
-  @media(prefers-reduced-motion:reduce){.rt-go{animation:none}}
-  /* Featured Road Trips rail — VERTICAL cards, deliberately distinct from trek cards (warm accent) */
-  .trcard{flex:none;width:210px;border-radius:16px;overflow:hidden;background:var(--card);border:1px solid #2a3d5e;cursor:pointer}
-  .trcard-ph{height:128px;background:#12243f center/cover no-repeat;position:relative}
-  .trcard-tag{position:absolute;top:9px;left:9px;background:linear-gradient(135deg,#ff8a3d,#e8621a);color:#fff;font-size:9px;font-weight:800;letter-spacing:.06em;padding:4px 9px;border-radius:999px}
-  .trcard-bd{padding:11px 12px 13px}
-  .trcard-bd>b{font-size:15.5px;font-weight:700;display:block;line-height:1.2}
-  .trcard-bd>small{color:var(--muted);font-size:11.5px;display:flex;align-items:center;gap:3px;margin-top:3px}
-  .trcard-ft{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
-  .trcard-ft>span:first-child{font-size:11.5px;color:var(--muted2)}
-  .trcard-p{font-size:15px;font-weight:800;color:#ff9a52}
-  /* 5-day weather forecast strip on the trip/trek detail */
-  .fc-strip{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 0 12px;padding-bottom:2px}
-  .fc-day{flex:none;min-width:58px;background:var(--card);border:1px solid var(--stroke);border-radius:12px;padding:9px 6px 8px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:3px}
-  .fc-dn{font-size:10.5px;color:var(--muted);font-weight:600}
-  .fc-ic{font-size:18px;line-height:1}
-  .fc-t{font-size:13px;font-weight:800;color:var(--text)}
-  .fc-tl{font-size:10.5px;color:var(--muted2)}
+  /* 7-day weather forecast strip on the trip/trek detail (top margin so it
+     doesn't sit flush against the heading; today is highlighted) */
+  .fc-strip{display:flex;gap:9px;overflow-x:auto;scrollbar-width:none;margin:12px 0 16px;padding:2px 0 4px}
+  .fc-strip::-webkit-scrollbar{display:none}
+  .fc-day{flex:none;min-width:64px;background:var(--card);border:1px solid var(--stroke);border-radius:15px;padding:11px 8px 11px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:4px}
+  .fc-day.today{background:linear-gradient(180deg,rgba(47,107,255,.20),rgba(47,107,255,.05));border-color:rgba(47,107,255,.5)}
+  .fc-dn{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+  .fc-day.today .fc-dn{color:var(--accent2)}
+  .fc-dd{font-size:9.5px;color:var(--muted2);font-weight:600;margin-top:-2px}
+  .fc-ic{font-size:23px;line-height:1;margin:2px 0}
+  .fc-t{font-size:15px;font-weight:800;color:var(--text)}
+  .fc-tl{font-size:11.5px;color:var(--muted2);font-weight:600}
+  /* ============================================================
+     INSPIRE — a swipeable, auto-rotating carousel of travel quotes +
+     trek fun facts (renderInspire() in app.js). One slide visible at a
+     time; auto-advances, and users can swipe back to re-read.
+     ============================================================ */
+  .inspire{position:relative}
+  .insp-track{display:flex;align-items:flex-start;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .insp-track::-webkit-scrollbar{display:none}
+  .insp-slide{flex:none;width:100%;scroll-snap-align:center;box-sizing:border-box;padding:15px 18px;min-height:0;
+    display:flex;flex-direction:column;justify-content:center;border-radius:18px;
+    background:linear-gradient(135deg,rgba(47,107,255,.14),rgba(47,107,255,.03));border:1px solid rgba(47,107,255,.22)}
+  .insp-slide.fact{background:linear-gradient(135deg,rgba(255,122,69,.13),rgba(255,122,69,.03));border-color:rgba(255,122,69,.24)}
+  .insp-badge{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--accent2);margin-bottom:12px}
+  .insp-slide.fact .insp-badge{color:#ff9d2f}
+  .insp-badge .msr{font-size:15px}
+  .insp-x{font-size:16.5px;line-height:1.5;font-weight:600;color:var(--text);margin:0}
+  .insp-slide.quote .insp-x{font-style:italic}
+  .insp-a{margin-top:11px;font-size:12.5px;font-weight:700;color:var(--muted)}
+  .insp-dots{display:flex;justify-content:center;flex-wrap:wrap;gap:6px;margin-top:13px}
+  .insp-dot{width:6px;height:6px;border-radius:50%;background:var(--stroke);transition:width .25s,background .25s}
+  .insp-dot.on{width:18px;border-radius:3px;background:var(--accent2)}
   /* offer banner on the trip/trek detail — shows exactly what's on offer */
   .d-offer{display:flex;align-items:center;gap:11px;margin:0 0 4px;padding:13px 15px;border-radius:14px;
     background:linear-gradient(135deg,rgba(224,162,0,.18),rgba(224,162,0,.06));border:1px solid rgba(255,206,31,.45)}
@@ -556,6 +583,58 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .d-offer b{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#ffce1f}
   .d-offer span{font-size:14px;font-weight:700;color:var(--text);line-height:1.35}
   html.light .d-offer b,html.light .d-offer .msr{color:#b07d00}
+  /* ---------- ROAD TRIP DETAIL — its own layout, distinct from a trek ---------- */
+  .trip-hero{height:340px}
+  .trip-hero-tag{position:absolute;left:calc(16px + var(--safe-left));bottom:16px;display:inline-flex;align-items:center;gap:6px;
+    padding:7px 14px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.1em;z-index:2;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 8px 22px rgba(47,107,255,.4)}
+  .trip-hero-tag .msr{font-size:16px}
+  .trip-head{padding:20px 18px 4px}
+  .trip-head h1{font-size:26px;line-height:1.15;margin:8px 0 6px;letter-spacing:-.02em}
+  .trip-head .reg{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:13px}
+  .trip-head .reg .ic{color:var(--accent2)}
+  .trip-head .meta{margin-top:7px;font-size:13px}
+  .trip-head .meta .star{color:#ffce1f}
+  .trip-dep-badge{display:inline-block;padding:5px 11px;border-radius:8px;font-size:11px;font-weight:700;
+    color:var(--accent2);background:rgba(47,107,255,.14);border:1px solid rgba(47,107,255,.35);text-transform:uppercase;letter-spacing:.05em}
+  .trip-quick{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .trip-quick .tq{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:11px;
+    background:var(--card);border:1px solid var(--stroke);font-size:12.5px;font-weight:600;color:var(--text)}
+  .trip-quick .tq .ic{color:var(--accent2);display:grid;place-items:center}
+  /* the route timeline — the signature road-trip element */
+  .route-track{position:relative;padding:2px 0}
+  .route-stop{position:relative;display:flex;gap:14px;padding-bottom:20px}
+  .route-stop:last-child{padding-bottom:0}
+  .route-stop::before{content:'';position:absolute;left:15px;top:34px;bottom:-2px;width:2px;
+    background:repeating-linear-gradient(var(--accent2) 0 5px,transparent 5px 11px);opacity:.55}
+  .route-stop.last::before{display:none}
+  .route-node{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;
+    font-size:13px;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent2));
+    box-shadow:0 4px 12px rgba(47,107,255,.4);z-index:1}
+  .route-bd{flex:1;min-width:0;padding-top:3px}
+  .route-bd .route-day{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent2)}
+  .route-bd h4{font-size:14.5px;font-weight:600;margin:2px 0 0;line-height:1.35}
+  .route-bd p{font-size:12.5px;color:var(--muted);line-height:1.55;margin:5px 0 0}
+  .route-empty{font-size:13px;color:var(--muted);line-height:1.6;padding:6px 0}
+  /* pickup card */
+  .pickup-card{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:6px 15px}
+  .pickup-row{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--stroke)}
+  .pickup-row:last-of-type{border-bottom:0}
+  .pickup-ic{font-size:20px;color:var(--accent2);margin-top:2px;flex:none}
+  .pickup-row>div{display:flex;flex-direction:column;min-width:0}
+  .pickup-row small{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+  .pickup-row b{font-size:14px;color:var(--text);margin-top:1px}
+  .pickup-alt{font-size:12px;color:var(--muted);margin-top:3px}
+  .pickup-map{display:inline-flex;align-items:center;gap:7px;padding:12px 0 4px;font-size:13px;font-weight:600;color:var(--accent2);cursor:pointer;text-decoration:none}
+  .pickup-map .msr{font-size:18px}
+  /* sticky booking bar */
+  .trip-cta-bar{position:sticky;bottom:0;z-index:40;display:flex;align-items:center;gap:12px;
+    margin-top:16px;padding:12px 16px calc(var(--safe-bottom) + 12px);
+    background:var(--bg);border-top:1px solid var(--stroke);box-shadow:0 -10px 24px rgba(6,16,28,.55)}
+  .trip-cta-price{display:flex;flex-direction:column;line-height:1.1;flex:none}
+  .trip-cta-price small{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  .trip-cta-price b{font-size:19px;color:var(--text)}
+  .trip-cta-bar .btn{flex:1;margin:0}
   .blk{padding:0 16px}
   .blk h2{font-size:16px;font-weight:600;margin:22px 0 10px}
   .blk p{font-size:13.5px;line-height:1.65;color:var(--muted);margin:0}
@@ -1265,6 +1344,14 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .modal-card p{margin:0 0 12px;font-size:12.5px;color:var(--muted);line-height:1.5}
   .modal-card input{width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.24);border-radius:13px;padding:14px;color:#fff;font-size:15px;outline:none;margin:8px 0 18px}
   .modal-card input:focus{border-color:var(--accent);background:rgba(255,255,255,.12)}
+  /* review modal (+admin review form): textarea/select inherit the input look */
+  .modal-card textarea,.modal-card select{width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.24);border-radius:13px;padding:13px;color:#fff;font-size:14.5px;outline:none;margin:6px 0 8px;font-family:inherit;resize:vertical}
+  .modal-card textarea:focus,.modal-card select:focus{border-color:var(--accent);background:rgba(255,255,255,.12)}
+  .rv-lbl{display:block;text-align:left;font-size:12px;font-weight:600;color:var(--muted);margin:10px 0 0}
+  .rv-stars{display:flex;gap:6px;margin:8px 0 4px}
+  .rv-star{font-size:30px;line-height:1;color:var(--stroke);cursor:pointer;transition:transform .1s}
+  .rv-star.on{color:#ffce1f}
+  .rv-star:active{transform:scale(1.2)}
   .modal-actions{display:flex;gap:10px}.modal-actions .btn{flex:1;padding:13px;white-space:nowrap}
   .modal-actions .btn:not(.ghost){flex:1.7}
   /* permit application form */
@@ -1371,7 +1458,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
     color:#fff;font-size:9px;font-weight:700;display:inline-flex;align-items:center;white-space:nowrap;overflow:hidden}
   .dcell-trip .msr{font-size:11px;flex:none}
   /* road trip packages = the hero block on a destination page (accent-tinted); activities read as secondary */
-  #destTripsBlk{background:linear-gradient(180deg,rgba(47,107,255,.10),rgba(47,107,255,.02));border:1px solid rgba(47,107,255,.22);border-radius:16px;padding:14px 13px 16px;margin-bottom:6px}
+  #destTripsBlk{background:linear-gradient(180deg,rgba(47,107,255,.10),rgba(47,107,255,.03));border:1px solid rgba(47,107,255,.22);border-radius:20px;padding:15px 14px 17px;margin-bottom:8px}
   #destTripsBlk h2{color:var(--accent2)}
   /* admin day-by-day itinerary editor */
   .adm-itd{border:1px solid var(--stroke);border-radius:12px;padding:10px 11px;margin-bottom:10px;background:var(--card)}
@@ -2981,6 +3068,8 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
     <div id="gcHome"></div>
     <div class="sec" style="margin-top:20px"><h2>Trek News &amp; Alerts</h2><a onclick="go('news')">View all</a></div>
     <div id="homeNews"></div>
+    <div class="sec" style="margin-top:22px"><h2>A little trail inspiration</h2></div>
+    <div id="homeInspire" class="inspire"></div>
   </section>
 
   <!-- COMPARE TREKS -->
@@ -3064,6 +3153,33 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
     <div style="padding:10px 16px calc(var(--safe-bottom) + 28px)">
       <button class="btn" id="dCta" onclick="go('selectDate')">View Dates &amp; Price&nbsp; →</button>
       <button class="wa-btn sm" style="margin-top:10px" onclick="wa('Hi Tripomonk, I have a question about this trek before I book. Can you help?')"><svg class="wa-ic" viewBox="0 0 24 24" width="18" height="18"><path fill="#fff" d="M12 2a10 10 0 0 0-8.53 15.2L2 22l4.94-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-2.93.77.78-2.86-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.14c-.25-.12-1.46-.72-1.69-.8-.22-.08-.39-.12-.55.13-.16.25-.63.8-.78.97-.14.16-.29.18-.53.06-.25-.12-1.04-.38-1.98-1.22-.73-.65-1.23-1.46-1.37-1.71-.14-.25-.02-.38.11-.5.11-.11.25-.29.37-.43.13-.14.17-.25.25-.41.08-.16.04-.31-.02-.43-.06-.12-.55-1.33-.76-1.82-.2-.48-.4-.41-.55-.42h-.47c-.16 0-.43.06-.65.31-.22.25-.86.84-.86 2.05s.88 2.38 1 2.54c.12.16 1.73 2.64 4.19 3.7.59.25 1.04.4 1.4.51.59.19 1.12.16 1.54.1.47-.07 1.46-.6 1.66-1.17.21-.58.21-1.07.14-1.17-.06-.11-.22-.17-.47-.29Z"/></svg> Have a doubt? Chat on WhatsApp</button>
+    </div>
+  </section>
+
+  <!-- ROAD TRIP DETAIL — distinct layout from a trek (route timeline centrepiece) -->
+  <section class="view full" id="trip" data-nonav>
+    <div class="hero trip-hero" id="tripHero"><div class="htop"><div class="hb" onclick="back()"><span class="ic" data-i="back"></span></div>
+      <div class="right"><div class="hb" onclick="shareTrek()"><span class="ic" data-i="share"></span></div><div class="hb fav" id="tripFav" onclick="toggleFav(this)"><span class="ic" data-i="heart"></span></div></div></div>
+      <div class="hero-credit" id="tripCredit"></div>
+      <div class="trip-hero-tag">ROAD TRIP</div></div>
+    <div class="trip-head">
+      <span id="tripDepBadge" class="trip-dep-badge"></span>
+      <h1 id="tripName"></h1>
+      <div class="reg"><span class="ic" data-i="pin"></span><span id="tripReg"></span></div>
+      <div class="meta"><span class="star">★</span> <b id="tripRate"></b> <span class="g" id="tripRev"></span></div>
+      <div class="trip-quick" id="tripQuick"></div>
+    </div>
+    <div class="blk reveal" style="padding-top:14px"><div id="tripOffer" class="d-offer" style="display:none"></div></div>
+    <div class="blk reveal"><h2>About this trip</h2><p id="tripDesc"></p></div>
+    <div class="blk reveal" id="tripWxBlk"><h2>Weather ahead</h2><div id="tripWx"></div></div>
+    <div class="blk reveal"><h2 style="display:flex;justify-content:space-between;align-items:center">The route <a id="tripRouteMap" style="font-size:12px;color:var(--accent2);cursor:pointer" onclick="openNav(cart.trek)">Route map →</a></h2><div id="tripRoute" class="route-tl"></div></div>
+    <div class="blk reveal"><h2>What's included</h2><div id="tripIncl"></div></div>
+    <div class="blk reveal"><h2>Pickup &amp; drop-off</h2><div id="tripPickup"></div></div>
+    <div class="blk reveal"><h2>Trip highlights</h2><div class="hl-pills" id="tripHl"></div></div>
+    <div class="blk reveal"><h2 style="display:flex;justify-content:space-between;align-items:center">Reviews <a style="font-size:12px;color:var(--accent2);cursor:pointer" onclick="go('reviews')">See all →</a></h2><div id="tripRevPrev"></div></div>
+    <div class="trip-cta-bar">
+      <div class="trip-cta-price"><small id="tripCtaCap">from</small><b id="tripCtaPrice"></b></div>
+      <button class="btn" id="tripCta" onclick="if(cart.trek)openTourDepart(cart.trek.idx)">Book this trip&nbsp; →</button>
     </div>
   </section>
 
@@ -3608,7 +3724,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   <!-- REVIEWS -->
   <section class="view flow" id="reviews" data-nonav>
     <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Reviews</h1></div>
-    <div class="panel" style="text-align:center;margin-bottom:16px"><div style="font-size:40px;font-weight:600;line-height:1" id="revAvg">4.8</div><div class="star" style="font-size:16px;margin:6px 0">★★★★★</div><small style="color:var(--muted)" id="revCount">Based on verified trekkers</small></div>
+    <div class="panel" style="text-align:center;margin-bottom:16px"><div style="font-size:40px;font-weight:600;line-height:1" id="revAvg">—</div><div class="star" style="font-size:16px;margin:6px 0" id="revStarRow">☆☆☆☆☆</div><small style="color:var(--muted)" id="revCount">Be the first to review</small></div>
     <div id="reviewList"></div>
     <div style="height:20px"></div>
   </section>
@@ -3945,6 +4061,21 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
       <button class="btn ghost" id="tdCustom" style="width:100%"><span class="msr" style="font-size:18px;vertical-align:-4px;margin-right:6px">tune</span>Custom / private trip</button>
       <p style="font-size:11.5px;color:var(--muted2);margin:12px 0 0;line-height:1.5">Group = fixed dates, pay 25% to confirm. Custom = we tailor the dates &amp; group — get a quote and a deposit link on WhatsApp.</p>
       <div class="modal-actions" style="margin-top:14px"><button class="btn ghost" id="tdCancel">Close</button></div>
+    </div>
+  </div>
+
+  <!-- WRITE A REVIEW -->
+  <div class="modal" id="reviewModal" onclick="if(event.target===this)closeReviewModal()">
+    <div class="modal-card">
+      <h3>Write a review</h3>
+      <div id="revTrekName" style="display:none;color:var(--accent2);font-weight:700;font-size:13px;margin:-2px 0 12px"></div>
+      <label class="rv-lbl">Your rating</label>
+      <div class="rv-stars" id="revStars"></div>
+      <label class="rv-lbl">Your name</label>
+      <input id="revName" placeholder="Your name">
+      <label class="rv-lbl">Your review</label>
+      <textarea id="revBody" rows="4" placeholder="How was your experience? What should other trekkers know?"></textarea>
+      <div class="modal-actions" style="margin-top:6px"><button class="btn ghost" onclick="closeReviewModal()">Cancel</button><button class="btn" onclick="submitReview()">Post review</button></div>
     </div>
   </div>
 
