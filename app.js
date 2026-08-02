@@ -5803,7 +5803,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='365';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='366';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -5881,16 +5881,24 @@ function admSyncTagChips(){
     c.classList.toggle('on',String(c.dataset.tag||'').trim().toLowerCase()===cur);
   });
 }
+/* keep the editor's title & save button in sync when the Type is switched (trek ↔ road trip) */
+function admTypeSync(){
+  const ty=(document.getElementById('admType')||{}).value||'trek';
+  const w=ty==='tour'?'road trip':'trek';
+  const h=document.getElementById('admEdWord');if(h)h.textContent=(editIdx<0?'Add a ':'Edit ')+w;
+  const s=document.getElementById('admSaveWord');if(s)s.textContent='Save '+w;
+}
 function showAdminForm(t){const f=document.getElementById('adminForm');
   const lv=t.lvl||'Easy', img=(t.img||'').split('?')[0];
   const reqVal=(t.req!=null?t.req:''), reqAuto=t.n?trekReqScore(t):'';
+  const word=trekType(t)==='tour'?'road trip':'trek';   /* label the editor by product type */
   f.innerHTML=`<div class="adm-editor">
-    <div class="adm-ed-head"><b>${editIdx<0?'Add a trek':'Edit trek'}</b><button class="adm-ic" onclick="closeAdminForm()" title="Close"><span class="msr">close</span></button></div>
+    <div class="adm-ed-head"><b id="admEdWord">${editIdx<0?'Add a '+word:'Edit '+word}</b><button class="adm-ic" onclick="closeAdminForm()" title="Close"><span class="msr">close</span></button></div>
 
     <div class="adm-sec">Basics</div>
     ${fld('admN','Name',t.n,'Kedarkantha')}
     ${fld('admReg','Region',t.region,'Uttarakhand')}
-    <div class="field"><label>Type</label><div class="inp"><select id="admType" style="all:unset;flex:1;color:var(--text)">
+    <div class="field"><label>Type</label><div class="inp"><select id="admType" onchange="admTypeSync()" style="all:unset;flex:1;color:var(--text)">
       <option value="trek" ${trekType(t)!=='tour'?'selected':''} style="color:#000">Trek</option>
       <option value="tour" ${trekType(t)==='tour'?'selected':''} style="color:#000">Road Trip / Tour</option>
     </select></div></div>
@@ -5959,7 +5967,7 @@ function showAdminForm(t){const f=document.getElementById('adminForm');
     <div class="adm-sec">Description</div>
     <div class="field"><textarea id="admDesc" class="adm-ta" placeholder="A short, inviting description of the trek…">${esc(t.desc||'')}</textarea></div>
 
-    <div class="adm-ed-foot"><button class="btn ghost" onclick="closeAdminForm()">Cancel</button><button class="btn" onclick="saveTrek()"><span class="msr">check</span> Save trek</button></div>
+    <div class="adm-ed-foot"><button class="btn ghost" onclick="closeAdminForm()">Cancel</button><button class="btn" onclick="saveTrek()"><span class="msr">check</span> <span id="admSaveWord">Save ${word}</span></button></div>
   </div>`;
   f.style.display='block';hydrate(f);f.scrollIntoView({behavior:'smooth',block:'start'});
   const imgInp=document.getElementById('admImg');
@@ -6587,8 +6595,10 @@ function cartCheckout(){
 /* ---- destinations grid ---- */
 function destCard(d){
   const n=actsFor(d.id).length;
+  const gt=toursForDest(d.id).filter(t=>tourDep(t)!=='custom').length;   /* road trips with group departures */
   const season=d.best?String(d.best).split('(')[0].trim():'';
   return `<div class="dcell" onclick="openDest('${d.id}')" style="background-image:url('${d.img+Q}')">
+    ${gt?`<span class="dcell-trip"><span class="msr">groups</span>Group departures</span>`:''}
     ${n?`<span class="dcell-n"><span class="msr">bolt</span>${n}</span>`:''}
     <div class="dcell-b">
       <b>${esc(d.n)}</b>
