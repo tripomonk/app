@@ -272,6 +272,11 @@ function tourList(){return treks.filter(isTour);}
 function toursForDest(id){id=String(id||'');return treks.filter(t=>isTour(t)&&String(t.dest_id||'')===id);}
 function tourDep(t){return (t&&t.departure_type)||'both';}
 function depLabel(t){const d=tourDep(t);return d==='group'?'Group departures':d==='custom'?'Custom trips':'Group & custom';}
+/* day-by-day itinerary: admin-built (t.itinerary) wins, else the built-in ITIN map */
+function trekItin(t){const a=t&&t.itinerary;if(Array.isArray(a)&&a.length)return a;return (t&&typeof ITIN!=='undefined'&&ITIN[t.n])||[];}
+/* a pasted Wikimedia Commons FILE-PAGE link (…/wiki/File:Foo.jpg) isn't a loadable image;
+   convert it to Special:FilePath which redirects to the real file. Direct URLs pass through. */
+function normalizeImageUrl(u){u=String(u||'').trim();if(!u)return u;const m=u.match(/\/wiki\/(?:File|Image):([^?#]+)/i);if(m)return 'https://commons.wikimedia.org/wiki/Special:FilePath/'+m[1];return u;}
 /* home "Featured Road Trips" rail → open the trip's destination (fallback: the trip itself) */
 function openTourHome(idx){const t=treks[idx];if(t&&t.dest_id&&destById(t.dest_id))openDest(t.dest_id);else openDetail(idx);}
 /* Admin → Destinations manages road trips by launching the full trek editor, pre-linked */
@@ -343,7 +348,7 @@ function applyTrekRows(rows){
   if(!rows||!rows.length)return false;
   const dbByName={};
   rows.forEach(d=>{const row={n:d.name,region:d.region,img:d.img,r:d.rating,rev:d.reviews,lvl:d.level,days:d.days,
-    alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,packing:d.packing||null,batches:(Array.isArray(d.batches)?d.batches:null),req:(typeof d.req_score==='number'?d.req_score:null),pop:!!d.popular,feat:!!d.featured,type:d.type||'trek',dest_id:d.dest_id||'',departure_type:d.departure_type||'both',tag:d.tag||'',itin:d.itinerary_url||'',hvid:d.hero_video||'',hvideo:!!d.hero_use_video,guide_id:d.guide_id||null,_id:d.id};
+    alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,packing:d.packing||null,batches:(Array.isArray(d.batches)?d.batches:null),req:(typeof d.req_score==='number'?d.req_score:null),pop:!!d.popular,feat:!!d.featured,type:d.type||'trek',dest_id:d.dest_id||'',departure_type:d.departure_type||'both',itinerary:(Array.isArray(d.itinerary)?d.itinerary:[]),tag:d.tag||'',itin:d.itinerary_url||'',hvid:d.hero_video||'',hvideo:!!d.hero_use_video,guide_id:d.guide_id||null,_id:d.id};
     if(d.credit)row.credit=d.credit; dbByName[d.name]=row;});
   const seen=new Set();
   treks.forEach(t=>{const d=dbByName[t.n];if(d){Object.assign(t,d);seen.add(t.n);}});
@@ -2381,7 +2386,7 @@ function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
   document.getElementById('dHl').innerHTML=t.hl.map(h=>`<span class="hl-pill"><span class="ic">${ic(h[0],15)}</span>${esc(h[1])}</span>`).join('');
   renderDetailFacts(t);
   document.getElementById('dIncl').innerHTML=inclCard(INCL,EXCL);
-  const dit=ITIN[t.n]||[];
+  const dit=trekItin(t);
   document.getElementById('dItinPrev').innerHTML=dit.slice(0,3).map((d,i)=>`<div class="tl"><div class="line"><div class="dot"></div>${i<2?'<div class="rod"></div>':''}</div><div class="bd"><div class="d">Day ${i+1}</div><h3>${d[0]}</h3></div></div>`).join('');
   document.getElementById('dRevPrev').innerHTML=reviewsData.length?reviewsData.slice(0,2).map(reviewCard).join(''):'<div style="font-size:12.5px;color:var(--muted)">No reviews yet — be the first after your trek.</div>';
   document.getElementById('dFav').classList.remove('on');
@@ -2421,7 +2426,7 @@ function toggleFav(el){el.classList.toggle('on');el.classList.remove('pop');void
 /* Day photos are gone on purpose: they were generic stock shots repeated down the page,
    so they read as noise, pushed the real content down and cost bandwidth. The day number
    now lives in the timeline node, which is what people actually scan for. */
-function renderItinerary(){const t=cart.trek,it=ITIN[t.n]||[];
+function renderItinerary(){const t=cart.trek,it=trekItin(t);
   const totKm=it.reduce((s,d)=>s+(parseFloat(d[2])||0),0);
   const head=document.getElementById('itinHead');
   if(head){
@@ -2560,11 +2565,11 @@ const CANCELLATION=[
 ];
 function reviewDetailsHTML(t){
   const pk=pickupInfo(t);const city=pk.city;
-  const itin=(ITIN[t.n]||[]).slice(0,3);
+  const itin=trekItin(t).slice(0,3);
   return `
   <div class="sec" style="margin-top:18px"><h2 style="font-size:15px">Trip summary</h2></div>
   <div class="rv-block"><div class="rv-h">${ic('distance',16)} Itinerary</div>
-    ${itin.length?itin.map((d,i)=>`<div class="rv-it"><b>Day ${i+1}:</b> ${esc(d[0])}</div>`).join('')+(ITIN[t.n].length>3?`<div class="rv-more" onclick="go('itinerary')">View full itinerary →</div>`:''):'<div class="rv-it">Detailed day-wise plan shared on confirmation.</div>'}
+    ${itin.length?itin.map((d,i)=>`<div class="rv-it"><b>Day ${i+1}:</b> ${esc(d[0])}</div>`).join('')+(trekItin(t).length>3?`<div class="rv-more" onclick="go('itinerary')">View full itinerary →</div>`:''):'<div class="rv-it">Detailed day-wise plan shared on confirmation.</div>'}
   </div>
   <div class="rv-block"><div class="rv-h">${ic('pin',16)} Pickup &amp; reporting</div>
     <div class="rv-it"><b>Pickup city:</b> ${esc(city)}${pk.alt.length?' (also boardable from '+pk.alt.map(esc).join(' / ')+' en route)':''}</div>
@@ -2789,7 +2794,7 @@ function renderGuardian(){
   const b=_guardBk;const box=document.getElementById('guardianBody');if(!box)return;
   if(!b){box.innerHTML='<div class="empty" style="padding:30px 6px"><p>Open Trek Guardian from one of your bookings.</p><button class="btn sm" style="margin-top:10px" onclick="go(\'bookings\')">My bookings</button></div>';return;}
   const t=guardianTrek();const base=t?baseInfo(t):{town:'—',rail:'—',air:'—'};
-  const itin=(t&&ITIN[t.n])||[];const wnum=getWa();
+  const itin=trekItin(t);const wnum=getWa();
   const trekName=esc(String(b.trek||'').replace(' (Activity)',''));
   box.innerHTML=`
     <div class="gd-note"><span class="msr">wifi_off</span> Works offline — open it on the trail even with no signal. Keep the app installed and screenshot this page before you start.</div>
@@ -5134,7 +5139,7 @@ async function sbWriteChecked(method,path,body){
   if(!res||!res.ok){note((res&&res.error)||'Admin save failed.','Save failed');return false;}
   return true;
 }
-function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null,req_score:(typeof t.req==='number'?t.req:null),popular:!!t.pop,featured:!!t.feat,type:trekType(t),dest_id:(t.dest_id||'').trim()||null,departure_type:tourDep(t),tag:(t.tag||'').trim()||null,itinerary_url:(t.itin||'').trim()||null,
+function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null,req_score:(typeof t.req==='number'?t.req:null),popular:!!t.pop,featured:!!t.feat,type:trekType(t),dest_id:(t.dest_id||'').trim()||null,departure_type:tourDep(t),itinerary:(Array.isArray(t.itinerary)?t.itinerary:[]),tag:(t.tag||'').trim()||null,itinerary_url:(t.itin||'').trim()||null,
   hero_video:(t.hvid||'').trim()||null,hero_use_video:!!t.hvideo,
   guide_id:(t.guide_id!=null&&t.guide_id!=='')?t.guide_id:null};}
 let editIdx=-1, adminTab='Treks', depTrek=null, _admHub=true;
@@ -5477,7 +5482,7 @@ function renderDestForm(box){
     </div></div>`;
   hydrate(box);
   const p=document.getElementById('dsImg');
-  if(p)p.addEventListener('input',()=>{const pv=document.getElementById('dsImgPrev');if(pv)pv.style.backgroundImage=p.value.trim()?`url('${p.value.split('?')[0].replace(/'/g,'%27')}')`:'';});
+  if(p)p.addEventListener('input',()=>{const pv=document.getElementById('dsImgPrev');if(pv)pv.style.backgroundImage=p.value.trim()?`url('${normalizeImageUrl(p.value).replace(/'/g,'%27')}')`:'';});
 }
 async function saveDestination(){
   const v=id=>((document.getElementById(id)||{}).value||'').trim();
@@ -5488,7 +5493,7 @@ async function saveDestination(){
   const csv=s=>String(s||'').split(',').map(x=>x.trim()).filter(Boolean);
   const lines=s=>String(s||'').split('\n').map(x=>x.trim()).filter(Boolean);
   const id=(_destEdit&&_destEdit.id)||slugify(name)||('dest-'+Date.now());
-  const row={id:id,name:name,state:v('dsState'),img:v('dsImg'),best:v('dsBest'),lvl:v('dsLvl'),budget:v('dsBudget'),
+  const row={id:id,name:name,state:v('dsState'),img:normalizeImageUrl(v('dsImg')),best:v('dsBest'),lvl:v('dsLvl'),budget:v('dsBudget'),
     blurb:v('dsBlurb'),attractions:csv(v('dsAttr')),
     tips:lines((document.getElementById('dsTips')||{}).value),near:csv(v('dsNear')),
     soon:!!(_destEdit&&_destEdit.soon)};
@@ -5803,7 +5808,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='366';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='368';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -5888,7 +5893,25 @@ function admTypeSync(){
   const h=document.getElementById('admEdWord');if(h)h.textContent=(editIdx<0?'Add a ':'Edit ')+w;
   const s=document.getElementById('admSaveWord');if(s)s.textContent='Save '+w;
 }
+/* day-by-day itinerary editor (admin) — each day = [title, desc, distance, hours] */
+let _admItin=[];
+function admItinRender(){
+  const box=document.getElementById('admItinDays');if(!box)return;
+  box.innerHTML=_admItin.length?_admItin.map((d,i)=>`<div class="adm-itd">
+      <div class="adm-itd-h"><b>Day ${i+1}</b><button type="button" class="adm-ic" onclick="admItinDel(${i})" title="Remove day"><span class="msr">close</span></button></div>
+      <div class="inp"><input id="it_t_${i}" value="${esc(d[0]||'')}" placeholder="Title — e.g. Sankri to Juda Ka Talab"></div>
+      <textarea id="it_d_${i}" class="adm-ta" style="min-height:56px;margin-top:7px" placeholder="What happens this day (optional)">${esc(d[1]||'')}</textarea>
+      <div class="adm-row2" style="margin-top:7px"><div class="inp"><input id="it_k_${i}" value="${esc(d[2]||'')}" placeholder="Distance — 6 km"></div><div class="inp"><input id="it_h_${i}" value="${esc(d[3]||'')}" placeholder="Hours — 5 hrs"></div></div>
+    </div>`).join(''):'<div class="adm-hint" style="opacity:.7;margin-top:0">No days yet — tap “Add a day”.</div>';
+  hydrate(box);
+}
+function admItinReadDOM(){
+  _admItin=_admItin.map((_,i)=>{const g=id=>((document.getElementById(id)||{}).value||'');return [g('it_t_'+i).trim(),g('it_d_'+i).trim(),g('it_k_'+i).trim(),g('it_h_'+i).trim()];});
+}
+function admItinAdd(){admItinReadDOM();_admItin.push(['','','','']);admItinRender();}
+function admItinDel(i){admItinReadDOM();_admItin.splice(i,1);admItinRender();}
 function showAdminForm(t){const f=document.getElementById('adminForm');
+  _admItin=(trekItin(t)||[]).map(d=>Array.isArray(d)?[d[0]||'',d[1]||'',d[2]||'',d[3]||'']:[String(d||''),'','','']);
   const lv=t.lvl||'Easy', img=(t.img||'').split('?')[0];
   const reqVal=(t.req!=null?t.req:''), reqAuto=t.n?trekReqScore(t):'';
   const word=trekType(t)==='tour'?'road trip':'trek';   /* label the editor by product type */
@@ -5947,6 +5970,11 @@ function showAdminForm(t){const f=document.getElementById('adminForm');
     ${fld('admVid','Video link (YouTube, Instagram, Vimeo or .mp4)',t.hvid,'https://youtube.com/watch?v=…')}
     <div class="adm-hint" id="admVidHint">The photo is still used as the video's cover, and as the card image everywhere else. Pick “Photo” to keep the video attached but hidden.</div>
 
+    <div class="adm-sec">Day-by-day itinerary</div>
+    <div class="adm-hint">Add each day — this shows on the trip page. Leave empty to use the attached PDF only.</div>
+    <div id="admItinDays"></div>
+    <button type="button" class="btn ghost sm" style="margin-top:8px" onclick="admItinAdd()"><span class="msr">add</span> Add a day</button>
+
     <div class="adm-sec">Itinerary PDF</div>
     ${fld('admItin','Link to the itinerary',t.itin,'https://… or upload below')}
     <div class="adm-itin">
@@ -5969,9 +5997,9 @@ function showAdminForm(t){const f=document.getElementById('adminForm');
 
     <div class="adm-ed-foot"><button class="btn ghost" onclick="closeAdminForm()">Cancel</button><button class="btn" onclick="saveTrek()"><span class="msr">check</span> <span id="admSaveWord">Save ${word}</span></button></div>
   </div>`;
-  f.style.display='block';hydrate(f);f.scrollIntoView({behavior:'smooth',block:'start'});
+  f.style.display='block';hydrate(f);admItinRender();f.scrollIntoView({behavior:'smooth',block:'start'});
   const imgInp=document.getElementById('admImg');
-  if(imgInp)imgInp.addEventListener('input',()=>{const p=document.getElementById('admImgPrev');if(p)p.style.backgroundImage=imgInp.value.trim()?`url('${imgInp.value.split('?')[0].replace(/'/g,'%27')}')`:'';});
+  if(imgInp)imgInp.addEventListener('input',()=>{const p=document.getElementById('admImgPrev');if(p)p.style.backgroundImage=imgInp.value.trim()?`url('${normalizeImageUrl(imgInp.value).replace(/'/g,'%27')}')`:'';});
   const tagInp=document.getElementById('admTag');
   if(tagInp)tagInp.addEventListener('input',admSyncTagChips);
   const vidInp=document.getElementById('admVid');
@@ -5984,12 +6012,13 @@ async function saveTrek(){const g=id=>document.getElementById(id);
   const reqRaw=(g('admReq')?g('admReq').value:'').trim();
   const req=reqRaw===''?null:Math.max(0,Math.min(100,parseInt(reqRaw)||0));
   const soon=g('admStatusSoon')?g('admStatusSoon').classList.contains('on'):false;
+  admItinReadDOM();const itinArr=_admItin.filter(d=>d[0]&&d[0].trim()).map(d=>[d[0].trim(),d[1]||'',d[2]||'',d[3]||'']);
   const t={n:g('admN').value.trim()||'Untitled',region:g('admReg').value.trim()||'Uttarakhand',lvl:g('admLvl').value,
     type:(g('admType')?g('admType').value:'trek'),
-    dest_id:(g('admDest')?g('admDest').value:'')||'',departure_type:(g('admDepType')?g('admDepType').value:'both'),
+    dest_id:(g('admDest')?g('admDest').value:'')||'',departure_type:(g('admDepType')?g('admDepType').value:'both'),itinerary:itinArr,
     price:parseInt(g('admPrice').value)||0,days:parseInt(g('admDays').value)||1,alt:g('admAlt').value.trim(),
     dist:g('admDist').value.trim(),best:g('admBest').value.trim(),r:parseFloat(g('admRate').value)||4.7,
-    rev:g('admRev').value.trim()||'0',img:g('admImg').value.trim(),desc:g('admDesc').value.trim(),
+    rev:g('admRev').value.trim()||'0',img:normalizeImageUrl(g('admImg').value),desc:g('admDesc').value.trim(),
     tag:(g('admTag')?g('admTag').value:'').trim().slice(0,28),
     itin:(g('admItin')?g('admItin').value:'').trim(),
     hvid:(g('admVid')?g('admVid').value:'').trim(),
@@ -6598,7 +6627,7 @@ function destCard(d){
   const gt=toursForDest(d.id).filter(t=>tourDep(t)!=='custom').length;   /* road trips with group departures */
   const season=d.best?String(d.best).split('(')[0].trim():'';
   return `<div class="dcell" onclick="openDest('${d.id}')" style="background-image:url('${d.img+Q}')">
-    ${gt?`<span class="dcell-trip"><span class="msr">groups</span>Group departures</span>`:''}
+    ${gt?`<span class="dcell-trip"><span class="msr">groups</span>Group Trip</span>`:''}
     ${n?`<span class="dcell-n"><span class="msr">bolt</span>${n}</span>`:''}
     <div class="dcell-b">
       <b>${esc(d.n)}</b>
@@ -6608,7 +6637,10 @@ function destCard(d){
 }
 function renderDests(){
   const el=document.getElementById('destList');if(!el)return;
-  el.innerHTML=`<div class="dgrid">${DESTS.map(destCard).join('')}</div>`;
+  /* destinations that have group-departure road trips float to the top (stable otherwise) */
+  const gc=d=>toursForDest(d.id).filter(t=>tourDep(t)!=='custom').length;
+  const list=DESTS.map((d,i)=>({d,i})).sort((a,b)=>gc(b.d)-gc(a.d)||a.i-b.i).map(x=>x.d);
+  el.innerHTML=`<div class="dgrid">${list.map(destCard).join('')}</div>`;
   hydrate(el);
 }
 /* ---- one destination ---- */
@@ -6935,7 +6967,7 @@ function itinSlug(t){return t.n.toLowerCase().replace(/[^a-z0-9]+/g,'-');}
 /* the itinerary the admin attached in Admin → Treks (an uploaded PDF or a pasted link) */
 function trekItinUrl(t){return String((t&&t.itin)||'').trim();}
 /* a trek "has" an itinerary if it has day-by-day rows OR an attached document */
-function hasItinerary(t){return !!(t&&((ITIN[t.n]&&ITIN[t.n].length)||trekItinUrl(t)));}
+function hasItinerary(t){return !!(t&&(trekItin(t).length||trekItinUrl(t)));}
 
 /* ---- Hero media: photo (default) or a video the admin attached ----
    A YouTube / Vimeo / uploaded-file cover autoplays MUTED and looping the moment the
@@ -7137,7 +7169,7 @@ function genItineraryPDF(t){
     doc.setFont('helvetica','normal');C(MU);const v=doc.splitTextToSize(String(rw[1]),R-L-150);doc.text(v,L+150,y);y+=Math.max(16,v.length*13);});
   y+=6;
   h2('Day-by-day itinerary');
-  const it=ITIN[t.n]||[];
+  const it=trekItin(t);
   it.forEach((d,i)=>{brk(54);
     doc.setFont('helvetica','bold');doc.setFontSize(11.5);C(BL);doc.text('Day '+(i+1)+' — '+d[0],L,y);y+=14;
     doc.setFont('helvetica','italic');doc.setFontSize(9.5);C(AC);doc.text(d[2]+'   •   '+d[3],L,y);y+=14;
