@@ -348,7 +348,7 @@ function applyTrekRows(rows){
   if(!rows||!rows.length)return false;
   const dbByName={};
   rows.forEach(d=>{const row={n:d.name,region:d.region,img:d.img,r:d.rating,rev:d.reviews,lvl:d.level,days:d.days,
-    alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,packing:d.packing||null,batches:(Array.isArray(d.batches)?d.batches:null),req:(typeof d.req_score==='number'?d.req_score:null),pop:!!d.popular,feat:!!d.featured,type:d.type||'trek',dest_id:d.dest_id||'',departure_type:d.departure_type||'both',itinerary:(Array.isArray(d.itinerary)?d.itinerary:[]),tag:d.tag||'',itin:d.itinerary_url||'',hvid:d.hero_video||'',hvideo:!!d.hero_use_video,guide_id:d.guide_id||null,_id:d.id};
+    alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,packing:d.packing||null,batches:(Array.isArray(d.batches)?d.batches:null),req:(typeof d.req_score==='number'?d.req_score:null),pop:!!d.popular,feat:!!d.featured,type:d.type||'trek',dest_id:d.dest_id||'',departure_type:d.departure_type||'both',itinerary:(Array.isArray(d.itinerary)?d.itinerary:[]),pickup:d.pickup||'',dropoff:d.dropoff||'',pickup_map:d.pickup_map||'',tag:d.tag||'',itin:d.itinerary_url||'',hvid:d.hero_video||'',hvideo:!!d.hero_use_video,guide_id:d.guide_id||null,_id:d.id};
     if(d.credit)row.credit=d.credit; dbByName[d.name]=row;});
   const seen=new Set();
   treks.forEach(t=>{const d=dbByName[t.n];if(d){Object.assign(t,d);seen.add(t.n);}});
@@ -2473,7 +2473,8 @@ function renderSelectDate(){const t=cart.trek;
   document.getElementById('batches').innerHTML=batches.length?batches.map((b,i)=>{
     const st=batchState(b.seats);const full=st==='full';
     const d=parseStartDate(b.label);
-    const sLabel=full?(b.seats||'Sold out'):(b.seats||'Available');
+    const seatsRaw=String(b.seats||'').trim();const isNum=/^\d+$/.test(seatsRaw);
+    const sLabel=full?(seatsRaw||'Sold out'):(isNum?seatsRaw+' seats available':(seatsRaw||'Available'));
     const sIcon=full?'block':st==='few'?'local_fire_department':'check_circle';
     const onClick=full?'':`onclick="selBatch(this,'${(b.label||'').replace(/'/g,'')}',${b.price||t.price})"`;
     return `<div class="batch ${i===sel&&!full?'on':''} ${full?'full':''}" ${onClick}>
@@ -2550,9 +2551,12 @@ const TREK_PICKUP={
 function pickupInfo(t){
   const name=t&&t.n;
   const r=REGION_PICKUP[t&&t.region]||{city:(t&&t.region)||'—',alt:[]};
-  const city=(t&&t.dep)||TREK_PICKUP[name]||TREK_DEP[name]||r.city;
+  /* admin-set pickup wins over the region default (fixes "random pickup points") */
+  const city=(t&&(t.pickup||t.dep))||TREK_PICKUP[name]||TREK_DEP[name]||r.city;
   const alt=(r.alt||[]).filter(c=>c!==city);
-  return {city,alt};
+  const drop=(t&&t.dropoff||'').trim();
+  const map=(t&&t.pickup_map||'').trim();
+  return {city,alt,drop,map};
 }
 /* standard cancellation policy */
 const CANCELLATION=[
@@ -2571,8 +2575,9 @@ function reviewDetailsHTML(t){
   <div class="rv-block"><div class="rv-h">${ic('distance',16)} Itinerary</div>
     ${itin.length?itin.map((d,i)=>`<div class="rv-it"><b>Day ${i+1}:</b> ${esc(d[0])}</div>`).join('')+(trekItin(t).length>3?`<div class="rv-more" onclick="go('itinerary')">View full itinerary →</div>`:''):'<div class="rv-it">Detailed day-wise plan shared on confirmation.</div>'}
   </div>
-  <div class="rv-block"><div class="rv-h">${ic('pin',16)} Pickup &amp; reporting</div>
-    <div class="rv-it"><b>Pickup city:</b> ${esc(city)}${pk.alt.length?' (also boardable from '+pk.alt.map(esc).join(' / ')+' en route)':''}</div>
+  <div class="rv-block"><div class="rv-h">${ic('pin',16)} Pickup &amp; drop-off</div>
+    <div class="rv-it"><b>Pickup:</b> ${esc(city)}${pk.alt.length?' (also boardable from '+pk.alt.map(esc).join(' / ')+' en route)':''}${pk.map?` · <a href="${esc(pk.map)}" target="_blank" rel="noopener" style="color:var(--accent2);font-weight:600">Open in Maps →</a>`:''}</div>
+    ${pk.drop?`<div class="rv-it"><b>Drop-off:</b> ${esc(pk.drop)}</div>`:''}
     <div class="rv-it"><b>Reporting:</b> by 6:30 AM on Day 1 at the ${esc(city)} pickup point (exact spot shared after booking)</div>
   </div>
   <div class="rv-block"><div class="rv-h">${ic('check',16)} Inclusions</div>
@@ -2744,6 +2749,13 @@ function showTicket(b){const t=treks.find(x=>x.n===b.trek)||cart.trek;
   document.getElementById('tkName').textContent=b.trek;
   document.getElementById('tkId').textContent=b.id;document.getElementById('tkDate').textContent=b.date;
   document.getElementById('tkPax').textContent=b.pax;document.getElementById('tkPaid').textContent=INR(b.paid)+' / '+INR(b.total);
+  /* pickup point + a Maps link on the ticket */
+  const pk=pickupInfo(t||{}),pr=document.getElementById('tkPickupRow');
+  if(pr){
+    if(pk&&pk.city){pr.style.display='';document.getElementById('tkPickup').textContent=pk.city+(pk.drop?' · Drop-off: '+pk.drop:'');
+      const ml=document.getElementById('tkPickupMap');if(ml){if(pk.map){ml.href=pk.map;ml.style.display='';}else ml.style.display='none';}}
+    else pr.style.display='none';
+  }
   buildQR(ticketPayload(b));hydrate(document.getElementById('ticket'));
 }
 function openTicket(id){const b=getBookings().find(x=>x.id===id);if(!b)return;cart.booking=b;showTicket(b);go('ticket');}
@@ -5139,7 +5151,7 @@ async function sbWriteChecked(method,path,body){
   if(!res||!res.ok){note((res&&res.error)||'Admin save failed.','Save failed');return false;}
   return true;
 }
-function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null,req_score:(typeof t.req==='number'?t.req:null),popular:!!t.pop,featured:!!t.feat,type:trekType(t),dest_id:(t.dest_id||'').trim()||null,departure_type:tourDep(t),itinerary:(Array.isArray(t.itinerary)?t.itinerary:[]),tag:(t.tag||'').trim()||null,itinerary_url:(t.itin||'').trim()||null,
+function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null,req_score:(typeof t.req==='number'?t.req:null),popular:!!t.pop,featured:!!t.feat,type:trekType(t),dest_id:(t.dest_id||'').trim()||null,departure_type:tourDep(t),itinerary:(Array.isArray(t.itinerary)?t.itinerary:[]),pickup:(t.pickup||'').trim()||null,dropoff:(t.dropoff||'').trim()||null,pickup_map:(t.pickup_map||'').trim()||null,tag:(t.tag||'').trim()||null,itinerary_url:(t.itin||'').trim()||null,
   hero_video:(t.hvid||'').trim()||null,hero_use_video:!!t.hvideo,
   guide_id:(t.guide_id!=null&&t.guide_id!=='')?t.guide_id:null};}
 let editIdx=-1, adminTab='Treks', depTrek=null, _admHub=true;
@@ -5503,7 +5515,7 @@ async function saveDestination(){
   if(r.error){note('Could not save: '+r.error.message,'Save failed');return;}
   if(!r.data||!r.data.length){note('Nothing was saved — make sure you are signed in as the admin.','Not saved');return;}
   _destEdit=null;await loadDestinations(true);renderAdminDestinations();
-  try{if(document.querySelector('#dests.active'))renderDests();}catch(e){}
+  try{if(document.querySelector('#dests.active'))renderDests();if(cur==='dest')renderDest();}catch(e){}
   note('Destination saved ✓');
 }
 async function destDelete(){
@@ -5515,7 +5527,7 @@ async function destDelete(){
   const r=await sb.from('destinations').delete().eq('id',d.id).select('id');
   if(r.error){note('Could not delete: '+r.error.message,'Error');return;}
   _destEdit=null;await loadDestinations(true);renderAdminDestinations();
-  try{if(document.querySelector('#dests.active'))renderDests();}catch(e){}
+  try{if(document.querySelector('#dests.active'))renderDests();if(cur==='dest')renderDest();}catch(e){}
   note(isBuiltin?'Reset to default.':'Destination deleted.');
 }
 
@@ -5808,7 +5820,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='368';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='370';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -5951,6 +5963,12 @@ function showAdminForm(t){const f=document.getElementById('adminForm');
     <div class="adm-row2">${fld('admDays','Days',t.days,'5')}${fld('admAlt','Max altitude',t.alt,'12,500 ft')}</div>
     <div class="adm-row2">${fld('admDist','Distance',t.dist,'20 km')}${fld('admBest','Best time',t.best,'Dec – Apr')}</div>
 
+    <div class="adm-sec">Pickup &amp; drop-off</div>
+    ${fld('admPickup','Pickup point',t.pickup,'e.g. Manali (Mall Road) / Delhi ISBT')}
+    ${fld('admDrop','Drop-off point',t.dropoff,'e.g. back at Manali')}
+    ${fld('admPickMap','Pickup map link',t.pickup_map,'Paste a Google Maps link to the exact pickup spot')}
+    <div class="adm-hint">Shown on the trip page and the traveller's ticket, with an “Open in Maps” button. Leave pickup blank to use the region default.</div>
+
     <div class="adm-sec">Pricing &amp; readiness</div>
     <div class="adm-row2">${fld('admPrice','Price (₹)',t.price,'8999')}
       <div class="field"><label>Required trek score</label><div class="inp"><input id="admReq" type="number" min="0" max="100" value="${esc(reqVal)}" placeholder="auto${reqAuto!==''?' ('+reqAuto+')':''}"></div></div></div>
@@ -6016,6 +6034,7 @@ async function saveTrek(){const g=id=>document.getElementById(id);
   const t={n:g('admN').value.trim()||'Untitled',region:g('admReg').value.trim()||'Uttarakhand',lvl:g('admLvl').value,
     type:(g('admType')?g('admType').value:'trek'),
     dest_id:(g('admDest')?g('admDest').value:'')||'',departure_type:(g('admDepType')?g('admDepType').value:'both'),itinerary:itinArr,
+    pickup:(g('admPickup')?g('admPickup').value:'').trim(),dropoff:(g('admDrop')?g('admDrop').value:'').trim(),pickup_map:(g('admPickMap')?g('admPickMap').value:'').trim(),
     price:parseInt(g('admPrice').value)||0,days:parseInt(g('admDays').value)||1,alt:g('admAlt').value.trim(),
     dist:g('admDist').value.trim(),best:g('admBest').value.trim(),r:parseFloat(g('admRate').value)||4.7,
     rev:g('admRev').value.trim()||'0',img:normalizeImageUrl(g('admImg').value),desc:g('admDesc').value.trim(),
@@ -6648,6 +6667,8 @@ let curDest=null;
 function openDest(id){
   const d=destById(id);if(!d){note('That destination is not available yet.','Not found');return;}
   curDest=id;go('dest');renderDest();
+  /* pull the latest (admin may have changed the cover/road trips) and repaint if still open */
+  loadDestinations(true).then(()=>{if(cur==='dest'&&curDest===id)renderDest();}).catch(()=>{});
 }
 function renderDest(){
   const d=destById(curDest);if(!d)return;
@@ -7693,7 +7714,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='gear')renderGear();
   if(id==='permits')renderPermits();
   if(id==='activities')renderActivities();
-  if(id==='dests'){renderDests();loadDestinations().then(()=>renderDests()).catch(()=>{});}
+  if(id==='dests'){renderDests();loadDestinations(true).then(()=>renderDests()).catch(()=>{});}
   if(id==='tours')renderTours();
   if(id==='dest')renderDest();
   if(id==='act')renderAct();

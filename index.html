@@ -527,8 +527,10 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .rt-b>small{display:block;color:rgba(255,255,255,.85);font-size:12px;margin-top:3px}
   .rt-ft{display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:10px}
   .rt-p{font-size:13px;color:rgba(255,255,255,.9)}.rt-p b{font-size:17px;font-weight:800;color:#fff}
-  .rt-go{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.18);backdrop-filter:blur(6px);color:#fff;font-size:12.5px;font-weight:700;padding:8px 13px;border-radius:999px;flex:none}
+  .rt-go{display:inline-flex;align-items:center;gap:5px;background:var(--accent);color:#fff;font-size:13px;font-weight:800;padding:9px 16px;border-radius:999px;flex:none;box-shadow:0 6px 18px -6px rgba(47,107,255,.95);animation:rtPulse 2.2s ease-in-out infinite}
   .rt-go .ic{transform:scaleX(-1)}
+  @keyframes rtPulse{0%,100%{box-shadow:0 6px 18px -6px rgba(47,107,255,.9);transform:scale(1)}50%{box-shadow:0 8px 28px -2px rgba(47,107,255,1);transform:scale(1.04)}}
+  @media(prefers-reduced-motion:reduce){.rt-go{animation:none}}
   .blk{padding:0 16px}
   .blk h2{font-size:16px;font-weight:600;margin:22px 0 10px}
   .blk p{font-size:13.5px;line-height:1.65;color:var(--muted);margin:0}
@@ -722,9 +724,12 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   /* fields */
   .field{margin-bottom:13px}
   .field label{font-size:12px;color:var(--muted);display:block;margin:0 2px 6px}
-  .field .inp{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:13px 14px}
-  .field .inp input{all:unset;flex:1;color:var(--text);font-size:14px}
-  .field .inp input::placeholder{color:var(--muted2)}
+  .inp{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:13px 14px}
+  .inp input{all:unset;flex:1;color:var(--text);font-size:14px}
+  .inp input::placeholder{color:var(--muted2)}
+  /* kill Chrome's white/yellow autofill background so filled fields match the dark theme */
+  input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus,textarea:-webkit-autofill{
+    -webkit-box-shadow:0 0 0 1000px var(--card) inset !important;-webkit-text-fill-color:var(--text) !important;caret-color:var(--text);transition:background-color 9999s ease-in-out 0s}
   /* country-code selector paired with a phone number in one field */
   .field .inp.tel-inp{gap:9px}
   .cc-sel{appearance:none;-webkit-appearance:none;border:none;outline:none;background:transparent;cursor:pointer;
@@ -3141,6 +3146,10 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
       <div class="tkdiv"></div>
       <div class="tkg"><div><div class="k">BOOKING ID</div><div class="v" id="tkId"></div></div><div><div class="k">DATE</div><div class="v" id="tkDate"></div></div>
         <div><div class="k">TREKKERS</div><div class="v" id="tkPax"></div></div><div><div class="k">PAID</div><div class="v" id="tkPaid"></div></div></div>
+      <div id="tkPickupRow" style="display:none;margin-top:12px;padding-top:12px;border-top:1px dashed rgba(0,0,0,.18)">
+        <div class="k">PICKUP POINT</div><div class="v" id="tkPickup" style="font-size:13px"></div>
+        <a id="tkPickupMap" href="#" target="_blank" rel="noopener" style="display:none;margin-top:7px;font-size:12.5px;font-weight:700;color:#0a5cff"><span class="msr" style="font-size:15px;vertical-align:-3px">location_on</span> Open pickup in Maps →</a>
+      </div>
     </div>
     <button class="btn" style="margin-top:16px" onclick="go('packing')"><span class="ic" data-i="list"></span> Packing List for this Trek</button>
     <button class="btn ghost" style="margin-top:11px" onclick="wa('Hi Tripomonk, about my booking '+(cart.booking?cart.booking.id:''))"><span class="ic" data-i="chat"></span> Chat with Coordinator</button>
