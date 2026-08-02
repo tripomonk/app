@@ -548,6 +548,14 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .fc-ic{font-size:18px;line-height:1}
   .fc-t{font-size:13px;font-weight:800;color:var(--text)}
   .fc-tl{font-size:10.5px;color:var(--muted2)}
+  /* offer banner on the trip/trek detail — shows exactly what's on offer */
+  .d-offer{display:flex;align-items:center;gap:11px;margin:0 0 4px;padding:13px 15px;border-radius:14px;
+    background:linear-gradient(135deg,rgba(224,162,0,.18),rgba(224,162,0,.06));border:1px solid rgba(255,206,31,.45)}
+  .d-offer .msr{font-size:24px;color:#ffce1f;flex:none}
+  .d-offer>div{display:flex;flex-direction:column;min-width:0}
+  .d-offer b{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#ffce1f}
+  .d-offer span{font-size:14px;font-weight:700;color:var(--text);line-height:1.35}
+  html.light .d-offer b,html.light .d-offer .msr{color:#b07d00}
   .blk{padding:0 16px}
   .blk h2{font-size:16px;font-weight:600;margin:22px 0 10px}
   .blk p{font-size:13.5px;line-height:1.65;color:var(--muted);margin:0}
@@ -3040,6 +3048,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
       <div class="stats" id="dStats"></div>
     </div>
     <div class="blk reveal" style="padding-top:10px"><div id="dReadiness"></div></div>
+    <div id="dOffer" class="d-offer" style="display:none"></div>
     <div class="blk reveal"><h2>About the Trek</h2><p id="dDesc"></p></div>
     <div class="blk reveal" id="dLeaderWrap" style="display:none"><h2>Your trek leader</h2><div id="dLeader"></div></div>
     <div class="blk reveal"><h2>Highlights</h2><div class="hl-pills" id="dHl"></div></div>
@@ -3092,6 +3101,13 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
     <div class="panel" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
       <div><b>Trekkers</b><small style="display:block;color:var(--muted);font-size:11px">Age 10+ · price per person</small></div>
       <div class="stepper"><button onclick="trav(-1)">−</button><b id="travN">1</b><button onclick="trav(1)">+</button></div></div>
+    <div class="field"><label>Who is this booking for?</label>
+      <div class="adm-status">
+        <button type="button" class="adm-status-btn on" id="bookForSelf" onclick="setBookFor('self')">Myself</button>
+        <button type="button" class="adm-status-btn" id="bookForOther" onclick="setBookFor('other')">Someone else</button>
+      </div>
+      <div id="bookForNote" class="host-note" style="display:none;margin-top:8px"></div>
+    </div>
     <div class="field"><label>Lead trekker name *</label><div class="inp"><span class="ic" data-i="user"></span><input id="leadName" placeholder="Full name (as per ID)"/></div></div>
     <div class="field"><label>Mobile number *</label><div class="inp"><span class="ic" data-i="phone"></span><input id="leadPhone" placeholder="10-digit mobile" inputmode="tel" maxlength="10"/></div></div>
     <div class="field"><label>Email *</label><div class="inp"><span class="ic" data-i="mail"></span><input id="leadEmail" placeholder="you@email.com" inputmode="email" autocomplete="email"/></div></div>
@@ -3163,6 +3179,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
       <div class="tkdiv"></div>
       <div class="tkg"><div><div class="k">BOOKING ID</div><div class="v" id="tkId"></div></div><div><div class="k">DATE</div><div class="v" id="tkDate"></div></div>
         <div><div class="k">TREKKERS</div><div class="v" id="tkPax"></div></div><div><div class="k">PAID</div><div class="v" id="tkPaid"></div></div></div>
+      <div id="tkTravellerRow" style="display:none;margin-top:12px;font-size:12.5px;color:var(--muted)"><span class="msr" style="font-size:15px;vertical-align:-3px;color:var(--accent2)">person</span> Lead traveller: <b id="tkTraveller" style="color:var(--text)"></b></div>
       <div id="tkPickupRow" style="display:none;margin-top:14px">
         <div style="display:flex;gap:11px;align-items:flex-start;background:rgba(47,107,255,.12);border:1px solid rgba(47,107,255,.32);border-radius:14px;padding:13px 14px">
           <span class="msr" style="color:var(--accent2);font-size:22px;flex:none;margin-top:1px">location_on</span>

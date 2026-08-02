@@ -348,7 +348,7 @@ function applyTrekRows(rows){
   if(!rows||!rows.length)return false;
   const dbByName={};
   rows.forEach(d=>{const row={n:d.name,region:d.region,img:d.img,r:d.rating,rev:d.reviews,lvl:d.level,days:d.days,
-    alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,packing:d.packing||null,batches:(Array.isArray(d.batches)?d.batches:null),req:(typeof d.req_score==='number'?d.req_score:null),pop:!!d.popular,feat:!!d.featured,type:d.type||'trek',dest_id:d.dest_id||'',departure_type:d.departure_type||'both',itinerary:(Array.isArray(d.itinerary)?d.itinerary:[]),pickup:d.pickup||'',dropoff:d.dropoff||'',pickup_map:d.pickup_map||'',tag:d.tag||'',itin:d.itinerary_url||'',hvid:d.hero_video||'',hvideo:!!d.hero_use_video,guide_id:d.guide_id||null,_id:d.id};
+    alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,packing:d.packing||null,batches:(Array.isArray(d.batches)?d.batches:null),req:(typeof d.req_score==='number'?d.req_score:null),pop:!!d.popular,feat:!!d.featured,type:d.type||'trek',dest_id:d.dest_id||'',departure_type:d.departure_type||'both',itinerary:(Array.isArray(d.itinerary)?d.itinerary:[]),pickup:d.pickup||'',dropoff:d.dropoff||'',pickup_map:d.pickup_map||'',tag:d.tag||'',offer:d.offer||'',itin:d.itinerary_url||'',hvid:d.hero_video||'',hvideo:!!d.hero_use_video,guide_id:d.guide_id||null,_id:d.id};
     if(d.credit)row.credit=d.credit; dbByName[d.name]=row;});
   const seen=new Set();
   treks.forEach(t=>{const d=dbByName[t.n];if(d){Object.assign(t,d);seen.add(t.n);}});
@@ -2401,6 +2401,8 @@ function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
   if(dc){if(t.credit){dc.innerHTML='<span class="msr">photo_camera</span> '+esc(t.credit);dc.classList.add('on');}else dc.classList.remove('on');}
   const dtg=document.getElementById('dTag');
   if(dtg){dtg.innerHTML=tagBadge(t);dtg.style.display=trekTag(t)?'':'none';}
+  const doff=document.getElementById('dOffer');
+  if(doff){const of=(t.offer||'').trim();if(of){doff.innerHTML='<span class="msr">local_offer</span><div><b>Offer</b><span>'+esc(of)+'</span></div>';doff.style.display='flex';}else doff.style.display='none';}
   document.getElementById('dName').textContent=t.n;
   document.getElementById('dReg').textContent=t.region;
   document.getElementById('dRate').textContent=t.r;
@@ -2537,19 +2539,45 @@ function checkTravellers(){
   if(emPhone.length<10){note('Please enter a valid emergency contact mobile.','Emergency contact required');g('emPhone').focus();return;}
   if(emPhone===phone){note('Emergency contact should be different from your own number.','Check emergency contact');g('emPhone').focus();return;}
   /* stash on the cart so it flows into the booking + payment */
-  cart.contact={name,phone,email,emName,emPhone};
-  saveUserName(name);saveContact(cart.contact);
+  cart.contact={name,phone,email,emName,emPhone,bookedFor:_bookFor};
+  /* only update the account's saved name/contact when booking for YOURSELF —
+     otherwise a "someone else" booking would overwrite your own profile */
+  if(_bookFor==='self'){saveUserName(name);saveContact(cart.contact);}
   go('review');
+}
+/* who the booking is for — 'self' (autofill from profile) or 'other' (blank form) */
+let _bookFor='self';
+function setBookFor(v){
+  _bookFor=v;const g=id=>document.getElementById(id);
+  const bs=g('bookForSelf'),bo=g('bookForOther'),nt=g('bookForNote');
+  if(bs)bs.classList.toggle('on',v==='self');
+  if(bo)bo.classList.toggle('on',v==='other');
+  if(v==='self'){
+    const c=getContact()||{};
+    const nm=getSavedName()||c.name||'',ph=String(getSavedMobile()||c.phone||'').replace(/\D/g,'').slice(-10),em=getUserEmail()||c.email||'';
+    if(g('leadName'))g('leadName').value=nm;
+    if(g('leadPhone'))g('leadPhone').value=ph;
+    if(g('leadEmail'))g('leadEmail').value=em;
+    const miss=[];if(!nm)miss.push('name');if(!ph)miss.push('mobile');if(!em)miss.push('email');
+    if(nt){
+      if(miss.length){nt.style.display='';nt.innerHTML='Your profile is missing your '+esc(miss.join(', '))+'. <a onclick="go(\'editProfile\')" style="color:var(--accent2);font-weight:600;cursor:pointer">Complete your profile →</a> or just fill it in below.';}
+      else{nt.style.display='none';nt.innerHTML='';}
+    }
+  }else{
+    if(g('leadName'))g('leadName').value='';
+    if(g('leadPhone'))g('leadPhone').value='';
+    if(g('leadEmail'))g('leadEmail').value='';
+    if(nt){nt.style.display='';nt.textContent="Enter the traveller's details below. Your emergency contact stays the same.";}
+    if(g('leadName'))setTimeout(()=>{try{g('leadName').focus();}catch(e){}},50);
+  }
 }
 function saveContact(c){try{localStorage.setItem('tmk_contact',JSON.stringify(c));}catch(e){}}
 function getContact(){try{return JSON.parse(localStorage.getItem('tmk_contact')||'null');}catch(e){return null;}}
 function prefillTravellers(){
   const g=id=>document.getElementById(id);const c=getContact()||{};
-  if(g('leadName')&&!g('leadName').value)g('leadName').value=getSavedName()||c.name||'';
-  if(g('leadPhone')&&!g('leadPhone').value)g('leadPhone').value=c.phone||'';
-  if(g('leadEmail')&&!g('leadEmail').value)g('leadEmail').value=c.email||getUserEmail()||'';
   if(g('emName')&&!g('emName').value)g('emName').value=c.emName||'';
   if(g('emPhone')&&!g('emPhone').value)g('emPhone').value=c.emPhone||'';
+  _bookFor='self';setBookFor('self');   /* default: booking for yourself, autofilled from profile */
 }
 /* departure / pickup city per trek (primary boarding point) */
 const DEP_CITIES=['Delhi','Rishikesh','Dehradun'];
@@ -2781,6 +2809,9 @@ function showTicket(b){const t=treks.find(x=>x.n===b.trek)||cart.trek;
   document.getElementById('tkName').textContent=b.trek;
   document.getElementById('tkId').textContent=b.id;document.getElementById('tkDate').textContent=b.date;
   document.getElementById('tkPax').textContent=b.pax;document.getElementById('tkPaid').textContent=INR(b.paid)+' / '+INR(b.total);
+  /* lead traveller name on the ticket */
+  const trav=document.getElementById('tkTravellerRow');
+  if(trav){if(b.name){trav.style.display='';document.getElementById('tkTraveller').textContent=b.name;}else trav.style.display='none';}
   /* pickup point + a Maps link on the ticket */
   const pk=pickupInfo(t||{}),pr=document.getElementById('tkPickupRow');
   if(pr){
@@ -5183,7 +5214,7 @@ async function sbWriteChecked(method,path,body){
   if(!res||!res.ok){note((res&&res.error)||'Admin save failed.','Save failed');return false;}
   return true;
 }
-function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null,req_score:(typeof t.req==='number'?t.req:null),popular:!!t.pop,featured:!!t.feat,type:trekType(t),dest_id:(t.dest_id||'').trim()||null,departure_type:tourDep(t),itinerary:(Array.isArray(t.itinerary)?t.itinerary:[]),pickup:(t.pickup||'').trim()||null,dropoff:(t.dropoff||'').trim()||null,pickup_map:(t.pickup_map||'').trim()||null,tag:(t.tag||'').trim()||null,itinerary_url:(t.itin||'').trim()||null,
+function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null,req_score:(typeof t.req==='number'?t.req:null),popular:!!t.pop,featured:!!t.feat,type:trekType(t),dest_id:(t.dest_id||'').trim()||null,departure_type:tourDep(t),itinerary:(Array.isArray(t.itinerary)?t.itinerary:[]),pickup:(t.pickup||'').trim()||null,dropoff:(t.dropoff||'').trim()||null,pickup_map:(t.pickup_map||'').trim()||null,tag:(t.tag||'').trim()||null,offer:(t.offer||'').trim()||null,itinerary_url:(t.itin||'').trim()||null,
   hero_video:(t.hvid||'').trim()||null,hero_use_video:!!t.hvideo,
   guide_id:(t.guide_id!=null&&t.guide_id!=='')?t.guide_id:null};}
 let editIdx=-1, adminTab='Treks', depTrek=null, _admHub=true;
@@ -5852,7 +5883,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='371';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='373';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -5990,6 +6021,8 @@ function showAdminForm(t){const f=document.getElementById('adminForm');
     </div>
     ${fld('admTag','Or type your own',t.tag,'e.g. Diwali Special')}
     <div class="adm-hint">Shows as a coloured badge on this trek everywhere in the app. Leave blank for none.</div>
+    ${fld('admOffer','Offer details',t.offer,'e.g. Flat ₹2,000 off · book by 30 Sep')}
+    <div class="adm-hint">The actual offer — shown as a highlighted banner on the trip page so travellers see exactly what they get. Pair with the “Offer” tag above.</div>
 
     <div class="adm-sec">Trip details</div>
     <div class="adm-row2">${fld('admDays','Days',t.days,'5')}${fld('admAlt','Max altitude',t.alt,'12,500 ft')}</div>
@@ -6071,6 +6104,7 @@ async function saveTrek(){const g=id=>document.getElementById(id);
     dist:g('admDist').value.trim(),best:g('admBest').value.trim(),r:parseFloat(g('admRate').value)||4.7,
     rev:g('admRev').value.trim()||'0',img:normalizeImageUrl(g('admImg').value),desc:g('admDesc').value.trim(),
     tag:(g('admTag')?g('admTag').value:'').trim().slice(0,28),
+    offer:(g('admOffer')?g('admOffer').value:'').trim().slice(0,160),
     itin:(g('admItin')?g('admItin').value:'').trim(),
     hvid:(g('admVid')?g('admVid').value:'').trim(),
     hvideo:!!(g('admHeroVid')&&g('admHeroVid').classList.contains('on')),
@@ -6391,7 +6425,8 @@ function recalcAct(){
     warn.textContent=msgs.join(' ');warn.style.display='';
   }
   const btn=document.getElementById('actAdd');
-  if(btn)btn.disabled=false;
+  /* reset BOTH disabled + label — otherwise a prior "Starting payment…" sticks across activities */
+  if(btn){btn.disabled=false;btn.innerHTML='<span class="msr" style="font-size:18px;vertical-align:-3px;margin-right:5px">bolt</span>Book now';}
 }
 /* Direct online booking for an adventure activity via Razorpay — no cart, no WhatsApp.
    Confirms date/slot/party, then takes payment (priced server-side by activity ID). */
