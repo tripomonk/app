@@ -260,6 +260,12 @@ function deriveTreks(){treks.forEach((t,i)=>{t.idx=i;
   t.temp = ft>14000?'-8° to 6°C':(ft>11500?'-5° to 10°C':'2° to 15°C');
 });}
 deriveTreks();
+/* product type: a catalog item is a "trek" by default, or a "tour" (Road Trips & Tours —
+   e.g. Spiti/Ladakh/Bhutan). Tours reuse the whole trek engine (itinerary, batches, booking,
+   share cards) but live in their own section and are hidden from every trek browse surface. */
+function trekType(t){return (t&&t.type)||'trek';}
+function isTour(t){return trekType(t)==='tour';}
+function tourList(){return treks.filter(isTour);}
 
 /* ---------- Supabase backend (optional; falls back to built-in data) ---------- */
 const SB = window.TMK_CONFIG || {};
@@ -295,7 +301,7 @@ function applyTrekRows(rows){
   if(!rows||!rows.length)return false;
   const dbByName={};
   rows.forEach(d=>{const row={n:d.name,region:d.region,img:d.img,r:d.rating,rev:d.reviews,lvl:d.level,days:d.days,
-    alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,packing:d.packing||null,batches:(Array.isArray(d.batches)?d.batches:null),req:(typeof d.req_score==='number'?d.req_score:null),pop:!!d.popular,feat:!!d.featured,tag:d.tag||'',itin:d.itinerary_url||'',hvid:d.hero_video||'',hvideo:!!d.hero_use_video,guide_id:d.guide_id||null,_id:d.id};
+    alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,packing:d.packing||null,batches:(Array.isArray(d.batches)?d.batches:null),req:(typeof d.req_score==='number'?d.req_score:null),pop:!!d.popular,feat:!!d.featured,type:d.type||'trek',tag:d.tag||'',itin:d.itinerary_url||'',hvid:d.hero_video||'',hvideo:!!d.hero_use_video,guide_id:d.guide_id||null,_id:d.id};
     if(d.credit)row.credit=d.credit; dbByName[d.name]=row;});
   const seen=new Set();
   treks.forEach(t=>{const d=dbByName[t.n];if(d){Object.assign(t,d);seen.add(t.n);}});
@@ -1973,7 +1979,7 @@ function renderHomeHero(){
    rules-based "best match" using the user's onboarding prefs.
    ============================================================ */
 let _cmpSel=[],_cmpQ='',_cmpShow=false;
-function cmpAvail(){return treks.filter(t=>!t.soon);}
+function cmpAvail(){return treks.filter(t=>!t.soon&&!isTour(t));}
 function fitnessOf(lvl){lvl=(lvl||'').toLowerCase();
   if(/difficult|hard|advanced|challeng/.test(lvl))return 'High';
   if(/moderate/.test(lvl))return 'Moderate';
@@ -2093,9 +2099,10 @@ function renderHome(){
      front, then bookable, then a few coming-soon. Sorting rather than filtering keeps the
      rail full even when a difficulty chip excludes every picked trek.
      Capping it is essential: rendering all 130+ treks here crashed iOS Safari (memory). */
-  const pool=homeFilter==='All'?treks:treks.filter(t=>t.lvl===homeFilter);
+  const pool=(homeFilter==='All'?treks:treks.filter(t=>t.lvl===homeFilter)).filter(t=>!isTour(t));
   const list=[...pool].sort((a,b)=>(b.pop?1:0)-(a.pop?1:0)||(a.soon?1:0)-(b.soon?1:0)).slice(0,12);
   makeCoverflow('homeList',list,trekCardCF,(t)=>openDetail(t.idx));
+  renderHomeTours();   /* Road Trips & Tours rail (hidden until a tour exists) */
   /* paint the host slot now (CTA), then swap in the rail if any trips are live */
   renderHomeHosts();
   renderGiftHome();
@@ -2125,7 +2132,7 @@ function renderExplore(){
   /* filtered views (a region / difficulty / city) show their full set — always small.
      The unfiltered "Top Picks" is capped so we never render 130+ image cards at once
      (that crashed iOS Safari). Everything stays reachable via the region tiles above. */
-  const list=exploreView||treks.slice(0,30);
+  const list=exploreView||treks.filter(t=>!isTour(t)).slice(0,30);
   const head=document.getElementById('topHead'); if(head)head.textContent=exploreLabel||'Top Picks For You';
   const el=document.getElementById('exploreList');el.className='';
   el.innerHTML=list.length?list.map(bigCard).join(''):`<div class="empty"><img src="illustrations/hiker-mountains.svg" alt=""/>No treks in ${esc(exploreLabel||'this filter').replace(' Treks','')} yet — more coming soon.<br><br><button class="btn sm" onclick="filterAll()">Show all treks</button></div>`;
@@ -2134,10 +2141,29 @@ function renderExplore(){
 }
 let exploreView=null, exploreLabel='';
 function scrollToPicks(){const el=document.getElementById('topSec');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}
-function filterByRegion(r){exploreView=treks.filter(t=>t.region===r);exploreLabel=r+' Treks';renderExplore();scrollToPicks();}
-function filterByDiff(d){exploreView=treks.filter(t=>t.lvl===d);exploreLabel=d+' Treks';renderExplore();scrollToPicks();}
-function filterByCity(c){exploreView=treks.filter(t=>depCity(t)===c);exploreLabel='From '+c;renderExplore();scrollToPicks();}
+function filterByRegion(r){exploreView=treks.filter(t=>t.region===r&&!isTour(t));exploreLabel=r+' Treks';renderExplore();scrollToPicks();}
+function filterByDiff(d){exploreView=treks.filter(t=>t.lvl===d&&!isTour(t));exploreLabel=d+' Treks';renderExplore();scrollToPicks();}
+function filterByCity(c){exploreView=treks.filter(t=>depCity(t)===c&&!isTour(t));exploreLabel='From '+c;renderExplore();scrollToPicks();}
 function filterAll(){exploreView=null;exploreLabel='';renderExplore();}
+/* ---- Road Trips & Tours: their own section (Spiti/Ladakh/Bhutan etc.) ---- */
+function renderTours(){
+  const box=document.getElementById('toursBody');if(!box)return;
+  const list=tourList();
+  box.innerHTML=list.length
+    ? list.map(bigCard).join('')
+    : '<div class="empty"><img src="illustrations/hiker-mountains.svg" alt=""/>No road trips or tours yet — check back soon.</div>';
+  hydrate(box);lazyBg(box);
+}
+/* the home rail — only shows once at least one tour exists */
+function renderHomeTours(){
+  const sec=document.getElementById('homeToursSec'),rail=document.getElementById('homeTours');
+  if(!rail)return;
+  const list=tourList();
+  if(!list.length){if(sec)sec.style.display='none';rail.innerHTML='';return;}
+  if(sec)sec.style.display='';
+  rail.innerHTML=list.slice(0,10).map(trekCard).join('');
+  hydrate(rail);
+}
 
 /* filters */
 const fOpts={diff:['Easy','Moderate','Difficult'],dur:['1–3 Days','4–7 Days','8–14 Days','15+ Days'],reg:['Himachal','Uttarakhand','Kashmir','Ladakh','Sikkim'],time:['Jan–Mar','Apr–Jun','Jul–Sep','Oct–Dec']};
@@ -4653,8 +4679,10 @@ function renderSettings(){
 function calPick(el){document.querySelectorAll('#cal .grid .d').forEach(d=>{if(!d.classList.contains('off'))d.classList.remove('on');});el.classList.add('on');}
 function renderSearch(){document.getElementById('searchSug').innerHTML=['Kedarkantha','Valley of Flowers','Uttarakhand','Easy treks','Roopkund'].map(s=>`<div class="chip pill" onclick="doSearch('${s}')">${s}</div>`).join('');doSearch('');const inp=document.getElementById('searchInput');if(inp&&!inp._w){inp._w=1;inp.addEventListener('input',()=>doSearch(inp.value));}}
 function doSearch(q){const inp=document.getElementById('searchInput');if(inp&&q&&inp.value!==q)inp.value=q;q=(q||'').toLowerCase();
-  const f=treks.filter(t=>!q||t.n.toLowerCase().includes(q)||t.region.toLowerCase().includes(q)||t.lvl.toLowerCase().includes(q));
-  const el=document.getElementById('searchResults');el.innerHTML=(f.length?f:treks).map(trekCard).join('');hydrate(el);}
+  /* empty query = browse treks only (tours live in their own section); an ACTIVE search
+     matches everything incl. tours, so someone typing "Ladakh"/"Spiti" still finds the tour */
+  const f=treks.filter(t=>q?(t.n.toLowerCase().includes(q)||t.region.toLowerCase().includes(q)||t.lvl.toLowerCase().includes(q)):!isTour(t));
+  const el=document.getElementById('searchResults');el.innerHTML=(f.length?f:treks.filter(t=>!isTour(t))).map(trekCard).join('');hydrate(el);}
 async function renderNotifications(){
   const box=document.getElementById('notiList');
   const lastSeen=+(localStorage.getItem('tmk_notif_seen')||0);
@@ -5050,7 +5078,7 @@ async function sbWriteChecked(method,path,body){
   if(!res||!res.ok){note((res&&res.error)||'Admin save failed.','Save failed');return false;}
   return true;
 }
-function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null,req_score:(typeof t.req==='number'?t.req:null),popular:!!t.pop,featured:!!t.feat,tag:(t.tag||'').trim()||null,itinerary_url:(t.itin||'').trim()||null,
+function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null,req_score:(typeof t.req==='number'?t.req:null),popular:!!t.pop,featured:!!t.feat,type:trekType(t),tag:(t.tag||'').trim()||null,itinerary_url:(t.itin||'').trim()||null,
   hero_video:(t.hvid||'').trim()||null,hero_use_video:!!t.hvideo,
   guide_id:(t.guide_id!=null&&t.guide_id!=='')?t.guide_id:null};}
 let editIdx=-1, adminTab='Treks', depTrek=null, _admHub=true;
@@ -5714,7 +5742,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='356';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='357';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -5799,8 +5827,12 @@ function showAdminForm(t){const f=document.getElementById('adminForm');
     <div class="adm-ed-head"><b>${editIdx<0?'Add a trek':'Edit trek'}</b><button class="adm-ic" onclick="closeAdminForm()" title="Close"><span class="msr">close</span></button></div>
 
     <div class="adm-sec">Basics</div>
-    ${fld('admN','Trek name',t.n,'Kedarkantha')}
+    ${fld('admN','Name',t.n,'Kedarkantha')}
     ${fld('admReg','Region',t.region,'Uttarakhand')}
+    <div class="field"><label>Type</label><div class="inp"><select id="admType" style="all:unset;flex:1;color:var(--text)">
+      <option value="trek" ${trekType(t)!=='tour'?'selected':''} style="color:#000">Trek</option>
+      <option value="tour" ${trekType(t)==='tour'?'selected':''} style="color:#000">Road Trip / Tour</option>
+    </select></div><div class="adm-hint">“Road Trip / Tour” shows under <b>Road Trips &amp; Tours</b> (e.g. Spiti, Ladakh, Bhutan), not under Treks.</div></div>
     <div class="adm-row2">
       <div class="field"><label>Difficulty</label><div class="inp"><select id="admLvl" style="all:unset;flex:1;color:var(--text)">${['Easy','Moderate','Difficult'].map(o=>`<option ${o===lv?'selected':''} style="color:#000">${o}</option>`).join('')}</select></div></div>
       <div class="field"><label>Status</label><div class="adm-status"><button type="button" class="adm-status-btn ${!t.soon?'on':''}" id="admStatusLive" onclick="admSetStatus(true)">Live</button><button type="button" class="adm-status-btn ${t.soon?'on':''}" id="admStatusSoon" onclick="admSetStatus(false)">Soon</button></div></div>
@@ -5874,6 +5906,7 @@ async function saveTrek(){const g=id=>document.getElementById(id);
   const req=reqRaw===''?null:Math.max(0,Math.min(100,parseInt(reqRaw)||0));
   const soon=g('admStatusSoon')?g('admStatusSoon').classList.contains('on'):false;
   const t={n:g('admN').value.trim()||'Untitled',region:g('admReg').value.trim()||'Uttarakhand',lvl:g('admLvl').value,
+    type:(g('admType')?g('admType').value:'trek'),
     price:parseInt(g('admPrice').value)||0,days:parseInt(g('admDays').value)||1,alt:g('admAlt').value.trim(),
     dist:g('admDist').value.trim(),best:g('admBest').value.trim(),r:parseFloat(g('admRate').value)||4.7,
     rev:g('admRev').value.trim()||'0',img:g('admImg').value.trim(),desc:g('admDesc').value.trim(),
@@ -7507,6 +7540,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='permits')renderPermits();
   if(id==='activities')renderActivities();
   if(id==='dests'){renderDests();loadDestinations().then(()=>renderDests()).catch(()=>{});}
+  if(id==='tours')renderTours();
   if(id==='dest')renderDest();
   if(id==='act')renderAct();
   if(id==='cart')renderCart();

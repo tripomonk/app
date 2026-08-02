@@ -2905,6 +2905,9 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
     <div class="chips" id="homeChips"></div>
     <div class="sec"><h2>Popular Treks</h2><a onclick="go('explore')">View all</a></div>
     <div class="hrow" id="homeList"></div>
+    <!-- Road Trips & Tours: hidden until at least one tour exists -->
+    <div class="sec" id="homeToursSec" style="display:none"><h2>Road Trips &amp; Tours</h2><a onclick="go('tours')">View all</a></div>
+    <div class="hrow" id="homeTours"></div>
     <!-- host trips: a rail when hosts are live, a recruitment card when they aren't -->
     <div id="homeHosts"></div>
     <div class="cmp-home" onclick="go('compare')">
@@ -3552,6 +3555,14 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
     <div class="panel" style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:14px">Assisted service: tell us your trek and we process the forest / eco-zone permit and ID, then send the approved copy in-app.</div>
     <div class="search" style="margin-bottom:16px"><span class="msr" style="font-size:20px;color:var(--muted)">search</span><input id="permitSearch" type="text" placeholder="Search permits…" autocomplete="off" oninput="renderPermits(this.value)" style="all:unset;flex:1;font-size:14px;color:var(--text)"/></div>
     <div id="permitList"></div>
+  </section>
+
+  <!-- ROAD TRIPS & TOURS -->
+  <section class="view flow" id="tours" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Road Trips &amp; Tours</h1></div>
+    <div class="note2" style="margin:0 16px 12px">Multi-day journeys — Spiti, Ladakh, Bhutan &amp; more. Fixed departures, guided, booked in-app just like treks.</div>
+    <div id="toursBody" style="padding:0 16px"></div>
+    <div style="height:calc(var(--safe-bottom) + 20px)"></div>
   </section>
 
   <!-- MARKETPLACE · DESTINATIONS -->
