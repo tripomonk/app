@@ -2218,8 +2218,13 @@ function renderHomeTours(){
   const list=tourList();
   if(!list.length){if(sec)sec.style.display='none';rail.innerHTML='';return;}
   if(sec)sec.style.display='';
-  /* reuse the trek card look, but tapping opens the trip's DESTINATION (where it's highlighted) */
-  rail.innerHTML=list.slice(0,10).map(t=>trekCard(t).replace('openDetail('+t.idx+')','openTourHome('+t.idx+')')).join('');
+  /* a distinct VERTICAL road-trip card (not the trek card look) */
+  rail.innerHTML=list.slice(0,10).map(t=>`<div class="trcard" onclick="openTourHome(${t.idx})">
+      <div class="trcard-ph" style="background-image:url('${t.img}')"><span class="trcard-tag">ROAD TRIP</span></div>
+      <div class="trcard-bd"><b>${esc(t.n)}</b>
+        <small>${ic('pin',11)} ${esc((destById(t.dest_id)||{}).n||t.region||'')}</small>
+        <div class="trcard-ft"><span>${t.days?esc(String(t.days))+' days':''}${t.lvl?' · '+esc(t.lvl):''}</span><span class="trcard-p">${INR(t.price||0)}</span></div>
+      </div></div>`).join('');
   hydrate(rail);
 }
 
@@ -2316,25 +2321,34 @@ async function loadConditions(t){
   const c=coordsFor(t),key=condKey(c);
   const cached=swrGet(key);
   if(cached&&cached.data&&(Date.now()-cached.t<COND_TTL))return cached.data;
-  const q='latitude='+c[0]+'&longitude='+c[1]+'&timezone=auto&forecast_days=1';
+  const q='latitude='+c[0]+'&longitude='+c[1]+'&timezone=auto';
   try{
     const [w,a]=await Promise.all([
-      fetch('https://api.open-meteo.com/v1/forecast?'+q+'&daily=temperature_2m_max,temperature_2m_min').then(r=>r.json()).catch(()=>null),
-      fetch('https://air-quality-api.open-meteo.com/v1/air-quality?'+q+'&hourly=us_aqi').then(r=>r.json()).catch(()=>null)
+      fetch('https://api.open-meteo.com/v1/forecast?'+q+'&forecast_days=5&daily=weathercode,temperature_2m_max,temperature_2m_min').then(r=>r.json()).catch(()=>null),
+      fetch('https://air-quality-api.open-meteo.com/v1/air-quality?'+q+'&forecast_days=1&hourly=us_aqi').then(r=>r.json()).catch(()=>null)
     ]);
     const d=(w&&w.daily)||{};
     const tmax=Array.isArray(d.temperature_2m_max)?d.temperature_2m_max[0]:null;
     const tmin=Array.isArray(d.temperature_2m_min)?d.temperature_2m_min[0]:null;
+    /* 5-day forecast for the strip */
+    const days=(Array.isArray(d.time)?d.time:[]).map((dt,i)=>({date:dt,code:(d.weathercode||[])[i],tmax:(d.temperature_2m_max||[])[i],tmin:(d.temperature_2m_min||[])[i]}));
     const arr=((a&&a.hourly&&a.hourly.us_aqi)||[]).filter(v=>typeof v==='number');
     const aqi=arr.length?Math.round(arr.reduce((s,v)=>s+v,0)/arr.length):null;
     if(tmin==null&&aqi==null)return cached?cached.data:null;   /* nothing usable — keep the old copy */
-    const data={tmin,tmax,aqi,exact:!!COORDS[t.n]};
+    const data={tmin,tmax,aqi,days,exact:!!COORDS[t.n]};
     swrSet(key,data);
     return data;
   }catch(e){return cached?cached.data:null;}
 }
+/* Open-Meteo weathercode → a simple emoji */
+function wxIcon(code){code=+code||0;if(code===0)return '☀️';if(code<=3)return '⛅';if(code<=48)return '🌫️';if(code<=67)return '🌧️';if(code<=77)return '❄️';if(code<=82)return '🌧️';return '⛈️';}
+function forecastStrip(days){
+  if(!Array.isArray(days)||!days.length)return '';
+  const dn=d=>{try{return new Date(d+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short'});}catch(e){return '';}};
+  return '<div class="fc-strip">'+days.slice(0,5).map((d,i)=>`<div class="fc-day"><span class="fc-dn">${i===0?'Today':esc(dn(d.date))}</span><span class="fc-ic">${wxIcon(d.code)}</span><span class="fc-t">${d.tmax!=null?Math.round(d.tmax)+'°':'—'}</span><span class="fc-tl">${d.tmin!=null?Math.round(d.tmin)+'°':''}</span></div>`).join('')+'</div>';
+}
 function factsHTML(t,live){
-  const b=baseInfo(t);
+  const fc=(live&&live.days)?forecastStrip(live.days):'';
   const tempRow=(live&&live.tmin!=null&&live.tmax!=null)
     ? dRow('temp','Temperature today',Math.round(live.tmin)+'° to '+Math.round(live.tmax)+'°C')
     : dRow('temp','Temperature (typical)',t.temp);
@@ -2342,7 +2356,22 @@ function factsHTML(t,live){
   const aqiRow=(live&&live.aqi!=null)
     ? dRow('air','Air quality today',aqiBand(live.aqi)+' · '+live.aqi,'good')
     : '';
-  return dRow('altitude','Elevation',t.elev)
+  if(isTour(t)){
+    /* road trips get a TRIP-appropriate set — no elevation/fitness/railhead trek placeholders */
+    const pk=pickupInfo(t);
+    return fc
+      +dRow('calendar','Best time',t.best)
+      +dRow('altitude','Level',t.lvl)
+      +dRow('clock','Duration',t.dur)
+      +tempRow+aqiRow
+      +dRow('community','Group size',(KNOW[0]&&KNOW[0][1])||'8–15','gsep')
+      +dRow('user','Min age',(KNOW[1]&&KNOW[1][1])||'10+ yrs')
+      +dRow('pin','Pickup',pk.city,'gsep')
+      +(pk.drop?dRow('pin','Drop-off',pk.drop):'');
+  }
+  const b=baseInfo(t);
+  return fc
+    +dRow('altitude','Elevation',t.elev)
     +dRow('cloud','Climate',t.climate)
     +tempRow+aqiRow
     +KNOW.map((k,i)=>dRow(k[0],k[2],k[1],i===0?'gsep':'')).join('')
@@ -2377,7 +2406,10 @@ function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
   document.getElementById('dRate').textContent=t.r;
   document.getElementById('dRev').textContent='('+t.rev+' reviews)';
   const _dl=document.getElementById('dLvl');if(_dl)_dl.textContent=t.lvl;   /* difficulty removed from the header; guarded in case the element returns */
-  const dsb=document.getElementById('dScoreBadge');if(dsb)dsb.innerHTML=trekScoreBadge(t,'trek-score-lg')+'<span class="d-score-cap">Trek score</span>';
+  const _tour=isTour(t);
+  const dsb=document.getElementById('dScoreBadge');if(dsb){if(_tour){dsb.innerHTML='';dsb.style.display='none';}else{dsb.style.display='';dsb.innerHTML=trekScoreBadge(t,'trek-score-lg')+'<span class="d-score-cap">Trek score</span>';}}
+  const _ft=document.getElementById('dFactsTitle');if(_ft)_ft.textContent=_tour?'Trip details':'Trek details';
+  const _fm=document.getElementById('dFactsMap');if(_fm)_fm.textContent=_tour?'Route map →':'Trail map →';
   document.getElementById('dDesc').textContent=t.desc;
   renderDetailLeader(t);                       /* paint now if guides are loaded… */
   if(!_guidesLoaded)loadGuides().then(()=>{if(cart.trek===t)renderDetailLeader(t);});   /* …else fill in when they arrive */
@@ -2753,7 +2785,7 @@ function showTicket(b){const t=treks.find(x=>x.n===b.trek)||cart.trek;
   const pk=pickupInfo(t||{}),pr=document.getElementById('tkPickupRow');
   if(pr){
     if(pk&&pk.city){pr.style.display='';document.getElementById('tkPickup').textContent=pk.city+(pk.drop?' · Drop-off: '+pk.drop:'');
-      const ml=document.getElementById('tkPickupMap');if(ml){if(pk.map){ml.href=pk.map;ml.style.display='';}else ml.style.display='none';}}
+      const ml=document.getElementById('tkPickupMap');if(ml){if(pk.map){ml.href=pk.map;ml.style.display='inline-flex';}else ml.style.display='none';}}
     else pr.style.display='none';
   }
   buildQR(ticketPayload(b));hydrate(document.getElementById('ticket'));
@@ -5820,7 +5852,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='370';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='371';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>

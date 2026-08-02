@@ -531,6 +531,23 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .rt-go .ic{transform:scaleX(-1)}
   @keyframes rtPulse{0%,100%{box-shadow:0 6px 18px -6px rgba(47,107,255,.9);transform:scale(1)}50%{box-shadow:0 8px 28px -2px rgba(47,107,255,1);transform:scale(1.04)}}
   @media(prefers-reduced-motion:reduce){.rt-go{animation:none}}
+  /* Featured Road Trips rail — VERTICAL cards, deliberately distinct from trek cards (warm accent) */
+  .trcard{flex:none;width:210px;border-radius:16px;overflow:hidden;background:var(--card);border:1px solid #2a3d5e;cursor:pointer}
+  .trcard-ph{height:128px;background:#12243f center/cover no-repeat;position:relative}
+  .trcard-tag{position:absolute;top:9px;left:9px;background:linear-gradient(135deg,#ff8a3d,#e8621a);color:#fff;font-size:9px;font-weight:800;letter-spacing:.06em;padding:4px 9px;border-radius:999px}
+  .trcard-bd{padding:11px 12px 13px}
+  .trcard-bd>b{font-size:15.5px;font-weight:700;display:block;line-height:1.2}
+  .trcard-bd>small{color:var(--muted);font-size:11.5px;display:flex;align-items:center;gap:3px;margin-top:3px}
+  .trcard-ft{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
+  .trcard-ft>span:first-child{font-size:11.5px;color:var(--muted2)}
+  .trcard-p{font-size:15px;font-weight:800;color:#ff9a52}
+  /* 5-day weather forecast strip on the trip/trek detail */
+  .fc-strip{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 0 12px;padding-bottom:2px}
+  .fc-day{flex:none;min-width:58px;background:var(--card);border:1px solid var(--stroke);border-radius:12px;padding:9px 6px 8px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:3px}
+  .fc-dn{font-size:10.5px;color:var(--muted);font-weight:600}
+  .fc-ic{font-size:18px;line-height:1}
+  .fc-t{font-size:13px;font-weight:800;color:var(--text)}
+  .fc-tl{font-size:10.5px;color:var(--muted2)}
   .blk{padding:0 16px}
   .blk h2{font-size:16px;font-weight:600;margin:22px 0 10px}
   .blk p{font-size:13.5px;line-height:1.65;color:var(--muted);margin:0}
@@ -3026,7 +3043,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
     <div class="blk reveal"><h2>About the Trek</h2><p id="dDesc"></p></div>
     <div class="blk reveal" id="dLeaderWrap" style="display:none"><h2>Your trek leader</h2><div id="dLeader"></div></div>
     <div class="blk reveal"><h2>Highlights</h2><div class="hl-pills" id="dHl"></div></div>
-    <div class="blk reveal"><h2 style="display:flex;justify-content:space-between;align-items:center">Trek details <a style="font-size:12px;color:var(--accent2);cursor:pointer" onclick="openNav(cart.trek)">Trail map →</a></h2>
+    <div class="blk reveal"><h2 style="display:flex;justify-content:space-between;align-items:center"><span id="dFactsTitle">Trek details</span> <a id="dFactsMap" style="font-size:12px;color:var(--accent2);cursor:pointer" onclick="openNav(cart.trek)">Trail map →</a></h2>
       <div class="dfacts" id="dFacts"></div>
       <div class="dfacts-src"></div>
       <div id="dGetting"></div></div>
@@ -3146,9 +3163,15 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
       <div class="tkdiv"></div>
       <div class="tkg"><div><div class="k">BOOKING ID</div><div class="v" id="tkId"></div></div><div><div class="k">DATE</div><div class="v" id="tkDate"></div></div>
         <div><div class="k">TREKKERS</div><div class="v" id="tkPax"></div></div><div><div class="k">PAID</div><div class="v" id="tkPaid"></div></div></div>
-      <div id="tkPickupRow" style="display:none;margin-top:12px;padding-top:12px;border-top:1px dashed rgba(0,0,0,.18)">
-        <div class="k">PICKUP POINT</div><div class="v" id="tkPickup" style="font-size:13px"></div>
-        <a id="tkPickupMap" href="#" target="_blank" rel="noopener" style="display:none;margin-top:7px;font-size:12.5px;font-weight:700;color:#0a5cff"><span class="msr" style="font-size:15px;vertical-align:-3px">location_on</span> Open pickup in Maps →</a>
+      <div id="tkPickupRow" style="display:none;margin-top:14px">
+        <div style="display:flex;gap:11px;align-items:flex-start;background:rgba(47,107,255,.12);border:1px solid rgba(47,107,255,.32);border-radius:14px;padding:13px 14px">
+          <span class="msr" style="color:var(--accent2);font-size:22px;flex:none;margin-top:1px">location_on</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:10.5px;letter-spacing:.06em;color:var(--muted);font-weight:700">PICKUP POINT</div>
+            <div id="tkPickup" style="font-size:14px;font-weight:600;margin-top:3px;color:var(--text)"></div>
+            <a id="tkPickupMap" href="#" target="_blank" rel="noopener" style="display:none;margin-top:10px;font-size:12.5px;font-weight:700;color:#fff;background:var(--accent);padding:8px 14px;border-radius:999px;text-decoration:none;align-items:center;gap:5px"><span class="msr" style="font-size:15px;vertical-align:-3px">map</span> Open in Maps</a>
+          </div>
+        </div>
       </div>
     </div>
     <button class="btn" style="margin-top:16px" onclick="go('packing')"><span class="ic" data-i="list"></span> Packing List for this Trek</button>
