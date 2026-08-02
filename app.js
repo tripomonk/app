@@ -266,6 +266,48 @@ deriveTreks();
 function trekType(t){return (t&&t.type)||'trek';}
 function isTour(t){return trekType(t)==='tour';}
 function tourList(){return treks.filter(isTour);}
+/* road trips are linked to a destination (dest_id) and shown highlighted on that
+   destination's page. Departure type: 'group' (fixed dates), 'custom' (tailored),
+   or 'both' (default). */
+function toursForDest(id){id=String(id||'');return treks.filter(t=>isTour(t)&&String(t.dest_id||'')===id);}
+function tourDep(t){return (t&&t.departure_type)||'both';}
+function depLabel(t){const d=tourDep(t);return d==='group'?'Group departures':d==='custom'?'Custom trips':'Group & custom';}
+/* home "Featured Road Trips" rail → open the trip's destination (fallback: the trip itself) */
+function openTourHome(idx){const t=treks[idx];if(t&&t.dest_id&&destById(t.dest_id))openDest(t.dest_id);else openDetail(idx);}
+/* Admin → Destinations manages road trips by launching the full trek editor, pre-linked */
+function addTourForDest(destId){
+  editIdx=-1;adminTab='Treks';_admHub=false;if(typeof _destEdit!=='undefined')_destEdit=null;renderAdmin();
+  loadGuides().then(()=>showAdminForm({lvl:'Easy',type:'tour',dest_id:destId,departure_type:'both',region:(destById(destId)||{}).state||'Uttarakhand'}));
+}
+function editTourFromDest(key){
+  let i=treks.findIndex(x=>String(x._id||'')===String(key));
+  if(i<0)i=treks.findIndex(x=>x.n===key);
+  if(i<0){note('Open this trip from the Treks tab to edit it.','Not found');return;}
+  editIdx=i;adminTab='Treks';_admHub=false;if(typeof _destEdit!=='undefined')_destEdit=null;renderAdmin();
+  loadGuides().then(()=>showAdminForm(treks[i]));
+}
+/* road trip booking: group departures (in-app, 25% deposit) or a custom/private trip (quote) */
+let _tourDepIdx=-1;
+function openTourDepart(idx){
+  const t=treks[idx];if(!t)return;
+  const dep=tourDep(t);
+  if(dep==='group'){go('selectDate');return;}
+  if(dep==='custom'){openTourCustom(idx);return;}
+  _tourDepIdx=idx;
+  const m=document.getElementById('tourDepModal');if(!m){go('selectDate');return;}
+  const g=id=>document.getElementById(id);
+  g('tdName').textContent=t.n;
+  m.classList.add('show');
+  const close=()=>{m.classList.remove('show');g('tdGroup').onclick=g('tdCustom').onclick=g('tdCancel').onclick=m.onclick=null;};
+  g('tdCancel').onclick=close;m.onclick=e=>{if(e.target===m)close();};
+  g('tdGroup').onclick=()=>{close();go('selectDate');};
+  g('tdCustom').onclick=()=>{close();openTourCustom(idx);};
+}
+function openTourCustom(idx){
+  const t=treks[idx];if(!t)return;
+  const nm=getSavedName()||'';
+  wa('Hi Tripomonk! I\'d like a CUSTOM / private trip 🏔️\n\nTrip: '+t.n+'\nName: '+nm+'\nPreferred dates: \nGroup size: \nAnything else: \n\nPlease share a custom quote and how to pay a deposit to hold it.');
+}
 
 /* ---------- Supabase backend (optional; falls back to built-in data) ---------- */
 const SB = window.TMK_CONFIG || {};
@@ -301,7 +343,7 @@ function applyTrekRows(rows){
   if(!rows||!rows.length)return false;
   const dbByName={};
   rows.forEach(d=>{const row={n:d.name,region:d.region,img:d.img,r:d.rating,rev:d.reviews,lvl:d.level,days:d.days,
-    alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,packing:d.packing||null,batches:(Array.isArray(d.batches)?d.batches:null),req:(typeof d.req_score==='number'?d.req_score:null),pop:!!d.popular,feat:!!d.featured,type:d.type||'trek',tag:d.tag||'',itin:d.itinerary_url||'',hvid:d.hero_video||'',hvideo:!!d.hero_use_video,guide_id:d.guide_id||null,_id:d.id};
+    alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,packing:d.packing||null,batches:(Array.isArray(d.batches)?d.batches:null),req:(typeof d.req_score==='number'?d.req_score:null),pop:!!d.popular,feat:!!d.featured,type:d.type||'trek',dest_id:d.dest_id||'',departure_type:d.departure_type||'both',tag:d.tag||'',itin:d.itinerary_url||'',hvid:d.hero_video||'',hvideo:!!d.hero_use_video,guide_id:d.guide_id||null,_id:d.id};
     if(d.credit)row.credit=d.credit; dbByName[d.name]=row;});
   const seen=new Set();
   treks.forEach(t=>{const d=dbByName[t.n];if(d){Object.assign(t,d);seen.add(t.n);}});
@@ -2128,7 +2170,17 @@ function renderExplore(){
   const dd=[['Easy','For Beginners'],['Moderate','For Trekkers'],['Difficult','For Adventurers']];
   document.getElementById('diffGrid').innerHTML=dd.map(d=>`<div class="diffc" onclick="filterByDiff('${d[0]}')"><b>${d[0]}</b><small>${d[1]}</small></div>`).join('');
   const cc=document.getElementById('cityChips');
-  if(cc)cc.innerHTML=DEP_CITIES.map(c=>`<div class="chip pill ${exploreLabel===('From '+c)?'on':''}" onclick="filterByCity('${c}')">${ic('pin',13)} ${c}</div>`).join('');
+  if(cc){
+    /* departure-city chips are built automatically from the treks that exist — every
+       region's real boarding city appears (Manali, Leh, Siliguri/NJP…), sorted by how
+       many treks use it. No fixed list to maintain. */
+    const cnt={},live={};
+    treks.forEach(t=>{if(isTour(t))return;const c=depCity(t);if(!c)return;cnt[c]=(cnt[c]||0)+1;if(!t.soon)live[c]=(live[c]||0)+1;});
+    /* departure cities of LIVE treks lead; then the rest by how many treks use them. Cap so the row stays clean. */
+    const cities=Object.keys(cnt).sort((a,b)=>(live[b]||0)-(live[a]||0)||cnt[b]-cnt[a]||a.localeCompare(b)).slice(0,12);
+    const csec=document.getElementById('cityChipsSec');if(csec)csec.style.display=cities.length?'':'none';
+    cc.innerHTML=cities.map(c=>`<div class="chip pill ${exploreLabel===('From '+c)?'on':''}" onclick="filterByCity('${jsq(c)}')">${ic('pin',13)} ${esc(c)}</div>`).join('');
+  }
   /* filtered views (a region / difficulty / city) show their full set — always small.
      The unfiltered "Top Picks" is capped so we never render 130+ image cards at once
      (that crashed iOS Safari). Everything stays reachable via the region tiles above. */
@@ -2161,7 +2213,8 @@ function renderHomeTours(){
   const list=tourList();
   if(!list.length){if(sec)sec.style.display='none';rail.innerHTML='';return;}
   if(sec)sec.style.display='';
-  rail.innerHTML=list.slice(0,10).map(trekCard).join('');
+  /* reuse the trek card look, but tapping opens the trip's DESTINATION (where it's highlighted) */
+  rail.innerHTML=list.slice(0,10).map(t=>trekCard(t).replace('openDetail('+t.idx+')','openTourHome('+t.idx+')')).join('');
   hydrate(rail);
 }
 
@@ -2324,7 +2377,7 @@ function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
   renderDetailLeader(t);                       /* paint now if guides are loaded… */
   if(!_guidesLoaded)loadGuides().then(()=>{if(cart.trek===t)renderDetailLeader(t);});   /* …else fill in when they arrive */
   const stats=[['altitude',t.alt,'Altitude'],['clock',t.dur,'Duration'],['distance',t.dist,'Distance'],['calendar',t.best,'Best Time']];
-  document.getElementById('dStats').innerHTML=stats.map(s=>`<div class="stat"><div class="ic" style="display:grid;place-items:center">${ic(s[0],20)}</div><b>${s[1]}</b><small>${s[2]}</small></div>`).join('');
+  document.getElementById('dStats').innerHTML=stats.map(s=>`<div class="stat"><div class="ic" style="display:grid;place-items:center">${ic(s[0],20)}</div><b>${(s[1]==null||s[1]==='')?'—':esc(String(s[1]))}</b><small>${s[2]}</small></div>`).join('');
   document.getElementById('dHl').innerHTML=t.hl.map(h=>`<span class="hl-pill"><span class="ic">${ic(h[0],15)}</span>${esc(h[1])}</span>`).join('');
   renderDetailFacts(t);
   document.getElementById('dIncl').innerHTML=inclCard(INCL,EXCL);
@@ -2334,6 +2387,7 @@ function openDetail(i){const t=treks[i];if(!t)return;cart.trek=t;
   document.getElementById('dFav').classList.remove('on');
   const cta=document.getElementById('dCta');
   if(t.soon){cta.innerHTML=ic('bell',16)+' Coming Soon · Notify me';cta.onclick=()=>wa(t.n+' — please notify me when it goes live.');}
+  else if(isTour(t)){cta.innerHTML='Book this trip&nbsp; →';cta.onclick=()=>openTourDepart(t.idx);}
   else{cta.innerHTML='View Dates &amp; Price&nbsp; →';cta.onclick=()=>go('selectDate');}
   const rd=document.getElementById('dReadiness');if(rd){rd.innerHTML=readinessCardHTML(t);hydrate(rd);}
   renderDetailGetting(t);
@@ -2462,7 +2516,9 @@ function prefillTravellers(){
 /* departure / pickup city per trek (primary boarding point) */
 const DEP_CITIES=['Delhi','Rishikesh','Dehradun'];
 const TREK_DEP={'Kedarkantha':'Dehradun','Har Ki Dun':'Dehradun','Brahmatal':'Dehradun','Roopkund':'Dehradun','Nag Tibba':'Dehradun','Valley of Flowers':'Rishikesh','Hampta Pass':'Delhi'};
-function depCity(t){return (t&&(t.dep||TREK_DEP[t.n]))||'Dehradun';}
+/* real departure city per trek = the region-aware pickup/assembly city
+   (Dehradun, Manali, Leh, Srinagar, Siliguri/NJP, Guwahati…), not a North-only default */
+function depCity(t){return (pickupInfo(t)||{}).city||'Dehradun';}
 /* Region-aware pickup / assembly city for the booking flow. The gateway city where
    trekkers gather before the road transfer to the base town — NOT the North-only
    Dehradun/Rishikesh chain, which was wrong for Sikkim, the Northeast and the South. */
@@ -5078,7 +5134,7 @@ async function sbWriteChecked(method,path,body){
   if(!res||!res.ok){note((res&&res.error)||'Admin save failed.','Save failed');return false;}
   return true;
 }
-function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null,req_score:(typeof t.req==='number'?t.req:null),popular:!!t.pop,featured:!!t.feat,type:trekType(t),tag:(t.tag||'').trim()||null,itinerary_url:(t.itin||'').trim()||null,
+function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null,req_score:(typeof t.req==='number'?t.req:null),popular:!!t.pop,featured:!!t.feat,type:trekType(t),dest_id:(t.dest_id||'').trim()||null,departure_type:tourDep(t),tag:(t.tag||'').trim()||null,itinerary_url:(t.itin||'').trim()||null,
   hero_video:(t.hvid||'').trim()||null,hero_use_video:!!t.hvideo,
   guide_id:(t.guide_id!=null&&t.guide_id!=='')?t.guide_id:null};}
 let editIdx=-1, adminTab='Treks', depTrek=null, _admHub=true;
@@ -5410,6 +5466,11 @@ function renderDestForm(box){
     <div class="field"><label>Traveller tips</label><textarea id="dsTips" class="adm-ta" placeholder="One tip per line">${esc((d.tips||[]).join('\n'))}</textarea></div>
     <div class="adm-hint">One tip per line.</div>
     ${fld('dsNear','Nearby places',(d.near||[]).join(', '),'Comma-separated destination names')}
+    <div class="adm-sec">Road trip packages</div>
+    ${d.id?`<div class="adm-hint">Full-package road trips shown highlighted at the top of this destination's page.</div>
+      ${toursForDest(d.id).map(t=>`<div class="hostcard" onclick="editTourFromDest('${jsq(String(t._id||t.n))}')"><div class="hostcard-bd"><b>${esc(t.n)}</b><small>${(t.days?esc(String(t.days))+' days · ':'')}${INR(t.price||0)} · ${esc(depLabel(t))}</small></div><span class="ch" style="transform:scaleX(-1)">${ic('back',16)}</span></div>`).join('')||'<div class="adm-hint" style="opacity:.75;margin-top:0">No road trips linked yet.</div>'}
+      <button class="btn ghost" style="margin-top:8px" onclick="addTourForDest('${jsq(String(d.id))}')"><span class="msr">add</span> Add a road trip</button>`
+      :'<div class="adm-hint">Save this destination first, then you can add road trip packages to it.</div>'}
     <div class="adm-ed-foot">
       ${(!d._new&&isDb)?'<button class="btn ghost" style="color:#ff7a7a" onclick="destDelete()"><span class="msr">'+(isBuiltin?'restart_alt':'delete')+'</span> '+(isBuiltin?'Reset to default':'Delete')+'</button>':'<button class="btn ghost" onclick="destCancel()">Cancel</button>'}
       <button class="btn" onclick="saveDestination()"><span class="msr">check</span> Save destination</button>
@@ -5742,7 +5803,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='357';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='365';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -5832,7 +5893,17 @@ function showAdminForm(t){const f=document.getElementById('adminForm');
     <div class="field"><label>Type</label><div class="inp"><select id="admType" style="all:unset;flex:1;color:var(--text)">
       <option value="trek" ${trekType(t)!=='tour'?'selected':''} style="color:#000">Trek</option>
       <option value="tour" ${trekType(t)==='tour'?'selected':''} style="color:#000">Road Trip / Tour</option>
-    </select></div><div class="adm-hint">“Road Trip / Tour” shows under <b>Road Trips &amp; Tours</b> (e.g. Spiti, Ladakh, Bhutan), not under Treks.</div></div>
+    </select></div></div>
+    <div class="adm-row2">
+      <div class="field"><label>Destination</label><div class="inp"><select id="admDest" style="all:unset;flex:1;color:var(--text)">
+        <option value="" style="color:#000">— none —</option>
+        ${DESTS.map(dd=>`<option value="${esc(dd.id)}" ${(t.dest_id===dd.id)?'selected':''} style="color:#000">${esc(dd.n)}</option>`).join('')}
+      </select></div></div>
+      <div class="field"><label>Departure type</label><div class="inp"><select id="admDepType" style="all:unset;flex:1;color:var(--text)">
+        ${[['both','Group & custom'],['group','Group only'],['custom','Custom only']].map(o=>`<option value="${o[0]}" ${(tourDep(t)===o[0])?'selected':''} style="color:#000">${o[1]}</option>`).join('')}
+      </select></div></div>
+    </div>
+    <div class="adm-hint">For a <b>Road Trip / Tour</b>: pick the <b>Destination</b> to show it highlighted on that destination's page, and its <b>departure type</b>. Ignored for regular treks.</div>
     <div class="adm-row2">
       <div class="field"><label>Difficulty</label><div class="inp"><select id="admLvl" style="all:unset;flex:1;color:var(--text)">${['Easy','Moderate','Difficult'].map(o=>`<option ${o===lv?'selected':''} style="color:#000">${o}</option>`).join('')}</select></div></div>
       <div class="field"><label>Status</label><div class="adm-status"><button type="button" class="adm-status-btn ${!t.soon?'on':''}" id="admStatusLive" onclick="admSetStatus(true)">Live</button><button type="button" class="adm-status-btn ${t.soon?'on':''}" id="admStatusSoon" onclick="admSetStatus(false)">Soon</button></div></div>
@@ -5907,6 +5978,7 @@ async function saveTrek(){const g=id=>document.getElementById(id);
   const soon=g('admStatusSoon')?g('admStatusSoon').classList.contains('on'):false;
   const t={n:g('admN').value.trim()||'Untitled',region:g('admReg').value.trim()||'Uttarakhand',lvl:g('admLvl').value,
     type:(g('admType')?g('admType').value:'trek'),
+    dest_id:(g('admDest')?g('admDest').value:'')||'',departure_type:(g('admDepType')?g('admDepType').value:'both'),
     price:parseInt(g('admPrice').value)||0,days:parseInt(g('admDays').value)||1,alt:g('admAlt').value.trim(),
     dist:g('admDist').value.trim(),best:g('admBest').value.trim(),r:parseFloat(g('admRate').value)||4.7,
     rev:g('admRev').value.trim()||'0',img:g('admImg').value.trim(),desc:g('admDesc').value.trim(),
@@ -6544,6 +6616,16 @@ function renderDest(){
   const stats=[['calendar',d.best||'—','Best time'],['altitude',d.lvl||'—','Level'],['card',d.budget||'—','Avg budget']];
   document.getElementById('destStats').innerHTML=stats.map(s=>
     `<div class="stat"><div class="ic" style="display:grid;place-items:center">${ic(s[0],20)}</div><b style="font-size:11px">${esc(s[1])}</b><small>${s[2]}</small></div>`).join('');
+  /* road trip packages — highlighted above activities */
+  const trips=toursForDest(d.id);
+  const rb=document.getElementById('destTripsBlk'),rt=document.getElementById('destTrips');
+  if(rb)rb.style.display=trips.length?'':'none';
+  if(rt)rt.innerHTML=trips.map(t=>`<div class="rtcard" onclick="openDetail(${t.idx})" style="background-image:url('${t.img}')">
+      <span class="rt-badge">${esc(depLabel(t))}</span>
+      <div class="rt-b"><b>${esc(t.n)}</b>
+        <small>${t.days?esc(String(t.days))+' days':''}${t.lvl?' · '+esc(t.lvl):''}${t.best?' · '+esc(t.best):''}</small>
+        <div class="rt-ft"><span class="rt-p"><small>from</small> <b>${INR(t.price||0)}</b></span><span class="rt-go">View trip ${ic('back',12)}</span></div>
+      </div></div>`).join('');
   /* activities */
   const acts=actsFor(d.id);
   document.getElementById('destActs').innerHTML=acts.length
@@ -6726,7 +6808,7 @@ function renderActivities(){
   el.innerHTML=activitiesData.map((a)=>{
     const img=(CAT_IMG[ACT_ICON_CAT[a[0]]||'Trek']||CAT_IMG.Trek)+Q;
     const nm=a[1].replace(/'/g,'');
-    return `<div class="acard" onclick="bookActivity('${nm}','${a[3]}')" style="background-image:url('${img}')">`
+    return `<div class="acard" onclick="activityBookForm('${nm}','${jsq(String(a[3]))}')" style="background-image:url('${img}')">`
       +`<span class="acard-go"><span class="msr">arrow_outward</span></span>`
       +`<div class="acard-b"><b>${esc(a[1])}</b>`
       +`<small><span class="msr">place</span>${esc(a[2])}</small>`
@@ -6735,29 +6817,59 @@ function renderActivities(){
   }).join('');
   hydrate(document.getElementById('activities'));
 }
-async function bookActivity(name,priceStr){
+/* Book button on an activity card → collect details first, THEN pay */
+function activityBookForm(name,priceStr){
+  const g=id=>document.getElementById(id);
+  const m=g('actBookModal');
+  if(!m){bookActivity(name,priceStr);return;}   /* graceful fallback if the modal isn't present */
+  g('abAct').textContent=name;
+  g('abPrice').textContent=(priceStr?priceStr+' / person':'')+' · pay to reserve your spot — our team confirms the date & any balance';
+  g('abName').value=getSavedName()||'';
+  g('abPhone').value=getSavedMobile()||'';
+  g('abPax').value='1';g('abDate').value='';g('abNotes').value='';
+  try{g('abDate').min=new Date(Date.now()+864e5).toISOString().slice(0,10);}catch(e){}
+  m.classList.add('show');
+  const close=()=>{m.classList.remove('show');g('abCancel').onclick=g('abSend').onclick=m.onclick=null;};
+  g('abCancel').onclick=close;
+  m.onclick=e=>{if(e.target===m)close();};
+  g('abSend').onclick=()=>{
+    const nm=(g('abName').value||'').trim();
+    const phone=(g('abPhone').value||'').replace(/\D/g,'');
+    if(!nm){note('Please enter your name.','Name needed');return;}
+    if(phone.length<10){note('Please enter a valid 10-digit WhatsApp number.','Number needed');return;}
+    const details={name:nm,phone:phone,pax:Math.max(1,parseInt(g('abPax').value||'1',10)||1),date:(g('abDate').value||'').trim(),notes:(g('abNotes').value||'').trim()};
+    saveUserName(nm);
+    close();
+    bookActivity(name,priceStr,details);
+  };
+}
+async function bookActivity(name,priceStr,details){
+  details=details||{};
   const amount=parseInt(String(priceStr).replace(/[^\d]/g,''))||0;
   if(amount<1){note('This activity is not bookable online yet — please contact us.','Unavailable');return;}
   if(!isLoggedIn()){note('Please sign in to book this activity.','Sign in required').then(()=>{_loginReturn='activities';go('login');});return;}
   if(!window.Razorpay){note('Payment gateway is still loading — please wait a few seconds and tap Book again.','Please wait');return;}
   if(!sbOn){note('Payment service not configured. Please contact Tripomonk.','Payment error');return;}
-  const leadName=getSavedName()||(getUserEmail()?getUserEmail().split('@')[0]:'Guest');
+  const leadName=(details.name||getSavedName()||(getUserEmail()?getUserEmail().split('@')[0]:'Guest'));
+  const phone=details.phone||getSavedMobile()||'';
+  const pax=Math.max(1,parseInt(details.pax,10)||1);
+  const datePref=details.date||'';const extra=details.notes||'';
+  const booking={kind:'activity',activity:name,trek:name,pax,name:leadName,email:getUserEmail()||'',phone,date:datePref,notes:extra};
   let order;
-  try{order=await rzpCall('create',{booking:{kind:'activity',activity:name,trek:name,name:leadName,email:getUserEmail()||'',phone:getSavedMobile()||''}});}
+  try{order=await rzpCall('create',{booking});}
   catch(e){note('Could not reach payment service: '+e,'Payment error');return;}
   if(!order||!order.order_id){note('Could not start payment — '+((order&&order.error)?order.error:'no order returned')+' (amount ₹'+amount+')','Payment error');return;}
   const rzp=new window.Razorpay({
     key:order.key_id, order_id:order.order_id, amount:order.amount, currency:order.currency||'INR',
     name:'Tripomonk', description:name+' — Adventure Activity', image:'icons/icon-192.png',
-    prefill:{name:leadName, email:getUserEmail()||''}, notes:{activity:name}, theme:{color:'#2f6bff'},
+    prefill:{name:leadName, email:getUserEmail()||'', contact:phone}, notes:{activity:name,people:String(pax),date:datePref||'flexible',info:extra}, theme:{color:'#2f6bff'},
     handler:async function(response){
-      const booking={kind:'activity',activity:name,trek:name,name:leadName,email:getUserEmail()||'',phone:getSavedMobile()||''};
       let res;
       try{res=await rzpCall('verify',{razorpay_order_id:response.razorpay_order_id,razorpay_payment_id:response.razorpay_payment_id,razorpay_signature:response.razorpay_signature,booking});}catch(e){res=null;}
       if(!res||!res.ok){note('Payment received but we could not verify it instantly. Our team will confirm shortly — payment ID: '+(response.razorpay_payment_id||'—'),'Verification pending');return;}
       saveUserName(leadName);
       const sbk=(res&&res.booking)||{};
-      const b={id:response.razorpay_payment_id,name:leadName,trek:sbk.trek||name+' (Activity)',img:'',date:sbk.date||'To be scheduled',pax:1,total:sbk.total||amount,paid:sbk.paid||amount,ts:Date.now(),status:'Confirmed',checkedIn:false,paymentId:response.razorpay_payment_id};
+      const b={id:response.razorpay_payment_id,name:leadName,trek:sbk.trek||name+' (Activity)',img:'',date:sbk.date||datePref||'To be scheduled',pax:pax,total:sbk.total||amount,paid:sbk.paid||amount,ts:Date.now(),status:'Confirmed',checkedIn:false,paymentId:response.razorpay_payment_id};
       const all=getBookings();all.unshift(b);saveBookings(all);
       if(window.fbTrack)window.fbTrack('Purchase',{value:Number(b.total)||Number(b.paid)||0,currency:'INR',content_name:b.trek||'',content_type:'product'});
       note('Payment successful! '+name+' is booked. Our team will contact you to schedule the date.','Booked ✓').then(()=>go('bookings'));
@@ -8803,6 +8915,19 @@ function mediaGallery(media){
   if(!items)return '';
   return '<div class="blk" style="padding:0"><h2>Trek gallery</h2><div class="tg-row">'+items+'</div></div>';
 }
+/* compact, single-line trip date range: "1–6 Sep 2026", "28 Aug – 3 Sep 2026", or cross-year */
+function fmtTripRange(sd,ed){
+  if(!sd)return '';
+  const s=new Date(sd+'T00:00:00');if(isNaN(s))return String(sd);
+  const mo=d=>d.toLocaleDateString('en-IN',{month:'short'});
+  if(!ed){return s.getDate()+' '+mo(s)+' '+s.getFullYear();}
+  const e=new Date(ed+'T00:00:00');if(isNaN(e))return s.getDate()+' '+mo(s)+' '+s.getFullYear();
+  const sameYear=s.getFullYear()===e.getFullYear();
+  const sameMonth=sameYear&&s.getMonth()===e.getMonth();
+  if(sameMonth)return s.getDate()+'–'+e.getDate()+' '+mo(s)+' '+s.getFullYear();
+  if(sameYear)return s.getDate()+' '+mo(s)+' – '+e.getDate()+' '+mo(e)+' '+s.getFullYear();
+  return s.getDate()+' '+mo(s)+' '+s.getFullYear()+' – '+e.getDate()+' '+mo(e)+' '+e.getFullYear();
+}
 async function openHostTripDetail(id){
   go('hostTripView');
   const box=document.getElementById('htvBody');
@@ -8817,8 +8942,7 @@ async function openHostTripDetail(id){
   await resolveHostNames([t]);   /* show the host's current name, not the frozen snapshot */
   _htvTrip=t;_htvPax=1;
   await loadAuthorPhotos([t.host_name]).catch(()=>{});
-  const when=t.start_date?new Date(t.start_date+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'';
-  const dateRange=when+(t.end_date?' → '+new Date(t.end_date+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'}):'');
+  const dateRange=fmtTripRange(t.start_date,t.end_date);
   const stat=(ic2,v,l)=>v?`<div class="stat"><div class="ic" style="display:grid;place-items:center">${ic(ic2,20)}</div><b style="font-size:12px">${esc(String(v))}</b><small>${l}</small></div>`:'';
   box.innerHTML=
     (t.img?`<div class="htv-img img-loading" style="background-image:url('${esc(t.img)}')"></div>`:'')

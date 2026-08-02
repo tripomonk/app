@@ -372,6 +372,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .chip{white-space:nowrap;display:inline-flex;flex-direction:column;align-items:center;gap:6px;min-width:62px;padding:11px 6px;border-radius:16px;background:var(--card);border:1px solid var(--stroke);color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;transition:.15s}
   .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
   .chip.pill{flex-direction:row;min-width:0;padding:9px 15px;border-radius:999px;font-size:12.5px;min-height:44px;box-sizing:border-box}
+  #cityChips .chip{flex:none}   /* don't shrink — the row scrolls horizontally instead of overlapping */
 
   .sec{display:flex;align-items:center;justify-content:space-between;margin:6px 2px 12px}
   .sec h2{font-size:17px;font-weight:600;margin:0}
@@ -509,6 +510,25 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .stat .ic{color:var(--accent2);margin-bottom:2px}
   .stat b{line-height:1.2}.stat small{line-height:1.2}
   .stat b{font-size:13px;display:block}.stat small{font-size:10px;color:var(--muted)}
+  /* destination page: 3 stats (not 4) so wider cards hold long "best time" text cleanly */
+  #destStats{grid-template-columns:repeat(3,1fr)}
+  #destStats .stat{min-height:100px;padding:12px 9px}
+  #destStats .stat b{font-size:11.5px;line-height:1.3}
+  /* explore search: pin the filter control to the right edge as a tappable chip */
+  .search .search-filter{margin-left:auto;flex:none;color:var(--accent2);padding:7px;border-radius:10px;background:rgba(47,107,255,.14);display:grid;place-items:center;cursor:pointer}
+  /* road trip package cards — headline offering on a destination, bolder than activity rows */
+  .rt-sub{display:block;color:var(--muted2);font-size:12px;margin:-4px 0 10px}
+  .rt-list{display:flex;flex-direction:column;gap:12px}
+  .rtcard{position:relative;border-radius:18px;overflow:hidden;min-height:172px;background:#12243f center/cover no-repeat;cursor:pointer;box-shadow:0 12px 30px -14px rgba(0,0,0,.7);display:flex;align-items:flex-end}
+  .rtcard::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,12,24,.04) 28%,rgba(6,12,24,.55) 62%,rgba(6,12,24,.93))}
+  .rt-badge{position:absolute;top:12px;left:12px;z-index:2;background:var(--accent);color:#fff;font-size:11px;font-weight:700;padding:5px 11px;border-radius:999px}
+  .rt-b{position:relative;z-index:2;padding:14px 16px;width:100%;color:#fff}
+  .rt-b>b{font-size:18px;font-weight:800;display:block;line-height:1.2}
+  .rt-b>small{display:block;color:rgba(255,255,255,.85);font-size:12px;margin-top:3px}
+  .rt-ft{display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:10px}
+  .rt-p{font-size:13px;color:rgba(255,255,255,.9)}.rt-p b{font-size:17px;font-weight:800;color:#fff}
+  .rt-go{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.18);backdrop-filter:blur(6px);color:#fff;font-size:12.5px;font-weight:700;padding:8px 13px;border-radius:999px;flex:none}
+  .rt-go .ic{transform:scaleX(-1)}
   .blk{padding:0 16px}
   .blk h2{font-size:16px;font-weight:600;margin:22px 0 10px}
   .blk p{font-size:13.5px;line-height:1.65;color:var(--muted);margin:0}
@@ -1215,7 +1235,8 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .modal-card p{margin:0 0 12px;font-size:12.5px;color:var(--muted);line-height:1.5}
   .modal-card input{width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.24);border-radius:13px;padding:14px;color:#fff;font-size:15px;outline:none;margin:8px 0 18px}
   .modal-card input:focus{border-color:var(--accent);background:rgba(255,255,255,.12)}
-  .modal-actions{display:flex;gap:10px}.modal-actions .btn{flex:1;padding:13px}
+  .modal-actions{display:flex;gap:10px}.modal-actions .btn{flex:1;padding:13px;white-space:nowrap}
+  .modal-actions .btn:not(.ghost){flex:1.7}
   /* permit application form */
   .pm-form{text-align:left;margin:2px 0 16px}
   .pm-form label{display:block;font-size:11px;color:var(--muted);font-weight:600;margin:0 0 4px}
@@ -2906,7 +2927,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
     <div class="sec"><h2>Popular Treks</h2><a onclick="go('explore')">View all</a></div>
     <div class="hrow" id="homeList"></div>
     <!-- Road Trips & Tours: hidden until at least one tour exists -->
-    <div class="sec" id="homeToursSec" style="display:none"><h2>Road Trips &amp; Tours</h2><a onclick="go('tours')">View all</a></div>
+    <div class="sec" id="homeToursSec" style="display:none"><h2>Featured Road Trips</h2><a onclick="go('dests')">Destinations</a></div>
     <div class="hrow" id="homeTours"></div>
     <!-- host trips: a rail when hosts are live, a recruitment card when they aren't -->
     <div id="homeHosts"></div>
@@ -2942,12 +2963,12 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   <!-- EXPLORE -->
   <section class="view" id="explore" data-tab="explore">
     <div class="bar"><div class="rb round" onclick="go('home')"><span class="ic" data-i="menu"></span></div><h1>Explore Treks</h1></div>
-    <div class="search" onclick="go('filters')"><span class="ic" data-i="search"></span><span>Search treks or places</span><span class="ic" data-i="sliders" onclick="event.stopPropagation();go('filters')"></span></div>
+    <div class="search" onclick="go('filters')"><span class="ic" data-i="search"></span><span style="flex:1">Search treks or places</span><span class="ic search-filter" data-i="sliders" onclick="event.stopPropagation();go('filters')"></span></div>
     <div class="sec"><h2>By Region</h2></div>
     <div class="regions" id="regions"></div>
     <div class="sec" style="margin-top:18px"><h2>By Difficulty</h2></div>
     <div class="diff2" id="diffGrid"></div>
-    <div class="sec" style="margin-top:18px"><h2>By Departure City</h2></div>
+    <div class="sec" id="cityChipsSec" style="margin-top:18px"><h2>By Departure City</h2></div>
     <div class="chips" id="cityChips"></div>
     <div class="sec" style="margin-top:18px" id="topSec"><h2 id="topHead">Top Picks For You</h2><a onclick="filterAll()">View all</a></div>
     <div id="exploreList"></div>
@@ -3581,6 +3602,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
       <div class="stats" id="destStats"></div>
     </div>
     <div class="blk"><h2>About</h2><p id="destBlurb"></p></div>
+    <div class="blk" id="destTripsBlk" style="display:none"><h2>Road trip packages</h2><small class="rt-sub">Full-package guided trips — group departures &amp; custom.</small><div id="destTrips" class="rt-list"></div></div>
     <div class="blk"><h2>Adventure activities</h2><div id="destActs"></div></div>
     <div class="blk"><h2>Popular attractions</h2><div class="chiprow" id="destAttr"></div></div>
     <div class="blk"><h2>Local tips</h2><div id="destTips"></div></div>
@@ -3828,6 +3850,40 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
         </div>
       </div>
       <div class="modal-actions"><button class="btn ghost" id="pmCancel">Cancel</button><button class="btn" id="pmSend"><span class="msr" style="font-size:17px;vertical-align:-3px;margin-right:4px">chat</span>Send request</button></div>
+    </div>
+  </div>
+
+  <!-- Activity booking: collect details before payment -->
+  <div class="modal" id="actBookModal">
+    <div class="modal-card">
+      <h3>Book activity</h3>
+      <p id="abAct" style="display:block;color:var(--accent2);font-weight:700;margin-bottom:2px"></p>
+      <p id="abPrice" style="display:block;color:var(--muted);font-size:12.5px;margin-bottom:14px"></p>
+      <div class="pm-form">
+        <label>Full name</label>
+        <input id="abName" placeholder="Your name" autocomplete="name"/>
+        <label>WhatsApp number</label>
+        <input id="abPhone" placeholder="10-digit mobile" inputmode="tel" autocomplete="tel"/>
+        <div class="pm-row">
+          <div><label>Preferred date</label><input id="abDate" type="date"/></div>
+          <div><label>People</label><input id="abPax" type="number" min="1" value="1" inputmode="numeric"/></div>
+        </div>
+        <label>Anything we should know? (optional)</label>
+        <input id="abNotes" placeholder="e.g. beginner, need pickup"/>
+      </div>
+      <div class="modal-actions"><button class="btn ghost" id="abCancel">Cancel</button><button class="btn" id="abSend"><span class="msr" style="font-size:17px;vertical-align:-3px;margin-right:4px">lock</span>Pay Now</button></div>
+    </div>
+  </div>
+
+  <!-- Road trip: choose group departure or custom/private trip -->
+  <div class="modal" id="tourDepModal">
+    <div class="modal-card">
+      <h3>How would you like to go?</h3>
+      <p id="tdName" style="display:block;color:var(--accent2);font-weight:700;margin-bottom:14px"></p>
+      <button class="btn" id="tdGroup" style="width:100%;margin-bottom:10px"><span class="msr" style="font-size:18px;vertical-align:-4px;margin-right:6px">groups</span>Join a group departure</button>
+      <button class="btn ghost" id="tdCustom" style="width:100%"><span class="msr" style="font-size:18px;vertical-align:-4px;margin-right:6px">tune</span>Custom / private trip</button>
+      <p style="font-size:11.5px;color:var(--muted2);margin:12px 0 0;line-height:1.5">Group = fixed dates, pay 25% to confirm. Custom = we tailor the dates &amp; group — get a quote and a deposit link on WhatsApp.</p>
+      <div class="modal-actions" style="margin-top:14px"><button class="btn ghost" id="tdCancel">Close</button></div>
     </div>
   </div>
 
