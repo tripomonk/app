@@ -767,6 +767,7 @@ async function initAuth(){
   if(session){
     /* restore name/photo/follows BEFORE upserting, or an empty local copy overwrites the stored one */
     await loadProfileFromServer();
+    seedIdentityFromAuth();   /* fill name/photo from the Google account if still unset */
     upsertProfile();   /* register this user so others can @mention/follow/notify them */
     loadStaff();       /* role check */
     refreshAuthUI();   /* again, now that the name/photo are back */
@@ -791,6 +792,7 @@ async function initAuth(){
        Token refreshes keep the same id, so they don't re-fetch. */
     else if(_profileLoadedFor!==session.user.id){
       await loadProfileFromServer();
+      seedIdentityFromAuth();   /* fill name/photo from the Google account if still unset */
       upsertProfile();
       loadStaff();
       renderFeedIfOpen();
@@ -1225,6 +1227,23 @@ async function signOut(){
 function getUserEmail(){return currentUser?currentUser.email||'':''}
 function getSavedName(){try{return localStorage.getItem('tmk_uname')||'';}catch(e){return'';}}
 function saveUserName(n){try{if(n)localStorage.setItem('tmk_uname',n);}catch(e){}}
+/* Seed a new OAuth user's name & photo from their Google account — but ONLY when
+   they have none yet. Without this, a fresh Google sign-in is stuck showing the
+   default "Explorer" name and an "E" avatar until they edit their profile by hand.
+   Never overrides a name/photo the user chose themselves. Returns true if it set one. */
+function seedIdentityFromAuth(){
+  const u=(typeof currentUser!=='undefined')?currentUser:null;if(!u)return false;
+  const m=u.user_metadata||{};let changed=false;
+  if(!getSavedName()){
+    const nm=String(m.full_name||m.name||m.user_name||'').trim();
+    if(nm){try{localStorage.setItem('tmk_uname',nm);}catch(e){}changed=true;}
+  }
+  if(!getSavedPhoto()){
+    const ph=String(m.avatar_url||m.picture||'').trim();
+    if(/^https?:\/\//i.test(ph)){try{localStorage.setItem('tmk_uphoto',ph);}catch(e){}changed=true;}
+  }
+  return changed;
+}
 function getSavedMobile(){try{return localStorage.getItem('tmk_umobile')||'';}catch(e){return'';}}
 function getSavedPhoto(){try{return localStorage.getItem('tmk_uphoto')||'';}catch(e){return'';}}
 /* paint an avatar tile safely: show the photo, but ALWAYS fall back to the
@@ -5695,7 +5714,7 @@ async function delBatch(i){
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Settings ----- */
-const APP_BUILD='355';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='356';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
