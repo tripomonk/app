@@ -1722,19 +1722,23 @@ function openCropper(src){
     const octx=out.getContext('2d');
     const k=512/_crop.S;
     octx.drawImage(_crop.img,_crop.x*k,_crop.y*k,_crop.img.width*_crop.scale*k,_crop.img.height*_crop.scale*k);
-    let url;
-    try{url=out.toDataURL('image/jpeg',.86);}catch(e){note('Could not process that image.','Error');return;}
+    let dataUrl='';
+    try{dataUrl=out.toDataURL('image/jpeg',.86);}catch(e){note('Could not process that image.','Error');return;}
     /* keep a downscaled copy of the original so the user can re-crop / resize later
        without re-uploading. Capture it before close() nulls _crop. Best-effort. */
     let srcCopy='';try{srcCopy=downscaleToDataURL(_crop.img,1280);}catch(err){}
+    const blob=await new Promise(res=>{try{out.toBlob(res,'image/jpeg',.86);}catch(e){res(null);}});
     close();
-    try{localStorage.setItem('tmk_uphoto',url);}catch(err){note('Photo is too large to store on this device.','Storage full');return;}
+    /* show the crop instantly from the data URL … */
+    try{localStorage.setItem('tmk_uphoto',dataUrl);}catch(err){}
     try{if(srcCopy)localStorage.setItem('tmk_uphoto_src',srcCopy);}catch(err){}
-    renderEditProfile();
-    upsertProfile();          /* sync to the server so it survives sign-out / other devices */
-    if(cur==='profile')renderProfile();
-    if(cur==='hostProfile')renderHostProfile();   /* hosts change their photo here too */
-    if(cur==='hostDash')renderHostDash();
+    const repaint=()=>{renderEditProfile();if(cur==='profile')renderProfile();if(cur==='hostProfile')renderHostProfile();if(cur==='hostDash')renderHostDash();};
+    repaint();
+    /* … then upload to Storage and swap in the lightweight URL (keeps profiles.photo tiny
+       and fast to sync across devices — base64 is only a local fallback if the upload fails) */
+    const url=blob?await uploadToStorage(blob,'avatars'):null;
+    if(url){try{localStorage.setItem('tmk_uphoto',url);}catch(e){}repaint();}
+    upsertProfile();          /* writes the URL (or base64 fallback) to profiles.photo */
   };
 }
 
@@ -1921,12 +1925,36 @@ function isCaptain(){try{return localStorage.getItem('tmk_captain')==='1';}catch
 const ADMIN_EMAILS=['vikasupadhyay9@gmail.com'];  /* real admins only */
 function userEmail(){return ((currentUser&&currentUser.email)||'').toLowerCase();}
 function isAdminUser(){return !!userEmail()&&ADMIN_EMAILS.includes(userEmail());}
-let staffSet=new Set();
+let staffSet=new Set(), staffRoles={};
 async function loadStaff(){const sb=getSupaClient();if(!sb)return;
-  try{const{data}=await sb.from('staff').select('email');staffSet=new Set((data||[]).map(r=>(r.email||'').toLowerCase()));}catch(e){}
+  try{const{data}=await sb.from('staff').select('email,role');
+    staffSet=new Set((data||[]).map(r=>(r.email||'').toLowerCase()));
+    staffRoles={};(data||[]).forEach(r=>{if(r.email)staffRoles[(r.email||'').toLowerCase()]=r.role||'captain';});
+  }catch(e){ /* role column not deployed yet — fall back to email-only (everyone = captain) */
+    try{const{data}=await sb.from('staff').select('email');staffSet=new Set((data||[]).map(r=>(r.email||'').toLowerCase()));}catch(e2){}
+  }
   /* the Trip Captain card is gated on staffSet, which only exists once this resolves */
   try{const h=document.getElementById('staffHub');if(h)h.innerHTML=staffHubCard();}catch(e){}}
 function isStaffUser(){return isAdminUser()||(!!userEmail()&&staffSet.has(userEmail()));}
+/* ---- role-based admin access ----
+   Owner email = Super Admin (all tools). Team members get a role via Admin → Staff;
+   each admin role sees only its own sections. 'captain' = Trip Captain (no admin panel). */
+const ADMIN_ROLES=['super','operations','finance','content','community'];
+const ROLE_LABEL={super:'Super Admin',operations:'Operations',finance:'Finance',content:'Content',community:'Community',captain:'Trek Captain'};
+const ROLE_TABS={
+  super:null,   /* null = every tab */
+  operations:['Overview','Bookings','Users','CRM','Treks','Destinations','Departures','Packing','Guides','Gear','Permits','Support','Vendors','Staff'],
+  finance:['Overview','Bookings','Users','Payments'],
+  content:['Overview','Treks','Destinations','Home','Reviews'],
+  community:['Overview','Users','Community','Reviews','Hosts','Support']
+};
+function currentAdminRole(){
+  if(isAdminUser())return 'super';
+  const e=userEmail();const r=e&&staffRoles[e];
+  return (r&&ADMIN_ROLES.includes(r))?r:null;
+}
+function canOpenAdmin(){return !!currentAdminRole();}
+function roleCanTab(tab){const r=currentAdminRole();if(!r)return false;const allow=ROLE_TABS[r];return !allow||allow.indexOf(tab)>=0;}
 /* Escape a value for use inside onclick="fn('HERE')".
    esc() alone is not enough: it leaves backslashes and lets a crafted name break
    out of the quoted JS string. Strip the dangerous chars, then HTML-escape. */
@@ -4144,15 +4172,16 @@ async function loadNotifsRemote(){
     return (data||[]).filter(n=>dis.indexOf(String(n.id))<0);   /* hide anything swiped away */
   });
 }
-const NOTIF_ICON={like:'favorite',comment:'chat_bubble',follow:'person_add',mention:'alternate_email'};
+const NOTIF_ICON={like:'favorite',comment:'chat_bubble',follow:'person_add',mention:'alternate_email',admin:'campaign'};
 /* Magic-UI style icon tiles: an emoji on a coloured rounded square per type */
-const NOTIF_STYLE={like:{e:'💗',c:'#FF3D71'},comment:{e:'💬',c:'#1E86FF'},follow:{e:'👤',c:'#FFB800'},mention:{e:'📣',c:'#00C9A7'}};
+const NOTIF_STYLE={like:{e:'💗',c:'#FF3D71'},comment:{e:'💬',c:'#1E86FF'},follow:{e:'👤',c:'#FFB800'},mention:{e:'📣',c:'#00C9A7'},admin:{e:'📣',c:'#2f6bff'}};
 function notifDesc(n){
   const p=n.preview?'“'+esc(n.preview)+'”':'';
   if(n.type==='like')return 'liked your post';
   if(n.type==='comment')return 'commented '+p;
   if(n.type==='follow')return 'started following you';
   if(n.type==='mention')return 'mentioned you '+p;
+  if(n.type==='admin')return p||'sent you a message';
   return 'interacted with you';
 }
 function notifText(n){
@@ -4161,6 +4190,7 @@ function notifText(n){
   if(n.type==='comment')return `<b>${who}</b> commented: ${n.preview?'“'+esc(n.preview)+'”':''}`;
   if(n.type==='follow')return `<b>${who}</b> started following you`;
   if(n.type==='mention')return `<b>${who}</b> mentioned you: ${n.preview?'“'+esc(n.preview)+'”':''}`;
+  if(n.type==='admin')return `<b>Tripomonk</b> ${n.preview?'“'+esc(n.preview)+'”':'sent you a message'}`;
   return `<b>${who}</b> interacted with you`;
 }
 let _lastUnread=-1;
@@ -4664,6 +4694,19 @@ function renderPassport(){
   hydrate(box);
 }
 function getSavedCover(){try{return localStorage.getItem('tmk_ucover')||'';}catch(e){return'';}}
+/* upload a JPEG blob to the community bucket, return its public URL (or null on failure).
+   Used for avatars + covers so profiles store a light URL, not heavy base64. */
+async function uploadToStorage(blob,folder){
+  const sb=getSupaClient();const uid=sb?await authUid():null;
+  if(!sb||!uid||!blob)return null;
+  const netErr=m=>/failed to fetch|network|load failed/i.test(String(m||''));
+  const path=(folder||'uploads')+'/'+uid+'/'+Date.now()+'.jpg';
+  const doUp=()=>sb.storage.from('community').upload(path,blob,{cacheControl:'3600',upsert:true,contentType:'image/jpeg'}).catch(e=>({error:{message:String((e&&e.message)||e)}}));
+  let up=await doUp();
+  if(up&&up.error&&netErr(up.error.message)){await new Promise(r=>setTimeout(r,900));up=await doUp();}   /* one quiet retry on a dropped mobile connection */
+  if(up&&up.error)return null;
+  try{return sb.storage.from('community').getPublicUrl(path).data.publicUrl||null;}catch(e){return null;}
+}
 /* upload a wide cover image (URL in storage, never base64 — keeps profiles light) */
 async function coverPickPhoto(input){
   const file=input.files&&input.files[0];if(!file)return;input.value='';
@@ -4753,6 +4796,7 @@ async function openAccountMenu(){go('accountMenu');if(isLoggedIn())await loadHos
 function menuGo(t){
   if(t==='signout'){signOut();return;}
   if(t==='hostDash'){openHostDash();return;}
+  if(t==='vendorDash'){openVendorDash();return;}
   if(t.indexOf('soon:')===0){note(t.slice(5)+' is coming soon — we\'re building it into Tripomonk.','Coming soon');return;}
   go(t);
 }
@@ -4785,6 +4829,7 @@ function accountMenuGroups(){
     ? [['dashboard','Host Dashboard','hostDash']]
     : [['hiking','Become a Host','becomeHost']];
   groups.push(['Hosting',host]);
+  groups.push(['Partner with us',[['storefront','List your hotel / transport / gear','vendorDash']]]);
   groups.push(['Support & legal',[
     ['help','Help & Support','help'],
     ['emergency','Emergency Contacts','emergency'],
@@ -4825,7 +4870,7 @@ function renderEmergency(){
     +'<div class="em-sos-h"><span class="msr">sos</span><div><b>Tripomonk 24×7 helpline</b><small>Trek emergencies, delays, medical &amp; safety</small></div></div>'
     +'<div class="em-sos-btns">'
     +'<a class="em-cta call" href="tel:+'+esc(wa)+'"><span class="msr">call</span>Call now</a>'
-    +'<a class="em-cta wa" href="https://wa.me/'+esc(wa)+'?text='+encodeURIComponent('EMERGENCY — I need help on my Tripomonk trek.')+'" target="_blank" rel="noopener"><span class="msr">chat</span>WhatsApp</a>'
+    +'<a class="em-cta wa" href="https://wa.me/'+esc(wa)+'?text='+encodeURIComponent(typeof aiCfg==='function'?aiCfg('sos'):'EMERGENCY — I need help on my Tripomonk trek.')+'" target="_blank" rel="noopener"><span class="msr">chat</span>WhatsApp</a>'
     +'</div></div>'
     +'<div class="sec" style="margin:18px 2px 8px"><h2 style="font-size:15px">On a trek, in an emergency</h2></div>'
     +'<ol class="em-steps">'
@@ -5122,8 +5167,8 @@ function chatKey(n){return 'tmk_chat_'+String(n||'team').toLowerCase().replace(/
    Every other conversation starts empty (no fake demo thread). */
 function chatSeed(n){
   if(n==='Tripomonk Team'){
-    const nm=getSavedName();
-    return [{who:'them',txt:'Welcome to Tripomonk'+(nm?', '+nm:'')+'! 🏔️ We’re glad to have you. Message us anytime for help with bookings, payments or picking your next trek.'}];
+    /* welcome message is admin-editable in Admin → AI & Automation (aiCfg) */
+    return [{who:'them',txt:(typeof aiCfg==='function'?aiCfg('welcome'):'Welcome to Tripomonk! 🏔️ Message us anytime for help with bookings, payments or picking your next trek.')}];
   }
   return [];
 }
@@ -5460,7 +5505,7 @@ function renderReviews(){
   if(ac)ac.textContent=list.length?('Based on '+list.length+' review'+(list.length!==1?'s':'')):'Be the first to review';
   hydrate(box);
 }
-function renderHelp(){document.getElementById('faqList').innerHTML=faqs.map(f=>`<div class="panel" style="margin-bottom:10px"><b style="font-size:13.5px;display:block;margin-bottom:6px">${f[0]}</b><span style="font-size:12.5px;color:var(--muted);line-height:1.55">${f[1]}</span></div>`).join('');hydrate(document.getElementById('help'));}
+function renderHelp(){document.getElementById('faqList').innerHTML='<button class="btn" style="margin-bottom:14px" onclick="raiseTicket()"><span class="msr">support_agent</span> Raise a support ticket</button>'+faqs.map(f=>`<div class="panel" style="margin-bottom:10px"><b style="font-size:13.5px;display:block;margin-bottom:6px">${f[0]}</b><span style="font-size:12.5px;color:var(--muted);line-height:1.55">${f[1]}</span></div>`).join('');hydrate(document.getElementById('help'));}
 function wa(msg){saveEnquiry('whatsapp',msg||'');window.open('https://wa.me/'+getWa()+'?text='+encodeURIComponent(msg||'Hi Tripomonk'),'_blank');}
 /* ---- Trek Health (live HR via Web Bluetooth where supported; else demo) ---- */
 let health={bpm:96,spo2:97,steps:7480,dist:5.2,cal:412,elev:840,pace:'14:20',live:false}, healthTimer=null;
@@ -5764,13 +5809,13 @@ function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?'
   hero_video:(t.hvid||'').trim()||null,hero_use_video:!!t.hvideo,
   guide_id:(t.guide_id!=null&&t.guide_id!=='')?t.guide_id:null};}
 let editIdx=-1, adminTab='Treks', depTrek=null, _admHub=true;
-const ADM_TAB_IC={Overview:'dashboard',Bookings:'receipt_long',Treks:'landscape',Home:'home',Destinations:'travel_explore',Departures:'event',Packing:'checklist',Guides:'hiking',Reviews:'reviews',Hosts:'groups',Training:'fitness_center',Staff:'badge',Settings:'settings'};
-const ADM_TABS=['Overview','Bookings','Treks','Home','Destinations','Departures','Packing','Guides','Reviews','Hosts','Training','Staff','Settings'];
+const ADM_TAB_IC={Overview:'dashboard',Bookings:'receipt_long',Users:'group',CRM:'contacts',Payments:'account_balance',Treks:'landscape',Home:'home',Destinations:'travel_explore',Departures:'event',Packing:'checklist',Guides:'hiking',Gear:'backpack',Permits:'description',Support:'support_agent',Vendors:'storefront',Community:'forum',Reviews:'reviews',Hosts:'groups',Training:'fitness_center',AI:'smart_toy',Staff:'badge',Settings:'settings'};
+const ADM_TABS=['Overview','Bookings','Users','CRM','Payments','Treks','Home','Destinations','Departures','Packing','Guides','Gear','Permits','Support','Vendors','Community','Reviews','Hosts','Training','AI','Staff','Settings'];
 /* one-line description per section, shown on the hub card */
-const ADM_TAB_DESC={Overview:'Today at a glance',Bookings:'Who has booked',Treks:'Add & edit treks, prices, tags',
+const ADM_TAB_DESC={Overview:'Today at a glance',Bookings:'Who has booked',Users:'Travellers & members',CRM:'Customer 360 timeline',AI:'Automated messages & rules',Payments:'Transactions, refunds & payouts',Treks:'Add & edit treks, prices, tags',
   Home:'Featured trek & popular rail',Departures:'Batch dates & seats',Packing:'Per-trek packing lists',
-  Guides:'Your trek leaders',Reviews:'Add & manage reviews',Hosts:'Applications & host trips',Training:'Who is training',
-  Staff:'Trip-captain access',Settings:'App build & admin'};
+  Guides:'Your trek leaders',Gear:'Rental inventory & status',Permits:'Forest & park permit requests',Support:'Tickets & help requests',Vendors:'Partner operators & listings',Community:'Moderate posts',Reviews:'Add & manage reviews',Hosts:'Applications & host trips',Training:'Who is training',
+  Staff:'Team roles & captains',Settings:'App build & admin'};
 /* Was a horizontally-SWIPED tab strip — sections off the right edge were invisible and
    the gesture read as flaky. Now a card GRID: tap a card to open that section behind a
    back header, tap back to return to the grid. */
@@ -5789,6 +5834,15 @@ function renderAdmin(){
   if(adminTab==='Overview')renderAdminOverview();
   else if(adminTab==='Training')renderAdminTraining();
   else if(adminTab==='Bookings')renderAdminBookings();
+  else if(adminTab==='Users')renderAdminUsers();
+  else if(adminTab==='Payments')renderAdminPayments();
+  else if(adminTab==='CRM')renderAdminCRM();
+  else if(adminTab==='AI')renderAdminAI();
+  else if(adminTab==='Gear')renderAdminGear();
+  else if(adminTab==='Permits')renderAdminPermits();
+  else if(adminTab==='Support')renderAdminSupport();
+  else if(adminTab==='Vendors')renderAdminVendors();
+  else if(adminTab==='Community')renderAdminCommunity();
   else if(adminTab==='Treks')renderAdminTreks();
   else if(adminTab==='Home')renderAdminHome();
   else if(adminTab==='Destinations')renderAdminDestinations();
@@ -5801,27 +5855,50 @@ function renderAdmin(){
   else renderAdminSettings();
 }
 let _admHubQ='';
+/* grouped sidebar structure — cards a role can't access are hidden, empty groups drop out */
+const ADM_GROUPS=[
+  ['Dashboard',['Overview']],
+  ['Bookings',['Bookings']],
+  ['Money',['Payments']],
+  ['Catalog',['Treks','Destinations','Departures','Packing']],
+  ['Gear',['Gear']],
+  ['Operations',['Permits','Support','Vendors']],
+  ['People',['Users','CRM','Hosts','Guides','Staff']],
+  ['Community',['Community','Reviews']],
+  ['Growth',['Home','Training']],
+  ['System',['AI','Settings']]
+];
 function filterAdminHub(v){_admHubQ=(v||'').toLowerCase();paintAdminHub();}
 function paintAdminHub(){
-  const grid=document.getElementById('admHubGrid');if(!grid)return;
+  const wrap=document.getElementById('admHubGroups');if(!wrap)return;
   const q=_admHubQ;
-  const tabs=ADM_TABS.filter(name=>!q||name.toLowerCase().includes(q)||String(ADM_TAB_DESC[name]||'').toLowerCase().includes(q));
-  grid.innerHTML=tabs.length?tabs.map(name=>
-    '<button class="adm-hubcard" onclick="openAdminTab(\''+jsq(name)+'\')">'
+  const card=name=>'<button class="adm-hubcard" onclick="openAdminTab(\''+jsq(name)+'\')">'
     +'<span class="adm-hubic"><span class="msr">'+(ADM_TAB_IC[name]||'circle')+'</span></span>'
-    +'<b>'+esc(name)+'</b><small>'+esc(ADM_TAB_DESC[name]||'')+'</small></button>').join('')
-    :'<div class="empty" style="grid-column:1/-1;padding:20px"><p>No section matches “'+esc(_admHubQ)+'”.</p></div>';
-  hydrate(grid);
+    +'<b>'+esc(name)+'</b><small>'+esc(ADM_TAB_DESC[name]||'')+'</small></button>';
+  let html='';
+  ADM_GROUPS.forEach(function(grp){
+    const show=grp[1].filter(t=>roleCanTab(t)&&(!q||t.toLowerCase().includes(q)||String(ADM_TAB_DESC[t]||'').toLowerCase().includes(q)));
+    if(!show.length)return;
+    html+='<div class="adm-grp-h">'+esc(grp[0])+'</div><div class="adm-hub">'+show.map(card).join('')+'</div>';
+  });
+  wrap.innerHTML=html||'<div class="empty" style="padding:20px"><p>No section matches “'+esc(_admHubQ)+'”.</p></div>';
+  hydrate(wrap);
 }
 function renderAdminHub(){
   const box=document.getElementById('adminBody');if(!box)return;
-  box.innerHTML='<div class="adm-search" style="margin:2px 0 14px"><span class="msr">search</span>'
+  const r=currentAdminRole();
+  box.innerHTML=
+    '<div class="adm-rolebar"><span class="msr">'+(r==='super'?'shield_person':'badge')+'</span>'
+    +'<div><b>'+esc(ROLE_LABEL[r]||'Admin')+'</b><small>'+(r==='super'?'Full platform access':'You see the tools for your role')+'</small></div></div>'
+    +'<div class="adm-search" style="margin:0 0 12px"><span class="msr">search</span>'
     +'<input placeholder="Search admin sections…" value="'+esc(_admHubQ)+'" oninput="filterAdminHub(this.value)"></div>'
-    +'<div class="adm-hub" id="admHubGrid"></div>';
+    +'<div id="admHubGroups"></div>';
   paintAdminHub();
   hydrate(box);
 }
-function openAdminTab(t){adminTab=t;_admHub=false;renderAdmin();
+function openAdminTab(t){
+  if(!roleCanTab(t)){note('Your role doesn’t have access to '+t+'.','Restricted');return;}
+  adminTab=t;_admHub=false;renderAdmin();
   const el=document.getElementById('admin');if(el)el.scrollTop=0;}
 function adminHub(){_admHub=true;const box=document.getElementById('adminBody');if(box)box.innerHTML='';renderAdmin();
   const el=document.getElementById('admin');if(el)el.scrollTop=0;}
@@ -5832,56 +5909,110 @@ function adminBack(){ if(!_admHub)adminHub(); else back(); }
    Everything here is a count plus a jump; the detail lives in its own tab.
    ============================================================ */
 let _ovCache=null;
+/* lightweight, dependency-free charts (no external lib — CSP/offline safe) */
+function dashVBars(labels,values,fmt){
+  const max=Math.max(1,...values);
+  return '<div class="dash-vbars">'+values.map((v,i)=>
+    '<div class="dvb" title="'+esc(String(labels[i])+': '+(fmt?fmt(v):String(v)))+'">'
+    +'<span class="dvb-bar" style="height:'+Math.round(3+(v/max)*97)+'%"></span>'
+    +'<small>'+esc(String(labels[i]))+'</small></div>').join('')+'</div>';
+}
+function dashHBars(items,fmt){
+  if(!items||!items.length)return '<div class="adm-hint">No bookings yet.</div>';
+  const max=Math.max(1,...items.map(x=>x[1]));
+  return '<div class="dash-hbars">'+items.map(x=>
+    '<div class="dhb"><span class="dhb-l">'+esc(String(x[0]))+'</span>'
+    +'<span class="dhb-track"><span class="dhb-bar" style="width:'+Math.max(5,Math.round((x[1]/max)*100))+'%"></span></span>'
+    +'<span class="dhb-v">'+esc(fmt?fmt(x[1]):String(x[1]))+'</span></div>').join('')+'</div>';
+}
 async function renderAdminOverview(){
   const box=document.getElementById('adminBody');if(!box)return;
-  const live=treks.filter(t=>!t.soon).length;
+  const liveTreks=treks.filter(t=>!t.soon).length;
   const paint=d=>{
-    const kpi=(v,l,cls)=>`<div class="adm-kpi ${cls||''}"><b>${v}</b><small>${l}</small></div>`;
-    const act=(n,label,sub,tab,badge)=>`<div class="adm-act" onclick="setAdminTab('${tab}')">
-      <div class="adm-act-ic"><span class="msr">${ADM_TAB_IC[tab]||'circle'}</span></div>
-      <div class="adm-act-tx"><b>${label}${badge?`<span class="adm-pill">${badge}</span>`:''}</b><small>${sub}</small></div>
-      <span class="msr adm-act-ch">chevron_right</span></div>`;
+    const nn=v=>v==null?'—':v, money=v=>v==null?'—':INR(v);
+    const kc=(icon,val,label,cls)=>`<div class="dash-kpi ${cls||''}"><span class="dash-kpi-ic msr">${icon}</span><b>${val}</b><small>${label}</small></div>`;
+    const act=(label,sub,tab,badge)=>`<div class="adm-act" onclick="setAdminTab('${tab}')"><div class="adm-act-ic"><span class="msr">${ADM_TAB_IC[tab]||'circle'}</span></div><div class="adm-act-tx"><b>${label}${badge?`<span class="adm-pill">${badge}</span>`:''}</b><small>${sub}</small></div><span class="msr adm-act-ch">chevron_right</span></div>`;
     box.innerHTML=
-      `<div class="adm-kgrid">
-        ${kpi(d.bookings==null?'—':d.bookings,'Bookings')}
-        ${kpi(d.revenue==null?'—':INR(d.revenue),'Collected')}
-        ${kpi(d.pax==null?'—':d.pax,'Trekkers')}
-      </div>
-      <div class="adm-kgrid">
-        ${kpi(treks.length,'Treks')}
-        ${kpi(live,'Live')}
-        ${kpi(treks.length-live,'Coming soon')}
-      </div>
-      ${(d.pendingApps||d.draftTrips)?`<div class="adm-sec">Needs your review</div>
-        ${d.pendingApps?act('a','Host applications','','Hosts',d.pendingApps+' pending'):''}
-        ${d.draftTrips?act('t','Host trips to publish','','Hosts',d.draftTrips+' draft'+(d.draftTrips>1?'s':'')):''}`:''}
-      <div class="adm-sec">Manage</div>
-      ${act('h','Hosts',(d.hosts==null?'—':d.hosts)+' verified · '+(d.liveTrips==null?'—':d.liveTrips)+' live trips','Hosts')}
-      ${act('k','Treks',treks.length+' total · '+live+' bookable','Treks')}
-      ${act('o','Home page','Featured trek & popular rail','Home')}
-      ${act('d','Departures','Batch dates & seats','Departures')}
-      ${act('r','Training','Who is training for their trek','Training')}
-      <div class="adm-hint" style="margin-top:12px">Build v${APP_BUILD}</div>`;
+      `<div class="adm-sec" style="margin-top:2px">Today</div>
+       <div class="dash-kgrid">
+         ${kc('payments',money(d.todayRev),'Today\'s revenue','g')}
+         ${kc('confirmation_number',nn(d.todayBookings),'Today\'s bookings')}
+       </div>
+       <div class="adm-sec">Money</div>
+       <div class="dash-kgrid">
+         ${kc('account_balance_wallet',money(d.revenue),'Revenue collected','g')}
+         ${kc('receipt_long',money(d.value),'Booking value')}
+         ${kc('percent',d.cancelRate==null?'—':d.cancelRate+'%','Cancellation rate')}
+         ${kc('assignment_return',nn(d.pendingRefunds),'Pending refunds',d.pendingRefunds?'warn':'')}
+       </div>
+       <div class="adm-sec">Bookings & departures</div>
+       <div class="dash-kgrid">
+         ${kc('confirmation_number',nn(d.bookings),'Total bookings')}
+         ${kc('groups',nn(d.pax),'Trekkers')}
+         ${kc('landscape',liveTreks,'Active treks')}
+         ${kc('event',nn(d.departures),'Departures scheduled')}
+       </div>
+       <div class="adm-sec">People</div>
+       <div class="dash-kgrid">
+         ${kc('group',nn(d.users),'Total users')}
+         ${kc('person_add',nn(d.newUsers),'New (30 days)','g')}
+         ${kc('hiking',nn(d.hosts),'Verified hosts')}
+         ${kc('badge',nn(d.captains),'Trek captains')}
+         ${kc('verified_user',nn(d.pendingApps),'Pending verifications',d.pendingApps?'warn':'')}
+         ${kc('star',nn(d.reviews),'Reviews')}
+       </div>
+       <div class="adm-sec">Revenue collected · last 14 days</div>
+       ${dashVBars(d.trendLabels||[],d.trendRev||[],INR)}
+       <div class="adm-sec">Bookings · last 14 days</div>
+       ${dashVBars(d.trendLabels||[],d.trendCnt||[])}
+       <div class="adm-sec">Popular treks</div>
+       ${dashHBars(d.topTreks||[])}
+       <div class="adm-sec">Top destinations</div>
+       ${dashHBars(d.topDest||[])}
+       ${(d.pendingApps||d.draftTrips)?`<div class="adm-sec">Needs your review</div>
+         ${d.pendingApps?act('Host applications','Verify & approve hosts','Hosts',d.pendingApps+' pending'):''}
+         ${d.draftTrips?act('Host trips to publish','Review & go live','Hosts',d.draftTrips+' draft'+(d.draftTrips>1?'s':'')):''}`:''}
+       <div class="adm-hint" style="margin-top:14px">Live command centre · build v${APP_BUILD}</div>`;
     hydrate(box);
   };
-  if(_ovCache){paint(_ovCache);}
-  else box.innerHTML='<div class="skel skel-card"></div><div class="skel skel-card"></div>';
-  const d={bookings:null,revenue:null,pax:null,hosts:null,pendingApps:0,draftTrips:0,liveTrips:null};
+  if(_ovCache)paint(_ovCache); else box.innerHTML='<div class="skel skel-card"></div><div class="skel skel-card"></div>';
+  const today=todayISO(0);
+  const d={liveTreks,bookings:null,revenue:null,value:null,pax:null,todayRev:null,todayBookings:null,cancelRate:null,pendingRefunds:null,users:null,newUsers:null,hosts:null,captains:null,pendingApps:0,draftTrips:0,reviews:null,departures:null,topTreks:[],topDest:[],trendLabels:[],trendRev:[],trendCnt:[]};
   const sb=getSupaClient();
   try{
     const res=await adminCall('list_bookings');
     if(res&&res.ok){const rows=res.rows||[];
       d.bookings=rows.length;
-      d.revenue=rows.reduce((s,b)=>s+(Number(b.paid)||0),0);
-      d.pax=rows.reduce((s,b)=>s+(Number(b.pax)||1),0);}
+      d.revenue=rows.reduce((s,b)=>s+(+b.paid||0),0);
+      d.value=rows.reduce((s,b)=>s+(+b.total||0),0);
+      d.pax=rows.reduce((s,b)=>s+(+b.pax||1),0);
+      const cancels=rows.filter(b=>/cancel|refund/i.test(b.status||'')).length;
+      d.cancelRate=rows.length?Math.round(cancels/rows.length*100):0;
+      d.pendingRefunds=rows.filter(b=>/refund/i.test(b.status||'')).length;
+      const todayRows=rows.filter(b=>(b.created_at||'').slice(0,10)===today);
+      d.todayRev=todayRows.reduce((s,b)=>s+(+b.paid||0),0);
+      d.todayBookings=todayRows.length;
+      /* 14-day trends */
+      const map={},labels=[];
+      for(let i=13;i>=0;i--){const dt=todayISO(-i);map[dt]={r:0,c:0};labels.push(dt.slice(8,10));}
+      rows.forEach(b=>{const dt=(b.created_at||'').slice(0,10);if(map[dt]){map[dt].r+=(+b.paid||0);map[dt].c+=1;}});
+      d.trendLabels=labels;d.trendRev=[];d.trendCnt=[];
+      for(let i=13;i>=0;i--){const dt=todayISO(-i);d.trendRev.push(map[dt].r);d.trendCnt.push(map[dt].c);}
+      /* popular treks + destinations */
+      const byTrek={},byDest={},reg={};treks.forEach(t=>{reg[t.n]=t.region||'Other';});
+      rows.forEach(b=>{const k=(b.trek||'—').replace(' (Activity)','');byTrek[k]=(byTrek[k]||0)+1;const r=reg[k]||'Other';byDest[r]=(byDest[r]||0)+1;});
+      d.topTreks=Object.entries(byTrek).sort((a,b)=>b[1]-a[1]).slice(0,5);
+      d.topDest=Object.entries(byDest).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    }
   }catch(e){}
   if(sb){
-    try{const a=await sb.from('host_applications').select('status');
-      const rows=a.data||[];d.pendingApps=rows.filter(x=>x.status==='pending').length;
-      d.hosts=rows.filter(x=>x.status==='approved').length;}catch(e){}
-    try{const t=await sb.from('host_trips').select('status');
-      const rows=t.data||[];d.draftTrips=rows.filter(x=>x.status==='draft').length;
-      d.liveTrips=rows.filter(x=>x.status==='live').length;}catch(e){}
+    try{const u=await sb.from('profiles').select('*',{count:'exact',head:true});d.users=(u.count!=null?u.count:null);}catch(e){}
+    try{const nu=await sb.from('profiles').select('*',{count:'exact',head:true}).gte('created_at',todayISO(-30));d.newUsers=(nu.count!=null?nu.count:null);}catch(e){}
+    try{const a=await sb.from('host_applications').select('status');const rows=a.data||[];d.pendingApps=rows.filter(x=>x.status==='pending').length;d.hosts=rows.filter(x=>x.status==='approved').length;}catch(e){}
+    try{const t=await sb.from('host_trips').select('status');d.draftTrips=(t.data||[]).filter(x=>x.status==='draft').length;}catch(e){}
+    try{const s=await sb.from('staff').select('*',{count:'exact',head:true});d.captains=(s.count!=null?s.count:staffSet.size);}catch(e){d.captains=staffSet.size;}
+    try{const r=await sb.from('reviews').select('*',{count:'exact',head:true});d.reviews=(r.count!=null?r.count:(reviewsData?reviewsData.length:0));}catch(e){d.reviews=(reviewsData?reviewsData.length:0);}
+    try{const bt=await sb.from('batches').select('*',{count:'exact',head:true});d.departures=(bt.count!=null?bt.count:null);}catch(e){}
   }
   _ovCache=d;
   if(adminTab==='Overview')paint(d);
@@ -6154,30 +6285,50 @@ async function destDelete(){
   note(isBuiltin?'Reset to default.':'Destination deleted.');
 }
 
+const STAFF_ROLE_OPTS=['captain','operations','finance','content','community'];
 async function renderAdminStaff(){
   const box=document.getElementById('adminBody');
   await loadStaff();
+  const isSuper=isAdminUser();
   const staff=[...staffSet];
-  box.innerHTML=`<div class="note2" style="margin-bottom:12px">Staff you add here can open <b>Trip Captain check-in</b> (ticket scanning) with their signed-in email. Only you (the admin) see this tab.</div>`+
-    (staff.length?staff.map(e=>`<div class="mrow" style="cursor:default"><span class="ic">${ic('user',18)}</span><span class="t">${esc(e)}</span><span class="ic" onclick="removeStaff('${esc(e)}')" style="color:#ff7a7a;cursor:pointer">${ic('close',18)}</span></div>`).join(''):'<div class="empty" style="padding:14px 0"><p>No staff added yet.</p></div>')+
-    `<div class="panel" style="margin-top:6px"><b style="display:block;margin-bottom:8px">Add staff by email</b><div class="field"><div class="inp"><span class="ic" data-i="mail"></span><input id="staffEmail" type="email" placeholder="captain@email.com"></div></div><button class="btn sm" onclick="addStaff()">Add staff</button></div>
-    <button class="btn ghost" style="margin-top:14px" onclick="go('captain')"><span class="ic" data-i="ticket"></span> Open ticket check-in / scanner</button>`;
+  const roleCtl=e=>{const role=staffRoles[e]||'captain';
+    return isSuper
+      ? '<select class="adm-role-sel" onchange="setStaffRole(\''+jsq(e)+'\',this.value)">'+STAFF_ROLE_OPTS.map(o=>'<option value="'+o+'"'+(o===role?' selected':'')+'>'+esc(ROLE_LABEL[o]||o)+'</option>').join('')+'</select>'
+      : '<span class="adm-role-tag">'+esc(ROLE_LABEL[role]||role)+'</span>';};
+  const row=e=>'<div class="staff-row"><span class="ic">'+ic('user',18)+'</span>'
+    +'<div class="staff-tx"><b>'+esc(e)+'</b>'+roleCtl(e)+'</div>'
+    +(isSuper?'<span class="ic" onclick="removeStaff(\''+jsq(e)+'\')" style="color:#ff7a7a;cursor:pointer">'+ic('close',18)+'</span>':'')+'</div>';
+  box.innerHTML=`<div class="note2" style="margin-bottom:12px">Give each team member a <b>role</b> — they only see their own admin tools. <b>Trek Captain</b> = ticket check-in only. <b>Operations / Finance / Content / Community</b> = a scoped admin panel.</div>`+
+    (staff.length?staff.map(row).join(''):'<div class="empty" style="padding:14px 0"><p>No team members yet.</p></div>')+
+    (isSuper?`<div class="panel" style="margin-top:6px"><b style="display:block;margin-bottom:8px">Add a team member</b>
+      <div class="field"><div class="inp"><span class="ic" data-i="mail"></span><input id="staffEmail" type="email" placeholder="name@email.com"></div></div>
+      <div class="field"><label>Role</label><div class="inp"><select id="staffRole" style="all:unset;flex:1;color:var(--text)">${STAFF_ROLE_OPTS.map(o=>'<option value="'+o+'" style="color:#000">'+esc(ROLE_LABEL[o]||o)+'</option>').join('')}</select></div></div>
+      <button class="btn sm" onclick="addStaff()">Add member</button></div>`:'')+
+    `<button class="btn ghost" style="margin-top:14px" onclick="go('captain')"><span class="ic" data-i="ticket"></span> Open ticket check-in / scanner</button>`;
   hydrate(box);
 }
 async function addStaff(){
   const inp=document.getElementById('staffEmail');const email=(inp.value||'').trim().toLowerCase();
   if(!email||!email.includes('@')){note('Enter a valid email.','Invalid');return;}
+  const role=(document.getElementById('staffRole')||{}).value||'captain';
   const sb=getSupaClient();if(!sb){note('Backend not connected.','Error');return;}
-  const{error}=await sb.from('staff').insert({email});
-  if(error){note('Could not add staff: '+error.message,'Error');return;}
-  staffSet.add(email);note('Staff added ✓');renderAdminStaff();
+  let r=await sb.from('staff').insert({email,role});
+  if(r.error&&/role|column/i.test(r.error.message||''))r=await sb.from('staff').insert({email});   /* role column not deployed yet */
+  if(r.error){note('Could not add: '+r.error.message,'Error');return;}
+  staffSet.add(email);staffRoles[email]=role;note('Team member added ✓');renderAdminStaff();
+}
+async function setStaffRole(email,role){
+  const sb=getSupaClient();if(!sb)return;
+  const{error}=await sb.from('staff').update({role}).eq('email',email);
+  if(error){note('Could not update role — deploy SQL-add-staff-roles.sql first. ('+error.message+')','Role not saved');return;}
+  staffRoles[email]=role;toast(ROLE_LABEL[role]+' role set for '+email);
 }
 async function removeStaff(email){
-  if(!(await askConfirm('Remove '+email+' from staff?','Remove staff')))return;
+  if(!(await askConfirm('Remove '+email+' from the team?','Remove member')))return;
   const sb=getSupaClient();if(!sb)return;
   const{error}=await sb.from('staff').delete().eq('email',email);
   if(error){note('Could not remove: '+error.message,'Error');return;}
-  staffSet.delete(email);note('Staff removed.');renderAdminStaff();
+  staffSet.delete(email);delete staffRoles[email];note('Removed.');renderAdminStaff();
 }
 /* ---- admin: per-trek packing editor ---- */
 const PK_CATS=['Essentials','Clothing','Gear','Others'];
@@ -6212,18 +6363,20 @@ async function savePackingAdmin(){
   const ok=await sbWriteChecked('PATCH','treks?id=eq.'+t._id,{packing:_pkEdit});
   if(ok){bustTreksCache();await loadTreks(true);note('Packing list saved for '+pkAdminTrek+' ✓');}
 }
+let _admBookings=[];
 async function renderAdminBookings(){
   const box=document.getElementById('adminBody');
   if(!sbOn){box.innerHTML='<div class="note2">Connect Supabase to see bookings.</div>';return;}
   box.innerHTML='<div class="skel skel-card"></div><div class="skel skel-card"></div>';
+  if(!_guidesLoaded)loadGuides();   /* captain dropdown needs the guide list */
   const res=await adminCall('list_bookings');
   if(!res||!res.ok){box.innerHTML='<div class="note2">'+esc((res&&res.error)||'Could not load bookings.')+'</div>';return;}
-  const rows=res.rows||[];
+  const rows=res.rows||[];_admBookings=rows;
   if(!rows.length){box.innerHTML='<div class="empty"><p>No bookings yet.</p></div>';return;}
   const total=rows.reduce((s,b)=>s+(Number(b.paid)||0),0);
   const pax=rows.reduce((s,b)=>s+(Number(b.pax)||1),0);
   box.innerHTML=`<div class="adm-stat"><div><b>${rows.length}</b><small>Bookings</small></div><div><b>${pax}</b><small>Trekkers</small></div><div><b>${INR(total)}</b><small>Collected</small></div></div>`
-    +`<div class="adm-hint" style="margin:0 2px 10px">Tap a booking to see the trekker's full details.</div>`
+    +`<div class="adm-hint" style="margin:0 2px 10px">Tap a booking for details + actions.</div>`
     +rows.map(admBookingCard).join('');
   hydrate(box);
 }
@@ -6233,6 +6386,8 @@ function admBookingCard(b){
   const wa=waNumber(b.phone);
   const paid=Number(b.paid)||0, tot=Number(b.total)||0;
   const st=b.checked_in?'Checked in':esc(b.status||'Confirmed');
+  const id=jsq(String(b.id||''));
+  const batches=getBatches((b.trek||'').replace(' (Activity)',''))||[];
   return `<div class="adm-bk" onclick="this.classList.toggle('open')">
     <div class="adm-bk-top">
       <div class="adm-bk-main"><b>${esc(b.trek||'—')}</b><small>${esc(b.name||'')} · ${esc(b.date||'')} · ${b.pax||1} pax</small></div>
@@ -6244,9 +6399,516 @@ function admBookingCard(b){
       <div class="adm-bk-row"><span class="msr">mail</span>${b.email?`<a href="mailto:${esc(b.email)}" onclick="event.stopPropagation()">${esc(b.email)}</a>`:'<span class="adm-bk-na">No email</span>'}</div>
       <div class="adm-bk-row"><span class="msr">emergency</span><span>Emergency: <b>${esc(b.emergency_name||'—')}</b> · ${esc(b.emergency_phone||'—')}</span></div>
       <div class="adm-bk-row"><span class="msr">payments</span><span>Paid ${INR(paid)}${tot?' of '+INR(tot):''} · <span class="adm-bk-pid">${esc(b.payment_id||b.id||'')}</span></span></div>
+      ${b.captain?`<div class="adm-bk-row"><span class="msr">badge</span><span>Captain: <b>${esc(b.captain)}</b></span></div>`:''}
+      <div class="adm-bk-ops" onclick="event.stopPropagation()">
+        <div class="adm-bk-opsrow"><span class="msr">badge</span><select class="adm-role-sel" onchange="admAssignCaptain('${id}',this.value)"><option value="">Assign captain…</option>${(guides||[]).map(g=>`<option value="${esc(g.name)}" ${b.captain===g.name?'selected':''}>${esc(g.name)}</option>`).join('')}</select></div>
+        ${batches.length?`<div class="adm-bk-opsrow"><span class="msr">event</span><select class="adm-role-sel" onchange="admChangeBatch('${id}',this.value)"><option value="${esc(b.date||'')}">${esc(b.date||'Set date')}</option>${batches.filter(x=>x.label!==b.date).map(x=>`<option value="${esc(x.label)}">${esc(x.label)}</option>`).join('')}</select></div>`:''}
+        <div class="adm-bk-btns">
+          <button onclick="admInvoice('${id}')"><span class="msr">receipt_long</span> Invoice</button>
+          <button onclick="admRefund('${id}')"><span class="msr">currency_rupee</span> Refund</button>
+          <button class="danger" onclick="admCancelBooking('${id}')"><span class="msr">cancel</span> Cancel</button>
+        </div>
+      </div>
     </div>
   </div>`;
 }
+async function admBkUpdate(id,patch,msg){
+  const res=await adminCall('update_booking',Object.assign({id},patch));
+  if(!res||!res.ok){note((res&&res.error)||'Could not update — redeploy the admin function?','Update failed');return false;}
+  const b=_admBookings.find(x=>String(x.id)===String(id));if(b)Object.assign(b,patch);
+  if(msg)toast(msg);return true;
+}
+function admAssignCaptain(id,name){if(!name)return;admBkUpdate(id,{captain:name},'Captain assigned: '+name);}
+function admChangeBatch(id,date){if(!date)return;admBkUpdate(id,{date:date},'Batch changed to '+date);}
+function _admRerender(){if(adminTab==='Payments')paintPayments();else renderAdminBookings();}
+async function admRefund(id){if(!(await askConfirm('Mark this booking as refunded? Process the actual refund in Razorpay too.','Refund booking')))return;if(await admBkUpdate(id,{status:'Refunded'},'Marked refunded'))_admRerender();}
+async function admCancelBooking(id){if(!(await askConfirm('Cancel this booking?','Cancel booking')))return;if(await admBkUpdate(id,{status:'Cancelled'},'Booking cancelled'))_admRerender();}
+/* client-side invoice (offline, no backend) — downloads a printable HTML invoice */
+function admInvoice(id){
+  const b=_admBookings.find(x=>String(x.id)===String(id));if(!b){note('Booking not found.','Error');return;}
+  const paid=Number(b.paid)||0,tot=Number(b.total)||0,bal=Math.max(0,tot-paid);
+  const row=(l,v)=>'<tr><td style="padding:7px 0;color:#667">'+l+'</td><td style="padding:7px 0;text-align:right;font-weight:600">'+v+'</td></tr>';
+  const html='<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tripomonk Invoice '+esc(String(b.id))+'</title>'
+    +'<style>body{font-family:system-ui,Segoe UI,Arial,sans-serif;color:#0a1626;max-width:640px;margin:24px auto;padding:0 20px;line-height:1.5}'
+    +'h1{color:#2f6bff;margin:0;font-size:24px}.hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #eef;padding-bottom:14px;margin-bottom:16px}'
+    +'.muted{color:#778;font-size:13px}table{width:100%;border-collapse:collapse;font-size:14px}.tot td{border-top:2px solid #eef;padding-top:12px;font-size:16px}'
+    +'.pill{display:inline-block;padding:3px 10px;border-radius:999px;background:#eaf1ff;color:#2f6bff;font-size:12px;font-weight:700}@media print{body{margin:0}}</style></head><body>'
+    +'<div class="hd"><div><h1>Tripomonk</h1><div class="muted">Tripomonk Travel Pvt. Ltd. · Uttarakhand, India</div></div>'
+    +'<div style="text-align:right"><b>INVOICE</b><div class="muted">'+esc(String(b.id))+'</div><div class="muted">'+esc((b.created_at||'').slice(0,10))+'</div></div></div>'
+    +'<p><b>Billed to:</b> '+esc(b.name||'—')+(b.email?' · '+esc(b.email):'')+(b.phone?' · '+esc(b.phone):'')+'</p>'
+    +'<table>'
+    +row('Trek / trip',esc(b.trek||'—'))
+    +row('Date',esc(b.date||'—'))
+    +row('Trekkers',String(b.pax||1))
+    +(b.captain?row('Trek captain',esc(b.captain)):'')
+    +row('Status','<span class="pill">'+esc(b.status||'Confirmed')+'</span>')
+    +'</table><br>'
+    +'<table>'
+    +row('Total booking value',INR(tot))
+    +row('Paid',INR(paid))
+    +'<tr class="tot"><td>Balance due</td><td style="text-align:right">'+INR(bal)+'</td></tr>'
+    +'</table>'
+    +'<p class="muted" style="margin-top:22px">Payments processed securely via Razorpay. This is a computer-generated invoice. For GST or support, contact Tripomonk.</p>'
+    +'<p class="muted" style="margin-top:6px">Payment ID: '+esc(b.payment_id||b.id||'—')+'</p>'
+    +'</body></html>';
+  try{const blob=new Blob([html],{type:'text/html'});const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download='Tripomonk-Invoice-'+String(b.id).replace(/[^a-zA-Z0-9]/g,'').slice(-10)+'.html';
+    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);
+    toast('Invoice downloaded');}catch(e){note('Could not create the invoice.','Error');}
+}
+/* ---- Admin · Users (travellers & members) ---- */
+let _usersRows=null,_usersQ='';
+async function renderAdminUsers(){
+  const box=document.getElementById('adminBody');if(!box)return;
+  box.innerHTML='<div class="adm-search" style="margin:2px 0 12px"><span class="msr">search</span><input placeholder="Search by name or @username…" value="'+esc(_usersQ)+'" oninput="_usersQ=this.value;paintUsers()"></div><div id="admUsersList"><div class="skel skel-card"></div><div class="skel skel-card"></div></div>';
+  const sb=getSupaClient();
+  if(!sb){document.getElementById('admUsersList').innerHTML='<div class="note2">Connect Supabase to see users.</div>';return;}
+  try{const{data}=await sb.from('profiles').select('name,username,photo,is_host,created_at').order('created_at',{ascending:false}).limit(500);_usersRows=data||[];}
+  catch(e){try{const{data}=await sb.from('profiles').select('name,username,photo,is_host').limit(500);_usersRows=data||[];}catch(e2){_usersRows=[];}}
+  paintUsers();
+}
+function paintUsers(){
+  const el=document.getElementById('admUsersList');if(!el||!_usersRows)return;
+  const q=_usersQ.trim().toLowerCase();
+  const rows=_usersRows.filter(u=>u&&u.name&&(!q||(u.name+' '+(u.username||'')).toLowerCase().includes(q)));
+  const joined=d=>{try{return d?new Date(d).toLocaleDateString('en-IN',{month:'short',year:'numeric'}):'';}catch(e){return '';}};
+  el.innerHTML='<div class="adm-hint" style="margin:0 2px 8px">'+rows.length+' member'+(rows.length!==1?'s':'')+'</div>'
+    +(rows.length?rows.map(u=>{const nm=jsq(u.name);
+      return '<div class="usr-row"><div class="usr-av" onclick="openPerson(\''+nm+'\')">'+avatar(u.name,42)+'</div>'
+        +'<div class="usr-tx" onclick="openPerson(\''+nm+'\')"><b>'+esc(properName(u.name))+(u.is_host?' <span class="msr" style="font-size:13px;color:var(--accent2);vertical-align:-2px">verified</span>':'')+'</b><small>'+(u.username?'@'+esc(u.username):'')+(u.created_at?' · joined '+esc(joined(u.created_at)):'')+'</small></div>'
+        +'<button class="usr-act" onclick="admNotifyUser(\''+nm+'\')" title="Send a notification"><span class="msr">notifications</span></button></div>';
+    }).join(''):'<div class="empty"><p>No users found.</p></div>');
+  hydrate(el);
+}
+async function admNotifyUser(name){
+  const msg=await askCode('Message '+properName(name),{placeholder:'Your message — they get a notification'});
+  if(!msg||!msg.trim())return;
+  try{const uid=await uidForName(name);await pushNotif({recipientId:uid,recipientName:uid?null:name,type:'admin',preview:msg.trim().slice(0,140)});toast('Sent to '+properName(name));}
+  catch(e){note('Could not send the notification.','Error');}
+}
+/* ---- Admin · Payments (transactions, refunds, host payouts, reports) ---- */
+let _payFilter='All',_payHostMap={};
+function payStatus(b){const s=(b.status||'').toLowerCase();if(/refund/.test(s))return 'refunded';if(/cancel/.test(s))return 'cancelled';return 'paid';}
+function downloadText(text,filename,mime){
+  try{const blob=new Blob([text],{type:mime||'text/plain'});const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),5000);toast('Downloaded');}catch(e){note('Could not export.','Error');}
+}
+function csvEsc(s){return '"'+String(s==null?'':s).replace(/"/g,'""')+'"';}
+async function renderAdminPayments(){
+  const box=document.getElementById('adminBody');if(!box)return;
+  if(!sbOn){box.innerHTML='<div class="note2">Connect Supabase to see payments.</div>';return;}
+  box.innerHTML='<div class="skel skel-card"></div><div class="skel skel-card"></div>';
+  const res=await adminCall('list_bookings');
+  if(!res||!res.ok){box.innerHTML='<div class="note2">'+esc((res&&res.error)||'Could not load payments.')+'</div>';return;}
+  _admBookings=res.rows||[];
+  const sb=getSupaClient();
+  try{const ht=await sb.from('host_trips').select('title,host_name');_payHostMap={};(ht.data||[]).forEach(t=>{if(t.title)_payHostMap[t.title]=t.host_name||'Host';});}catch(e){_payHostMap={};}
+  paintPayments();
+}
+function paintPayments(){
+  const box=document.getElementById('adminBody');if(!box||adminTab!=='Payments')return;
+  const rows=_admBookings||[];
+  const collected=rows.reduce((s,b)=>s+(+b.paid||0),0);
+  const refunded=rows.filter(b=>payStatus(b)==='refunded');
+  const refundAmt=refunded.reduce((s,b)=>s+(+b.paid||0),0);
+  const shown=rows.filter(b=>_payFilter==='All'||payStatus(b)===_payFilter.toLowerCase());
+  const chip=l=>'<button class="pay-chip'+(_payFilter===l?' on':'')+'" onclick="admPayFilter(\''+l+'\')">'+l+'</button>';
+  const kpi=(v,l,cls)=>'<div class="dash-kpi '+(cls||'')+'"><b>'+v+'</b><small>'+l+'</small></div>';
+  box.innerHTML=
+    '<div class="dash-kgrid">'
+      +kpi(INR(collected),'Collected','g')+kpi(rows.length,'Transactions')
+      +kpi(INR(refundAmt),'Refunded',refundAmt?'warn':'')+kpi(refunded.length,'Refund count')
+    +'</div>'
+    +'<div class="adm-bk-btns" style="margin:2px 0 12px"><button onclick="admExportCSV()"><span class="msr">download</span> Transactions CSV</button><button onclick="admRevenueCSV()"><span class="msr">summarize</span> Monthly revenue CSV</button></div>'
+    +'<div class="pay-chips">'+['All','Paid','Refunded','Cancelled'].map(chip).join('')+'</div>'
+    +(shown.length?shown.map(payRow).join(''):'<div class="empty"><p>No transactions in this filter.</p></div>')
+    +admPayoutsHTML();
+  hydrate(box);
+}
+function payRow(b){
+  const st=payStatus(b),id=jsq(String(b.id||''));
+  const stLabel={paid:'Paid',refunded:'Refunded',cancelled:'Cancelled'}[st];
+  return '<div class="pay-row"><div class="pay-main"><b>'+esc(b.name||'—')+'</b><small>'+esc(b.trek||'')+' · '+esc((b.created_at||'').slice(0,10)||b.date||'')+'</small><span class="pay-pid">'+esc(b.payment_id||b.id||'')+'</span></div>'
+    +'<div class="pay-rt"><b>'+INR(+b.paid||0)+'</b><span class="pay-st '+st+'">'+stLabel+'</span>'
+    +'<div class="pay-acts"><button onclick="admInvoice(\''+id+'\')" title="Invoice"><span class="msr">receipt_long</span></button>'+(st==='paid'?'<button onclick="admRefund(\''+id+'\')" title="Refund"><span class="msr">currency_rupee</span></button>':'')+'</div></div></div>';
+}
+function admPayFilter(f){_payFilter=f;paintPayments();}
+function admExportCSV(){
+  const rows=_admBookings||[];
+  const head=['Payment ID','Name','Trek','Date','Pax','Total','Paid','Status','Created'];
+  const lines=[head.map(csvEsc).join(',')].concat(rows.map(b=>[b.payment_id||b.id,b.name,b.trek,b.date,b.pax,b.total,b.paid,b.status,(b.created_at||'').slice(0,10)].map(csvEsc).join(',')));
+  downloadText(lines.join('\r\n'),'Tripomonk-transactions-'+todayISO(0)+'.csv','text/csv');
+}
+function admRevenueCSV(){
+  const rows=_admBookings||[],by={};
+  rows.forEach(b=>{const m=(b.created_at||'').slice(0,7)||'—';if(!by[m])by[m]={paid:0,total:0,n:0};by[m].paid+=(+b.paid||0);by[m].total+=(+b.total||0);by[m].n++;});
+  const head=['Month','Bookings','Collected','Booking value'];
+  const lines=[head.map(csvEsc).join(',')].concat(Object.keys(by).sort().map(m=>[m,by[m].n,by[m].paid,by[m].total].map(csvEsc).join(',')));
+  downloadText(lines.join('\r\n'),'Tripomonk-revenue-'+todayISO(0)+'.csv','text/csv');
+}
+function admPayoutsHTML(){
+  const by={};(_admBookings||[]).forEach(b=>{const h=_payHostMap[b.trek];if(!h||payStatus(b)!=='paid')return;if(!by[h])by[h]={gross:0,n:0};by[h].gross+=(+b.paid||0);by[h].n++;});
+  const hosts=Object.entries(by).sort((a,b)=>b[1].gross-a[1].gross);
+  if(!hosts.length)return '<div class="adm-sec">Host payouts</div><div class="adm-hint">No host-trip bookings matched yet. Payouts show here once a host has paid bookings. Host share = 90% of profit after operating cost (per the host commission model).</div>';
+  return '<div class="adm-sec">Host payouts (estimated)</div>'
+    +'<div class="adm-hint" style="margin:0 2px 8px">Gross collected on each host\'s trips. Net payout = 90% of profit after operating cost — settle manually from here.</div>'
+    +hosts.map(h=>'<div class="pay-row"><div class="pay-main"><b>'+esc(h[0])+'</b><small>'+h[1].n+' paid booking'+(h[1].n!==1?'s':'')+'</small></div><div class="pay-rt"><b>'+INR(h[1].gross)+'</b><span class="pay-st paid">≈ '+INR(Math.round(h[1].gross*0.9))+' share</span></div></div>').join('');
+}
+/* ---- Admin · Gear inventory (localStorage-backed; syncs to gear_inventory when deployed) ---- */
+let _gearInv=null;
+function gearInvLocal(){try{return JSON.parse(localStorage.getItem('tmk_gear_inv')||'null');}catch(e){return null;}}
+function gearInvSaveLocal(a){try{localStorage.setItem('tmk_gear_inv',JSON.stringify(a||[]));}catch(e){}}
+function gearAvail(g){return Math.max(0,(+g.total||0)-(+g.rented||0)-(+g.damaged||0)-(+g.maintenance||0));}
+async function renderAdminGear(){
+  const box=document.getElementById('adminBody');if(!box)return;
+  box.innerHTML='<div class="skel skel-card"></div>';
+  let inv=gearInvLocal();
+  const sb=getSupaClient();
+  if(sb){try{const{data}=await sb.from('gear_inventory').select('*').order('item');
+    if(Array.isArray(data)){inv=data.map(r=>({id:r.id,item:r.item,category:r.category||'',total:+r.total||0,rented:+r.rented||0,damaged:+r.damaged||0,maintenance:+r.maintenance||0}));gearInvSaveLocal(inv);}}catch(e){}}
+  _gearInv=inv||[];
+  paintGear();
+}
+function paintGear(){
+  const box=document.getElementById('adminBody');if(!box||adminTab!=='Gear')return;
+  const inv=_gearInv||[];
+  const sum=k=>inv.reduce((s,g)=>s+(+g[k]||0),0);
+  const avail=inv.reduce((s,g)=>s+gearAvail(g),0),oos=sum('damaged')+sum('maintenance');
+  const kpi=(v,l,cls)=>'<div class="dash-kpi '+(cls||'')+'"><b>'+v+'</b><small>'+l+'</small></div>';
+  box.innerHTML=
+    '<div class="dash-kgrid">'+kpi(sum('total'),'Total units')+kpi(avail,'Available','g')+kpi(sum('rented'),'Rented')+kpi(oos,'Out of service',oos?'warn':'')+'</div>'
+    +(inv.length?inv.map(gearRow).join(''):'<div class="empty" style="padding:16px 0"><p>No gear tracked yet — add items or seed from the rental catalog.</p></div>')
+    +'<div class="adm-bk-btns" style="margin-top:12px"><button onclick="gearAddItem()"><span class="msr">add</span> Add item</button><button onclick="gearSeed()"><span class="msr">auto_awesome</span> Seed from catalog</button></div>';
+  hydrate(box);
+}
+function gearRow(g){
+  const av=gearAvail(g);
+  const step=(f,label)=>'<div class="gear-cell"><small>'+label+'</small><div class="gear-step"><button onclick="gearAdj(\''+jsq(g.id)+'\',\''+f+'\',-1)">−</button><b>'+(+g[f]||0)+'</b><button onclick="gearAdj(\''+jsq(g.id)+'\',\''+f+'\',1)">+</button></div></div>';
+  return '<div class="gear-item"><div class="gear-h"><b>'+esc(g.item)+'</b><span class="gear-av'+(av<=0?' out':'')+'">'+av+' available</span></div>'
+    +'<div class="gear-cells">'+step('total','Total')+step('rented','Rented')+step('damaged','Damaged')+step('maintenance','Service')+'</div>'
+    +'<button class="gear-del" onclick="gearDelItem(\''+jsq(g.id)+'\')">Remove item</button></div>';
+}
+async function gearInvSaveRemote(g){const sb=getSupaClient();if(!sb)return;try{await sb.from('gear_inventory').upsert({id:g.id,item:g.item,category:g.category||'',total:g.total,rented:g.rented,damaged:g.damaged,maintenance:g.maintenance},{onConflict:'id'});}catch(e){}}
+function gearAdj(id,field,delta){const g=(_gearInv||[]).find(x=>String(x.id)===String(id));if(!g)return;g[field]=Math.max(0,(+g[field]||0)+delta);gearInvSaveLocal(_gearInv);paintGear();gearInvSaveRemote(g);}
+async function gearAddItem(){
+  const name=await askCode('Add gear item',{placeholder:'e.g. Trekking Shoes'});if(!name||!name.trim())return;
+  const g={id:'g_'+Date.now(),item:name.trim(),category:'',total:0,rented:0,damaged:0,maintenance:0};
+  _gearInv=(_gearInv||[]).concat([g]);gearInvSaveLocal(_gearInv);paintGear();gearInvSaveRemote(g);
+}
+async function gearDelItem(id){if(!(await askConfirm('Remove this item from inventory?','Remove item')))return;
+  _gearInv=(_gearInv||[]).filter(x=>String(x.id)!==String(id));gearInvSaveLocal(_gearInv);paintGear();
+  const sb=getSupaClient();if(sb)try{await sb.from('gear_inventory').delete().eq('id',id);}catch(e){}}
+function gearSeed(){
+  const existing=new Set((_gearInv||[]).map(g=>String(g.item).toLowerCase()));
+  const add=[];GEAR_CATS.forEach(c=>c.items.forEach(it=>{const nm=it[0];if(!existing.has(nm.toLowerCase()))add.push({id:'g_'+Date.now()+'_'+Math.floor(Math.random()*1e4),item:nm,category:c.cat,total:0,rented:0,damaged:0,maintenance:0});}));
+  if(!add.length){toast('Catalog already added');return;}
+  _gearInv=(_gearInv||[]).concat(add);gearInvSaveLocal(_gearInv);paintGear();add.forEach(gearInvSaveRemote);toast('Added '+add.length+' items');
+}
+/* ---- Admin · Community moderation ---- */
+let _modPosts=null;
+async function renderAdminCommunity(){
+  const box=document.getElementById('adminBody');if(!box)return;
+  box.innerHTML='<div class="skel skel-card"></div><div class="skel skel-card"></div>';
+  const sb=getSupaClient();if(!sb){box.innerHTML='<div class="note2">Connect Supabase to moderate community posts.</div>';return;}
+  try{const{data}=await sb.from('community_posts').select('*').order('created_at',{ascending:false}).limit(60);_modPosts=data||[];}catch(e){_modPosts=[];}
+  paintMod();
+}
+function paintMod(){
+  const box=document.getElementById('adminBody');if(!box||adminTab!=='Community')return;
+  const posts=_modPosts||[];
+  box.innerHTML='<div class="adm-hint" style="margin:2px 2px 10px">'+posts.length+' recent post'+(posts.length!==1?'s':'')+' · remove anything inappropriate, or ★ feature the best.</div>'
+    +(posts.length?posts.map(modRow).join(''):'<div class="empty"><p>No posts yet.</p></div>');
+  hydrate(box);
+}
+function modRow(p){
+  const id=jsq(String(p.id||''));
+  const raw=(p.imgs&&p.imgs[0])?(typeof p.imgs[0]==='string'?p.imgs[0]:(p.imgs[0].url||'')):'';
+  const feat=!!p.featured;
+  return '<div class="mod-row">'
+    +(raw?'<div class="mod-thumb" style="background-image:url(\''+esc(normalizeImageUrl(raw))+'\')"></div>':'<div class="mod-thumb noimg"><span class="msr">article</span></div>')
+    +'<div class="mod-tx" onclick="openPerson(\''+jsq(p.author_name||'')+'\')"><b>'+esc(properName(p.author_name||'Trekker'))+'</b><small>'+esc((p.txt||'').slice(0,90)||'(photo post)')+'</small></div>'
+    +'<div class="mod-acts"><button class="'+(feat?'on':'')+'" onclick="admFeaturePost(\''+id+'\','+(!feat)+')" title="Feature"><span class="msr">'+(feat?'star':'star_border')+'</span></button>'
+    +'<button class="danger" onclick="admDeletePost(\''+id+'\')" title="Delete"><span class="msr">delete</span></button></div></div>';
+}
+async function admDeletePost(id){
+  if(!(await askConfirm('Delete this post permanently?','Delete post')))return;
+  const res=await adminCall('delete_post',{id});
+  if(!res||!res.ok){note((res&&res.error)||'Could not delete — redeploy the admin edge function.','Delete failed');return;}
+  _modPosts=(_modPosts||[]).filter(p=>String(p.id)!==String(id));paintMod();toast('Post deleted');
+}
+async function admFeaturePost(id,on){
+  const res=await adminCall('feature_post',{id,featured:on});
+  if(!res||!res.ok){note((res&&res.error)||'Could not update — run SQL-add-post-featured.sql + redeploy the admin edge function.','Update failed');return;}
+  const p=(_modPosts||[]).find(x=>String(x.id)===String(id));if(p)p.featured=on;paintMod();toast(on?'Featured ★':'Unfeatured');
+}
+/* ---- Admin · Permits (forest / park / border permit requests) ---- */
+let _permApps=null;
+async function renderAdminPermits(){
+  const box=document.getElementById('adminBody');if(!box)return;
+  box.innerHTML='<div class="skel skel-card"></div><div class="skel skel-card"></div>';
+  const sb=getSupaClient();if(!sb){box.innerHTML='<div class="note2">Connect Supabase to see permit requests.</div>';return;}
+  try{const{data,error}=await sb.from('permit_applications').select('*').order('created_at',{ascending:false}).limit(120);
+    if(error)throw error;_permApps=data||[];}
+  catch(e){box.innerHTML='<div class="note2">No permit requests table yet — run <b>SQL-add-permits-support.sql</b> to enable this. (Requests will then be captured when travellers tap “Apply”.)</div>';return;}
+  paintPermits();
+}
+function paintPermits(){
+  const box=document.getElementById('adminBody');if(!box||adminTab!=='Permits')return;
+  const apps=_permApps||[];const pending=apps.filter(a=>(a.status||'pending')==='pending').length;
+  box.innerHTML='<div class="adm-hint" style="margin:2px 2px 10px">'+apps.length+' request'+(apps.length!==1?'s':'')+' · '+pending+' pending</div>'
+    +(apps.length?apps.map(permAppRow).join(''):'<div class="empty"><p>No permit requests yet.</p></div>');
+  hydrate(box);
+}
+function permAppRow(a){
+  const id=jsq(String(a.id));const st=(a.status||'pending');const wa=waNumber(a.phone);
+  return '<div class="tk-row"><div class="tk-tx"><b>'+esc(a.permit||'Permit')+(a.trek?' · '+esc(a.trek):'')+'</b>'
+    +'<small>'+esc(a.name||'')+' · '+(a.pax||1)+' pax'+(a.dates?' · '+esc(a.dates):'')+(a.nationality?' · '+esc(a.nationality):'')+'</small>'
+    +(a.phone?'<span class="tk-links"><a href="tel:'+esc(a.phone)+'">'+esc(a.phone)+'</a>'+(wa?' · <a href="https://wa.me/'+esc(wa)+'" target="_blank" rel="noopener">WhatsApp</a>':'')+'</span>':'')+'</div>'
+    +'<div class="tk-rt"><span class="tk-st '+st+'">'+esc(st)+'</span>'
+    +(st==='pending'?'<div class="tk-acts"><button class="ok" onclick="permSet(\''+id+'\',\'approved\')">Approve</button><button class="no" onclick="permSet(\''+id+'\',\'rejected\')">Reject</button></div>':'')+'</div></div>';
+}
+async function permSet(id,status){
+  const sb=getSupaClient();if(!sb)return;
+  const{error}=await sb.from('permit_applications').update({status}).eq('id',id);
+  if(error){note('Could not update: '+error.message,'Error');return;}
+  const a=(_permApps||[]).find(x=>String(x.id)===String(id));if(a)a.status=status;paintPermits();toast('Marked '+status);
+}
+/* ---- Admin · Support (tickets) ---- */
+let _tickets=null;
+async function renderAdminSupport(){
+  const box=document.getElementById('adminBody');if(!box)return;
+  box.innerHTML='<div class="skel skel-card"></div><div class="skel skel-card"></div>';
+  const sb=getSupaClient();if(!sb){box.innerHTML='<div class="note2">Connect Supabase to see support tickets.</div>';return;}
+  try{const{data,error}=await sb.from('support_tickets').select('*').order('created_at',{ascending:false}).limit(120);
+    if(error)throw error;_tickets=data||[];}
+  catch(e){box.innerHTML='<div class="note2">No support tickets table yet — run <b>SQL-add-permits-support.sql</b>. Travellers raise tickets from Help &amp; Support.</div>';return;}
+  paintSupport();
+}
+function paintSupport(){
+  const box=document.getElementById('adminBody');if(!box||adminTab!=='Support')return;
+  const t=_tickets||[];const open=t.filter(x=>(x.status||'open')!=='resolved').length;
+  box.innerHTML='<div class="adm-hint" style="margin:2px 2px 10px">'+t.length+' ticket'+(t.length!==1?'s':'')+' · '+open+' open</div>'
+    +(t.length?t.map(ticketRow).join(''):'<div class="empty"><p>No tickets yet.</p></div>');
+  hydrate(box);
+}
+function ticketRow(t){
+  const id=jsq(String(t.id));const st=(t.status||'open');const wa=waNumber(t.phone);
+  return '<div class="tk-row"><div class="tk-tx"><b>'+esc(properName(t.name||'Trekker'))+'</b><small>'+esc((t.message||'').slice(0,140))+'</small>'
+    +(t.reply?'<small style="color:var(--accent2)">↳ '+esc(t.reply)+'</small>':'')
+    +'<span class="tk-links">'+(t.phone?'<a href="tel:'+esc(t.phone)+'">Call</a>':'')+(wa?' · <a href="https://wa.me/'+esc(wa)+'" target="_blank" rel="noopener">WhatsApp</a>':'')+(t.email?' · <a href="mailto:'+esc(t.email)+'">Email</a>':'')+'</span></div>'
+    +'<div class="tk-rt"><span class="tk-st '+st+'">'+esc(st)+'</span><div class="tk-acts"><button onclick="ticketReply(\''+id+'\')">Reply</button>'+(st!=='resolved'?'<button class="ok" onclick="ticketResolve(\''+id+'\')">Resolve</button>':'')+'</div></div></div>';
+}
+async function ticketReply(id){
+  const msg=await askCode('Reply to ticket',{placeholder:'Your reply — the user is notified'});if(!msg||!msg.trim())return;
+  const sb=getSupaClient();if(!sb)return;
+  const t=(_tickets||[]).find(x=>String(x.id)===String(id));
+  try{await sb.from('support_tickets').update({reply:msg.trim().slice(0,1000),status:'answered'}).eq('id',id);
+    if(t){t.reply=msg.trim();t.status='answered';try{await pushNotif({recipientId:t.user_id,type:'admin',preview:'Support: '+msg.trim().slice(0,120)});}catch(e){}}
+    paintSupport();toast('Reply sent');}catch(e){note('Could not send: '+((e&&e.message)||e),'Error');}
+}
+async function ticketResolve(id){const sb=getSupaClient();if(!sb)return;
+  try{await sb.from('support_tickets').update({status:'resolved'}).eq('id',id);const t=(_tickets||[]).find(x=>String(x.id)===String(id));if(t)t.status='resolved';paintSupport();toast('Resolved');}catch(e){}}
+/* user-facing: raise a support ticket from Help */
+async function raiseTicket(){
+  if(!isLoggedIn()){note('Please sign in to raise a ticket.','Sign in required').then(()=>{_loginReturn='help';go('login');});return;}
+  const msg=await askCode('Raise a support ticket',{placeholder:'Describe your issue…'});
+  if(!msg||!msg.trim())return;
+  const sb=getSupaClient();if(!sb){note('Support is unavailable offline — please WhatsApp us.','Offline');return;}
+  try{const uid=await authUid();
+    const{error}=await sb.from('support_tickets').insert({user_id:uid,name:getSavedName()||'',email:getUserEmail()||'',phone:getSavedMobile()||'',message:msg.trim().slice(0,1000),status:'open'});
+    if(error)throw error;
+    note('Ticket raised! Our team will get back to you soon. You can also reach us on WhatsApp for anything urgent.','Ticket raised ✓');}
+  catch(e){note('Could not raise the ticket right now. Please WhatsApp us instead.','Try WhatsApp');}
+}
+/* ---- Admin · CRM (customer 360 timeline, aggregates existing data) ---- */
+let _crmQ='';
+async function renderAdminCRM(){
+  const box=document.getElementById('adminBody');if(!box)return;
+  box.innerHTML='<div class="adm-search" style="margin:2px 0 12px"><span class="msr">search</span><input placeholder="Search a customer by name…" value="'+esc(_crmQ)+'" oninput="crmSearch(this.value)"></div><div id="crmBody"></div>';
+  if(!_usersRows){const sb=getSupaClient();if(sb){try{const{data}=await sb.from('profiles').select('name,username,is_host,created_at').limit(500);_usersRows=data||[];}catch(e){_usersRows=[];}}}
+  crmSearch(_crmQ);hydrate(box);
+}
+function crmSearch(q){
+  _crmQ=q;const el=document.getElementById('crmBody');if(!el)return;
+  const ql=(q||'').trim().toLowerCase();
+  if(ql.length<2){el.innerHTML='<div class="adm-hint">Type a name to open a customer’s full timeline — bookings, payments, tickets, reviews, posts &amp; fitness.</div>';return;}
+  const matches=(_usersRows||[]).filter(u=>u.name&&u.name.toLowerCase().includes(ql)).slice(0,8);
+  el.innerHTML=matches.length?matches.map(u=>{const nm=jsq(u.name);
+    return '<div class="usr-row" onclick="crmOpen(\''+nm+'\')"><div class="usr-av">'+avatar(u.name,40)+'</div><div class="usr-tx"><b>'+esc(properName(u.name))+'</b><small>'+(u.username?'@'+esc(u.username):'')+'</small></div><span class="usr-act"><span class="msr">arrow_forward</span></span></div>';}).join(''):'<div class="empty"><p>No customer found.</p></div>';
+  hydrate(el);
+}
+async function crmOpen(name){
+  const el=document.getElementById('crmBody');if(!el)return;
+  el.innerHTML='<div class="skel skel-card"></div><div class="skel skel-card"></div>';
+  const sb=getSupaClient();const nl=name.toLowerCase();
+  let bookings=[],tickets=[],reviews=[],posts=[],prof=null;
+  try{const res=await adminCall('list_bookings');if(res&&res.ok)bookings=(res.rows||[]).filter(b=>String(b.name||'').toLowerCase()===nl);}catch(e){}
+  if(sb){
+    try{const{data}=await sb.from('profiles').select('*').ilike('name',name).limit(1);prof=(data&&data[0])||null;}catch(e){}
+    try{const{data}=await sb.from('support_tickets').select('*').ilike('name',name).order('created_at',{ascending:false}).limit(20);tickets=data||[];}catch(e){}
+    try{const{data}=await sb.from('reviews').select('*').ilike('author',name).limit(20);reviews=data||[];}catch(e){}
+    try{const{data}=await sb.from('community_posts').select('id,txt,created_at').ilike('author_name',name).order('created_at',{ascending:false}).limit(20);posts=data||[];}catch(e){}
+  }
+  const spent=bookings.reduce((s,b)=>s+(+b.paid||0),0);
+  const fit=prof&&prof.training?trainSummary(prof.training):null;
+  const sec=t=>'<div class="adm-sec">'+t+'</div>';
+  const item=(a,b)=>'<div class="crm-item"><b>'+a+'</b>'+(b?'<small>'+b+'</small>':'')+'</div>';
+  let html='<div class="crm-hero">'+avatar(name,54)+'<div><b>'+esc(properName(name))+'</b><small>'+(prof&&prof.username?'@'+esc(prof.username):'')+(prof&&prof.is_host?' · Host':'')+'</small></div></div>'
+    +'<div class="dash-kgrid" style="margin-top:10px">'
+      +'<div class="dash-kpi g"><b>'+INR(spent)+'</b><small>Lifetime spend</small></div>'
+      +'<div class="dash-kpi"><b>'+bookings.length+'</b><small>Bookings</small></div>'
+      +'<div class="dash-kpi"><b>'+reviews.length+'</b><small>Reviews</small></div>'
+      +'<div class="dash-kpi"><b>'+tickets.length+'</b><small>Tickets</small></div>'
+    +'</div>'
+    +sec('Bookings & payments')+(bookings.length?bookings.map(b=>item(esc(b.trek||''),esc(b.date||'')+' · '+INR(+b.paid||0)+' paid · '+esc(b.status||''))).join(''):'<div class="adm-hint">No bookings.</div>')
+    +sec('Support')+(tickets.length?tickets.map(t=>item(esc((t.message||'').slice(0,80)),esc(t.status||'open')+(t.reply?' · replied':''))).join(''):'<div class="adm-hint">No tickets.</div>')
+    +sec('Reviews')+(reviews.length?reviews.map(r=>item('★'.repeat(Math.max(1,Math.min(5,+r.rating||5)))+' '+esc(r.trek||''),esc((r.body||'').slice(0,80)))).join(''):'<div class="adm-hint">No reviews.</div>')
+    +sec('Fitness & activity')+(fit?item('Training for '+esc(fit.trek||'a trek'),fit.days+' active days · '+fit.streak+'-day streak'):'<div class="adm-hint">No training logged.</div>')
+    +item(posts.length+' community post'+(posts.length!==1?'s':''),'')
+    +'<button class="btn ghost" style="margin-top:12px" onclick="openPerson(\''+jsq(name)+'\')"><span class="msr">person</span> View public profile</button>'
+    +'<button class="btn ghost" style="margin-top:8px" onclick="admNotifyUser(\''+jsq(name)+'\')"><span class="msr">notifications</span> Send a notification</button>';
+  el.innerHTML=html;hydrate(el);
+}
+/* ---- Admin · AI & Automation (live message templates, stored in app_config) ---- */
+let _aiCfg=null;
+const AI_DEFAULTS={welcome:'Welcome to Tripomonk! 🏔️ We’re glad to have you. Message us anytime for help with bookings, payments or picking your next trek.',sos:'EMERGENCY — I need help on my Tripomonk trek. Please call me right away.',planner:'Tell us your dates, fitness and vibe — we’ll suggest the right trek for you.'};
+async function loadAiCfg(){
+  if(_aiCfg)return _aiCfg;
+  _aiCfg=Object.assign({},AI_DEFAULTS);
+  try{const l=JSON.parse(localStorage.getItem('tmk_appcfg')||'null');if(l)Object.assign(_aiCfg,l);}catch(e){}
+  const sb=getSupaClient();if(sb){try{const{data}=await sb.from('app_config').select('key,value');if(Array.isArray(data)){data.forEach(r=>{if(r.key&&AI_DEFAULTS.hasOwnProperty(r.key))_aiCfg[r.key]=r.value;});try{localStorage.setItem('tmk_appcfg',JSON.stringify(_aiCfg));}catch(e){}}}catch(e){}}
+  return _aiCfg;
+}
+function aiCfg(key){return (_aiCfg&&_aiCfg[key])||AI_DEFAULTS[key];}
+async function renderAdminAI(){
+  const box=document.getElementById('adminBody');if(!box)return;
+  box.innerHTML='<div class="skel skel-card"></div>';
+  await loadAiCfg();
+  const fldT=(k,label,hint)=>'<div class="adm-sec">'+label+'</div><div class="field"><textarea class="adm-ta" id="ai_'+k+'">'+esc(_aiCfg[k]||'')+'</textarea></div><div class="adm-hint">'+hint+'</div>';
+  box.innerHTML='<div class="note2" style="margin-bottom:12px">Manage the automated messages the app sends — used live, no code change needed. (Trek fitness scores are edited per-trek in the Treks editor; gear rules stay in-app for now.)</div>'
+    +fldT('welcome','Welcome message','Auto-sent in the Tripomonk Team chat when someone joins.')
+    +fldT('sos','Emergency SOS message','Pre-filled WhatsApp text when a trekker requests an emergency call.')
+    +fldT('planner','Trip planner nudge','A short line encouraging travellers to find the right trek.')
+    +'<button class="btn" style="margin-top:8px" onclick="saveAiCfg()"><span class="msr">check</span> Save messages</button>';
+  hydrate(box);
+}
+async function saveAiCfg(){
+  const g=id=>document.getElementById(id);
+  const next={welcome:(g('ai_welcome').value||'').trim()||AI_DEFAULTS.welcome,sos:(g('ai_sos').value||'').trim()||AI_DEFAULTS.sos,planner:(g('ai_planner').value||'').trim()||AI_DEFAULTS.planner};
+  _aiCfg=Object.assign({},AI_DEFAULTS,next);
+  try{localStorage.setItem('tmk_appcfg',JSON.stringify(_aiCfg));}catch(e){}
+  const sb=getSupaClient();if(sb){try{const{error}=await sb.from('app_config').upsert(Object.keys(next).map(k=>({key:k,value:next[k]})),{onConflict:'key'});if(error)throw error;toast('Saved — live everywhere');}catch(e){note('Saved on this device. For all devices, run SQL-add-app-config.sql.','Saved locally');}}else toast('Saved on this device');
+}
+/* ============================================================
+   VENDORS — partner operators (hotels / transport / activities / gear).
+   Admin approves partners; approved partners manage their own listings from a
+   dedicated Vendor Dashboard. Backed by vendors + vendor_listings tables.
+   ============================================================ */
+const VENDOR_TYPES=['Hotel / Stay','Transport','Activity operator','Gear rental','Other'];
+let _adminVendors=null,_myVendor=null,_myVendorListings=null;
+async function renderAdminVendors(){
+  const box=document.getElementById('adminBody');if(!box)return;
+  box.innerHTML='<div class="skel skel-card"></div><div class="skel skel-card"></div>';
+  const sb=getSupaClient();if(!sb){box.innerHTML='<div class="note2">Connect Supabase to manage vendors.</div>';return;}
+  try{const{data,error}=await sb.from('vendors').select('*').order('created_at',{ascending:false}).limit(200);if(error)throw error;_adminVendors=data||[];}
+  catch(e){box.innerHTML='<div class="note2">No vendors table yet — run <b>SQL-add-vendors.sql</b>. Partners then apply from “Partner with Tripomonk”.</div>';return;}
+  let listings=[];try{const{data}=await sb.from('vendor_listings').select('owner_id');listings=data||[];}catch(e){}
+  const cnt={};listings.forEach(l=>{cnt[l.owner_id]=(cnt[l.owner_id]||0)+1;});
+  paintAdminVendors(cnt);
+}
+let _vendorCnt={};
+function paintAdminVendors(cnt){
+  if(cnt)_vendorCnt=cnt;cnt=_vendorCnt||{};
+  const box=document.getElementById('adminBody');if(!box||adminTab!=='Vendors')return;
+  const v=_adminVendors||[];const pending=v.filter(x=>(x.status||'pending')==='pending').length;
+  box.innerHTML='<div class="adm-hint" style="margin:2px 2px 10px">'+v.length+' partner'+(v.length!==1?'s':'')+' · '+pending+' pending</div>'
+    +(v.length?v.map(x=>vendorAdminRow(x,cnt[x.user_id]||0)).join(''):'<div class="empty"><p>No partner applications yet.</p></div>');
+  hydrate(box);
+}
+function vendorAdminRow(x,listings){
+  const id=jsq(String(x.id));const st=(x.status||'pending');const wa=waNumber(x.phone);
+  return '<div class="tk-row"><div class="tk-tx"><b>'+esc(x.business_name||'Vendor')+'</b><small>'+esc(x.type||'')+(x.city?' · '+esc(x.city):'')+' · '+listings+' listing'+(listings!==1?'s':'')+'</small>'
+    +(x.phone?'<span class="tk-links"><a href="tel:'+esc(x.phone)+'">'+esc(x.phone)+'</a>'+(wa?' · <a href="https://wa.me/'+esc(wa)+'" target="_blank" rel="noopener">WhatsApp</a>':'')+'</span>':'')+'</div>'
+    +'<div class="tk-rt"><span class="tk-st '+st+'">'+esc(st)+'</span><div class="tk-acts">'
+    +(st!=='approved'?'<button class="ok" onclick="vendorSet(\''+id+'\',\'approved\')">Approve</button>':'')
+    +(st==='pending'?'<button class="no" onclick="vendorSet(\''+id+'\',\'rejected\')">Reject</button>':'')
+    +(st==='approved'?'<button class="no" onclick="vendorSet(\''+id+'\',\'suspended\')">Suspend</button>':'')
+    +'</div></div></div>';
+}
+async function vendorSet(id,status){
+  const sb=getSupaClient();if(!sb)return;
+  const{error}=await sb.from('vendors').update({status}).eq('id',id);
+  if(error){note('Could not update: '+error.message,'Error');return;}
+  const v=(_adminVendors||[]).find(x=>String(x.id)===String(id));if(v){v.status=status;try{await pushNotif({recipientId:v.user_id,type:'admin',preview:'Your Tripomonk partner application is '+status+'.'});}catch(e){}}
+  paintAdminVendors();toast('Marked '+status);
+}
+/* ---- vendor self-service ---- */
+async function openVendorDash(){
+  if(!isLoggedIn()){note('Please sign in to partner with Tripomonk.','Sign in required').then(()=>{_loginReturn='vendorDash';go('login');});return;}
+  go('vendorDash');renderVendorDash();
+}
+async function renderVendorDash(){
+  const box=document.getElementById('vendorDashBody');if(!box)return;
+  box.innerHTML='<div class="skel skel-card"></div>';
+  const sb=getSupaClient();const uid=sb?await authUid():null;
+  if(!sb||!uid){box.innerHTML='<div class="note2">Please sign in to continue.</div>';return;}
+  try{const{data}=await sb.from('vendors').select('*').eq('user_id',uid).maybeSingle();_myVendor=data||null;}
+  catch(e){box.innerHTML='<div class="note2">Partner sign-up isn’t enabled yet — the team needs to run <b>SQL-add-vendors.sql</b>.</div>';return;}
+  if(!_myVendor){box.innerHTML=vendorApplyHTML();hydrate(box);return;}
+  if(_myVendor.status!=='approved'){
+    box.innerHTML='<div class="vend-hero"><span class="msr">storefront</span><div><b>'+esc(_myVendor.business_name)+'</b><small>'+esc(_myVendor.type||'')+'</small></div></div>'
+      +'<div class="adm-hint" style="margin-top:12px">Your partner application is <b>'+esc(_myVendor.status||'pending')+'</b>. Our team reviews every partner — we’ll be in touch soon.</div>';
+    hydrate(box);return;
+  }
+  let listings=[];try{const{data}=await sb.from('vendor_listings').select('*').eq('owner_id',uid).order('name');listings=data||[];}catch(e){}
+  _myVendorListings=listings;
+  box.innerHTML='<div class="vend-hero"><span class="msr">storefront</span><div><b>'+esc(_myVendor.business_name)+'</b><small>'+esc(_myVendor.type||'')+(_myVendor.city?' · '+esc(_myVendor.city):'')+' · <span style="color:#3ddc84">Approved partner</span></small></div></div>'
+    +'<div class="adm-sec">Your listings</div>'
+    +(listings.length?listings.map(vendorListingRow).join(''):'<div class="adm-hint">No listings yet — add your rooms, vehicles, activities or gear so Tripomonk can send you bookings.</div>')
+    +'<button class="btn" style="margin-top:12px" onclick="vendorAddListing()"><span class="msr">add</span> Add a listing</button>';
+  hydrate(box);
+}
+function vendorApplyHTML(){
+  return '<div class="vend-hero"><span class="msr">handshake</span><div><b>Partner with Tripomonk</b><small>Hotels · transport · activities · gear</small></div></div>'
+    +'<div class="adm-hint" style="margin:10px 0 12px">List your services and get bookings from Tripomonk trekkers. Apply below — we review every partner.</div>'
+    +'<div class="field"><label>Business name</label><div class="inp"><input id="vdName" placeholder="e.g. Himalayan Stays"></div></div>'
+    +'<div class="field"><label>Type</label><div class="inp"><select id="vdType" style="all:unset;flex:1;color:var(--text)">'+VENDOR_TYPES.map(t=>'<option style="color:#000">'+esc(t)+'</option>').join('')+'</select></div></div>'
+    +'<div class="field"><label>City</label><div class="inp"><input id="vdCity" placeholder="e.g. Manali"></div></div>'
+    +'<div class="field"><label>WhatsApp number</label><div class="inp"><input id="vdPhone" inputmode="tel" maxlength="10" placeholder="10-digit mobile"></div></div>'
+    +'<button class="btn" onclick="applyVendor()"><span class="msr">send</span> Apply to partner</button>';
+}
+async function applyVendor(){
+  const g=id=>document.getElementById(id);
+  const name=(g('vdName').value||'').trim(),type=(g('vdType').value||'').trim(),city=(g('vdCity').value||'').trim(),phone=(g('vdPhone').value||'').replace(/\D/g,'');
+  if(!name){note('Enter your business name.','Name needed');return;}
+  if(phone.length<10){note('Enter a valid 10-digit WhatsApp number.','Number needed');return;}
+  const sb=getSupaClient();const uid=sb?await authUid():null;if(!sb||!uid){note('Please sign in.','Sign in required');return;}
+  const{error}=await sb.from('vendors').insert({user_id:uid,business_name:name.slice(0,120),type,city:city.slice(0,80),phone,status:'pending'});
+  if(error){note('Could not apply: '+error.message,'Error');return;}
+  note('Application sent! We’ll review your partner request and get back to you.','Applied ✓');renderVendorDash();
+}
+function vendorListingRow(l){
+  const id=jsq(String(l.id));
+  return '<div class="pay-row"><div class="pay-main"><b>'+esc(l.name||'')+'</b><small>'+esc(l.category||'')+' · '+INR(+l.price||0)+(l.available!=null?' · '+l.available+' available':'')+'</small></div>'
+    +'<div class="pay-rt"><span class="pay-st '+(l.active?'paid':'cancelled')+'">'+(l.active?'Active':'Off')+'</span>'
+    +'<div class="pay-acts"><button onclick="vendorToggleListing(\''+id+'\')" title="Active on/off"><span class="msr">'+(l.active?'toggle_on':'toggle_off')+'</span></button><button class="danger" onclick="vendorDelListing(\''+id+'\')" title="Remove"><span class="msr">delete</span></button></div></div></div>';
+}
+async function vendorAddListing(){
+  const uid=await authUid();if(!uid)return;
+  const name=await askCode('Add a listing',{placeholder:'e.g. Deluxe room / Tempo Traveller / Rafting slot'});if(!name||!name.trim())return;
+  const price=await askCode('Price (₹)',{placeholder:'e.g. 2500'});
+  const avail=await askCode('Available units',{placeholder:'e.g. 10'});
+  const sb=getSupaClient();if(!sb)return;
+  const row={id:'vl_'+Date.now(),owner_id:uid,name:name.trim().slice(0,120),category:(_myVendor&&_myVendor.type)||'',price:parseInt(price)||0,available:parseInt(avail)||0,active:true};
+  const{error}=await sb.from('vendor_listings').insert(row);
+  if(error){note('Could not add: '+error.message,'Error');return;}
+  toast('Listing added');renderVendorDash();
+}
+async function vendorToggleListing(id){const sb=getSupaClient();if(!sb)return;const l=(_myVendorListings||[]).find(x=>String(x.id)===String(id));if(!l)return;
+  try{await sb.from('vendor_listings').update({active:!l.active}).eq('id',id);l.active=!l.active;renderVendorDash();}catch(e){}}
+async function vendorDelListing(id){if(!(await askConfirm('Remove this listing?','Remove listing')))return;const sb=getSupaClient();if(!sb)return;
+  try{await sb.from('vendor_listings').delete().eq('id',id);renderVendorDash();toast('Removed');}catch(e){}}
 function setAdminTab(t){openAdminTab(t);}
 let _admQ='',_admStatus='All',_admRegion='All',_admDiff='All';
 function admTrekFiltered(){
@@ -6491,7 +7153,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='391';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='400';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -7524,7 +8186,7 @@ function applyPermit(permitName){
   const close=()=>{m.classList.remove('show');g('pmCancel').onclick=g('pmSend').onclick=m.onclick=null;};
   g('pmCancel').onclick=close;
   m.onclick=e=>{if(e.target===m)close();};
-  g('pmSend').onclick=()=>{
+  g('pmSend').onclick=async()=>{
     const name=(g('pmName').value||'').trim();
     const phone=(g('pmPhone').value||'').replace(/\D/g,'');
     const trek=(g('pmTrek').value||'').trim();
@@ -7535,6 +8197,8 @@ function applyPermit(permitName){
     if(phone.length<10){note('Please enter a valid 10-digit WhatsApp number.','Number needed');return;}
     if(!trek){note('Please enter the trek / place you need the permit for.','Trek needed');return;}
     if(name)saveUserName(name);
+    /* record the request so it shows in Admin → Permits (best-effort; the table may not be deployed) */
+    try{const sb=getSupaClient();if(sb){const uid=await authUid();await sb.from('permit_applications').insert({user_id:uid,permit:_pmPermit,name,phone,trek,dates,pax,nationality:nat,status:'pending'});}}catch(e){}
     const lines=[
       'Permit: '+_pmPermit,
       'Name: '+name,
@@ -8369,7 +9033,7 @@ function stopAllMedia(){
 function go(id){const el=document.getElementById(id);if(!el)return;
   stopAllMedia();
   if(id==='captain'&&!isStaffUser()){note('Trip Captain access is for staff only.','Restricted');return;}
-  if((id==='admin'||id==='adminTrip')&&!isAdminUser()){note('Admin access is restricted to the account owner.','Restricted');return;}
+  if((id==='admin'||id==='adminTrip')&&!canOpenAdmin()){note('Admin access is restricted to the owner and assigned team roles.','Restricted');return;}
   /* hide any live news banner when entering the login/signup flow */
   if(NO_BANNER_SCREENS.includes(id)){const b=document.getElementById('alertBanner');if(b)b.className='';}
   if(id!==cur){trackScreenLeave();hist.push(cur);try{history.pushState({s:id},'');}catch(e){}if(window.fbTrack)window.fbTrack('PageView');}cur=id;if(el.dataset.tab)lastTab=el.dataset.tab;
@@ -8409,6 +9073,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='hostTrip')renderHostTrip();
   if(id==='hostDash')renderHostDash();
   if(id==='hostProfile')renderHostProfile();
+  if(id==='vendorDash')renderVendorDash();
   /* restoreNav() can land here directly on a reload, so load on demand */
   if(id==='hosts'){if(_hostsLoaded)renderHostsList();
     else Promise.all([loadAllHosts(),loadTripCountsByHost()]).then(renderHostsList).catch(()=>{});}
@@ -8488,7 +9153,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections,addStaff,removeStaff,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab,openReviewModal,closeReviewModal,submitReview,setRevStars,adminAddReview,adminDelReview,toggleSavePost,renderEmergency,renderSavedPosts,followAction,requestCall,declineCall,allowCallMsg,togglePrivateAccount,renderFollowRequests,acceptFollowReq,declineFollowReq,admToggleHl,filterAdminHub});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections,addStaff,removeStaff,setStaffRole,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab,openReviewModal,closeReviewModal,submitReview,setRevStars,adminAddReview,adminDelReview,toggleSavePost,renderEmergency,renderSavedPosts,followAction,requestCall,declineCall,allowCallMsg,togglePrivateAccount,renderFollowRequests,acceptFollowReq,declineFollowReq,admToggleHl,filterAdminHub,admAssignCaptain,admChangeBatch,admRefund,admCancelBooking,admInvoice,renderAdminUsers,paintUsers,admNotifyUser,renderAdminPayments,admPayFilter,admExportCSV,admRevenueCSV,renderAdminGear,gearAdj,gearAddItem,gearDelItem,gearSeed,renderAdminCommunity,admDeletePost,admFeaturePost,renderAdminPermits,permSet,renderAdminSupport,ticketReply,ticketResolve,raiseTicket,renderAdminCRM,crmSearch,crmOpen,renderAdminAI,saveAiCfg,renderAdminVendors,vendorSet,openVendorDash,renderVendorDash,applyVendor,vendorAddListing,vendorToggleListing,vendorDelListing});
 
 /* init */
 applyTheme();   /* dark / light / system theme */
@@ -8506,6 +9171,7 @@ loadTreks();    /* pull live treks from Supabase if configured (else built-in) *
 loadDestinations().then(()=>{try{if(document.querySelector('#dests.active'))renderDests();}catch(e){}}).catch(()=>{});
 renderHomeNews();     /* trek news & alerts strip on home */
 loadReviews();        /* pull reviews so trek pages + the Reviews screen reflect them */
+loadAiCfg();          /* admin-editable message templates (welcome, SOS, planner) */
 refreshNotifBadge();  /* show red dot if there's new community activity */
 setInterval(refreshNotifBadge,60000);  /* poll for new activity every minute */
 handleDeepLink();     /* open a trek directly from a shared link */

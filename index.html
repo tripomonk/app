@@ -2215,6 +2215,131 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .adm-kpi small{display:block;font-size:10px;color:var(--muted);margin-top:4px}
   .adm-kpi.warn{border-color:rgba(255,206,31,.42);background:rgba(255,206,31,.08)}
   .adm-kpi.warn b{color:#ffce1f}
+  /* ---- KPI dashboard (command centre) ---- */
+  .dash-kgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:4px}
+  .dash-kpi{position:relative;background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:14px 14px 13px;min-width:0}
+  .dash-kpi-ic{position:absolute;top:12px;right:12px;font-size:20px;color:var(--accent2);opacity:.55}
+  .dash-kpi b{display:block;font-size:22px;line-height:1.1;letter-spacing:-.01em;overflow-wrap:anywhere;padding-right:24px}
+  .dash-kpi small{display:block;font-size:11px;color:var(--muted);margin-top:5px}
+  .dash-kpi.g .dash-kpi-ic{color:#12b76a}
+  .dash-kpi.g b{color:#3ddc84}
+  .dash-kpi.warn{border-color:rgba(255,206,31,.42);background:rgba(255,206,31,.07)}
+  .dash-kpi.warn .dash-kpi-ic,.dash-kpi.warn b{color:#ffce1f}
+  .dash-vbars{display:flex;align-items:flex-end;gap:4px;height:120px;padding:8px 2px 0;background:var(--card);border:1px solid var(--stroke);border-radius:16px;margin-bottom:4px}
+  .dvb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:5px;min-width:0}
+  .dvb-bar{width:76%;max-width:16px;border-radius:5px 5px 2px 2px;background:linear-gradient(180deg,var(--accent2),var(--accent));min-height:3px}
+  .dvb small{font-size:8.5px;color:var(--muted2)}
+  .dash-hbars{display:flex;flex-direction:column;gap:9px;background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:14px;margin-bottom:4px}
+  .dhb{display:flex;align-items:center;gap:10px;font-size:12px}
+  .dhb-l{flex:0 0 40%;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+  .dhb-track{flex:1;height:8px;border-radius:999px;background:var(--stroke);overflow:hidden}
+  .dhb-bar{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+  .dhb-v{flex:none;font-weight:700;color:var(--muted);min-width:20px;text-align:right}
+  /* ---- role-based admin: role banner, grouped hub headers, staff roles ---- */
+  .adm-rolebar{display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:16px;margin:2px 0 14px;
+    background:linear-gradient(135deg,rgba(47,107,255,.16),rgba(47,107,255,.04));border:1px solid rgba(47,107,255,.28)}
+  .adm-rolebar>.msr{font-size:26px;color:var(--accent2);flex:none}
+  .adm-rolebar b{font-size:15px;display:block}
+  .adm-rolebar small{font-size:11.5px;color:var(--muted)}
+  .adm-grp-h{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted2);margin:16px 2px 8px}
+  .adm-grp-h:first-child{margin-top:2px}
+  .staff-row{display:flex;align-items:center;gap:11px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:11px 13px;margin-bottom:9px}
+  .staff-row>.ic{flex:none;color:var(--accent2)}
+  .staff-tx{flex:1;min-width:0}
+  .staff-tx b{display:block;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .adm-role-sel{margin-top:5px;background:rgba(255,255,255,.08);border:1px solid var(--stroke);border-radius:9px;color:var(--text);font-family:var(--font);font-size:11.5px;font-weight:600;padding:4px 8px;cursor:pointer}
+  html.light .adm-role-sel{background:rgba(12,24,44,.05)}
+  .adm-role-tag{display:inline-block;margin-top:5px;font-size:11px;font-weight:700;color:var(--accent2);background:rgba(47,107,255,.14);border:1px solid rgba(47,107,255,.3);border-radius:8px;padding:2px 9px}
+  /* ---- booking ops actions + users list ---- */
+  .adm-bk-ops{margin-top:10px;padding-top:10px;border-top:1px solid var(--stroke);display:flex;flex-direction:column;gap:8px}
+  .adm-bk-opsrow{display:flex;align-items:center;gap:9px}
+  .adm-bk-opsrow>.msr{font-size:18px;color:var(--accent2);flex:none}
+  .adm-bk-opsrow select{flex:1;min-width:0}
+  .adm-bk-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
+  .adm-bk-btns button{flex:1;min-width:96px;display:inline-flex;align-items:center;justify-content:center;gap:5px;height:38px;border-radius:10px;border:1px solid var(--stroke);background:rgba(255,255,255,.06);color:var(--text);font-family:var(--font);font-weight:700;font-size:12px;cursor:pointer}
+  .adm-bk-btns button .msr{font-size:16px}
+  .adm-bk-btns button.danger{color:#ff6b6b;border-color:rgba(255,90,90,.35)}
+  .usr-row{display:flex;align-items:center;gap:11px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:9px 11px;margin-bottom:9px}
+  .usr-av{flex:none;cursor:pointer}
+  .usr-tx{flex:1;min-width:0;cursor:pointer}
+  .usr-tx b{display:block;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .usr-tx small{display:block;font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .usr-act{flex:none;width:40px;height:40px;border-radius:50%;border:1px solid var(--stroke);background:rgba(255,255,255,.06);color:var(--accent2);display:grid;place-items:center;cursor:pointer}
+  .usr-act .msr{font-size:19px}
+  /* ---- payments console ---- */
+  .pay-chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 0 12px;padding-bottom:2px}
+  .pay-chips::-webkit-scrollbar{display:none}
+  .pay-chip{flex:none;padding:7px 14px;border-radius:999px;border:1px solid var(--stroke);background:var(--card);color:var(--muted);font-family:var(--font);font-weight:700;font-size:12px;cursor:pointer}
+  .pay-chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .pay-row{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:11px 13px;margin-bottom:9px}
+  .pay-main{flex:1;min-width:0}
+  .pay-main b{display:block;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pay-main small{display:block;font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pay-pid{display:block;font-size:9.5px;color:var(--muted2);font-family:ui-monospace,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pay-rt{flex:none;text-align:right}
+  .pay-rt>b{display:block;font-size:14.5px}
+  .pay-st{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;margin-top:3px}
+  .pay-st.paid{color:#3ddc84;background:rgba(18,183,106,.14)}
+  .pay-st.refunded{color:#ffce1f;background:rgba(255,206,31,.14)}
+  .pay-st.cancelled{color:#ff6b6b;background:rgba(255,90,90,.14)}
+  .pay-acts{display:flex;gap:6px;justify-content:flex-end;margin-top:6px}
+  .pay-acts button{width:34px;height:34px;border-radius:9px;border:1px solid var(--stroke);background:rgba(255,255,255,.06);color:var(--accent2);display:grid;place-items:center;cursor:pointer}
+  .pay-acts button .msr{font-size:17px}
+  /* ---- gear inventory ---- */
+  .gear-item{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:12px 13px;margin-bottom:10px}
+  .gear-h{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .gear-h b{font-size:14px}
+  .gear-av{font-size:11px;font-weight:700;color:#3ddc84;background:rgba(18,183,106,.14);padding:2px 9px;border-radius:999px}
+  .gear-av.out{color:#ff6b6b;background:rgba(255,90,90,.14)}
+  .gear-cells{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:11px}
+  .gear-cell{text-align:center;min-width:0}
+  .gear-cell>small{display:block;font-size:9.5px;color:var(--muted2);margin-bottom:4px}
+  .gear-step{display:flex;align-items:center;justify-content:center;gap:6px}
+  .gear-step button{width:26px;height:26px;border-radius:8px;border:1px solid var(--stroke);background:rgba(255,255,255,.06);color:var(--accent2);font-size:16px;font-weight:700;cursor:pointer;line-height:1}
+  .gear-step b{min-width:18px;font-size:14px}
+  .gear-del{margin-top:10px;background:none;border:0;color:#ff7a7a;font-size:11.5px;font-weight:600;cursor:pointer;padding:0}
+  /* ---- community moderation ---- */
+  .mod-row{display:flex;align-items:center;gap:11px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:9px 11px;margin-bottom:9px}
+  .mod-thumb{flex:none;width:46px;height:46px;border-radius:10px;background:#12243f center/cover no-repeat;display:grid;place-items:center}
+  .mod-thumb.noimg .msr{font-size:20px;color:var(--muted2)}
+  .mod-tx{flex:1;min-width:0;cursor:pointer}
+  .mod-tx b{display:block;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mod-tx small{display:block;font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mod-acts{display:flex;gap:6px;flex:none}
+  .mod-acts button{width:36px;height:36px;border-radius:9px;border:1px solid var(--stroke);background:rgba(255,255,255,.06);color:var(--muted);display:grid;place-items:center;cursor:pointer}
+  .mod-acts button.on{color:#ffce1f;border-color:rgba(255,206,31,.4)}
+  .mod-acts button.danger{color:#ff6b6b;border-color:rgba(255,90,90,.35)}
+  .mod-acts button .msr{font-size:18px}
+  /* ---- permits + support tickets (shared row) ---- */
+  .tk-row{display:flex;align-items:flex-start;gap:10px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:12px 13px;margin-bottom:9px}
+  .tk-tx{flex:1;min-width:0}
+  .tk-tx b{display:block;font-size:13px}
+  .tk-tx small{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
+  .tk-links{display:block;font-size:11.5px;margin-top:5px}
+  .tk-links a{color:var(--accent2);font-weight:600;text-decoration:none}
+  .tk-rt{flex:none;text-align:right}
+  .tk-st{display:inline-block;font-size:10px;font-weight:700;padding:2px 9px;border-radius:999px;text-transform:capitalize}
+  .tk-st.pending,.tk-st.open{color:#ffce1f;background:rgba(255,206,31,.14)}
+  .tk-st.approved,.tk-st.answered{color:#3ddc84;background:rgba(18,183,106,.14)}
+  .tk-st.rejected{color:#ff6b6b;background:rgba(255,90,90,.14)}
+  .tk-st.resolved{color:var(--muted);background:rgba(255,255,255,.08)}
+  .tk-st.suspended{color:#ff6b6b;background:rgba(255,90,90,.14)}
+  /* ---- vendor / partner dashboard ---- */
+  .vend-hero{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,rgba(47,107,255,.14),rgba(47,107,255,.03));border:1px solid rgba(47,107,255,.26);border-radius:16px;padding:14px 15px;margin-top:4px}
+  .vend-hero>.msr{font-size:30px;color:var(--accent2);flex:none}
+  .vend-hero b{display:block;font-size:16px}
+  .vend-hero small{font-size:12px;color:var(--muted)}
+  .tk-acts{display:flex;gap:6px;justify-content:flex-end;margin-top:8px}
+  .tk-acts button{padding:5px 11px;border-radius:9px;border:1px solid var(--stroke);background:rgba(255,255,255,.06);color:var(--text);font-family:var(--font);font-weight:700;font-size:11.5px;cursor:pointer}
+  .tk-acts button.ok{color:#3ddc84;border-color:rgba(18,183,106,.4)}
+  .tk-acts button.no{color:#ff6b6b;border-color:rgba(255,90,90,.35)}
+  /* ---- CRM customer 360 ---- */
+  .crm-hero{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:13px 14px}
+  .crm-hero b{display:block;font-size:16px}
+  .crm-hero small{font-size:12px;color:var(--muted)}
+  .crm-item{background:var(--card);border:1px solid var(--stroke);border-radius:12px;padding:10px 12px;margin-bottom:8px}
+  .crm-item b{display:block;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .crm-item small{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
   .adm-act{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--stroke);
     border-radius:14px;padding:11px 12px;margin-bottom:8px;cursor:pointer;transition:transform .12s}
   .adm-act:active{transform:scale(.99)}
@@ -3649,6 +3774,12 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   <section class="view flow" id="dataPrivacy" data-nonav>
     <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Data &amp; privacy</h1></div>
     <div id="dataPrivacyBody" style="padding:0 16px calc(var(--safe-bottom) + 24px)"></div>
+  </section>
+
+  <!-- VENDOR / PARTNER DASHBOARD -->
+  <section class="view flow" id="vendorDash" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Partner dashboard</h1></div>
+    <div id="vendorDashBody" style="padding:0 16px calc(var(--safe-bottom) + 24px)"></div>
   </section>
 
   <!-- FOLLOW REQUESTS -->
