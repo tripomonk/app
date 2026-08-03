@@ -562,16 +562,16 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .inspire{position:relative}
   .insp-track{display:flex;align-items:flex-start;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
   .insp-track::-webkit-scrollbar{display:none}
-  .insp-slide{flex:none;width:100%;scroll-snap-align:center;box-sizing:border-box;padding:15px 18px;min-height:0;
-    display:flex;flex-direction:column;justify-content:center;border-radius:18px;
-    background:linear-gradient(135deg,rgba(47,107,255,.14),rgba(47,107,255,.03));border:1px solid rgba(47,107,255,.22)}
-  .insp-slide.fact{background:linear-gradient(135deg,rgba(255,122,69,.13),rgba(255,122,69,.03));border-color:rgba(255,122,69,.24)}
-  .insp-badge{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--accent2);margin-bottom:12px}
-  .insp-slide.fact .insp-badge{color:#ff9d2f}
-  .insp-badge .msr{font-size:15px}
-  .insp-x{font-size:16.5px;line-height:1.5;font-weight:600;color:var(--text);margin:0}
+  .insp-slide{flex:none;width:100%;scroll-snap-align:center;box-sizing:border-box;padding:13px 15px;min-height:0;
+    display:flex;flex-direction:column;justify-content:center;border-radius:15px;
+    background:linear-gradient(135deg,rgba(47,107,255,.13),rgba(47,107,255,.03));border:1px solid rgba(47,107,255,.2)}
+  .insp-slide.fact{background:linear-gradient(135deg,rgba(255,122,69,.12),rgba(255,122,69,.03));border-color:rgba(255,122,69,.22)}
+  .insp-badge{display:inline-flex;align-items:center;gap:4px;align-self:flex-start;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--accent2);margin-bottom:8px;padding:3px 8px;border-radius:999px;background:rgba(47,107,255,.14)}
+  .insp-slide.fact .insp-badge{color:#ff9d2f;background:rgba(255,122,69,.14)}
+  .insp-badge .msr{font-size:12px}
+  .insp-x{font-size:13.5px;line-height:1.45;font-weight:600;color:var(--text);margin:0}
   .insp-slide.quote .insp-x{font-style:italic}
-  .insp-a{margin-top:11px;font-size:12.5px;font-weight:700;color:var(--muted)}
+  .insp-a{margin-top:7px;font-size:11px;font-weight:700;color:var(--muted)}
   .insp-dots{display:flex;justify-content:center;flex-wrap:wrap;gap:6px;margin-top:13px}
   .insp-dot{width:6px;height:6px;border-radius:50%;background:var(--stroke);transition:width .25s,background .25s}
   .insp-dot.on{width:18px;border-radius:3px;background:var(--accent2)}
@@ -635,6 +635,40 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .trip-cta-price small{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
   .trip-cta-price b{font-size:19px;color:var(--text)}
   .trip-cta-bar .btn{flex:1;margin:0}
+  /* ---------- Emergency Contacts page ---------- */
+  .em-sos{margin:6px 0 4px;padding:16px;border-radius:18px;background:linear-gradient(135deg,rgba(255,60,60,.16),rgba(255,60,60,.04));border:1px solid rgba(255,80,80,.4)}
+  .em-sos-h{display:flex;align-items:center;gap:12px}
+  .em-sos-h .msr{font-size:30px;color:#ff5a5a;flex:none}
+  .em-sos-h b{font-size:15.5px;display:block}
+  .em-sos-h small{font-size:12px;color:var(--muted);display:block;margin-top:2px}
+  .em-sos-btns{display:flex;gap:10px;margin-top:14px}
+  .em-cta{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:7px;height:46px;border-radius:13px;font-size:14px;font-weight:700;text-decoration:none;color:#fff}
+  .em-cta .msr{font-size:19px}
+  .em-cta.call{background:#ff4d4d}
+  .em-cta.wa{background:#1fb154}
+  .em-steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px}
+  .em-steps li{font-size:13px;color:var(--muted);line-height:1.5}
+  .em-steps b{color:var(--text)}
+  .em-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .em-num{display:flex;flex-direction:column;align-items:center;gap:3px;padding:13px 6px;border-radius:14px;background:var(--card);border:1px solid var(--stroke);text-decoration:none}
+  .em-num .msr{font-size:22px;color:var(--accent2)}
+  .em-num b{font-size:16px;color:var(--text)}
+  .em-num small{font-size:10px;color:var(--muted);text-align:center;line-height:1.2}
+  .em-contact{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 15px;border-radius:14px;background:var(--card);border:1px solid var(--stroke)}
+  .em-c-tx b{font-size:14px;display:block}.em-c-tx small{font-size:12.5px;color:var(--muted)}
+  .em-mini{width:42px;height:42px;flex:none;border-radius:50%;display:grid;place-items:center;background:rgba(31,177,84,.16);color:#1fb154;text-decoration:none}
+  .em-mini .msr{font-size:20px}
+  .em-empty{font-size:13px;color:var(--muted);line-height:1.6;padding:14px 15px;border-radius:14px;background:var(--card);border:1px dashed var(--stroke)}
+  /* ---------- empty states: Saved Posts + Passport ---------- */
+  .ss-empty,.pp-empty{text-align:center;padding:40px 24px;display:flex;flex-direction:column;align-items:center;gap:6px}
+  .ss-empty .msr{font-size:52px;color:var(--muted2);margin-bottom:4px}
+  .ss-empty b,.pp-empty b{font-size:16px;color:var(--text)}
+  .ss-empty p,.pp-empty p{font-size:13px;color:var(--muted);line-height:1.55;margin:2px 0 12px;max-width:280px}
+  .pp-empty{margin:2px 0 4px;border-radius:18px;background:linear-gradient(180deg,rgba(47,107,255,.10),rgba(47,107,255,.02));border:1px solid rgba(47,107,255,.2)}
+  .pp-empty-ic{font-size:46px;line-height:1;margin-bottom:2px}
+  /* saved (bookmark) icon on a post */
+  .ig-save{cursor:pointer;color:var(--text)}
+  .ig-save.on .msr{color:var(--accent2)}
   .blk{padding:0 16px}
   .blk h2{font-size:16px;font-weight:600;margin:22px 0 10px}
   .blk p{font-size:13.5px;line-height:1.65;color:var(--muted);margin:0}
@@ -1889,6 +1923,10 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .post .ig-book .ig-book-go svg{transform:scaleX(-1)}
   /* --- My Bookings --- */
   .bk-list{display:flex;flex-direction:column;gap:14px;padding-top:4px}
+  .bk-sec{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:16px 2px 2px}
+  .bk-sec:first-child{margin-top:6px}
+  .bk-past{opacity:.82}
+  .bk-past .bkcard{filter:saturate(.85)}
   .bkcard{background:var(--card);border:1px solid var(--stroke);border-radius:18px;overflow:hidden;box-shadow:0 8px 24px -18px rgba(0,0,0,.6)}
   .bk-hero{position:relative;height:132px;background-size:cover;background-position:center;background-color:var(--card2);cursor:pointer}
   .bk-hero:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.02) 35%,rgba(0,0,0,.62))}
@@ -2420,7 +2458,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
 
   /* ---- home: host trips rail ---- */
   .hostrail{display:flex;gap:13px;overflow-x:auto;scrollbar-width:none;scroll-snap-type:x mandatory;
-    margin:0 -18px;padding:2px 18px 6px}
+    margin:0 -18px;padding:2px 18px 6px;scroll-padding-left:18px}
   .hostrail::-webkit-scrollbar{display:none}
   .htcard{flex:none;width:238px;scroll-snap-align:start;border-radius:22px;overflow:hidden;cursor:pointer;
     position:relative;background:var(--card);border:1px solid var(--stroke);
@@ -2785,6 +2823,19 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
     box-shadow:0 10px 22px -8px rgba(47,107,255,.7);transition:transform .1s}
   .fcx-go:active{transform:scale(.96)}
   .fcx-go .msr{font-size:18px}
+  /* road-trip coverflow card: image badges + a slightly smaller (cf-sm) variant */
+  .fcx-dep{position:absolute;top:10px;right:10px;background:rgba(8,15,28,.6);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.24);color:#fff;font-size:10px;font-weight:700;padding:4px 10px;border-radius:999px}
+  .fcx-offer{position:absolute;top:10px;left:10px;display:inline-flex;align-items:center;gap:4px;background:#ffff00;color:#1a1a00;font-size:10px;font-weight:800;padding:4px 9px;border-radius:7px;max-width:66%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .fcx-offer .msr{font-size:12px}
+  .coverflow.cf-sm{padding:8px 18px 16px}
+  .coverflow.cf-sm .fcx{flex:0 0 74%;max-width:296px}
+  .cf-sm .fcx-img{height:158px}
+  .cf-sm .fcx-bd{padding:12px 14px 14px}
+  .cf-sm .fcx-bd h3{font-size:17px}
+  .cf-sm .fcx-desc{margin-bottom:11px}
+  .cf-sm .fcx-stats{padding-top:10px}
+  .cf-sm .fcx-price{font-size:17px}
+  .cf-sm .fcx-go{height:40px;padding:0 15px;font-size:12.5px}
 
   /* — trek news / alerts: cards with priority label above — */
   .nsec{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.3px;margin:0 2px 8px}
@@ -2807,7 +2858,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .ncard2 .nread{margin-left:auto;display:inline-flex;align-items:center;gap:2px;color:var(--accent2);font-weight:600}
   .ncard2 .nread svg{transform:scaleX(-1)}
   /* home news as a horizontal card row */
-  .news-hrow{display:flex;gap:14px;overflow-x:auto;scrollbar-width:none;margin:0 -18px;padding:2px 18px 8px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+  .news-hrow{display:flex;gap:14px;overflow-x:auto;scrollbar-width:none;margin:0 -18px;padding:2px 18px 8px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scroll-padding-left:18px}
   .news-hrow::-webkit-scrollbar{display:none}
   .news-hrow .ncard2{flex:0 0 82%;max-width:300px;scroll-snap-align:start;margin-bottom:0}
   /* inline priority pill (news detail popup) */
@@ -3559,6 +3610,63 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   <section class="view flow" id="dataPrivacy" data-nonav>
     <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Data &amp; privacy</h1></div>
     <div id="dataPrivacyBody" style="padding:0 16px calc(var(--safe-bottom) + 24px)"></div>
+  </section>
+
+  <!-- EMERGENCY CONTACTS -->
+  <section class="view flow" id="emergency" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Emergency Contacts</h1></div>
+    <div id="emergencyBody" style="padding:0 16px calc(var(--safe-bottom) + 24px)"></div>
+  </section>
+
+  <!-- SAVED POSTS -->
+  <section class="view flow" id="savedPosts" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Saved Posts</h1></div>
+    <div id="savedPostsBody" style="padding:0 12px calc(var(--safe-bottom) + 24px)"></div>
+  </section>
+
+  <!-- TERMS & CONDITIONS -->
+  <section class="view flow" id="terms" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Terms &amp; Conditions</h1></div>
+    <div class="doc">
+      <p class="doc-note">Effective date: 3 August 2026. These terms are a binding agreement between you and Tripomonk Travel Private Limited (“Tripomonk”, “we”, “us”). By booking a trek, tour or activity, or by using this app, you accept these terms.</p>
+      <h3>1. Bookings &amp; payments</h3>
+      <ul>
+        <li>A booking is confirmed only after we receive the required advance (25% of the trip price unless stated otherwise) and you receive a confirmation.</li>
+        <li>The balance is due before departure as shown on your booking, ticket or invoice.</li>
+        <li>Prices are per person in INR and may change until a booking is confirmed. Offers apply only within their stated validity and conditions.</li>
+        <li>Payments are processed by Razorpay. We never see or store your card, UPI PIN, bank or wallet credentials.</li>
+      </ul>
+      <h3>2. Cancellations &amp; refunds</h3>
+      <ul>
+        <li>More than 30 days before departure — full refund, less payment-gateway charges.</li>
+        <li>15–29 days before — 75% refund.</li>
+        <li>7–14 days before — 50% refund.</li>
+        <li>Less than 7 days before, or no-show — no refund.</li>
+        <li>If Tripomonk cancels for weather or safety reasons, you get a full refund or a free date change.</li>
+        <li>Refunds are made to the original payment method within 7–10 working days.</li>
+      </ul>
+      <h3>3. Safety &amp; risk</h3>
+      <p>Trekking and adventure activities in the Himalaya carry inherent risks — altitude, weather, terrain and remoteness. You take part voluntarily and accept these risks. Our trek leaders may change the route, turn a group back, or cancel any activity when safety requires it; their decision is final.</p>
+      <h3>4. Health &amp; fitness</h3>
+      <p>You confirm you are medically fit for the trek you book and will disclose any condition, allergy or medication that could affect your safety. We may ask for a fitness declaration or medical certificate and may decline participation on safety grounds.</p>
+      <h3>5. Your responsibilities</h3>
+      <ul>
+        <li>Carry valid government ID and any required permits (we assist with forest / eco-zone permits as a service).</li>
+        <li>Follow your trek leader’s instructions and the local laws, culture and environment. Leave no trace.</li>
+        <li>Arrive at the pickup point on time; we are not responsible for missed departures due to your late arrival or your own travel to the base city.</li>
+      </ul>
+      <h3>6. Changes by us</h3>
+      <p>Itineraries are indicative. Weather, permits, road conditions or group safety may require changes to the route, campsites, inclusions or dates. We will always aim to give you the closest possible experience.</p>
+      <h3>7. Liability</h3>
+      <p>To the extent permitted by law, Tripomonk is not liable for loss, injury, delay or expense arising from events beyond our reasonable control, or from your failure to follow instructions. We strongly recommend personal travel and medical insurance.</p>
+      <h3>8. Community content</h3>
+      <p>You are responsible for what you post in the app. Don’t post unlawful, offensive or infringing content. We may remove content or accounts that breach these terms.</p>
+      <h3>9. Governing law</h3>
+      <p>These terms are governed by the laws of India, with courts in Uttarakhand having jurisdiction.</p>
+      <h3>10. Contact</h3>
+      <p>Questions about these terms? Reach us any time from Help &amp; Support in the app, or on our WhatsApp helpline.</p>
+      <p class="doc-note" style="margin-top:14px">By continuing to use Tripomonk you acknowledge that you have read and agree to these Terms &amp; Conditions.</p>
+    </div>
   </section>
 
   <section class="view flow" id="privacy" data-nonav>

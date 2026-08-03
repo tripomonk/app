@@ -2156,7 +2156,7 @@ function renderHome(){
   renderGiftHome();
   /* seed the rail from the last cached copy so it appears instantly on repeat visits */
   const cLt=swrGet('livehosttrips'),cVh=swrGet('verifiedhosts');
-  if(cLt&&Array.isArray(cLt.data))liveHostTrips=cLt.data;
+  if(cLt&&Array.isArray(cLt.data))liveHostTrips=cLt.data.filter(t=>!hostTripEnded(t));   /* stale cache may hold trips that ended overnight */
   if(cVh&&Array.isArray(cVh.data)){verifiedHosts=cVh.data;verifiedHosts.forEach(h=>{if(h&&h.name)hostByName[h.name]=true;});}
   if(liveHostTrips.length||verifiedHosts.length){
     loadAuthorPhotos(liveHostTrips.map(t=>t.host_name).concat(verifiedHosts.map(h=>h.name))).catch(()=>{}).then(()=>renderHomeHosts());
@@ -2229,14 +2229,37 @@ function roadTripCard(t){
         <div class="rt-ft"><span class="rt-p"><small>from</small> <b>${INR(t.price||0)}</b></span><span class="rt-go">View trip ${ic('back',13)}</span></div>
       </div></div>`;
 }
+/* Home "Featured Road Trips" card — mirrors the Popular Treks coverflow card
+   (trekCardCF) so both rails read the same, just rendered slightly smaller. */
+function tripCardCF(t,i){
+  const dest=(destById(t.dest_id)||{}).n||t.region||'';
+  const of=(t.offer||'').trim();
+  const img=normalizeImageUrl(t.img||'');
+  return `<div class="fcx" data-cf="${i}" onclick="cfTapCard(this)">
+    <div class="fcx-img" style="background-image:url('${img}')">${of?`<span class="fcx-offer"><span class="msr">local_offer</span>${esc(of)}</span>`:''}<span class="fcx-dep">${esc(depLabel(t))}</span></div>
+    <div class="fcx-bd">
+      <h3>${esc(t.n)}</h3>
+      <div class="fcx-loc">${ic('pin',13)} ${esc(dest)}</div>
+      <div class="fcx-desc">${esc(t.desc||'A guided road trip with Tripomonk.')}</div>
+      <div class="fcx-stats">
+        <div><small>Duration</small><b>${t.days?esc(String(t.days))+' days':esc(t.dur||'—')}</b></div>
+        <div><small>Best time</small><b>${esc(t.best||'—')}</b></div>
+        <div><small>Rating</small><b>★ ${esc(String(t.r||'—'))}</b></div>
+      </div>
+      <div class="fcx-foot"><div><small>From</small><div class="fcx-price">₹${Number(t.price||0).toLocaleString('en-IN')}</div></div>
+        <button class="fcx-go" onclick="event.stopPropagation();cfOpenCard(this)">View trip</button></div>
+    </div></div>`;
+}
 function renderHomeTours(){
   const sec=document.getElementById('homeToursSec'),rail=document.getElementById('homeTours');
   if(!rail)return;
   const list=tourList();
-  if(!list.length){if(sec)sec.style.display='none';rail.innerHTML='';return;}
+  if(!list.length){if(sec)sec.style.display='none';rail.className='';rail.innerHTML='';return;}
   if(sec)sec.style.display='';
-  rail.innerHTML=list.slice(0,10).map(roadTripCard).join('');
-  hydrate(rail);
+  /* same coverflow as Popular Treks, but with the cf-sm modifier = slightly smaller */
+  makeCoverflow('homeTours',list.slice(0,10),tripCardCF,t=>openDetail(t.idx));
+  rail.classList.add('cf-sm');
+  if(rail._cfResize)rail._cfResize();
 }
 
 /* filters */
@@ -2331,7 +2354,12 @@ const COND_TTL=3*60*60*1000;
 async function loadConditions(t){
   const c=coordsFor(t),key=condKey(c);
   const cached=swrGet(key);
-  if(cached&&cached.data&&(Date.now()-cached.t<COND_TTL))return cached.data;
+  /* Use the cache only while it's fresh AND still starts on today's date — otherwise a
+     forecast fetched yesterday keeps labelling yesterday as "Today". Refetch at the day boundary. */
+  if(cached&&cached.data&&(Date.now()-cached.t<COND_TTL)){
+    const d0=cached.data.days&&cached.data.days[0]&&cached.data.days[0].date;
+    if(!d0||d0>=localTodayISO())return cached.data;
+  }
   const q='latitude='+c[0]+'&longitude='+c[1]+'&timezone=auto';
   try{
     const [w,a]=await Promise.all([
@@ -2353,17 +2381,25 @@ async function loadConditions(t){
 }
 /* Open-Meteo weathercode → a simple emoji */
 function wxIcon(code){code=+code||0;if(code===0)return '☀️';if(code<=3)return '⛅';if(code<=48)return '🌫️';if(code<=67)return '🌧️';if(code<=77)return '❄️';if(code<=82)return '🌧️';return '⛈️';}
+/* local calendar date as YYYY-MM-DD — used to keep the forecast pinned to the real today */
+function localTodayISO(){const d=new Date(),p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
 function forecastStrip(days){
   if(!Array.isArray(days)||!days.length)return '';
+  const today=localTodayISO();
+  /* drop any days before today so a slightly-stale cache never shows yesterday as "Today" */
+  let list=days.filter(d=>!d.date||d.date>=today);
+  if(!list.length)list=days;
+  list=list.slice(0,7);
   const dn=d=>{try{return new Date(d+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short'});}catch(e){return '';}};
   const dd=d=>{try{return new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});}catch(e){return '';}};
-  return '<div class="fc-strip">'+days.slice(0,7).map((d,i)=>`<div class="fc-day${i===0?' today':''}">`
-    +`<span class="fc-dn">${i===0?'Today':esc(dn(d.date))}</span>`
+  return '<div class="fc-strip">'+list.map((d,i)=>{const isToday=d.date?d.date===today:(i===0);
+    return `<div class="fc-day${isToday?' today':''}">`
+    +`<span class="fc-dn">${isToday?'Today':esc(dn(d.date))}</span>`
     +`<span class="fc-dd">${esc(dd(d.date))}</span>`
     +`<span class="fc-ic">${wxIcon(d.code)}</span>`
     +`<span class="fc-t">${d.tmax!=null?Math.round(d.tmax)+'°':'—'}</span>`
     +`<span class="fc-tl">${d.tmin!=null?Math.round(d.tmin)+'°':''}</span>`
-    +`</div>`).join('')+'</div>';
+    +`</div>`;}).join('')+'</div>';
 }
 function factsHTML(t,live){
   const fc=(live&&live.days)?forecastStrip(live.days):'';
@@ -2408,7 +2444,7 @@ function renderDetailFacts(t){
     if(!el||cart.trek!==t)return;            /* user moved on while it loaded */
     el.innerHTML=factsHTML(t,live);
     const note=el.parentElement&&el.parentElement.querySelector('.dfacts-src');
-    if(note)note.textContent=live.exact?'Today · Open-Meteo':'Today · nearest station in '+(t.region||'the region');
+    if(note)note.textContent=live.exact?'Live forecast · Open-Meteo':'Area forecast for '+(t.region||'this region')+' · Open-Meteo';
     hydrate(el);
   }).catch(()=>{});
 }
@@ -2551,7 +2587,7 @@ function renderTripWeather(t){
     const fc=(live&&live.days)?forecastStrip(live.days):'';
     if(!fc){if(blk)blk.style.display='none';return;}
     if(blk)blk.style.display='';
-    box.innerHTML=fc+'<div class="dfacts-src" style="margin-top:8px">'+(live.exact?'Open-Meteo · updated today':'Nearest station in '+esc(t.region||'the region'))+'</div>';
+    box.innerHTML=fc+'<div class="dfacts-src" style="margin-top:8px">'+(live.exact?'Live forecast · Open-Meteo':'Area forecast for '+esc(t.region||'this region')+' · Open-Meteo')+'</div>';
   };
   const cached=swrGet(condKey(coordsFor(t)));
   paint(cached?cached.data:null);
@@ -3064,10 +3100,35 @@ function guardianSOS(){
      112 is right above as a one-tap call for a true life-threatening emergency */
   wa('🆘 SOS — I need help on '+name+'.\nBooking: '+((b&&b.id)||'—')+'\nPlease call me / send help. If this is life-threatening I am also calling 112.');
 }
+/* best-effort trip date for a booking, as YYYY-MM-DD — used to split Upcoming vs Past.
+   Prefers a stamped startISO; else parses the human date label ("1 Sept", "15 Jun 2026",
+   "2026-09-01 · 6:30 AM"). Returns '' when it truly can't tell (then treated as upcoming). */
+const _BK_MON={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+function bookingStartISO(b){
+  if(b&&b.startISO)return b.startISO;
+  const s=String((b&&b.date)||'').trim();if(!s)return '';
+  let m=s.match(/(\d{4})-(\d{2})-(\d{2})/);if(m)return m[1]+'-'+m[2]+'-'+m[3];       /* already ISO */
+  m=s.match(/(\d{1,2})\s*([A-Za-z]{3,})\.?\s*(\d{4})?/);                              /* "1 Sept 2026" */
+  if(m){const mon=_BK_MON[m[2].toLowerCase().slice(0,3)];
+    if(mon!=null){const day=+m[1],pad=n=>String(n).padStart(2,'0');
+      let yr=m[3]?+m[3]:new Date().getFullYear();
+      let iso=yr+'-'+pad(mon+1)+'-'+pad(day);
+      if(!m[3]&&iso<todayISO(0)){iso=(yr+1)+'-'+pad(mon+1)+'-'+pad(day);}            /* no year + past → next year */
+      return iso;}}
+  return '';
+}
+function bookingIsPast(b){const iso=bookingStartISO(b);return iso?iso<todayISO(0):false;}
 function renderBookings(){
   const bs=getBookings();const box=document.getElementById('bookList');
   if(bs.length){
-    box.innerHTML='<div class="bk-list">'+bs.map(bookingCard).join('')+'</div>';
+    const up=[],past=[];
+    bs.forEach(b=>{(bookingIsPast(b)?past:up).push(b);});
+    up.sort((a,b)=>(bookingStartISO(a)||'9999').localeCompare(bookingStartISO(b)||'9999'));   /* soonest first */
+    past.sort((a,b)=>(bookingStartISO(b)||'').localeCompare(bookingStartISO(a)||''));          /* most recent first */
+    let html='';
+    if(up.length)html+='<div class="bk-sec">Upcoming</div><div class="bk-list">'+up.map(bookingCard).join('')+'</div>';
+    if(past.length)html+='<div class="bk-sec">Past trips</div><div class="bk-list bk-past">'+past.map(bookingCard).join('')+'</div>';
+    box.innerHTML=html;
   }else{
     const pop=treks.slice(0,6).map((t,i)=>bkPopCard(t,i)).join('');
     box.innerHTML=`<div class="bk-empty">
@@ -3528,12 +3589,13 @@ function postCard(p){
    ${textOnly?`<div class="ig-textpost">${linkifyMentions(esc(p.txt))}</div>`:''}
    ${p.trek?`<div class="ig-book" onclick="openDetailByName('${jsq(p.trek)}')"><span class="msr">confirmation_number</span><span>View trip &amp; book</span><span class="ig-book-go">${ic('back',15)}</span></div>`:''}
    ${tagged}
-   <div class="ig-actions">
+   <div class="ig-actions" style="display:flex;align-items:center;justify-content:space-between">
      <div class="ig-left">
        <span class="ig-ic ig-like ${liked?'liked':''}" onclick="likePost('${p.id}')">${ic('like',24)}${likeCount?`<b>${likeCount.toLocaleString('en-IN')}</b>`:''}</span>
        <span class="ig-ic ig-comment" onclick="openComments('${p.id}')">${ic('comment',24)}${nc?`<b>${nc}</b>`:''}</span>
        <span class="ig-ic" onclick="repostPost('${p.id}')" title="Repost to your feed">${ic('repeat',22)}</span>
      </div>
+     <span class="ig-ic ig-save${isSavedPost(p.id)?' on':''}" onclick="toggleSavePost('${p.id}',this)" title="Save post"><span class="msr" style="font-size:23px">${isSavedPost(p.id)?'bookmark':'bookmark_border'}</span></span>
    </div>
    ${(!textOnly&&p.txt)?`<div class="ig-cap ${p.txt.length>120?'clamp':''}" onclick="this.classList.remove('clamp')"><b onclick="event.stopPropagation();openPerson('${sn}')">${esc(handleFor(p.n))}</b> ${linkifyMentions(esc(p.txt))}</div>`:''}
    <div class="ig-comments" onclick="openComments('${p.id}')">${nc?`View all ${nc} comment${nc>1?'s':''}`:'Add a comment…'}</div>
@@ -4423,7 +4485,7 @@ async function loadHostTripsFor(name){
       if(match&&!seen.has(t.id)){seen.add(t.id);trips.push(t);}
     });
     trips.sort((a,b)=>String(a.start_date||'').localeCompare(String(b.start_date||'')));
-    return trips;
+    return trips.filter(t=>!hostTripEnded(t));   /* a host's public profile shows only current/upcoming trips */
   }catch(e){return [];}
 }
 async function renderPersonTrips(name){
@@ -4500,7 +4562,7 @@ function renderPassport(){
     <div class="sec" style="margin:4px 2px 10px"><h2 style="font-size:15px">Badges</h2></div>
     <div class="pp-badges">${badges.map(b=>`<div class="pp-badge ${b.on?'':'locked'}"><span class="em">${b.em}</span><b>${b.t}</b><small>${b.on?'Earned':b.d}</small></div>`).join('')}</div>
     <div class="sec" style="margin:20px 2px 10px"><h2 style="font-size:15px">Your Treks</h2></div>
-    ${bs.length?bs.map(b=>{const t=treks.find(x=>x.n===(b.trek||'').replace(' (Activity)',''));return `<div class="pp-stamp"><div class="ps-img" style="background-image:url('${b.img||(t?t.img:'')}')"></div><div class="ps-bd"><b>${esc(b.trek)}</b><small>${esc(b.date)}</small></div><span class="ps-done">${b.checkedIn?'✓ Completed':'Booked'}</span></div>`;}).join(''):`<div class="empty"><p>No treks yet — book your first to start your passport! 🏔️</p><button class="btn sm" style="margin-top:10px" onclick="go('explore')">Browse Treks</button></div>`}
+    ${bs.length?bs.map(b=>{const t=treks.find(x=>x.n===(b.trek||'').replace(' (Activity)',''));return `<div class="pp-stamp"><div class="ps-img" style="background-image:url('${b.img||(t?t.img:'')}')"></div><div class="ps-bd"><b>${esc(b.trek)}</b><small>${esc(b.date)}</small></div><span class="ps-done">${b.checkedIn?'✓ Completed':'Booked'}</span></div>`;}).join(''):`<div class="pp-empty"><span class="pp-empty-ic">🏔️</span><b>Your passport is waiting</b><p>Book your first trek and it’ll be stamped here — every journey, badge and summit you collect.</p><button class="btn" style="max-width:220px;margin:2px auto 0" onclick="go('explore')"><span class="msr">explore</span> Browse treks</button></div>`}
     <div style="height:20px"></div>`;
   hydrate(box);
 }
@@ -4602,7 +4664,7 @@ function accountMenuGroups(){
     ['Account & activity',[
       ['confirmation_number','My Bookings','bookings'],
       ['favorite','Wishlist','wishlist'],
-      ['bookmark','Saved Posts','soon:Saved posts'],
+      ['bookmark','Saved Posts','savedPosts'],
       ['notifications','Notifications','notifications'],
       ['chat','Messages','messages'],
       ['verified_user','Adventure Passport','passport'],
@@ -4628,10 +4690,10 @@ function accountMenuGroups(){
   groups.push(['Hosting',host]);
   groups.push(['Support & legal',[
     ['help','Help & Support','help'],
-    ['emergency','Emergency Contacts','soon:Emergency contacts'],
+    ['emergency','Emergency Contacts','emergency'],
     ['shield','Data & privacy','dataPrivacy'],
     ['lock','Privacy Policy','privacy'],
-    ['description','Terms & Conditions','soon:Terms & Conditions'],
+    ['description','Terms & Conditions','terms'],
     ['settings','Settings','settings']
   ]]);
   return groups;
@@ -4646,6 +4708,68 @@ function renderAccountMenu(){
     ? '<button type="button" class="amrow amlogout" onclick="menuGo(\'signout\')"><span class="msr amic">logout</span><span class="amt">Logout</span></button>'
     : '<button type="button" class="amrow amsignin" onclick="menuGo(\'login\')"><span class="msr amic">login</span><span class="amt">Sign in / Create account</span></button>';
   box.innerHTML=html;
+}
+/* ---- Emergency Contacts ---- */
+const EMERGENCY_NUMS=[
+  ['112','All-in-one emergency','emergency'],
+  ['108','Ambulance','ambulance'],
+  ['100','Police','local_police'],
+  ['101','Fire','local_fire_department'],
+  ['1363','Tourist helpline','support_agent'],
+  ['1070','Disaster helpline','crisis_alert']
+];
+function renderEmergency(){
+  const box=document.getElementById('emergencyBody');if(!box)return;
+  const wa=getWa();
+  const c=(typeof getContact==='function'?getContact():null)||{};
+  const emName=c.emName||'',emPhone=c.emPhone||'';
+  box.innerHTML=
+    '<div class="em-sos">'
+    +'<div class="em-sos-h"><span class="msr">sos</span><div><b>Tripomonk 24×7 helpline</b><small>Trek emergencies, delays, medical &amp; safety</small></div></div>'
+    +'<div class="em-sos-btns">'
+    +'<a class="em-cta call" href="tel:+'+esc(wa)+'"><span class="msr">call</span>Call now</a>'
+    +'<a class="em-cta wa" href="https://wa.me/'+esc(wa)+'?text='+encodeURIComponent('EMERGENCY — I need help on my Tripomonk trek.')+'" target="_blank" rel="noopener"><span class="msr">chat</span>WhatsApp</a>'
+    +'</div></div>'
+    +'<div class="sec" style="margin:18px 2px 8px"><h2 style="font-size:15px">On a trek, in an emergency</h2></div>'
+    +'<ol class="em-steps">'
+    +'<li>Stop, stay together and keep calm — don’t move or descend alone.</li>'
+    +'<li>Tell your <b>trek leader / guide</b> right away. They carry first-aid and know the evacuation route.</li>'
+    +'<li>Open <b>Trek Guardian</b> and hit <b>SOS</b> to share your live location.</li>'
+    +'<li>Call the Tripomonk helpline above, then the national numbers below if needed.</li>'
+    +'</ol>'
+    +'<button class="btn" style="margin:2px 0 16px" onclick="go(\'guardian\')"><span class="msr">health_and_safety</span> Open Trek Guardian &amp; SOS</button>'
+    +'<div class="sec" style="margin:8px 2px 8px"><h2 style="font-size:15px">National emergency numbers</h2></div>'
+    +'<div class="em-grid">'+EMERGENCY_NUMS.map(n=>'<a class="em-num" href="tel:'+esc(n[0])+'"><span class="msr">'+n[2]+'</span><b>'+esc(n[0])+'</b><small>'+esc(n[1])+'</small></a>').join('')+'</div>'
+    +'<div class="sec" style="margin:18px 2px 8px"><h2 style="font-size:15px">Your emergency contact</h2></div>'
+    +((emName||emPhone)
+       ? '<div class="em-contact"><div class="em-c-tx"><b>'+esc(emName||'Contact')+'</b><small>'+esc(emPhone||'—')+'</small></div>'+(emPhone?'<a class="em-mini" href="tel:'+esc(emPhone)+'"><span class="msr">call</span></a>':'')+'</div>'
+       : '<div class="em-empty">Add an emergency contact when you book a trek — it’s saved here and shared with your trek leader.</div>')
+    +'<div style="height:24px"></div>';
+  hydrate(box);
+}
+/* ---- Saved Posts (bookmark community posts, kept locally) ---- */
+function getSavedPostIds(){try{return JSON.parse(localStorage.getItem('tmk_savedposts')||'[]');}catch(e){return[];}}
+function isSavedPost(id){return getSavedPostIds().indexOf(String(id))>=0;}
+function toggleSavePost(id,el){
+  id=String(id);let a=getSavedPostIds();const i=a.indexOf(id);const nowSaved=i<0;
+  if(i>=0)a.splice(i,1);else a.unshift(id);
+  try{localStorage.setItem('tmk_savedposts',JSON.stringify(a.slice(0,200)));}catch(e){}
+  if(el){el.classList.toggle('on',nowSaved);const g=el.querySelector('.msr');if(g)g.textContent=nowSaved?'bookmark':'bookmark_border';}
+  toast(nowSaved?'Saved ✓':'Removed from Saved');
+  if(cur==='savedPosts')renderSavedPosts();
+}
+async function renderSavedPosts(){
+  const box=document.getElementById('savedPostsBody');if(!box)return;
+  const empty='<div class="ss-empty"><span class="msr">bookmark_border</span><b>No saved posts yet</b><p>Tap the bookmark on any community post to keep it here for later.</p><button class="btn" style="max-width:220px;margin:4px auto 0" onclick="go(\'community\')">Explore community</button></div>';
+  const ids=getSavedPostIds();
+  if(!ids.length){box.innerHTML=empty;hydrate(box);return;}
+  box.innerHTML='<div class="empty"><p>Loading your saved posts…</p></div>';
+  try{if(typeof loadPostsRemote==='function')await loadPostsRemote();}catch(e){}
+  const posts=ids.map(id=>postById(id)).filter(Boolean);
+  box.innerHTML=posts.length?posts.map(postCard).join('')
+    :'<div class="ss-empty"><span class="msr">bookmark_border</span><b>Nothing to show</b><p>Your saved posts may have been removed, or you’re offline.</p><button class="btn" style="max-width:220px;margin:4px auto 0" onclick="go(\'community\')">Explore community</button></div>';
+  hydrate(box);
+  if(typeof lazyBg==='function')lazyBg(box);
 }
 /* ---- gift cards (welcome-gift picker) ---- */
 /* Each card carries its OWN perk — a themed inclusion shown on the card and
@@ -6177,7 +6301,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='381';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='386';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -6754,7 +6878,7 @@ async function bookActNow(){
       if(!res||!res.ok){note('Payment received but we could not verify it instantly. Our team will confirm shortly — payment ID: '+(response.razorpay_payment_id||'—'),'Verification pending');return;}
       saveUserName(leadName);
       const sbk=(res&&res.booking)||{};
-      const b={id:response.razorpay_payment_id,name:leadName,trek:sbk.trek||a.n+' (Activity)',img:a.img||'',date:sbk.date||when,pax:sbk.pax||pax,total:sbk.total||actSubtotal(),paid:sbk.paid||actSubtotal(),ts:Date.now(),status:'Confirmed',checkedIn:false,paymentId:response.razorpay_payment_id};
+      const b={id:response.razorpay_payment_id,name:leadName,trek:sbk.trek||a.n+' (Activity)',img:a.img||'',date:sbk.date||when,startISO:(actSel.date||''),pax:sbk.pax||pax,total:sbk.total||actSubtotal(),paid:sbk.paid||actSubtotal(),ts:Date.now(),status:'Confirmed',checkedIn:false,paymentId:response.razorpay_payment_id};
       const all=getBookings();all.unshift(b);saveBookings(all);
       if(window.fbTrack)window.fbTrack('Purchase',{value:Number(b.total)||Number(b.paid)||0,currency:'INR',content_name:b.trek||'',content_type:'product'});
       note('Payment successful! '+a.n+' is booked for '+when+'.','Booked ✓').then(()=>go('bookings'));
@@ -8089,6 +8213,8 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='news')renderNews();
   if(id==='passport')renderPassport();
   if(id==='dataPrivacy')renderDataPrivacy();
+  if(id==='emergency')renderEmergency();
+  if(id==='savedPosts')renderSavedPosts();
   if(id==='packing'){pkTrek=_pkForce||(cart.trek&&cart.trek.n)||'';_pkForce='';renderPacking();}
   if(id==='bookings')renderBookings();
   if(id==='guardian')renderGuardian();
@@ -8153,7 +8279,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections,addStaff,removeStaff,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab,openReviewModal,closeReviewModal,submitReview,setRevStars,adminAddReview,adminDelReview});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections,addStaff,removeStaff,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab,openReviewModal,closeReviewModal,submitReview,setRevStars,adminAddReview,adminDelReview,toggleSavePost,renderEmergency,renderSavedPosts});
 
 /* init */
 applyTheme();   /* dark / light / system theme */
@@ -9030,7 +9156,13 @@ async function myHostTrips(){
   const sb=getSupaClient();const uid=sb?await authUid():null;
   if(!sb||!uid)return [];
   try{const r=await sb.from('host_trips').select('*').eq('host_id',uid).order('created_at',{ascending:false});
-    return r.data||[];}catch(e){return [];}
+    const trips=r.data||[];
+    /* auto-close the host's OWN live trips whose dates are over. RLS-safe (host_id=uid).
+       Existing bookings are untouched — they live in the bookings table / on the ticket. */
+    const stale=trips.filter(t=>t.status==='live'&&hostTripEnded(t));
+    if(stale.length){stale.forEach(t=>{t.status='closed';});
+      Promise.all(stale.map(t=>sb.from('host_trips').update({status:'closed'}).eq('id',t.id).eq('host_id',uid))).catch(()=>{});}
+    return trips;}catch(e){return [];}
 }
 function tripRow(t,admin){
   const chip='<span class="hstat '+(t.status==='live'?'approved':t.status==='rejected'?'rejected':'pending')
@@ -9168,12 +9300,26 @@ async function resolveHostNames(trips){
   }catch(e){}
   return trips;
 }
+/* A hosted trip is "over" once today is past its last day. Uses end_date if set,
+   otherwise start_date + (days-1). Ended trips auto-close: they drop off the home rail
+   and host profiles — but any bookings made for them are untouched (bookings are
+   self-contained, so they keep showing in the Bookings panel). */
+function hostTripEnded(t){
+  if(!t)return false;
+  let end=t.end_date||'';
+  if(!end&&t.start_date){try{const d=new Date(t.start_date+'T00:00:00');d.setDate(d.getDate()+Math.max(0,(parseInt(t.days)||1)-1));
+    end=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}catch(e){}}
+  if(!end)return false;                 /* no date info — never auto-hide */
+  return String(end)<todayISO(0);       /* strictly before today = the trip is over */
+}
 async function loadLiveHostTrips(){
   const sb=getSupaClient();if(!sb){liveHostTrips=[];return;}
   try{
+    /* include in-progress trips (started but not over), exclude ended ones */
     const r=await sb.from('host_trips').select('*').eq('status','live')
-      .gte('start_date',todayISO(0)).order('start_date',{ascending:true}).limit(10);
-    liveHostTrips=await resolveHostNames(r.data||[]);
+      .order('start_date',{ascending:true}).limit(40);
+    const resolved=await resolveHostNames(r.data||[]);
+    liveHostTrips=resolved.filter(t=>!hostTripEnded(t)).slice(0,10);
   }catch(e){liveHostTrips=[];}   /* table missing = no rail, not a crash */
 }
 function hostTripCard(t){
@@ -9473,7 +9619,7 @@ async function htPay(){
       let res;try{res=await rzpCall('verify',{razorpay_order_id:response.razorpay_order_id,razorpay_payment_id:response.razorpay_payment_id,razorpay_signature:response.razorpay_signature,booking});}catch(e){res=null;}
       if(!res||!res.ok){note('Payment received but we could not verify it instantly. Our team will confirm shortly — payment ID: '+(response.razorpay_payment_id||'—'),'Verification pending');return;}
       const sbk=(res&&res.booking)||{};
-      const b={id:response.razorpay_payment_id,name,trek:sbk.trek||t.title,img:t.img||'',date:sbk.date||t.start_date||'As scheduled',pax:_htvPax,total:sbk.total||(t.price*_htvPax),paid:sbk.paid,ts:Date.now(),status:'Confirmed (advance paid)',checkedIn:false,paymentId:response.razorpay_payment_id};
+      const b={id:response.razorpay_payment_id,name,trek:sbk.trek||t.title,img:t.img||'',date:sbk.date||t.start_date||'As scheduled',startISO:t.start_date||'',pax:_htvPax,total:sbk.total||(t.price*_htvPax),paid:sbk.paid,ts:Date.now(),status:'Confirmed (advance paid)',checkedIn:false,paymentId:response.razorpay_payment_id};
       const all=getBookings();all.unshift(b);saveBookings(all);
       if(window.fbTrack)window.fbTrack('Purchase',{value:Number(b.total)||Number(b.paid)||0,currency:'INR',content_name:b.trek||'',content_type:'product'});
       note('Advance paid! '+t.title+' is confirmed. Tripomonk will contact you with the rest.','Booked ✓').then(()=>go('bookings'));
