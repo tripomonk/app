@@ -2757,7 +2757,7 @@ function renderSelectDate(){const t=cart.trek;
   const firstIdx=batches.findIndex(b=>batchState(b.seats)!=='full');
   const sel=firstIdx>=0?firstIdx:0;
   const chosen=batches[sel];
-  cart.date=chosen?chosen.label:''; cart.total=chosen?(chosen.price||t.price):t.price;
+  cart.date=chosen?chosen.label:''; cart.total=discPrice(chosen?(chosen.price||t.price):t.price,t);
   document.getElementById('batches').innerHTML=batches.length?batches.map((b,i)=>{
     const st=batchState(b.seats);const full=st==='full';
     const d=parseStartDate(b.label);
@@ -2768,13 +2768,13 @@ function renderSelectDate(){const t=cart.trek;
     return `<div class="batch ${i===sel&&!full?'on':''} ${full?'full':''}" ${onClick}>
       <div class="calb"><span class="mo">${d.mo}</span><span class="dy">${d.day}</span></div>
       <div class="bd"><b>${esc(b.label)}</b><div class="s ${st==='few'?'few':full?'full':''}"><span class="msr" style="font-size:13px">${sIcon}</span>${esc(sLabel)}</div></div>
-      <div class="rt"><div class="pr">${INR(b.price||t.price)}</div>${full?'':'<div class="radio"></div>'}</div>
+      <div class="rt"><div class="pr">${trekDiscount(t)?`<s style="opacity:.6;font-weight:600;font-size:.8em">${INR(b.price||t.price)}</s> ${INR(discPrice(b.price||t.price,t))}`:INR(b.price||t.price)}</div>${full?'':'<div class="radio"></div>'}</div>
     </div>`;
   }).join(''):`<div class="empty"><p>No departures scheduled yet. Tap below to enquire on WhatsApp.</p></div>`;
   document.getElementById('inclusions').innerHTML=INCL.map(x=>`<div class="inclc"><div class="ic">${ic(x[0],20)}</div>${x[1]}</div>`).join('');
   hydrate(document.getElementById('selectDate'));
 }
-function selBatch(el,d,price){document.querySelectorAll('#batches .batch').forEach(b=>b.classList.remove('on'));el.classList.add('on');cart.date=d;cart.total=price;}
+function selBatch(el,d,price){document.querySelectorAll('#batches .batch').forEach(b=>b.classList.remove('on'));el.classList.add('on');cart.date=d;cart.total=discPrice(price,cart.trek);}
 
 /* travellers + review + pay */
 function trav(n){cart.pax=Math.max(1,cart.pax+n);document.getElementById('travN').textContent=cart.pax;
@@ -4517,7 +4517,7 @@ async function renderPerson(){if(!curPerson){go('community');return;}const p=get
       <h2>${esc(properName(p.n))}${hostBadge(p.n)}</h2>${at?`<div class="handle">${esc(at)}</div>`:''}
       <p class="pbio">${esc(p.bio||'')}</p>
       <div class="pstats"><div><b>${posts.length}</b><small>Posts</small></div><div><b id="pFlwr" data-person="${esc(p.n)}" data-base="${base}">${flwr.toLocaleString()}</b><small>Followers</small></div><div><b>${Number(following).toLocaleString()}</b><small>Following</small></div></div>
-      ${me?'':`<div class="profile-actions" style="margin:14px 0 0"><button class="${isFollowing(p.n)?'on':''}${(!isFollowing(p.n)&&hasRequested(p.n))?' req':''}" data-follow="${esc(p.n)}" onclick="followAction('${jsq(p.n)}')">${followBtnLabel(p.n)}</button><button onclick="${canSeePerson(p.n)?`openChat('${jsq(p.n)}')`:`note('Follow this private account to message them.','Private account')`}">Message</button><button class="p-call" onclick="requestCall('${jsq(p.n)}')" title="Request a call"><span class="msr">call</span></button></div>`}
+      ${me?'':`<div class="profile-actions" style="margin:14px 0 0"><button class="${isFollowing(p.n)?'on':''}${(!isFollowing(p.n)&&hasRequested(p.n))?' req':''}" data-follow="${esc(p.n)}" onclick="followAction('${jsq(p.n)}')">${followBtnLabel(p.n)}</button><button onclick="${canSeePerson(p.n)?`openChat('${jsq(p.n)}')`:`note('Follow this private account to message them.','Private account')`}">Message</button></div>`}
       <div style="margin-top:12px">${socialLinks(me?getSavedSocials():socialsByName[p.n])}</div>
     </div>
     <div id="personTrips"></div>
@@ -4869,6 +4869,9 @@ function priceOf(t){const base=Number(t&&t.price)||0;const off=trekDiscount(t);r
 function priceTag(t){const p=priceOf(t);return p.off
   ? `<span class="pr-was">${INR(p.base)}</span> <span class="pr-now">${INR(p.now)}</span>`
   : INR(p.now);}
+/* apply a trek's % discount to any base amount (batch price or trek price), matching the
+   Razorpay edge fn — so the booking total shown = the amount charged */
+function discPrice(base,t){return priceOf({price:Number(base)||0,discount:t&&t.discount}).now;}
 function openGiftCards(){_giftSel=0;_giftAmt=2000;go('giftCards');renderGiftCards();}
 function openGiftCardAt(i){_giftSel=i||0;_giftAmt=2000;go('giftCards');renderGiftCards();}
 /* home-page gift-card preview rail (below Compare Treks) */
@@ -5179,7 +5182,7 @@ function setTheme(mode){try{localStorage.setItem('tmk_theme',mode);}catch(e){}ap
 function renderAccount(){
   const box=document.getElementById('accountBody');if(!box)return;
   if(!isLoggedIn()){
-    box.innerHTML=`<div class="empty" style="padding:26px 0"><p>Sign in to manage your account.</p><div style="text-align:center;margin-top:14px"><button class="btn sm" onclick="_loginReturn='account';go('login')">Sign in</button></div></div>`;
+    box.innerHTML=`<div class="empty" style="padding:26px 0;text-align:center"><p>Sign in to manage your account.</p><div style="display:flex;justify-content:center;margin-top:14px"><button class="btn sm" style="min-width:150px" onclick="_loginReturn='account';go('login')">Sign in</button></div></div>`;
     hydrate(box);return;
   }
   const row=(l,v)=>`<div class="br"><span>${l}</span><b style="max-width:60%;text-align:right;word-break:break-word">${esc(v)}</b></div>`;
@@ -6466,7 +6469,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='388';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='390';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>

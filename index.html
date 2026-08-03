@@ -153,7 +153,8 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   html.light .btn:not(.ghost),html.light .fcx-go,html.light .nav-center,html.light .hh-tag,html.light .npill,html.light .bigcard h3,html.light .bigcard .reg{color:#fff}
   /* appearance picker */
   .theme-pick{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-  .theme-pick .tp{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:14px 6px;text-align:center;cursor:pointer;color:var(--muted)}
+  .theme-pick .tp{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:14px 6px;text-align:center;cursor:pointer;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+  .theme-pick .tp .msr{display:block}
   .theme-pick .tp.on{border-color:var(--accent);background:rgba(47,107,255,.12);color:var(--text)}
   .theme-pick .tp .msr{font-size:24px;display:block;margin-bottom:6px}
   .theme-pick .tp small{font-size:11.5px;font-weight:600}
@@ -569,7 +570,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .insp-badge{display:inline-flex;align-items:center;gap:4px;align-self:flex-start;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--accent2);margin-bottom:8px;padding:3px 8px;border-radius:999px;background:rgba(47,107,255,.14)}
   .insp-slide.fact .insp-badge{color:#ff9d2f;background:rgba(255,122,69,.14)}
   .insp-badge .msr{font-size:12px}
-  .insp-x{font-size:13.5px;line-height:1.45;font-weight:600;color:var(--text);margin:0}
+  .insp-x{font-size:13.5px;line-height:1.5;font-weight:400;color:var(--text);margin:0}
   .insp-slide.quote .insp-x{font-style:italic}
   .insp-a{margin-top:7px;font-size:11px;font-weight:700;color:var(--muted)}
   .insp-dots{display:flex;justify-content:center;flex-wrap:wrap;gap:6px;margin-top:13px}
@@ -3093,10 +3094,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .cr-btns button{flex:1;height:38px;border-radius:11px;border:0;font-weight:700;font-size:12.5px;cursor:pointer}
   .cr-no{background:rgba(10,20,36,.08);color:#17243a}
   .cr-yes{background:var(--accent);color:#fff}
-  .profile-actions{grid-template-columns:1fr 1fr auto}
   .profile-actions button.req{background:rgba(255,255,255,.1)!important;border-color:var(--stroke)!important;color:var(--text)!important}
-  .profile-actions .p-call{width:44px;padding:0;color:var(--accent2)}
-  .profile-actions .p-call .msr{font-size:20px}
   .priv-lock{text-align:center;padding:34px 24px;display:flex;flex-direction:column;align-items:center;gap:6px;border:1px dashed var(--stroke);border-radius:18px;margin:6px 2px}
   .priv-lock .msr{font-size:40px;color:var(--muted2)}
   .priv-lock b{font-size:15px}
