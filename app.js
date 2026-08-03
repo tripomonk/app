@@ -4573,14 +4573,17 @@ async function renderPerson(){if(!curPerson){go('community');return;}const p=get
       <h2>${esc(properName(p.n))}${hostBadge(p.n)}</h2>${at?`<div class="handle">${esc(at)}</div>`:''}
       <p class="pbio">${esc(p.bio||'')}</p>
       <div class="pstats"><div><b>${posts.length}</b><small>Posts</small></div><div><b id="pFlwr" data-person="${esc(p.n)}" data-base="${base}">${flwr.toLocaleString()}</b><small>Followers</small></div><div><b>${Number(following).toLocaleString()}</b><small>Following</small></div></div>
-      ${me?'':`<div class="profile-actions" style="margin:14px 0 0"><button class="${isFollowing(p.n)?'on':''}${(!isFollowing(p.n)&&hasRequested(p.n))?' req':''}" data-follow="${esc(p.n)}" onclick="followAction('${jsq(p.n)}')">${followBtnLabel(p.n)}</button><button onclick="${canSeePerson(p.n)?`openChat('${jsq(p.n)}')`:`note('Follow this private account to message them.','Private account')`}">Message</button></div>`}
+      ${me?'':`<div class="profile-actions" style="margin:14px 0 0"><button class="${isFollowing(p.n)?'on':''}${(!isFollowing(p.n)&&hasRequested(p.n))?' req':''}" data-follow="${esc(p.n)}" onclick="followAction('${jsq(p.n)}')">${followBtnLabel(p.n)}</button><button onclick="${isBlocked(p.n)?`note('Unblock ${jsq(properName(p.n))} first.','Blocked')`:(canSeePerson(p.n)?`openChat('${jsq(p.n)}')`:`note('Follow this private account to message them.','Private account')`)}">Message</button></div>
+      <div style="text-align:center;margin-top:10px"><button onclick="toggleBlock('${jsq(p.n)}')" style="background:none;border:0;color:${isBlocked(p.n)?'var(--accent2)':'#ff6b6b'};font-size:12.5px;font-weight:700;cursor:pointer">${isBlocked(p.n)?'Unblock':'Block'} ${esc(properName(p.n))}</button></div>`}
       <div style="margin-top:12px">${socialLinks(me?getSavedSocials():socialsByName[p.n])}</div>
     </div>
     <div id="personTrips"></div>
     <div class="sec-h" style="margin:18px 4px 8px"><b>Posts</b>${(!me&&isPrivatePerson(p.n))?' <span class="msr" style="font-size:14px;color:var(--muted2);vertical-align:-2px">lock</span>':''}</div>
-    ${(!me&&isPrivatePerson(p.n)&&!canSeePerson(p.n))
-      ?`<div class="priv-lock"><span class="msr">lock</span><b>This account is private</b><p>Follow ${esc(properName(p.n))} to see their posts, message and call.</p></div>`
-      :(posts.length?`<div class="pgrid">${posts.map(gridCell).join('')}</div>`:`<div class="empty"><p>${me?'You have not posted yet.':'No posts yet.'}</p></div>`)}`;
+    ${(!me&&isBlocked(p.n))
+      ?`<div class="priv-lock"><span class="msr">block</span><b>You blocked ${esc(properName(p.n))}</b><p>Unblock to see their posts, message and call.</p></div>`
+      :((!me&&isPrivatePerson(p.n)&&!canSeePerson(p.n))
+        ?`<div class="priv-lock"><span class="msr">lock</span><b>This account is private</b><p>Follow ${esc(properName(p.n))} to see their posts, message and call.</p></div>`
+        :(posts.length?`<div class="pgrid">${posts.map(gridCell).join('')}</div>`:`<div class="empty"><p>${me?'You have not posted yet.':'No posts yet.'}</p></div>`))}`;
   hydrate(body);
   /* a host's trips are the main thing people come here for — load them after the
      profile paints so the page never waits on a second query. Always attempt: the
@@ -5213,6 +5216,7 @@ async function loadThread(name){
     const server=(data||[]).map(m=>msgToRow(m,me));
     const pending=getChat(name).filter(r=>r._pending);   /* not-yet-delivered local rows */
     const rows=server.concat(pending);
+    syncCallState(name,rows);   /* reveal an allowed call after a refresh */
     saveChat(name,rows);
     return rows;
   }catch(e){return getChat(name);}
@@ -5257,6 +5261,7 @@ function stopMsgSub(){if(!msgChannel)return;try{getSupaClient().removeChannel(ms
 function onIncomingMsg(m){
   if(!m)return;
   const name=m.sender_name||'';if(!name)return;
+  if(isBlocked(name))return;   /* blocked user — silently drop */
   if(m.sender_id)_nameUidCache[name]=m.sender_id;
   const rows=getChat(name);
   if(m.id&&rows.some(x=>String(x.id)===String(m.id)))return;   /* dedupe */
@@ -5362,13 +5367,61 @@ function declineCall(n,i){
   markCallreqStatus(ids,'declined');
   deliverMessage(n,{type:'sys',body:'Your call request was declined — the number was not shared.'});
 }
-function allowCallMsg(n,i){
+async function allowCallMsg(n,i){
+  /* we can only share a number if we HAVE one — ask for it if the profile has none,
+     otherwise the requester gets "allowed" but nothing to dial (the reported bug) */
+  let num=getSavedMobile()||'';
+  if(!num){
+    const v=await askCode('Share your number',{sub:'Enter the mobile '+properName(n)+' can call you on. Shared only with them.',placeholder:'10-digit mobile'});
+    if(v===null)return;
+    num=String(v).replace(/[^\d+]/g,'');
+    if(num.replace(/\D/g,'').length<10){note('Please enter a valid mobile number.','Invalid number');return;}
+    try{localStorage.setItem('tmk_umobile',num);}catch(e){}
+  }
   const rows=getChat(n);const ids=resolveIncomingCallreqs(rows,'allowed');
-  const s=callAllowedSet();s[n]={num:getSavedMobile()||'',t:Date.now()};try{localStorage.setItem('tmk_callok',JSON.stringify(s));}catch(e){}
+  const s=callAllowedSet();s[n]={num,t:Date.now()};try{localStorage.setItem('tmk_callok',JSON.stringify(s));}catch(e){}
   rows.push({who:'me',type:'sys',txt:'You allowed the call — '+properName(n)+' can now call you.'});
   saveChat(n,rows);renderChat();
   markCallreqStatus(ids,'allowed');
-  deliverMessage(n,{type:'callok',body:getSavedMobile()||''});   /* sends my number ONLY to this person, only because I allowed it */
+  deliverMessage(n,{type:'callok',body:num});   /* sends my number ONLY to this person, only because I allowed it */
+}
+/* Absorb an incoming "call allowed" so the REQUESTER shows "Call now" + can dial even
+   after a plain refresh. Realtime only carries INSERTs (the callok row); a reopened
+   thread reads it back here via loadThread. Returns true if it changed anything. */
+function syncCallState(name,rows){
+  let num=null,allowed=false;
+  rows.forEach(m=>{if(m.type==='callok'&&m.who==='them'){allowed=true;const v=m.body||m.txt;if(v)num=v;}});
+  if(!allowed)return false;
+  const s=callAllowedSet();const have=s[name]&&s[name].num;
+  if(!s[name]||(num&&have!==num)){s[name]={num:num||have||'',t:Date.now()};try{localStorage.setItem('tmk_callok',JSON.stringify(s));}catch(e){}}
+  let changed=false;
+  rows.forEach(r=>{if(r.type==='callreq'&&r.who==='me'&&r.status!=='allowed'&&r.status!=='declined'){r.status='allowed';changed=true;}});
+  return changed;
+}
+/* ---- block / unblock (safety) — on-device blocklist. Blocked people can't reach your
+   chat, their inbound messages are dropped, and their posts/profile are hidden. ---- */
+function blockedSet(){try{return JSON.parse(localStorage.getItem('tmk_blocked')||'[]');}catch(e){return[];}}
+function isBlocked(n){return !!n&&blockedSet().indexOf(String(n).toLowerCase())>=0;}
+function setBlockedSet(l){try{localStorage.setItem('tmk_blocked',JSON.stringify(l));}catch(e){}}
+async function blockUser(n){
+  if(!n||n==='Tripomonk Team'||n===myName()||n==='You')return;
+  if(!(await askConfirm('Block '+properName(n)+'? They won’t be able to message or call you, and you won’t see their chat or posts.','Block '+properName(n)+'?')))return;
+  const l=blockedSet(),k=String(n).toLowerCase();if(l.indexOf(k)<0)l.push(k);setBlockedSet(l);
+  toast(properName(n)+' blocked');
+  if(cur==='chat')go('messages');else if(cur==='person')renderPerson();
+  if(typeof renderFeedIfOpen==='function')renderFeedIfOpen();
+}
+async function unblockUser(n){
+  if(!n)return;
+  setBlockedSet(blockedSet().filter(x=>x!==String(n).toLowerCase()));
+  toast(properName(n)+' unblocked');
+  if(cur==='chat')renderChat();else if(cur==='person')renderPerson();
+}
+function toggleBlock(n){return isBlocked(n)?unblockUser(n):blockUser(n);}
+/* chat header ⋮ */
+function chatMenu(){
+  const n=chatWith;if(!n||n==='Tripomonk Team'){note('This is Tripomonk official support.','Support chat');return;}
+  toggleBlock(n);
 }
 function renderChat(){
   const head=document.getElementById('chatPerson'),thread=document.getElementById('chatThread');if(!head||!thread)return;
@@ -5376,7 +5429,15 @@ function renderChat(){
   const priv=isPrivatePerson(chatWith)&&!isFollowing(chatWith);
   head.innerHTML=`<div class="ch-ava">${avatar(chatWith,42)}</div><div class="ch-id"><b>${esc(properName(chatWith))}${team?'<span class="ch-verif msr">verified</span>':''}</b><small>${team?'Official support · replies fast':(priv?'Private account':'Usually replies soon')}</small></div>`;
   const rows=getChat(chatWith);
+  syncCallState(chatWith,rows);   /* reflect any "call allowed" that arrived */
   const compose=document.querySelector('#chat .chat-compose');
+  const menuBtn=document.getElementById('chatMenuBtn');
+  if(menuBtn)menuBtn.style.display=(team)?'none':'';
+  if(isBlocked(chatWith)){
+    thread.innerHTML=`<div class="chat-empty"><span class="msr" style="font-size:46px;color:var(--muted2)">block</span><b>You blocked ${esc(properName(chatWith))}</b><p>They can’t message or call you. Unblock to chat again.</p><button class="btn" style="max-width:220px;margin:6px auto 0" onclick="unblockUser('${jsq(chatWith)}')">Unblock</button></div>`;
+    if(compose)compose.style.display='none';
+    return;
+  }
   if(priv&&!canSeePerson(chatWith)){
     thread.innerHTML=`<div class="chat-empty"><span class="msr" style="font-size:46px;color:var(--muted2)">lock</span><b>${esc(properName(chatWith))}'s account is private</b><p>Send a follow request. Once they accept, you can message and call.</p><button class="btn" style="max-width:220px;margin:6px auto 0" onclick="followAction('${jsq(chatWith)}')">${hasRequested(chatWith)?'Requested':'Send follow request'}</button></div>`;
     if(compose)compose.style.display='none';
@@ -5387,6 +5448,7 @@ function renderChat(){
     thread.innerHTML=`<div class="chat-empty"><div class="ce-ava">${avatar(chatWith,66)}</div><b>${esc(properName(chatWith))}</b><p>${team?'Ask us anything about bookings, payments or picking your next trek.':'Say hi 👋 — this is the start of your conversation.'}</p></div>`;
   }else{
     thread.innerHTML=rows.map((m,i)=>{
+      if(m.type==='callok')return '';   /* the number is absorbed by syncCallState, never shown raw */
       if(m.type==='callreq')return callReqBubble(m,i);
       if(m.type==='sys')return `<div class="chat-sys">${esc(m.txt)}</div>`;
       return `<div class="bubble ${m.who==='me'?'me':'them'}${m._pending?' sending':''}">${esc(m.txt)}${m.t?`<time>${esc(m.t)}${m._pending?' · sending…':''}</time>`:''}</div>`;
@@ -5397,6 +5459,7 @@ function renderChat(){
 async function sendChat(){
   const input=document.getElementById('chatInput');if(!input)return;
   const txt=(input.value||'').trim();if(!txt)return;
+  if(isBlocked(chatWith)){note('You blocked '+properName(chatWith)+'. Unblock to message them.','Blocked');return;}
   if(isPrivatePerson(chatWith)&&!canSeePerson(chatWith)){note('Send a follow request first — this account is private.','Private account');return;}
   const team=chatWith==='Tripomonk Team';
   const cid='c'+(++_cidSeq);
@@ -7327,7 +7390,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='402';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='403';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
