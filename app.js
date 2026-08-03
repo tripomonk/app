@@ -5332,19 +5332,44 @@ function openChat(n){chatWith=n||'Tripomonk Team';ensureMsgSub();go('chat');refr
 async function refreshOpenThread(){const name=chatWith;await flushPending(name);await loadThread(name);if(cur==='chat'&&chatWith===name)renderChat();}
 /* a call-request card in the thread — the requester sees "waiting", the recipient gets Allow/Decline */
 function callReqBubble(m,i){
-  if(m.who==='me'){
-    return m.status==='allowed'
-      ? `<div class="chat-sys">📞 ${esc(properName(chatWith))} allowed your call. <a onclick="requestCall('${jsq(chatWith)}')" style="color:var(--accent2);font-weight:700;cursor:pointer">Call now →</a></div>`
-      : `<div class="chat-sys">📞 Call request sent — waiting for ${esc(properName(chatWith))} to allow. Their number stays private until they do.</div>`;
+  if(m.who==='me'){   /* MY request, shown on the requester's side */
+    if(m.status==='allowed')
+      return `<div class="chat-sys">📞 ${esc(properName(chatWith))} allowed your call. <a onclick="requestCall('${jsq(chatWith)}')" style="color:var(--accent2);font-weight:700;cursor:pointer">Call now →</a></div>`;
+    if(m.status==='declined')
+      return `<div class="chat-sys">📞 ${esc(properName(chatWith))} declined the call request.</div>`;
+    return `<div class="chat-sys">📞 Call request sent — waiting for ${esc(properName(chatWith))} to allow. Their number stays private until they do.</div>`;
   }
-  /* a request someone sent ME */
+  /* a request someone sent ME — once I've answered it, the card is gone (a sys line is shown instead) */
+  if(m.status==='allowed'||m.status==='declined')return '';
   return `<div class="callreq-card"><div class="cr-top"><span class="msr">call</span><div><b>${esc(properName(chatWith))} wants to call you</b><small>Allow to share your number for this call.</small></div></div>`
     +`<div class="cr-btns"><button class="cr-no" onclick="declineCall('${jsq(chatWith)}',${i})">Not now</button><button class="cr-yes" onclick="allowCallMsg('${jsq(chatWith)}',${i})">Allow call</button></div></div>`;
 }
-function declineCall(n,i){const rows=getChat(n);if(rows[i])rows[i].status='declined';rows.push({who:'me',type:'sys',txt:'You declined the call request. Your number was not shared.'});saveChat(n,rows);renderChat();
-  deliverMessage(n,{type:'sys',body:'Your call request was declined — the number was not shared.'});}
-function allowCallMsg(n,i){const rows=getChat(n);if(rows[i])rows[i].status='handled';const s=callAllowedSet();s[n]={num:getSavedMobile()||'',t:Date.now()};try{localStorage.setItem('tmk_callok',JSON.stringify(s));}catch(e){}rows.push({who:'me',type:'sys',txt:'You allowed the call — '+properName(n)+' can now call you.'});saveChat(n,rows);renderChat();
-  deliverMessage(n,{type:'callok',body:getSavedMobile()||''});}   /* sends my number ONLY to this person, only because I allowed it */
+/* persist the answer on the shared message rows so the card can't reappear after a refresh */
+async function markCallreqStatus(ids,status){
+  const sb=getSupaClient();if(!sb||!ids||!ids.length)return;
+  try{await sb.from('messages').update({status}).in('id',ids);}catch(e){}
+}
+/* mark EVERY still-open incoming call request from this person (collapses duplicates too) */
+function resolveIncomingCallreqs(rows,status){
+  const ids=[];
+  rows.forEach(r=>{if(r.type==='callreq'&&r.who==='them'&&r.status!=='allowed'&&r.status!=='declined'){r.status=status;if(r.id)ids.push(r.id);}});
+  return ids;
+}
+function declineCall(n,i){
+  const rows=getChat(n);const ids=resolveIncomingCallreqs(rows,'declined');
+  rows.push({who:'me',type:'sys',txt:'You declined the call request. Your number was not shared.'});
+  saveChat(n,rows);renderChat();
+  markCallreqStatus(ids,'declined');
+  deliverMessage(n,{type:'sys',body:'Your call request was declined — the number was not shared.'});
+}
+function allowCallMsg(n,i){
+  const rows=getChat(n);const ids=resolveIncomingCallreqs(rows,'allowed');
+  const s=callAllowedSet();s[n]={num:getSavedMobile()||'',t:Date.now()};try{localStorage.setItem('tmk_callok',JSON.stringify(s));}catch(e){}
+  rows.push({who:'me',type:'sys',txt:'You allowed the call — '+properName(n)+' can now call you.'});
+  saveChat(n,rows);renderChat();
+  markCallreqStatus(ids,'allowed');
+  deliverMessage(n,{type:'callok',body:getSavedMobile()||''});   /* sends my number ONLY to this person, only because I allowed it */
+}
 function renderChat(){
   const head=document.getElementById('chatPerson'),thread=document.getElementById('chatThread');if(!head||!thread)return;
   const team=chatWith==='Tripomonk Team';
@@ -7302,7 +7327,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='401';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='402';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
