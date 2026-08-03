@@ -4097,6 +4097,28 @@ async function loadProfileFromServer(){
   planPull();   /* training plan follows the account, not the device */
   _profileLoadedFor=currentUser.id;
 }
+/* Re-pull MY photo/cover/name from the server and update this device. loadProfileFromServer
+   only runs once per login, so a DP/cover changed on ANOTHER device wouldn't show here until
+   re-login. This refreshes on Profile open + app foreground so other devices stay in sync. */
+async function refreshMyProfile(){
+  const sb=getSupaClient();if(!sb||!currentUser)return;
+  try{
+    const{data}=await sb.from('profiles').select('name,photo,username,cover,socials').eq('id',currentUser.id).maybeSingle();
+    if(!data)return;
+    let changed=false;
+    const set=(k,v)=>{if(v!=null&&v!==''&&localStorage.getItem(k)!==v){try{localStorage.setItem(k,v);changed=true;}catch(e){}}};
+    set('tmk_uphoto',data.photo);set('tmk_ucover',data.cover);set('tmk_uname',data.name);
+    set('tmk_uhandle',data.username);
+    if(data.socials)set('tmk_socials',JSON.stringify(data.socials));
+    if(changed){
+      if(cur==='profile')renderProfile();
+      else if(cur==='home')renderHome();
+      else if(cur==='editProfile')renderEditProfile();
+      else if(cur==='hostProfile'&&typeof renderHostProfile==='function')renderHostProfile();
+      else if(cur==='accountMenu')renderAccountMenu();
+    }
+  }catch(e){}
+}
 async function uidForName(name){
   const sb=getSupaClient();if(!sb||!name)return null;
   /* profiles first (covers users who haven't posted yet), then posts */
@@ -6469,7 +6491,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='390';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='391';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -8402,7 +8424,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='bookings')renderBookings();
   if(id==='guardian')renderGuardian();
   if(id==='wishlist')renderWishlist();
-  if(id==='profile')renderProfile();
+  if(id==='profile'){renderProfile();refreshMyProfile();}
   if(id==='accountMenu')renderAccountMenu();
   if(id==='giftCards')renderGiftCards();
   if(id==='wallet')renderWallet();
@@ -8428,6 +8450,10 @@ function back(){history.back();}
 function _showPrev(){stopAllMedia();const p=hist.pop();if(p){cur=p;document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));const el=document.getElementById(p);el.classList.add('active');document.getElementById('nav').classList.toggle('hide',el.hasAttribute('data-nonav'));if(el.dataset.tab){lastTab=el.dataset.tab;document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===el.dataset.tab));}staggerActive();saveNav();}else{cur='__root';go(lastTab||'home');}}
 /* device/browser back button handling */
 window.addEventListener('popstate',function(){_showPrev();});
+/* keep this device's photo/cover/name in sync when it returns to the foreground —
+   so a change made on another device shows up without needing a re-login */
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')refreshMyProfile();});
+window.addEventListener('focus',function(){refreshMyProfile();});
 /* remember the current screen + context so a refresh stays put */
 function saveNav(){try{localStorage.setItem('tmk_nav',JSON.stringify({s:cur,t:(cart.trek?cart.trek.idx:0),b:(cart.booking?cart.booking.id:''),d:(typeof curDest!=='undefined'?curDest:'')}));}catch(e){}}
 function restoreNav(){try{const n=JSON.parse(localStorage.getItem('tmk_nav')||'null');if(!n||!n.s||n.s==='splash')return;
