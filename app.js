@@ -94,6 +94,18 @@ function hydrate(root){(root||document).querySelectorAll('[data-i]').forEach(el=
 const U='https://images.unsplash.com/photo-';
 const Q='?auto=format&fit=crop&w=900&q=70';
 const HL=[['summit','Summit View'],['snow','Snow Trails'],['pine','Pine Forest'],['tent','Camping']];
+/* Admin-selectable trip highlights: label -> Material Symbol icon. Stored per-trek as a
+   labels array (treks.highlights); rendered via hlHTML(). See normHl()/deriveTreks(). */
+const HL_ICON={'Summit View':'landscape','Snow Trails':'ac_unit','Pine Forest':'forest','Camping':'festival',
+  'Waterfalls':'water_drop','Alpine Lake':'water','Meadows':'grass','Wildlife':'pets','River Crossing':'kayaking',
+  'Bonfire':'local_fire_department','Stargazing':'nights_stay','Sunrise Point':'wb_twilight','Local Village':'holiday_village',
+  'Monastery':'temple_buddhist','Glacier':'severe_cold','Ridge Walk':'hiking','Hot Springs':'hot_tub','Photography':'photo_camera'};
+const HL_LABELS=Object.keys(HL_ICON);
+/* normalise a trek's highlights to a labels array (handles legacy [[icon,label]] + the new labels array) */
+function normHl(t){const h=t&&t.hl;
+  if(Array.isArray(h)&&h.length)return h.map(x=>Array.isArray(x)?(x[1]||x[0]):String(x)).filter(Boolean);
+  return HL.map(x=>x[1]);}
+function hlHTML(t){return normHl(t).map(l=>`<span class="hl-pill"><span class="ic"><span class="msr" style="font-size:15px;color:var(--accent2)">${HL_ICON[l]||'check'}</span></span>${esc(l)}</span>`).join('');}
 const treks=[
   {n:"Kedarkantha",region:"Uttarakhand",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Kedarkantha_Hill%2C_Uttarakhand.jpg/1280px-Kedarkantha_Hill%2C_Uttarakhand.jpg",credit:"Sachinbauriyan · CC BY-SA 4.0 · Wikimedia Commons",r:4.8,rev:"1.2k",lvl:"Easy",days:5,alt:"12,500 ft",dist:"20 km",best:"Dec – Apr",price:6499,
    desc:"Kedarkantha is the perfect winter trek for beginners. It offers stunning views, snow-covered trails and an unforgettable summit."},
@@ -247,7 +259,8 @@ const treks=[
 ];
 function deriveTreks(){treks.forEach((t,i)=>{t.idx=i;
   if(t.img && t.img.indexOf('?')<0)t.img=t.img+Q;     // append sizing only if not already present
-  t.hl=HL; t.dur=t.days+(t.days>1?' Days':' Day');
+  t.hl=(Array.isArray(t.highlights)&&t.highlights.length)?t.highlights:HL;   /* admin-picked highlights, else the default set */
+  t.dur=t.days+(t.days>1?' Days':' Day');
   /* location-based conditions derived from elevation + season */
   const ft=parseInt(String(t.alt).replace(/[^0-9]/g,''))||10000;
   t.elev=t.alt;
@@ -348,7 +361,7 @@ function applyTrekRows(rows){
   if(!rows||!rows.length)return false;
   const dbByName={};
   rows.forEach(d=>{const row={n:d.name,region:d.region,img:d.img,r:d.rating,rev:d.reviews,lvl:d.level,days:d.days,
-    alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,packing:d.packing||null,batches:(Array.isArray(d.batches)?d.batches:null),req:(typeof d.req_score==='number'?d.req_score:null),pop:!!d.popular,feat:!!d.featured,type:d.type||'trek',dest_id:d.dest_id||'',departure_type:d.departure_type||'both',itinerary:(Array.isArray(d.itinerary)?d.itinerary:[]),pickup:d.pickup||'',dropoff:d.dropoff||'',pickup_map:d.pickup_map||'',tag:d.tag||'',offer:d.offer||'',itin:d.itinerary_url||'',hvid:d.hero_video||'',hvideo:!!d.hero_use_video,guide_id:d.guide_id||null,_id:d.id};
+    alt:d.altitude,dist:d.distance,best:d.best_time,price:d.price,soon:d.soon,desc:d.description,packing:d.packing||null,batches:(Array.isArray(d.batches)?d.batches:null),req:(typeof d.req_score==='number'?d.req_score:null),pop:!!d.popular,feat:!!d.featured,type:d.type||'trek',dest_id:d.dest_id||'',departure_type:d.departure_type||'both',itinerary:(Array.isArray(d.itinerary)?d.itinerary:[]),pickup:d.pickup||'',dropoff:d.dropoff||'',pickup_map:d.pickup_map||'',tag:d.tag||'',offer:d.offer||'',discount:(d.discount!=null?d.discount:0),highlights:(Array.isArray(d.highlights)?d.highlights:null),itin:d.itinerary_url||'',hvid:d.hero_video||'',hvideo:!!d.hero_use_video,guide_id:d.guide_id||null,_id:d.id};
     if(d.credit)row.credit=d.credit; dbByName[d.name]=row;});
   const seen=new Set();
   treks.forEach(t=>{const d=dbByName[t.n];if(d){Object.assign(t,d);seen.add(t.n);}});
@@ -695,10 +708,51 @@ function updateFollowUI(n){
     f.textContent=(base+(on?1:0)).toLocaleString();
   }
 }
+/* ============================================================
+   PRIVACY, FOLLOW REQUESTS & CALL CONSENT
+   - A private account gates its posts + messaging behind an accepted follow.
+   - Following a private account sends a REQUEST (pending) until they accept.
+   - Calling never reveals a phone number: it sends a call request first, and the
+     dialer only opens once the other person allows it (or for Tripomonk support).
+   Client layer here; real cross-device enforcement needs the SQL/RLS (follows.status,
+   profiles.private) — see SQL-add-privacy.sql. ============================================================ */
+let privateByName={};                 /* name -> bool, filled as profiles load */
+function isPrivateAccount(){const p=getPrefs()||{};return !!p.private;}
+function isPrivatePerson(n){
+  if(!n||n==='Tripomonk Team')return false;
+  if(n==='You'||n===myName())return isPrivateAccount();
+  return !!privateByName[n];
+}
+/* pending follow requests I've SENT to private accounts (localStorage; mirrors follows.status='pending') */
+let followReqState=null;
+function followReqs(){if(!followReqState){try{followReqState=JSON.parse(localStorage.getItem('tmk_followreqs')||'{}');}catch(e){followReqState={};}}return followReqState;}
+function saveFollowReqs(){try{localStorage.setItem('tmk_followreqs',JSON.stringify(followReqs()));}catch(e){}}
+function hasRequested(n){return !!followReqs()[n];}
+/* can I see this person's posts / message them? Yes if public, myself, or an accepted follower. */
+function canSeePerson(n){return !isPrivatePerson(n)||n===myName()||n==='You'||isFollowing(n);}
+/* the follow button: public -> follow/unfollow; private -> request/requested/following */
+function followAction(n){
+  if(isPrivatePerson(n)&&!isFollowing(n)){
+    const req=followReqs();
+    if(req[n]){delete req[n];saveFollowReqs();syncFollow(n,false);toast('Request withdrawn');}
+    else{req[n]=Date.now();saveFollowReqs();
+      uidForName(n).then(uid=>pushNotif({recipientId:uid,recipientName:uid?null:n,type:'follow_request'}));
+      syncFollowReq(n);toast('Follow request sent');}
+    if(cur==='person')renderPerson();else updateFollowUI(n);
+    return;
+  }
+  toggleFollow(n);
+}
+async function syncFollowReq(n){
+  const sb=getSupaClient();if(!sb)return;const uid=await authUid();if(!uid)return;
+  try{await sb.from('follows').upsert({follower_id:uid,following_name:n,status:'pending',follower_name:myName()},{onConflict:'follower_id,following_name'});}catch(e){}
+}
+function followBtnLabel(n){return isFollowing(n)?'Following':(hasRequested(n)?'Requested':(isPrivatePerson(n)?'Request':'Follow'));}
 function toggleFollow(n){
   const wasFollowing=!!followState[n];
   /* optimistic: flip the button now, reconcile with the server after */
   followState[n]=!wasFollowing;saveFollows();
+  const req=followReqs();if(req[n]){delete req[n];saveFollowReqs();}
   updateFollowUI(n);
   /* notify the user when newly followed */
   if(!wasFollowing){
@@ -710,6 +764,24 @@ function toggleFollow(n){
       toast(wasFollowing?'Could not unfollow — try again':'Could not follow — check your connection');
     }
   });
+}
+/* ---- call consent ---- */
+function nowT(){try{return new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});}catch(e){return '';}}
+function callAllowedSet(){try{return JSON.parse(localStorage.getItem('tmk_callok')||'{}');}catch(e){return{};}}
+function isCallAllowed(n){return !!callAllowedSet()[n];}
+function callNumberFor(n){const m=callAllowedSet()[n];return (m&&m.num)||'';}
+function allowCall(n){const s=callAllowedSet();s[n]={num:getSavedMobile()||'',t:Date.now()};try{localStorage.setItem('tmk_callok',JSON.stringify(s));}catch(e){}
+  const rows=getChat(n);rows.push({who:'me',type:'sys',txt:'You allowed '+properName(n)+' to call you.'});saveChat(n,rows);renderChat();}
+function requestCall(n){
+  n=n||chatWith;
+  if(n==='Tripomonk Team'){location.href='tel:+'+getWa();return;}   /* company support: dial directly */
+  if(isPrivatePerson(n)&&!isFollowing(n)){note(properName(n)+' has a private account. Send a follow request and get accepted before you can reach them.','Private account');return;}
+  if(isCallAllowed(n)){const num=callNumberFor(n);if(num){location.href='tel:'+num;return;}}
+  const rows=getChat(n);
+  if(rows.some(m=>m.type==='callreq'&&m.who==='me'&&m.status==='pending')){note('You already asked '+properName(n)+' for a call. Please wait for them to allow it.','Already requested');return;}
+  rows.push({who:'me',type:'callreq',status:'pending',t:nowT()});saveChat(n,rows);
+  if(cur!=='chat'){openChat(n);}else renderChat();
+  note('We’ve asked '+properName(n)+' for a call. To protect their privacy their number stays hidden — you’ll be able to call only if they allow it.','Call request sent');
 }
 const menu=[['bookings','My Bookings','bookings'],['shield','Trek Passport','passport'],['like','My Preferences','onboarding'],['monitor','Trek Health','health'],['distance','Trek Navigation','navmap'],['heartmenu','My Wishlist','wishlist'],['starline','My Reviews','reviews'],['settings','Settings','settings'],['help','Help & Support','help']];
 const setList=[['user','Account & security','account'],['bell','Notifications','notifPrefs'],['globe','Language','language'],['card','Payment methods','payments'],['shield','Privacy Policy','privacy'],['help','About Tripomonk','about']];
@@ -1940,7 +2012,7 @@ function trekCardCF(t,i){return `<div class="fcx" data-cf="${i}" onclick="cfTapC
       <div><small>Best time</small><b>${esc(t.best||'—')}</b></div>
       <div><small>Rating</small><b>★ ${t.r}</b></div>
     </div>
-    <div class="fcx-foot"><div><small>Total Price</small><div class="fcx-price">₹${Number(t.price).toLocaleString('en-IN')}</div></div>
+    <div class="fcx-foot"><div><small>${priceOf(t).off?priceOf(t).off+'% OFF · from':'Total Price'}</small><div class="fcx-price">${priceTag(t)}</div></div>
       <button class="fcx-go" onclick="event.stopPropagation();cfOpenCard(this)"><span class="msr">hiking</span> View trek</button></div>
   </div></div>`;}
 function actCardCF(a,i){return `<div class="fcx" data-cf="${i}" onclick="cfTapCard(this)">
@@ -2226,7 +2298,7 @@ function roadTripCard(t){
       <div class="rt-b">
         <b>${esc(t.n)}</b>
         <div class="rt-meta">${meta.map(m=>'<span>'+m+'</span>').join('<i>·</i>')}</div>
-        <div class="rt-ft"><span class="rt-p"><small>from</small> <b>${INR(t.price||0)}</b></span><span class="rt-go">View trip ${ic('back',13)}</span></div>
+        <div class="rt-ft"><span class="rt-p">${priceOf(t).off?`<small>from</small> <s>${INR(priceOf(t).base)}</s> <b>${INR(priceOf(t).now)}</b>`:`<small>from</small> <b>${INR(priceOf(t).now)}</b>`}</span><span class="rt-go">View trip ${ic('back',13)}</span></div>
       </div></div>`;
 }
 /* Home "Featured Road Trips" card — mirrors the Popular Treks coverflow card
@@ -2246,7 +2318,7 @@ function tripCardCF(t,i){
         <div><small>Best time</small><b>${esc(t.best||'—')}</b></div>
         <div><small>Rating</small><b>★ ${esc(String(t.r||'—'))}</b></div>
       </div>
-      <div class="fcx-foot"><div><small>From</small><div class="fcx-price">₹${Number(t.price||0).toLocaleString('en-IN')}</div></div>
+      <div class="fcx-foot"><div><small>${priceOf(t).off?priceOf(t).off+'% OFF · from':'From'}</small><div class="fcx-price">${priceTag(t)}</div></div>
         <button class="fcx-go" onclick="event.stopPropagation();cfOpenCard(this)">View trip</button></div>
     </div></div>`;
 }
@@ -2524,7 +2596,7 @@ function openDetail(i){const t=treks[i];if(!t)return;
   if(!_guidesLoaded)loadGuides().then(()=>{if(cart.trek===t)renderDetailLeader(t);});   /* …else fill in when they arrive */
   const stats=[['altitude',t.alt,'Altitude'],['clock',t.dur,'Duration'],['distance',t.dist,'Distance'],['calendar',t.best,'Best Time']];
   document.getElementById('dStats').innerHTML=stats.map(s=>`<div class="stat"><div class="ic" style="display:grid;place-items:center">${ic(s[0],20)}</div><b>${(s[1]==null||s[1]==='')?'—':esc(String(s[1]))}</b><small>${s[2]}</small></div>`).join('');
-  document.getElementById('dHl').innerHTML=t.hl.map(h=>`<span class="hl-pill"><span class="ic">${ic(h[0],15)}</span>${esc(h[1])}</span>`).join('');
+  document.getElementById('dHl').innerHTML=hlHTML(t);
   renderDetailFacts(t);
   document.getElementById('dIncl').innerHTML=inclCard(INCL,EXCL);
   const dit=trekItin(t);
@@ -2570,12 +2642,12 @@ function renderTrip(t){
   g('tripRoute').innerHTML=routeTimeline(t);
   g('tripIncl').innerHTML=inclCard(INCL,EXCL);
   g('tripPickup').innerHTML=pickupBlockHTML(t);
-  g('tripHl').innerHTML=(t.hl||[]).map(h=>`<span class="hl-pill"><span class="ic">${ic(h[0],15)}</span>${esc(h[1])}</span>`).join('');
+  g('tripHl').innerHTML=hlHTML(t);
   g('tripRevPrev').innerHTML=reviewPreviewHTML(t);
   const fv=g('tripFav');if(fv)fv.classList.remove('on');
   /* sticky booking bar */
   const cta=g('tripCta'),cap=g('tripCtaCap'),pr=g('tripCtaPrice');
-  if(pr)pr.textContent=INR(t.price||0);
+  if(pr)pr.innerHTML=priceTag(t);
   if(t.soon){if(cta){cta.innerHTML=ic('bell',16)+' Notify me';cta.onclick=()=>wa(t.n+' — please notify me when it goes live.');}if(cap)cap.textContent='coming soon';}
   else{if(cta){cta.innerHTML='Book this trip&nbsp; →';cta.onclick=()=>openTourDepart(t.idx);}if(cap)cap.textContent='from';}
   hydrate(g('trip'));
@@ -3377,7 +3449,7 @@ async function loadPeopleRemote(){
      from loadAuthorPhotos(), which fetches only the handful actually on screen. */
   try{const{data}=await sb.from('profiles').select('name,prefs,username,is_host').limit(300);
     if(data&&data.length){const seen=new Set();
-      data.forEach(r=>{if(r.name)hostByName[r.name]=!!r.is_host;});
+      data.forEach(r=>{if(r.name){hostByName[r.name]=!!r.is_host;privateByName[r.name]=!!(r.prefs&&r.prefs.private);}});
       return data.filter(r=>r.name&&!seen.has(r.name)&&seen.add(r.name))
         .map(r=>({n:r.name,h:'@'+(r.username||r.name.toLowerCase().replace(/[^a-z0-9]/g,'')),prefs:r.prefs||[],bio:(r.prefs&&r.prefs.length)?r.prefs.slice(0,3).join(' · '):'Tripomonk trekker',flwr:0}));
     }
@@ -4435,6 +4507,7 @@ async function renderPerson(){if(!curPerson){go('community');return;}const p=get
       uid?sb.from('follows').select('*',{count:'exact',head:true}).eq('follower_id',uid):Promise.resolve({count:me?followCount():0})
     ]);
     followers=fr.count||0; following=fg.count||0;
+    if(!me){try{const pr=await sb.from('profiles').select('prefs').ilike('name',p.n).limit(1);if(pr.data&&pr.data[0])privateByName[p.n]=!!(pr.data[0].prefs&&pr.data[0].prefs.private);}catch(e){}}
   }catch(e){}}
   /* base excludes my own optimistic follow so toggling adds/removes cleanly */
   const base=Math.max(0,followers-(isFollowing(p.n)?1:0));
@@ -4444,12 +4517,14 @@ async function renderPerson(){if(!curPerson){go('community');return;}const p=get
       <h2>${esc(properName(p.n))}${hostBadge(p.n)}</h2>${at?`<div class="handle">${esc(at)}</div>`:''}
       <p class="pbio">${esc(p.bio||'')}</p>
       <div class="pstats"><div><b>${posts.length}</b><small>Posts</small></div><div><b id="pFlwr" data-person="${esc(p.n)}" data-base="${base}">${flwr.toLocaleString()}</b><small>Followers</small></div><div><b>${Number(following).toLocaleString()}</b><small>Following</small></div></div>
-      ${me?'':`<div class="profile-actions" style="margin:14px 0 0"><button class="${isFollowing(p.n)?'on':''}" data-follow="${esc(p.n)}" onclick="toggleFollow('${jsq(p.n)}')">${isFollowing(p.n)?'Following':'Follow'}</button><button onclick="openChat('${jsq(p.n)}')">Message</button></div>`}
+      ${me?'':`<div class="profile-actions" style="margin:14px 0 0"><button class="${isFollowing(p.n)?'on':''}${(!isFollowing(p.n)&&hasRequested(p.n))?' req':''}" data-follow="${esc(p.n)}" onclick="followAction('${jsq(p.n)}')">${followBtnLabel(p.n)}</button><button onclick="${canSeePerson(p.n)?`openChat('${jsq(p.n)}')`:`note('Follow this private account to message them.','Private account')`}">Message</button><button class="p-call" onclick="requestCall('${jsq(p.n)}')" title="Request a call"><span class="msr">call</span></button></div>`}
       <div style="margin-top:12px">${socialLinks(me?getSavedSocials():socialsByName[p.n])}</div>
     </div>
     <div id="personTrips"></div>
-    <div class="sec-h" style="margin:18px 4px 8px"><b>Posts</b></div>
-    ${posts.length?`<div class="pgrid">${posts.map(gridCell).join('')}</div>`:`<div class="empty"><p>${me?'You have not posted yet.':'No posts yet.'}</p></div>`}`;
+    <div class="sec-h" style="margin:18px 4px 8px"><b>Posts</b>${(!me&&isPrivatePerson(p.n))?' <span class="msr" style="font-size:14px;color:var(--muted2);vertical-align:-2px">lock</span>':''}</div>
+    ${(!me&&isPrivatePerson(p.n)&&!canSeePerson(p.n))
+      ?`<div class="priv-lock"><span class="msr">lock</span><b>This account is private</b><p>Follow ${esc(properName(p.n))} to see their posts, message and call.</p></div>`
+      :(posts.length?`<div class="pgrid">${posts.map(gridCell).join('')}</div>`:`<div class="empty"><p>${me?'You have not posted yet.':'No posts yet.'}</p></div>`)}`;
   hydrate(body);
   /* a host's trips are the main thing people come here for — load them after the
      profile paints so the page never waits on a second query. Always attempt: the
@@ -4786,6 +4861,14 @@ const GIFT_CARDS=[
 const GIFT_AMOUNTS=[2000,5000,8000,10000,15000];
 let _giftSel=0,_giftAmt=2000;
 function inr(n){return '₹'+Number(n||0).toLocaleString('en-IN');}
+/* ---- discounts: a trek's `discount` is % off. priceOf() gives the payable price; the
+   server (Razorpay edge fn) applies the SAME % so the charge matches what's shown. ---- */
+function trekDiscount(t){return Math.max(0,Math.min(90,parseInt(t&&t.discount)||0));}
+function priceOf(t){const base=Number(t&&t.price)||0;const off=trekDiscount(t);return {base,off,now:off?Math.round(base*(100-off)/100):base,was:off?base:0};}
+/* inline price for cards/detail: strikethrough original + discounted, or just the price */
+function priceTag(t){const p=priceOf(t);return p.off
+  ? `<span class="pr-was">${INR(p.base)}</span> <span class="pr-now">${INR(p.now)}</span>`
+  : INR(p.now);}
 function openGiftCards(){_giftSel=0;_giftAmt=2000;go('giftCards');renderGiftCards();}
 function openGiftCardAt(i){_giftSel=i||0;_giftAmt=2000;go('giftCards');renderGiftCards();}
 /* home-page gift-card preview rail (below Compare Treks) */
@@ -5022,25 +5105,60 @@ function chatSeed(n){
 function getChat(n){try{const raw=localStorage.getItem(chatKey(n));return raw?JSON.parse(raw):chatSeed(n);}catch(e){return chatSeed(n);}}
 function saveChat(n,rows){try{localStorage.setItem(chatKey(n),JSON.stringify(rows));}catch(e){}}
 function chatContacts(){return [{n:'Tripomonk Team',h:'Official support',bio:'Bookings, payments and trek help',flwr:0}].concat(people.slice(0,8));}
+function chatPreview(msgs){const last=msgs[msgs.length-1];if(!last)return 'Start a conversation';
+  if(last.type==='callreq')return '📞 '+(last.who==='me'?'You requested a call':'Wants to call you');
+  if(last.type==='sys')return last.txt;
+  return (last.who==='me'?'You: ':'')+(last.txt||'');}
 function renderMessages(){
   const recent=document.getElementById('recentChats'),list=document.getElementById('messageList');if(!recent||!list)return;
   const rows=chatContacts();
-  recent.innerHTML=rows.slice(0,8).map(p=>`<div class="recent-chat" onclick="openChat('${jsq(p.n)}')"><div class="ring">${avatar(p.n,52)}</div><small>${esc(p.n.split(' ')[0])}</small></div>`).join('');
-  list.innerHTML=rows.map((p,i)=>{const msgs=getChat(p.n),last=msgs[msgs.length-1]||{txt:'Start a conversation'};return `<div class="chat-row" onclick="openChat('${jsq(p.n)}')">${avatar(p.n,46)}<div class="meta"><b>${esc(p.n)}</b><p>${esc(last.txt)}</p></div><time>${i?'Yesterday':'Now'}</time></div>`;}).join('');
+  recent.innerHTML=rows.slice(0,8).map(p=>`<div class="recent-chat" onclick="openChat('${jsq(p.n)}')"><div class="ring">${avatar(p.n,52)}</div><small>${esc(properName(p.n).split(' ')[0])}</small></div>`).join('');
+  list.innerHTML=rows.map((p,i)=>{const msgs=getChat(p.n);return `<div class="chat-row" onclick="openChat('${jsq(p.n)}')">${avatar(p.n,50)}<div class="meta"><b>${esc(properName(p.n))}${p.n==='Tripomonk Team'?'<span class="ch-verif msr">verified</span>':''}</b><p>${esc(chatPreview(msgs))}</p></div><time>${i?'Yesterday':'Now'}</time></div>`;}).join('');
   hydrate(document.getElementById('messages'));
 }
 function openChat(n){chatWith=n||'Tripomonk Team';go('chat');}
+/* a call-request card in the thread — the requester sees "waiting", the recipient gets Allow/Decline */
+function callReqBubble(m,i){
+  if(m.who==='me'){
+    return m.status==='allowed'
+      ? `<div class="chat-sys">📞 ${esc(properName(chatWith))} allowed your call. <a onclick="requestCall('${jsq(chatWith)}')" style="color:var(--accent2);font-weight:700;cursor:pointer">Call now →</a></div>`
+      : `<div class="chat-sys">📞 Call request sent — waiting for ${esc(properName(chatWith))} to allow. Their number stays private until they do.</div>`;
+  }
+  /* a request someone sent ME */
+  return `<div class="callreq-card"><div class="cr-top"><span class="msr">call</span><div><b>${esc(properName(chatWith))} wants to call you</b><small>Allow to share your number for this call.</small></div></div>`
+    +`<div class="cr-btns"><button class="cr-no" onclick="declineCall('${jsq(chatWith)}',${i})">Not now</button><button class="cr-yes" onclick="allowCallMsg('${jsq(chatWith)}',${i})">Allow call</button></div></div>`;
+}
+function declineCall(n,i){const rows=getChat(n);if(rows[i])rows[i].status='declined';rows.push({who:'me',type:'sys',txt:'You declined the call request. Your number was not shared.'});saveChat(n,rows);renderChat();}
+function allowCallMsg(n,i){const rows=getChat(n);if(rows[i])rows[i].status='handled';const s=callAllowedSet();s[n]={num:getSavedMobile()||'',t:Date.now()};try{localStorage.setItem('tmk_callok',JSON.stringify(s));}catch(e){}rows.push({who:'me',type:'sys',txt:'You allowed the call — '+properName(n)+' can now call you.'});saveChat(n,rows);renderChat();}
 function renderChat(){
   const head=document.getElementById('chatPerson'),thread=document.getElementById('chatThread');if(!head||!thread)return;
-  head.innerHTML=`<b>${esc(chatWith)}</b><small>Usually replies soon</small>`;
+  const team=chatWith==='Tripomonk Team';
+  const priv=isPrivatePerson(chatWith)&&!isFollowing(chatWith);
+  head.innerHTML=`<div class="ch-ava">${avatar(chatWith,42)}</div><div class="ch-id"><b>${esc(properName(chatWith))}${team?'<span class="ch-verif msr">verified</span>':''}</b><small>${team?'Official support · replies fast':(priv?'Private account':'Usually replies soon')}</small></div>`;
   const rows=getChat(chatWith);
-  thread.innerHTML=rows.map(m=>`<div class="bubble ${m.who==='me'?'me':'them'}">${esc(m.txt)}</div>`).join('');
+  const compose=document.querySelector('#chat .chat-compose');
+  if(priv&&!canSeePerson(chatWith)){
+    thread.innerHTML=`<div class="chat-empty"><span class="msr" style="font-size:46px;color:var(--muted2)">lock</span><b>${esc(properName(chatWith))}'s account is private</b><p>Send a follow request. Once they accept, you can message and call.</p><button class="btn" style="max-width:220px;margin:6px auto 0" onclick="followAction('${jsq(chatWith)}')">${hasRequested(chatWith)?'Requested':'Send follow request'}</button></div>`;
+    if(compose)compose.style.display='none';
+    return;
+  }
+  if(compose)compose.style.display='';
+  if(!rows.length){
+    thread.innerHTML=`<div class="chat-empty"><div class="ce-ava">${avatar(chatWith,66)}</div><b>${esc(properName(chatWith))}</b><p>${team?'Ask us anything about bookings, payments or picking your next trek.':'Say hi 👋 — this is the start of your conversation.'}</p></div>`;
+  }else{
+    thread.innerHTML=rows.map((m,i)=>{
+      if(m.type==='callreq')return callReqBubble(m,i);
+      if(m.type==='sys')return `<div class="chat-sys">${esc(m.txt)}</div>`;
+      return `<div class="bubble ${m.who==='me'?'me':'them'}">${esc(m.txt)}${m.t?`<time>${esc(m.t)}</time>`:''}</div>`;
+    }).join('');
+  }
   setTimeout(()=>{thread.scrollTop=thread.scrollHeight;},30);
 }
 function sendChat(){
   const input=document.getElementById('chatInput');if(!input)return;
   const txt=(input.value||'').trim();if(!txt)return;
-  const rows=getChat(chatWith);rows.push({who:'me',txt});saveChat(chatWith,rows);input.value='';renderChat();
+  if(isPrivatePerson(chatWith)&&!canSeePerson(chatWith)){note('Send a follow request first — this account is private.','Private account');return;}
+  const rows=getChat(chatWith);rows.push({who:'me',txt,t:nowT()});saveChat(chatWith,rows);input.value='';renderChat();
 }
 
 /* ---- theme (dark / light / system) ---- */
@@ -5164,12 +5282,46 @@ function renderSettings(){
     <span class="ic"><span class="msr" style="font-size:20px">password</span></span>
     <span class="t"><b style="display:block;font-size:13.5px">Password &amp; sign-in</b><small style="color:var(--muted)">Set a password to sign in without Google</small></span>
     <span class="ch" style="transform:scaleX(-1)">${ic('back',16)}</span></div>`:'';
-  document.getElementById('setList').innerHTML=soundRow+pwRow+setList.map(s=>{
+  /* private account: gate posts + messaging + calls behind an approved follow */
+  const privRow=isLoggedIn()?`<div class="mrow" onclick="togglePrivateAccount()">
+    <span class="ic"><span class="msr" style="font-size:20px">lock</span></span>
+    <span class="t"><b style="display:block;font-size:13.5px">Private account</b><small style="color:var(--muted)">You approve followers; only they see your posts & can message or call you</small></span>
+    <span class="tgl ${isPrivateAccount()?'on':''}" id="privToggle"><i></i></span></div>
+    <div class="mrow" onclick="go('followRequests')">
+    <span class="ic"><span class="msr" style="font-size:20px">group_add</span></span>
+    <span class="t">Follow requests</span>
+    <span class="ch" style="transform:scaleX(-1)">${ic('back',16)}</span></div>`:'';
+  document.getElementById('setList').innerHTML=soundRow+pwRow+privRow+setList.map(s=>{
     const action=s[2]?`go('${s[2]}')`:`note('${s[1]} - coming soon')`;
     return `<div class="mrow" onclick="${action}"><span class="ic">${ic(s[0],20)}</span><span class="t">${s[1]}</span><span class="ch" style="transform:scaleX(-1)">${ic('back',16)}</span></div>`;
   }).join('');
   hydrate(document.getElementById('settings'));
 }
+async function togglePrivateAccount(){
+  if(!isLoggedIn()){note('Sign in to change this.','Sign in required');return;}
+  const p=getPrefs()||{};p.private=!p.private;
+  try{localStorage.setItem(prefKey(),JSON.stringify(p));}catch(e){}
+  privateByName[myName()]=!!p.private;
+  renderSettings();
+  toast(p.private?'Your account is now private 🔒':'Your account is now public');
+  try{const sb=getSupaClient();const uid=sb?await authUid():null;if(sb&&uid)await sb.from('profiles').update({prefs:p}).eq('id',uid);}catch(e){}
+}
+/* incoming follow requests for MY (private) account */
+async function renderFollowRequests(){
+  const box=document.getElementById('followReqBody');if(!box)return;
+  box.innerHTML='<div class="empty"><p>Loading requests…</p></div>';
+  const sb=getSupaClient();const me=myName();
+  let reqs=[];
+  if(sb){try{const r=await sb.from('follows').select('follower_id,follower_name,status').eq('following_name',me).eq('status','pending');reqs=r.data||[];}catch(e){}}
+  if(!reqs.length){box.innerHTML='<div class="ss-empty"><span class="msr">group_add</span><b>No follow requests</b><p>When someone asks to follow your private account, it shows up here.</p></div>';hydrate(box);return;}
+  box.innerHTML=reqs.map(r=>{const nm=r.follower_name||'Trekker';return `<div class="freq-row">${avatar(nm,46)}<div class="freq-tx"><b>${esc(properName(nm))}</b><small>wants to follow you</small></div><div class="freq-btns"><button class="freq-no" onclick="declineFollowReq('${jsq(r.follower_id)}')">Decline</button><button class="freq-yes" onclick="acceptFollowReq('${jsq(r.follower_id)}','${jsq(nm)}')">Accept</button></div></div>`;}).join('');
+  hydrate(box);
+}
+async function acceptFollowReq(fid,nm){const sb=getSupaClient();if(!sb)return;const me=myName();
+  try{await sb.from('follows').update({status:'accepted'}).eq('follower_id',fid).eq('following_name',me);}catch(e){}
+  uidForName(nm);pushNotif({recipientId:fid,type:'follow_accept'});toast('Accepted');renderFollowRequests();}
+async function declineFollowReq(fid){const sb=getSupaClient();if(!sb)return;const me=myName();
+  try{await sb.from('follows').delete().eq('follower_id',fid).eq('following_name',me);}catch(e){}toast('Declined');renderFollowRequests();}
 function calPick(el){document.querySelectorAll('#cal .grid .d').forEach(d=>{if(!d.classList.contains('off'))d.classList.remove('on');});el.classList.add('on');}
 function renderSearch(){document.getElementById('searchSug').innerHTML=['Kedarkantha','Valley of Flowers','Uttarakhand','Easy treks','Roopkund'].map(s=>`<div class="chip pill" onclick="doSearch('${s}')">${s}</div>`).join('');doSearch('');const inp=document.getElementById('searchInput');if(inp&&!inp._w){inp._w=1;inp.addEventListener('input',()=>doSearch(inp.value));}}
 function doSearch(q){const inp=document.getElementById('searchInput');if(inp&&q&&inp.value!==q)inp.value=q;q=(q||'').toLowerCase();
@@ -5583,7 +5735,7 @@ async function sbWriteChecked(method,path,body){
   if(!res||!res.ok){note((res&&res.error)||'Admin save failed.','Save failed');return false;}
   return true;
 }
-function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null,req_score:(typeof t.req==='number'?t.req:null),popular:!!t.pop,featured:!!t.feat,type:trekType(t),dest_id:(t.dest_id||'').trim()||null,departure_type:tourDep(t),itinerary:(Array.isArray(t.itinerary)?t.itinerary:[]),pickup:(t.pickup||'').trim()||null,dropoff:(t.dropoff||'').trim()||null,pickup_map:(t.pickup_map||'').trim()||null,tag:(t.tag||'').trim()||null,offer:(t.offer||'').trim()||null,itinerary_url:(t.itin||'').trim()||null,
+function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?')[0],rating:t.r,reviews:t.rev,level:t.lvl,days:t.days,altitude:t.alt,distance:t.dist,best_time:t.best,price:t.price,soon:!!t.soon,description:t.desc,packing:t.packing||null,req_score:(typeof t.req==='number'?t.req:null),popular:!!t.pop,featured:!!t.feat,type:trekType(t),dest_id:(t.dest_id||'').trim()||null,departure_type:tourDep(t),itinerary:(Array.isArray(t.itinerary)?t.itinerary:[]),pickup:(t.pickup||'').trim()||null,dropoff:(t.dropoff||'').trim()||null,pickup_map:(t.pickup_map||'').trim()||null,tag:(t.tag||'').trim()||null,offer:(t.offer||'').trim()||null,discount:Math.max(0,Math.min(90,parseInt(t.discount)||0)),highlights:(Array.isArray(t.highlights)&&t.highlights.length?t.highlights:null),itinerary_url:(t.itin||'').trim()||null,
   hero_video:(t.hvid||'').trim()||null,hero_use_video:!!t.hvideo,
   guide_id:(t.guide_id!=null&&t.guide_id!=='')?t.guide_id:null};}
 let editIdx=-1, adminTab='Treks', depTrek=null, _admHub=true;
@@ -5623,12 +5775,25 @@ function renderAdmin(){
   else if(adminTab==='Staff')renderAdminStaff();
   else renderAdminSettings();
 }
+let _admHubQ='';
+function filterAdminHub(v){_admHubQ=(v||'').toLowerCase();paintAdminHub();}
+function paintAdminHub(){
+  const grid=document.getElementById('admHubGrid');if(!grid)return;
+  const q=_admHubQ;
+  const tabs=ADM_TABS.filter(name=>!q||name.toLowerCase().includes(q)||String(ADM_TAB_DESC[name]||'').toLowerCase().includes(q));
+  grid.innerHTML=tabs.length?tabs.map(name=>
+    '<button class="adm-hubcard" onclick="openAdminTab(\''+jsq(name)+'\')">'
+    +'<span class="adm-hubic"><span class="msr">'+(ADM_TAB_IC[name]||'circle')+'</span></span>'
+    +'<b>'+esc(name)+'</b><small>'+esc(ADM_TAB_DESC[name]||'')+'</small></button>').join('')
+    :'<div class="empty" style="grid-column:1/-1;padding:20px"><p>No section matches “'+esc(_admHubQ)+'”.</p></div>';
+  hydrate(grid);
+}
 function renderAdminHub(){
   const box=document.getElementById('adminBody');if(!box)return;
-  box.innerHTML='<div class="adm-hub">'+ADM_TABS.map(name=>
-    '<button class="adm-hubcard" onclick="openAdminTab(\''+name+'\')">'
-    +'<span class="adm-hubic"><span class="msr">'+(ADM_TAB_IC[name]||'circle')+'</span></span>'
-    +'<b>'+esc(name)+'</b><small>'+esc(ADM_TAB_DESC[name]||'')+'</small></button>').join('')+'</div>';
+  box.innerHTML='<div class="adm-search" style="margin:2px 0 14px"><span class="msr">search</span>'
+    +'<input placeholder="Search admin sections…" value="'+esc(_admHubQ)+'" oninput="filterAdminHub(this.value)"></div>'
+    +'<div class="adm-hub" id="admHubGrid"></div>';
+  paintAdminHub();
   hydrate(box);
 }
 function openAdminTab(t){adminTab=t;_admHub=false;renderAdmin();
@@ -6301,7 +6466,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='386';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='388';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -6403,6 +6568,10 @@ function admItinReadDOM(){
 }
 function admItinAdd(){admItinReadDOM();_admItin.push(['','','','']);admItinRender();}
 function admItinDel(i){admItinReadDOM();_admItin.splice(i,1);admItinRender();}
+let _admHl=[];
+function admToggleHl(label){const i=_admHl.indexOf(label);if(i>=0)_admHl.splice(i,1);else{if(_admHl.length>=8){note('Up to 8 highlights.','Max reached');return;}_admHl.push(label);}renderAdmHlChips();}
+function renderAdmHlChips(){const box=document.getElementById('admHlChips');if(!box)return;
+  box.innerHTML=HL_LABELS.map(l=>`<button type="button" class="adm-chip ${_admHl.includes(l)?'on':''}" onclick="admToggleHl('${jsq(l)}')"><span class="msr" style="font-size:14px;vertical-align:-2px;margin-right:4px">${HL_ICON[l]||'check'}</span>${esc(l)}</button>`).join('');}
 function showAdminForm(t){const f=document.getElementById('adminForm');
   _admItin=(trekItin(t)||[]).map(d=>Array.isArray(d)?[d[0]||'',d[1]||'',d[2]||'',d[3]||'']:[String(d||''),'','','']);
   const lv=t.lvl||'Easy', img=(t.img||'').split('?')[0];
@@ -6454,8 +6623,14 @@ function showAdminForm(t){const f=document.getElementById('adminForm');
 
     <div class="adm-sec">Pricing &amp; readiness</div>
     <div class="adm-row2">${fld('admPrice','Price (₹)',t.price,'8999')}
-      <div class="field"><label>Required trek score</label><div class="inp"><input id="admReq" type="number" min="0" max="100" value="${esc(reqVal)}" placeholder="auto${reqAuto!==''?' ('+reqAuto+')':''}"></div></div></div>
+      <div class="field"><label>Discount (% off)</label><div class="inp"><input id="admDiscount" type="number" min="0" max="90" value="${esc(t.discount||'')}" placeholder="0"></div></div></div>
+    <div class="adm-hint">A % discount shows a struck-through original price + the discounted price everywhere, and charges the discounted amount at checkout (Razorpay). Leave blank/0 for no discount.</div>
+    <div class="field"><label>Required trek score</label><div class="inp"><input id="admReq" type="number" min="0" max="100" value="${esc(reqVal)}" placeholder="auto${reqAuto!==''?' ('+reqAuto+')':''}"></div></div>
     <div class="adm-hint">Leave the score blank to auto-calculate it from difficulty, altitude &amp; days.</div>
+
+    <div class="adm-sec">Trip highlights</div>
+    <div class="adm-hint">Pick what makes this ${word} special — shown as chips on the trip page. Up to 8.</div>
+    <div class="adm-chips" id="admHlChips"></div>
 
     <div class="adm-sec">Ratings</div>
     <div class="adm-row2">${fld('admRate','Rating',t.r,'4.8')}${fld('admRev','Reviews',t.rev,'860')}</div>
@@ -6498,7 +6673,9 @@ function showAdminForm(t){const f=document.getElementById('adminForm');
 
     <div class="adm-ed-foot"><button class="btn ghost" onclick="closeAdminForm()">Cancel</button><button class="btn" onclick="saveTrek()"><span class="msr">check</span> <span id="admSaveWord">Save ${word}</span></button></div>
   </div>`;
-  f.style.display='block';hydrate(f);admItinRender();f.scrollIntoView({behavior:'smooth',block:'start'});
+  f.style.display='block';hydrate(f);admItinRender();
+  _admHl=normHl(t).slice();renderAdmHlChips();
+  f.scrollIntoView({behavior:'smooth',block:'start'});
   const imgInp=document.getElementById('admImg');
   if(imgInp)imgInp.addEventListener('input',()=>{const p=document.getElementById('admImgPrev');if(p)p.style.backgroundImage=imgInp.value.trim()?`url('${normalizeImageUrl(imgInp.value).replace(/'/g,'%27')}')`:'';});
   const tagInp=document.getElementById('admTag');
@@ -6523,6 +6700,8 @@ async function saveTrek(){const g=id=>document.getElementById(id);
     rev:g('admRev').value.trim()||'0',img:normalizeImageUrl(g('admImg').value),desc:g('admDesc').value.trim(),
     tag:(g('admTag')?g('admTag').value:'').trim().slice(0,28),
     offer:(g('admOffer')?g('admOffer').value:'').trim().slice(0,160),
+    discount:Math.max(0,Math.min(90,parseInt(g('admDiscount')?g('admDiscount').value:'')||0)),
+    highlights:_admHl.slice(),
     itin:(g('admItin')?g('admItin').value:'').trim(),
     hvid:(g('admVid')?g('admVid').value:'').trim(),
     hvideo:!!(g('admHeroVid')&&g('admHeroVid').classList.contains('on')),
@@ -8215,6 +8394,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='dataPrivacy')renderDataPrivacy();
   if(id==='emergency')renderEmergency();
   if(id==='savedPosts')renderSavedPosts();
+  if(id==='followRequests')renderFollowRequests();
   if(id==='packing'){pkTrek=_pkForce||(cart.trek&&cart.trek.n)||'';_pkForce='';renderPacking();}
   if(id==='bookings')renderBookings();
   if(id==='guardian')renderGuardian();
@@ -8279,7 +8459,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections,addStaff,removeStaff,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab,openReviewModal,closeReviewModal,submitReview,setRevStars,adminAddReview,adminDelReview,toggleSavePost,renderEmergency,renderSavedPosts});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections,addStaff,removeStaff,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab,openReviewModal,closeReviewModal,submitReview,setRevStars,adminAddReview,adminDelReview,toggleSavePost,renderEmergency,renderSavedPosts,followAction,requestCall,declineCall,allowCallMsg,togglePrivateAccount,renderFollowRequests,acceptFollowReq,declineFollowReq,admToggleHl,filterAdminHub});
 
 /* init */
 applyTheme();   /* dark / light / system theme */
