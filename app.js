@@ -779,9 +779,11 @@ function requestCall(n){
   if(isCallAllowed(n)){const num=callNumberFor(n);if(num){location.href='tel:'+num;return;}}
   const rows=getChat(n);
   if(rows.some(m=>m.type==='callreq'&&m.who==='me'&&m.status==='pending')){note('You already asked '+properName(n)+' for a call. Please wait for them to allow it.','Already requested');return;}
-  rows.push({who:'me',type:'callreq',status:'pending',t:nowT()});saveChat(n,rows);
+  const cid='c'+(++_cidSeq);
+  rows.push({cid,who:'me',type:'callreq',status:'pending',t:nowT(),_pending:true});saveChat(n,rows);
   if(cur!=='chat'){openChat(n);}else renderChat();
   note('We’ve asked '+properName(n)+' for a call. To protect their privacy their number stays hidden — you’ll be able to call only if they allow it.','Call request sent');
+  deliverMessage(n,{type:'callreq',status:'pending'},cid);
 }
 const menu=[['bookings','My Bookings','bookings'],['shield','Trek Passport','passport'],['like','My Preferences','onboarding'],['monitor','Trek Health','health'],['distance','Trek Navigation','navmap'],['heartmenu','My Wishlist','wishlist'],['starline','My Reviews','reviews'],['settings','Settings','settings'],['help','Help & Support','help']];
 const setList=[['user','Account & security','account'],['bell','Notifications','notifPrefs'],['globe','Language','language'],['card','Payment methods','payments'],['shield','Privacy Policy','privacy'],['help','About Tripomonk','about']];
@@ -895,6 +897,7 @@ async function initAuth(){
     seedIdentityFromAuth();   /* fill name/photo from the Google account if still unset */
     upsertProfile();   /* register this user so others can @mention/follow/notify them */
     loadStaff();       /* role check */
+    _myUid=null;ensureMsgSub();   /* start receiving cross-user messages */
     refreshAuthUI();   /* again, now that the name/photo are back */
     if(fromOAuth){
       /* clean the token hash out of the URL and land on home */
@@ -920,6 +923,7 @@ async function initAuth(){
       seedIdentityFromAuth();   /* fill name/photo from the Google account if still unset */
       upsertProfile();
       loadStaff();
+      _myUid=null;stopMsgSub();ensureMsgSub();   /* resubscribe as the new account */
       renderFeedIfOpen();
       refreshAuthUI();
     }
@@ -1162,7 +1166,7 @@ async function passwordAuth(){
 }
 async function afterPasswordLogin(user){
   if(user)currentUser=user;
-  await loadProfileFromServer();upsertProfile();loadStaff();
+  await loadProfileFromServer();upsertProfile();loadStaff();_myUid=null;ensureMsgSub();
   const r=_loginReturn;_loginReturn=null;
   go(r||lastTab||'home');
   setTimeout(maybeOnboard,500);
@@ -1342,7 +1346,7 @@ async function verifyOtp(){
 }
 async function signOut(){
   const sb=getSupaClient();if(sb)await sb.auth.signOut();
-  currentUser=null;_profileLoadedFor=null;
+  currentUser=null;_profileLoadedFor=null;_myUid=null;stopMsgSub();
   clearLocalIdentity();
   try{['tmk_contact','tmk_uid','tmk_nav'].forEach(k=>localStorage.removeItem(k));}catch(e){}
   hist=[];_loginReturn='home';
@@ -5162,6 +5166,11 @@ async function loadMyCounts(){
 
 /* ---------- messages / chat UI ---------- */
 let chatWith='Tripomonk Team';
+let _myUid=null;            /* cached auth uid for messaging */
+let _nameUidCache={};       /* display name -> user_id (best effort) */
+let _inboxNames=[];         /* names with a real DB conversation */
+let msgChannel=null;        /* realtime channel for inbound messages */
+let _cidSeq=0;              /* client id for optimistic (un-acked) messages */
 function chatKey(n){return 'tmk_chat_'+String(n||'team').toLowerCase().replace(/[^a-z0-9]+/g,'_');}
 /* Only the Tripomonk Team chat is pre-seeded — with a single welcome message.
    Every other conversation starts empty (no fake demo thread). */
@@ -5174,19 +5183,153 @@ function chatSeed(n){
 }
 function getChat(n){try{const raw=localStorage.getItem(chatKey(n));return raw?JSON.parse(raw):chatSeed(n);}catch(e){return chatSeed(n);}}
 function saveChat(n,rows){try{localStorage.setItem(chatKey(n),JSON.stringify(rows));}catch(e){}}
-function chatContacts(){return [{n:'Tripomonk Team',h:'Official support',bio:'Bookings, payments and trek help',flwr:0}].concat(people.slice(0,8));}
+
+/* ---------- real cross-user messaging (Supabase `messages` table + realtime) ----
+   The localStorage cache above stays as the instant + offline copy; the DB is the
+   source of truth so two different phones see the same thread. 'Tripomonk Team' is
+   a local support bot (no real user id) — it stays on-device.  Needs SQL-add-messages.sql
+   run + `messages` added to the supabase_realtime publication to work cross-device. */
+function msgTime(iso){try{return new Date(iso).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});}catch(e){return nowT();}}
+function msgToRow(m,me){return {id:m.id,who:(m.sender_id===me?'me':'them'),txt:m.body||'',type:m.type||'text',status:m.status||'',t:msgTime(m.created_at),ts:m.created_at};}
+async function myUid(){if(_myUid)return _myUid;_myUid=await authUid();return _myUid;}
+async function nameToUid(name){
+  if(!name||name==='Tripomonk Team')return null;
+  if(name==='You'||name===myName())return await myUid();
+  if(_nameUidCache[name]!==undefined)return _nameUidCache[name];
+  const uid=await uidForName(name);_nameUidCache[name]=uid||null;return _nameUidCache[name];
+}
+/* pull one conversation from the DB and refresh the local cache (keeps queued-offline rows) */
+async function loadThread(name){
+  if(name==='Tripomonk Team')return getChat(name);
+  const sb=getSupaClient();const me=await myUid();
+  if(!sb||!me)return getChat(name);
+  const other=await nameToUid(name);
+  if(!other)return getChat(name);
+  try{
+    const{data,error}=await sb.from('messages').select('*')
+      .or(`and(sender_id.eq.${me},recipient_id.eq.${other}),and(sender_id.eq.${other},recipient_id.eq.${me})`)
+      .order('created_at',{ascending:true}).limit(300);
+    if(error)throw error;
+    const server=(data||[]).map(m=>msgToRow(m,me));
+    const pending=getChat(name).filter(r=>r._pending);   /* not-yet-delivered local rows */
+    const rows=server.concat(pending);
+    saveChat(name,rows);
+    return rows;
+  }catch(e){return getChat(name);}
+}
+/* pull every conversation once so the Messages list shows real previews */
+async function loadInbox(){
+  const sb=getSupaClient();const me=await myUid();
+  if(!sb||!me)return;
+  try{
+    const{data}=await sb.from('messages').select('*')
+      .or(`sender_id.eq.${me},recipient_id.eq.${me}`)
+      .order('created_at',{ascending:true}).limit(400);
+    if(!data)return;
+    const byName={};
+    data.forEach(m=>{
+      const outbound=m.sender_id===me;
+      const name=outbound?(m.recipient_name||''):(m.sender_name||'');
+      if(!name)return;
+      const other=outbound?m.recipient_id:m.sender_id;
+      if(other)_nameUidCache[name]=other;
+      (byName[name]=byName[name]||[]).push(msgToRow(m,me));
+    });
+    Object.keys(byName).forEach(nm=>{
+      const pending=getChat(nm).filter(r=>r._pending);
+      saveChat(nm,byName[nm].concat(pending));
+    });
+    _inboxNames=Object.keys(byName);
+  }catch(e){}
+}
+/* realtime: messages addressed to me. I only ever receive INBOUND here, so my own
+   sends never echo back (I add those optimistically in sendChat). */
+async function ensureMsgSub(){
+  const sb=getSupaClient();if(!sb||!sb.channel||msgChannel)return;
+  const me=await myUid();if(!me)return;
+  try{
+    msgChannel=sb.channel('msg-'+me)
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:'recipient_id=eq.'+me},payload=>onIncomingMsg(payload.new))
+      .subscribe();
+  }catch(e){}
+}
+function stopMsgSub(){if(!msgChannel)return;try{getSupaClient().removeChannel(msgChannel);}catch(e){}msgChannel=null;}
+function onIncomingMsg(m){
+  if(!m)return;
+  const name=m.sender_name||'';if(!name)return;
+  if(m.sender_id)_nameUidCache[name]=m.sender_id;
+  const rows=getChat(name);
+  if(m.id&&rows.some(x=>String(x.id)===String(m.id)))return;   /* dedupe */
+  if(m.type==='callok'){                       /* they allowed my call — I can dial now */
+    const s=callAllowedSet();s[name]={num:m.body||'',t:Date.now()};
+    try{localStorage.setItem('tmk_callok',JSON.stringify(s));}catch(e){}
+    rows.forEach(r=>{if(r.type==='callreq'&&r.who==='me'&&r.status==='pending')r.status='allowed';});
+    rows.push({id:m.id,who:'them',type:'sys',txt:properName(name)+' allowed your call — tap the call button to dial.',t:msgTime(m.created_at),ts:m.created_at});
+  }else{
+    rows.push(msgToRow(m,_myUid));
+  }
+  saveChat(name,rows);
+  if(_inboxNames.indexOf(name)<0)_inboxNames.push(name);
+  if(cur==='chat'&&chatWith===name){renderChat();sfx('notif');}
+  else if(cur==='messages'){renderMessages();sfx('notif');}
+  else sfx('notif');
+}
+/* deliver an outbound message to the DB. `cid` (optional) reconciles the optimistic
+   local row on success/failure. Returns true if it reached the server. */
+async function deliverMessage(name,payload,cid){
+  const finish=(realId,ok)=>{
+    if(!cid)return;
+    const rows=getChat(name);const r=rows.find(x=>x.cid===cid);
+    if(!r)return;
+    if(ok){delete r._pending;if(realId)r.id=realId;}else{r._pending=true;}
+    saveChat(name,rows);
+  };
+  const sb=getSupaClient();const me=await myUid();
+  if(!sb||!me){finish(null,false);return false;}
+  const other=await nameToUid(name);
+  if(!other){finish(null,false);return false;}   /* unknown / unresolvable recipient — stays local */
+  try{
+    const row={sender_id:me,sender_name:myName(),recipient_id:other,recipient_name:name,body:payload.body||'',type:payload.type||'text'};
+    if(payload.status)row.status=payload.status;
+    const{data,error}=await sb.from('messages').insert(row).select('id').single();
+    if(error)throw error;
+    finish(data&&data.id,true);
+    return true;
+  }catch(e){finish(null,false);return false;}
+}
+/* re-send any messages that were queued while offline / before the table/login existed */
+async function flushPending(name){
+  const sb=getSupaClient();const me=await myUid();
+  if(!sb||!me||!name||name==='Tripomonk Team')return;
+  const pend=getChat(name).filter(r=>r._pending&&r.cid);
+  for(const r of pend){await deliverMessage(name,{body:r.txt||'',type:r.type||'text',status:r.status},r.cid);}
+}
+function chatContacts(){
+  const list=[{n:'Tripomonk Team',h:'Official support',bio:'Bookings, payments and trek help',flwr:0}];
+  const seen={'Tripomonk Team':1};
+  _inboxNames.forEach(nm=>{if(nm&&!seen[nm]){seen[nm]=1;list.push({n:nm});}});   /* real conversations */
+  (peoplePool||[]).slice(0,8).forEach(p=>{if(p&&p.n&&!seen[p.n]){seen[p.n]=1;list.push(p);}});  /* suggested new chats */
+  return list;
+}
 function chatPreview(msgs){const last=msgs[msgs.length-1];if(!last)return 'Start a conversation';
   if(last.type==='callreq')return '📞 '+(last.who==='me'?'You requested a call':'Wants to call you');
   if(last.type==='sys')return last.txt;
   return (last.who==='me'?'You: ':'')+(last.txt||'');}
+function chatWhen(msgs){const last=msgs&&msgs[msgs.length-1];if(!last)return '';if(last.ts)return timeAgo(last.ts);return last.t||'';}
 function renderMessages(){
+  ensureMsgSub();
+  paintMessages();                                   /* instant, from cache */
+  loadInbox().then(()=>{if(cur==='messages')paintMessages();});   /* then refresh from DB */
+}
+function paintMessages(){
   const recent=document.getElementById('recentChats'),list=document.getElementById('messageList');if(!recent||!list)return;
   const rows=chatContacts();
   recent.innerHTML=rows.slice(0,8).map(p=>`<div class="recent-chat" onclick="openChat('${jsq(p.n)}')"><div class="ring">${avatar(p.n,52)}</div><small>${esc(properName(p.n).split(' ')[0])}</small></div>`).join('');
-  list.innerHTML=rows.map((p,i)=>{const msgs=getChat(p.n);return `<div class="chat-row" onclick="openChat('${jsq(p.n)}')">${avatar(p.n,50)}<div class="meta"><b>${esc(properName(p.n))}${p.n==='Tripomonk Team'?'<span class="ch-verif msr">verified</span>':''}</b><p>${esc(chatPreview(msgs))}</p></div><time>${i?'Yesterday':'Now'}</time></div>`;}).join('');
+  list.innerHTML=rows.map(p=>{const msgs=getChat(p.n);return `<div class="chat-row" onclick="openChat('${jsq(p.n)}')">${avatar(p.n,50)}<div class="meta"><b>${esc(properName(p.n))}${p.n==='Tripomonk Team'?'<span class="ch-verif msr">verified</span>':''}</b><p>${esc(chatPreview(msgs))}</p></div><time>${esc(chatWhen(msgs))}</time></div>`;}).join('');
   hydrate(document.getElementById('messages'));
 }
-function openChat(n){chatWith=n||'Tripomonk Team';go('chat');}
+function openChat(n){chatWith=n||'Tripomonk Team';ensureMsgSub();go('chat');refreshOpenThread();}
+async function refreshOpenThread(){const name=chatWith;await flushPending(name);await loadThread(name);if(cur==='chat'&&chatWith===name)renderChat();}
 /* a call-request card in the thread — the requester sees "waiting", the recipient gets Allow/Decline */
 function callReqBubble(m,i){
   if(m.who==='me'){
@@ -5198,8 +5341,10 @@ function callReqBubble(m,i){
   return `<div class="callreq-card"><div class="cr-top"><span class="msr">call</span><div><b>${esc(properName(chatWith))} wants to call you</b><small>Allow to share your number for this call.</small></div></div>`
     +`<div class="cr-btns"><button class="cr-no" onclick="declineCall('${jsq(chatWith)}',${i})">Not now</button><button class="cr-yes" onclick="allowCallMsg('${jsq(chatWith)}',${i})">Allow call</button></div></div>`;
 }
-function declineCall(n,i){const rows=getChat(n);if(rows[i])rows[i].status='declined';rows.push({who:'me',type:'sys',txt:'You declined the call request. Your number was not shared.'});saveChat(n,rows);renderChat();}
-function allowCallMsg(n,i){const rows=getChat(n);if(rows[i])rows[i].status='handled';const s=callAllowedSet();s[n]={num:getSavedMobile()||'',t:Date.now()};try{localStorage.setItem('tmk_callok',JSON.stringify(s));}catch(e){}rows.push({who:'me',type:'sys',txt:'You allowed the call — '+properName(n)+' can now call you.'});saveChat(n,rows);renderChat();}
+function declineCall(n,i){const rows=getChat(n);if(rows[i])rows[i].status='declined';rows.push({who:'me',type:'sys',txt:'You declined the call request. Your number was not shared.'});saveChat(n,rows);renderChat();
+  deliverMessage(n,{type:'sys',body:'Your call request was declined — the number was not shared.'});}
+function allowCallMsg(n,i){const rows=getChat(n);if(rows[i])rows[i].status='handled';const s=callAllowedSet();s[n]={num:getSavedMobile()||'',t:Date.now()};try{localStorage.setItem('tmk_callok',JSON.stringify(s));}catch(e){}rows.push({who:'me',type:'sys',txt:'You allowed the call — '+properName(n)+' can now call you.'});saveChat(n,rows);renderChat();
+  deliverMessage(n,{type:'callok',body:getSavedMobile()||''});}   /* sends my number ONLY to this person, only because I allowed it */
 function renderChat(){
   const head=document.getElementById('chatPerson'),thread=document.getElementById('chatThread');if(!head||!thread)return;
   const team=chatWith==='Tripomonk Team';
@@ -5219,16 +5364,20 @@ function renderChat(){
     thread.innerHTML=rows.map((m,i)=>{
       if(m.type==='callreq')return callReqBubble(m,i);
       if(m.type==='sys')return `<div class="chat-sys">${esc(m.txt)}</div>`;
-      return `<div class="bubble ${m.who==='me'?'me':'them'}">${esc(m.txt)}${m.t?`<time>${esc(m.t)}</time>`:''}</div>`;
+      return `<div class="bubble ${m.who==='me'?'me':'them'}${m._pending?' sending':''}">${esc(m.txt)}${m.t?`<time>${esc(m.t)}${m._pending?' · sending…':''}</time>`:''}</div>`;
     }).join('');
   }
   setTimeout(()=>{thread.scrollTop=thread.scrollHeight;},30);
 }
-function sendChat(){
+async function sendChat(){
   const input=document.getElementById('chatInput');if(!input)return;
   const txt=(input.value||'').trim();if(!txt)return;
   if(isPrivatePerson(chatWith)&&!canSeePerson(chatWith)){note('Send a follow request first — this account is private.','Private account');return;}
-  const rows=getChat(chatWith);rows.push({who:'me',txt,t:nowT()});saveChat(chatWith,rows);input.value='';renderChat();
+  const team=chatWith==='Tripomonk Team';
+  const cid='c'+(++_cidSeq);
+  const rows=getChat(chatWith);rows.push({cid,who:'me',txt,t:nowT(),type:'text',_pending:!team});saveChat(chatWith,rows);
+  input.value='';renderChat();
+  if(!team){await deliverMessage(chatWith,{body:txt,type:'text'},cid);renderChat();}
 }
 
 /* ---- theme (dark / light / system) ---- */
@@ -7153,7 +7302,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='400';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='401';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
