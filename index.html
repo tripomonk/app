@@ -2066,9 +2066,31 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .sv-x{all:unset;width:44px;height:44px;display:grid;place-items:center;color:#fff;font-size:26px;cursor:pointer;flex:none}
   .sv-stage{flex:1;min-height:0;display:grid;place-items:center;background:#050c16;position:relative}
   .sv-stage img{max-width:100%;max-height:100%;object-fit:contain;display:block}
-  .sv-tap{position:absolute;top:64px;bottom:0;width:36%;z-index:1;cursor:pointer}
+  .sv-tap{position:absolute;top:64px;bottom:84px;width:36%;z-index:1;cursor:pointer}
   .sv-tap.prev{left:0}
   .sv-tap.next{right:0;width:64%}
+  /* story footer: owner sees "Seen by N" + delete; a viewer gets like + reply */
+  .sv-foot{position:absolute;left:0;right:0;bottom:0;z-index:4;display:flex;align-items:center;gap:10px;padding:12px calc(14px + var(--safe-right)) calc(14px + var(--safe-bottom)) calc(14px + var(--safe-left));background:linear-gradient(0deg,rgba(5,12,22,.9),rgba(5,12,22,0))}
+  .sv-seen{all:unset;flex:1;display:flex;align-items:center;gap:7px;color:#fff;font-size:13.5px;font-weight:600;cursor:pointer}
+  .sv-seen .msr{font-size:20px}.sv-seen b{font-weight:700}
+  .sv-foot-del{all:unset;width:44px;height:44px;flex:none;display:grid;place-items:center;color:#fff;border-radius:50%;background:rgba(255,255,255,.16);cursor:pointer}
+  .sv-reply{display:flex;align-items:center;gap:9px;width:100%}
+  .sv-reply input{flex:1;height:46px;border:1px solid rgba(255,255,255,.45);border-radius:999px;background:rgba(255,255,255,.14);color:#fff;padding:0 18px;outline:none;font-size:14px}
+  .sv-reply input::placeholder{color:rgba(255,255,255,.72)}
+  .sv-like,.sv-rsend{all:unset;width:46px;height:46px;flex:none;border-radius:50%;display:grid;place-items:center;color:#fff;cursor:pointer;background:rgba(255,255,255,.16)}
+  .sv-like .msr,.sv-rsend .msr{font-size:23px}
+  .sv-like.liked{color:#ff3d71}.sv-like.liked .msr{font-variation-settings:'FILL' 1}
+  .sv-rsend{background:var(--accent)}
+  .sv-viewers{position:absolute;inset:0;z-index:6;background:rgba(5,12,22,.55);display:none;align-items:flex-end}
+  .sv-viewers.show{display:flex}
+  .svv-sheet{width:100%;max-height:72%;background:#0e1a2b;border-radius:24px 24px 0 0;display:flex;flex-direction:column;padding-bottom:calc(6px + var(--safe-bottom))}
+  .svv-h{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;color:#fff;font-weight:700;font-size:15px;border-bottom:1px solid rgba(255,255,255,.1)}
+  .svv-count{color:rgba(255,255,255,.55);font-weight:500;font-size:12px;margin-left:4px}
+  .svv-h button{all:unset;color:var(--accent2);font-size:13px;font-weight:700;cursor:pointer}
+  .svv-list{overflow-y:auto;padding:6px 0}
+  .svv-row{display:flex;align-items:center;gap:12px;padding:9px 18px;color:#fff;font-size:14px}
+  .svv-row .msr.liked{color:#ff3d71;margin-left:auto;font-variation-settings:'FILL' 1}
+  .svv-empty{padding:30px 22px;text-align:center;color:rgba(255,255,255,.62);font-size:13px;line-height:1.5}
   .sv-del{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--safe-bottom) + 18px);z-index:3;
     display:none;min-height:44px;padding:0 18px;border-radius:999px;border:1px solid rgba(255,255,255,.3);
     background:rgba(0,0,0,.45);color:#fff;font-family:var(--font);font-size:12.5px;font-weight:600;cursor:pointer}
@@ -3091,7 +3113,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
 
   /* community social refresh */
   #community.community-view{padding-left:calc(16px + var(--safe-left));padding-right:calc(16px + var(--safe-right));background:radial-gradient(110% 42% at 50% -8%, rgba(47,107,255,.26) 0%, transparent 58%)}
-  .community-top{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-2px -2px 14px;padding:8px 10px 12px;border-radius:22px;background:linear-gradient(180deg,var(--bg) 72%,rgba(10,22,38,0));backdrop-filter:blur(18px)}
+  .community-top{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-2px -2px 14px;padding:calc(var(--safe-top) + 8px) 12px 12px 16px;border-radius:22px;background:linear-gradient(180deg,var(--bg) 72%,rgba(10,22,38,0));backdrop-filter:blur(18px)}
   html.light .community-top{background:linear-gradient(180deg,var(--bg) 72%,rgba(245,247,251,0))}
   .community-top small{display:block;color:var(--accent2);font-size:11px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;margin-bottom:2px}
   .community-top h1{margin:0;font-size:25px;line-height:1.05;letter-spacing:0}
@@ -3193,9 +3215,11 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .profile-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 10px;padding:4px;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid var(--stroke)}.profile-tabs span{text-align:center;border-radius:12px;padding:9px 4px;font-size:11.5px;font-weight:700;color:var(--muted)}.profile-tabs .on{background:var(--accent);color:#fff}
   .profile-gallery{display:grid;grid-template-columns:1.2fr .8fr .8fr;grid-auto-rows:76px;gap:5px;border-radius:26px;overflow:hidden;margin-bottom:16px;background:rgba(255,255,255,.05);border:1px solid var(--stroke);padding:5px}.profile-gallery .pg{position:relative;background-size:cover;background-position:center;background-color:#10233c;min-height:76px;cursor:pointer;overflow:hidden}.profile-gallery .pg .pg-play{position:absolute;top:5px;right:6px;font-size:16px;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.7)}.profile-gallery .pg:first-child{grid-row:span 2}.profile-gallery .empty{grid-column:1/-1;padding:22px 10px;font-size:12px}
   .profile-menu-title{font-size:12px;color:var(--muted2);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin:8px 2px 10px}#profile .mrow{border-radius:19px;background:rgba(255,255,255,.075);padding:14px 15px}
-  .chat-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px}.chat-head h1{font-size:20px;margin:0}.recent-strip{display:flex;gap:13px;overflow-x:auto;scrollbar-width:none;margin:0 -18px 16px;padding:2px 18px 8px}.recent-strip::-webkit-scrollbar{display:none}.recent-chat{flex:none;width:66px;text-align:center;cursor:pointer}.recent-chat .ring{width:58px;height:58px;border-radius:22px;padding:2px;background:linear-gradient(135deg,var(--accent),var(--accent2),var(--yellow));display:grid;place-items:center;margin:auto auto 5px}.recent-chat small{display:block;font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chat-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px}.chat-head h1{font-size:20px;margin:0}
+  .chat-list-view .chat-sub{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin:6px 2px 10px;padding-left:4px}
+  .recent-strip{display:flex;gap:13px;overflow-x:auto;scrollbar-width:none;margin:0 -18px 16px;padding:2px 18px 8px}.recent-strip::-webkit-scrollbar{display:none}.recent-chat{flex:none;width:66px;text-align:center;cursor:pointer}.recent-chat .ring{width:58px;height:58px;border-radius:22px;padding:2px;background:linear-gradient(135deg,var(--accent),var(--accent2),var(--yellow));display:grid;place-items:center;margin:auto auto 5px}.recent-chat small{display:block;font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .chat-list .chat-row{display:flex;align-items:center;gap:12px;border-radius:22px;background:rgba(255,255,255,.085);border:1px solid var(--stroke);padding:12px;margin-bottom:10px;cursor:pointer}.chat-row .meta{flex:1;min-width:0}.chat-row b{font-size:13.5px}.chat-row p{margin:3px 0 0;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chat-row time{font-size:10px;color:var(--muted2)}
-  .chat-view{padding:calc(var(--safe-top) + 12px) calc(12px + var(--safe-right)) calc(var(--safe-bottom) + 12px) calc(12px + var(--safe-left));overflow:hidden}.chat-panel{height:calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px);min-height:0;display:flex;flex-direction:column;border-radius:30px;background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.055));border:1px solid var(--stroke);overflow:hidden}.chat-head.in-chat{flex:none;padding:14px 14px 12px;margin:0;border-bottom:1px solid var(--stroke)}#chatPerson{flex:1;min-width:0}#chatPerson b{display:block;font-size:13.5px}#chatPerson small{color:var(--muted);font-size:11px}.chat-thread{flex:1;min-height:0;padding:18px 14px;display:flex;flex-direction:column;gap:10px;overflow-y:auto}.bubble{max-width:80%;padding:12px 15px;border-radius:18px;font-size:13.5px;line-height:1.5}.bubble.them{align-self:flex-start;background:rgba(255,255,255,.94);color:#17243a;border-bottom-left-radius:6px}.bubble.me{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:6px}.chat-compose{flex:none;display:flex;align-items:center;gap:9px;padding:12px 12px calc(12px + var(--safe-bottom));border-top:1px solid var(--stroke)}.chat-compose input{flex:1;height:50px;border:0;border-radius:999px;background:rgba(255,255,255,.12);color:var(--text);padding:0 18px;outline:none;font-size:14.5px}.chat-compose button{width:50px;height:50px;flex:none;border-radius:50%;border:0;background:rgba(255,255,255,.12);color:var(--accent2);display:grid;place-items:center;cursor:pointer}.chat-compose button .msr{font-size:22px}.chat-compose button:last-child{background:var(--accent);color:#fff}
+  .chat-view{padding:0;overflow:hidden}.chat-panel{height:100dvh;min-height:0;display:flex;flex-direction:column;border-radius:0;background:var(--bg);border:0;overflow:hidden}.chat-head.in-chat{flex:none;padding:calc(var(--safe-top) + 12px) calc(14px + var(--safe-right)) 12px calc(14px + var(--safe-left));margin:0;border-bottom:1px solid var(--stroke);background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02))}#chatPerson{flex:1;min-width:0}#chatPerson b{display:block;font-size:13.5px}#chatPerson small{color:var(--muted);font-size:11px}.chat-thread{flex:1;min-height:0;padding:18px calc(14px + var(--safe-right)) 18px calc(14px + var(--safe-left));display:flex;flex-direction:column;gap:10px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}.bubble{max-width:80%;padding:12px 15px;border-radius:18px;font-size:13.5px;line-height:1.5}.bubble.them{align-self:flex-start;background:rgba(255,255,255,.94);color:#17243a;border-bottom-left-radius:6px}.bubble.me{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:6px}.chat-compose{flex:none;display:flex;align-items:center;gap:9px;padding:12px calc(12px + var(--safe-right)) calc(12px + var(--safe-bottom)) calc(12px + var(--safe-left));border-top:1px solid var(--stroke);background:var(--bg)}.chat-compose input{flex:1;height:50px;border:0;border-radius:999px;background:rgba(255,255,255,.12);color:var(--text);padding:0 18px;outline:none;font-size:14.5px}.chat-compose button{width:50px;height:50px;flex:none;border-radius:50%;border:0;background:rgba(255,255,255,.12);color:var(--accent2);display:grid;place-items:center;cursor:pointer}.chat-compose button .msr{font-size:22px}.chat-compose button:last-child{background:var(--accent);color:#fff}
   /* --- chat UI polish + call consent + privacy gating --- */
   #chatPerson{display:flex;align-items:center;gap:10px;cursor:pointer}
   .ch-ava{flex:none}
@@ -3983,7 +4007,9 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   <!-- MESSAGES -->
   <section class="view flow chat-list-view" id="messages" data-nonav>
     <div class="chat-head"><button class="rb round" onclick="back()"><span class="ic" data-i="back"></span></button><h1>Messages</h1><button class="rb round" onclick="go('peopleSearch')"><span class="msr">person_search</span></button></div>
+    <div class="chat-sub">Recent</div>
     <div class="recent-strip" id="recentChats"></div>
+    <div class="chat-sub">All chats</div>
     <div class="chat-list" id="messageList"></div>
   </section>
 
@@ -4421,6 +4447,13 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
     <div class="sv-tap prev" id="svPrev" aria-label="Previous"></div>
     <div class="sv-tap next" id="svNext" aria-label="Next"></div>
     <button class="sv-del" id="svDel">Delete</button>
+    <div class="sv-foot" id="svFoot"></div>
+    <div class="sv-viewers" id="svViewers">
+      <div class="svv-sheet">
+        <div class="svv-h"><div>Viewers <span id="svvCount" class="svv-count"></span></div><button onclick="closeStoryViewers()">Close</button></div>
+        <div class="svv-list" id="svvList"></div>
+      </div>
+    </div>
   </div>
   <input type="file" id="storyFile" accept="image/*" hidden onchange="onStoryPick(this)"/>
 

@@ -3324,7 +3324,7 @@ async function onStoryPick(input){
   }
 }
 /* ---- viewer ---- */
-let _svGroup=null,_svIdx=0,_svTimer=null;
+let _svGroup=null,_svIdx=0,_svTimer=null,_svLiked=false;
 function openStory(name){
   const g=storyGroups.find(x=>x.n===name);if(!g||!g.items.length)return;
   _svGroup=g;_svIdx=0;
@@ -3337,6 +3337,7 @@ function openStory(name){
 }
 function closeStory(){
   clearTimeout(_svTimer);_svTimer=null;_svGroup=null;
+  const vp=document.getElementById('svViewers');if(vp)vp.classList.remove('show');
   const v=document.getElementById('storyViewer');if(v)v.classList.remove('show');
   renderStories();   /* rings update to 'seen' */
 }
@@ -3364,12 +3365,78 @@ function showStoryFrame(){
   const stage=document.getElementById('svStage');
   stage.innerHTML=`<img src="${esc(it.img)}" alt=""/>`;
   hydrate(document.getElementById('storyViewer'));
-  /* only your own story can be deleted */
-  const del=document.getElementById('svDel');
-  del.classList.toggle('show',g.n===myName());
+  const mine=g.n===myName();
+  const del=document.getElementById('svDel');if(del)del.classList.remove('show');   /* delete now lives in the footer */
+  _svLiked=false;
+  const foot=document.getElementById('svFoot');
+  if(foot){
+    if(mine){
+      foot.innerHTML=`<button class="sv-seen" onclick="showStoryViewers()"><span class="msr">visibility</span> Seen by <b id="svSeenN">…</b></button>`
+        +`<button class="sv-foot-del" onclick="deleteCurrentStory()" title="Delete story"><span class="msr">delete</span></button>`;
+    }else{
+      foot.innerHTML=`<div class="sv-reply"><input id="svReplyInput" placeholder="Reply to ${esc(properName(g.n).split(' ')[0])}…" autocomplete="off" onfocus="pauseStory()" onblur="resumeStory()" onkeydown="if(event.key==='Enter'){event.preventDefault();sendStoryReply();}"/>`
+        +`<button class="sv-like" id="svLikeBtn" onclick="toggleStoryLike()" aria-label="Like story"><span class="msr">favorite</span></button>`
+        +`<button class="sv-rsend" onclick="sendStoryReply()" aria-label="Send reply"><span class="msr">send</span></button></div>`;
+    }
+  }
+  if(!mine)recordStoryView(it);
+  refreshStoryFoot(it,mine);
   clearTimeout(_svTimer);
   _svTimer=setTimeout(()=>stepStory(1),STORY_MS);
 }
+/* ---- story views + reactions (5 & 6) — stored in `story_views` (SQL-add-story-views.sql) ---- */
+async function recordStoryView(it){
+  if(!it||!it.id)return;
+  const sb=getSupaClient();const uid=sb?await authUid():null;if(!sb||!uid)return;
+  /* record the view once — ignoreDuplicates so it never wipes an existing like */
+  try{await sb.from('story_views').upsert({story_id:it.id,viewer_id:uid,viewer_name:myName()},{onConflict:'story_id,viewer_id',ignoreDuplicates:true});}catch(e){}
+}
+async function refreshStoryFoot(it,mine){
+  if(!it)return;const sb=getSupaClient();if(!sb)return;
+  if(mine){
+    try{const{count}=await sb.from('story_views').select('*',{count:'exact',head:true}).eq('story_id',it.id);
+      const el=document.getElementById('svSeenN');if(el)el.textContent=(count||0);}catch(e){const el=document.getElementById('svSeenN');if(el)el.textContent='0';}
+  }else{
+    const uid=await authUid();if(!uid)return;
+    try{const{data}=await sb.from('story_views').select('liked').eq('story_id',it.id).eq('viewer_id',uid).maybeSingle();
+      _svLiked=!!(data&&data.liked);const b=document.getElementById('svLikeBtn');if(b)b.classList.toggle('liked',_svLiked);}catch(e){}
+  }
+}
+async function toggleStoryLike(){
+  const g=_svGroup;if(!g)return;const it=g.items[_svIdx];if(!it)return;
+  const sb=getSupaClient();const uid=sb?await authUid():null;if(!sb||!uid){note('Sign in to react to stories.','Sign in required');return;}
+  _svLiked=!_svLiked;
+  const b=document.getElementById('svLikeBtn');if(b)b.classList.toggle('liked',_svLiked);
+  if(_svLiked)sfx('like');
+  try{await sb.from('story_views').upsert({story_id:it.id,viewer_id:uid,viewer_name:myName(),liked:_svLiked},{onConflict:'story_id,viewer_id'});}catch(e){}
+}
+async function sendStoryReply(){
+  const g=_svGroup;if(!g)return;
+  const inp=document.getElementById('svReplyInput');if(!inp)return;
+  const txt=(inp.value||'').trim();if(!txt)return;
+  if(!isLoggedIn()){note('Sign in to reply to stories.','Sign in required');return;}
+  inp.value='';inp.blur();
+  const owner=g.n,msg='↩ Replied to your story: '+txt;
+  const cid='c'+(++_cidSeq);
+  const rows=getChat(owner);rows.push({cid,who:'me',type:'text',txt:msg,t:nowT(),_pending:true});saveChat(owner,rows);
+  await deliverMessage(owner,{body:msg,type:'text'},cid);
+  toast('Reply sent to '+properName(owner).split(' ')[0]);
+}
+function pauseStory(){clearTimeout(_svTimer);_svTimer=null;const live=document.querySelector('#svBars .sb.live i');if(live)live.style.animationPlayState='paused';}
+function resumeStory(){if(!_svGroup)return;const live=document.querySelector('#svBars .sb.live i');if(live)live.style.animationPlayState='running';clearTimeout(_svTimer);_svTimer=setTimeout(()=>stepStory(1),STORY_MS);}
+async function showStoryViewers(){
+  const g=_svGroup;if(!g)return;const it=g.items[_svIdx];if(!it)return;
+  pauseStory();
+  const panel=document.getElementById('svViewers'),list=document.getElementById('svvList');if(!panel||!list)return;
+  list.innerHTML='<div class="svv-empty">Loading…</div>';panel.classList.add('show');
+  const sb=getSupaClient();let rows=[];
+  try{const{data}=await sb.from('story_views').select('viewer_name,liked,created_at').eq('story_id',it.id).order('created_at',{ascending:false});rows=data||[];}catch(e){}
+  if(!rows.length){list.innerHTML='<div class="svv-empty">No views yet. When people watch your story, they’ll show up here.</div>';return;}
+  const likes=rows.filter(r=>r.liked).length;
+  const head=document.getElementById('svvCount');if(head)head.textContent=rows.length+' view'+(rows.length>1?'s':'')+(likes?' · '+likes+' like'+(likes>1?'s':''):'');
+  list.innerHTML=rows.map(r=>`<div class="svv-row">${avatar(r.viewer_name||'Trekker',36)}<b>${esc(properName(r.viewer_name||'Trekker'))}</b>${r.liked?'<span class="msr liked">favorite</span>':''}</div>`).join('');
+}
+function closeStoryViewers(){const p=document.getElementById('svViewers');if(p)p.classList.remove('show');resumeStory();}
 async function deleteCurrentStory(){
   const g=_svGroup;if(!g)return;
   const it=g.items[_svIdx];if(!it)return;
@@ -5290,10 +5357,22 @@ async function ensureMsgSub(){
   try{
     msgChannel=sb.channel('msg-'+me)
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:'recipient_id=eq.'+me},payload=>onIncomingMsg(payload.new))
+      /* when someone READS a message I sent, its read_at flips → show "Seen" live */
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'messages',filter:'sender_id=eq.'+me},payload=>onMsgUpdated(payload.new))
       .subscribe();
   }catch(e){}
 }
 function stopMsgSub(){if(!msgChannel)return;try{getSupaClient().removeChannel(msgChannel);}catch(e){}msgChannel=null;}
+/* a message I sent was updated (typically read_at set) — reflect "Seen" without a reopen */
+function onMsgUpdated(m){
+  if(!m||!m.read_at)return;
+  let name=m.recipient_name||'';
+  if(_supportUid&&_myUid!==_supportUid&&m.recipient_id===_supportUid)name='Tripomonk Team';
+  if(!name)return;
+  const rows=getChat(name);let changed=false;
+  rows.forEach(r=>{if(r.id&&String(r.id)===String(m.id)&&!r.read){r.read=true;changed=true;}});
+  if(changed){saveChat(name,rows);if(cur==='chat'&&chatWith===name)renderChat();else if(cur==='messages')renderMessages();}
+}
 function onIncomingMsg(m){
   if(!m)return;
   let name=m.sender_name||'';if(!name)return;
@@ -7436,7 +7515,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='407';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='409';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
