@@ -897,7 +897,7 @@ async function initAuth(){
     seedIdentityFromAuth();   /* fill name/photo from the Google account if still unset */
     upsertProfile();   /* register this user so others can @mention/follow/notify them */
     loadStaff();       /* role check */
-    _myUid=null;ensureMsgSub();   /* start receiving cross-user messages */
+    _myUid=null;ensureMsgSub();loadAiCfg().then(registerSupportInbox);   /* messaging + support inbox */
     refreshAuthUI();   /* again, now that the name/photo are back */
     if(fromOAuth){
       /* clean the token hash out of the URL and land on home */
@@ -923,7 +923,7 @@ async function initAuth(){
       seedIdentityFromAuth();   /* fill name/photo from the Google account if still unset */
       upsertProfile();
       loadStaff();
-      _myUid=null;stopMsgSub();ensureMsgSub();   /* resubscribe as the new account */
+      _myUid=null;stopMsgSub();ensureMsgSub();loadAiCfg().then(registerSupportInbox);   /* resubscribe + support inbox */
       renderFeedIfOpen();
       refreshAuthUI();
     }
@@ -1166,7 +1166,7 @@ async function passwordAuth(){
 }
 async function afterPasswordLogin(user){
   if(user)currentUser=user;
-  await loadProfileFromServer();upsertProfile();loadStaff();_myUid=null;ensureMsgSub();
+  await loadProfileFromServer();upsertProfile();loadStaff();_myUid=null;ensureMsgSub();loadAiCfg().then(registerSupportInbox);
   const r=_loginReturn;_loginReturn=null;
   go(r||lastTab||'home');
   setTimeout(maybeOnboard,500);
@@ -5179,6 +5179,7 @@ let _nameUidCache={};       /* display name -> user_id (best effort) */
 let _inboxNames=[];         /* names with a real DB conversation */
 let msgChannel=null;        /* realtime channel for inbound messages */
 let _cidSeq=0;              /* client id for optimistic (un-acked) messages */
+let _supportUid=null;       /* the account that receives 'Tripomonk Team' chats (owner), from app_config */
 function chatKey(n){return 'tmk_chat_'+String(n||'team').toLowerCase().replace(/[^a-z0-9]+/g,'_');}
 /* Only the Tripomonk Team chat is pre-seeded — with a single welcome message.
    Every other conversation starts empty (no fake demo thread). */
@@ -5208,18 +5209,35 @@ async function markThreadRead(name){
 }
 async function myUid(){if(_myUid)return _myUid;_myUid=await authUid();return _myUid;}
 async function nameToUid(name){
-  if(!name||name==='Tripomonk Team')return null;
+  if(!name)return null;
+  if(name==='Tripomonk Team')return teamIsLive()?_supportUid:null;   /* Team routes to the support account */
   if(name==='You'||name===myName())return await myUid();
   if(_nameUidCache[name]!==undefined)return _nameUidCache[name];
   const uid=await uidForName(name);_nameUidCache[name]=uid||null;return _nameUidCache[name];
 }
+/* 'Tripomonk Team' is a real conversation with the support account when one is configured
+   AND I'm a customer (not the support account itself). Otherwise it's the local welcome bot. */
+function teamIsLive(){return !!_supportUid&&_myUid!==_supportUid;}
+/* always-fresh read of the support account id (loadAiCfg is memoised, so it can't pick up a
+   support inbox configured LATER in the same session — this can) */
+async function loadSupportUid(){
+  const sb=getSupaClient();if(!sb)return _supportUid;
+  try{const{data}=await sb.from('app_config').select('value').eq('key','support_uid').maybeSingle();if(data&&data.value)_supportUid=data.value;}catch(e){}
+  return _supportUid;
+}
+/* the owner account registers itself as the support inbox so every user's Team chat reaches it */
+async function registerSupportInbox(){
+  if(!isAdminUser())return;
+  const sb=getSupaClient();const uid=await authUid();if(!sb||!uid)return;
+  if(_supportUid===uid)return;
+  try{await sb.from('app_config').upsert({key:'support_uid',value:uid},{onConflict:'key'});_supportUid=uid;}catch(e){}
+}
 /* pull one conversation from the DB and refresh the local cache (keeps queued-offline rows) */
 async function loadThread(name){
-  if(name==='Tripomonk Team')return getChat(name);
   const sb=getSupaClient();const me=await myUid();
   if(!sb||!me)return getChat(name);
   const other=await nameToUid(name);
-  if(!other)return getChat(name);
+  if(!other)return getChat(name);   /* Team with no support configured (or I AM support) → local welcome */
   try{
     const{data,error}=await sb.from('messages').select('*')
       .or(`and(sender_id.eq.${me},recipient_id.eq.${other}),and(sender_id.eq.${other},recipient_id.eq.${me})`)
@@ -5227,7 +5245,8 @@ async function loadThread(name){
     if(error)throw error;
     const server=(data||[]).map(m=>msgToRow(m,me));
     const pending=getChat(name).filter(r=>r._pending);   /* not-yet-delivered local rows */
-    const rows=server.concat(pending);
+    let rows=server.concat(pending);
+    if(name==='Tripomonk Team')rows=chatSeed('Tripomonk Team').concat(rows);   /* keep the welcome on top */
     syncCallState(name,rows);   /* reveal an allowed call after a refresh */
     saveChat(name,rows);
     if(!isBlocked(name))markThreadRead(name);   /* opening the thread = I read their messages */
@@ -5246,10 +5265,13 @@ async function loadInbox(){
     const byName={};
     data.forEach(m=>{
       const outbound=m.sender_id===me;
-      const name=outbound?(m.recipient_name||''):(m.sender_name||'');
+      const other=outbound?m.recipient_id:m.sender_id;
+      let name=outbound?(m.recipient_name||''):(m.sender_name||'');
+      /* a customer files every message to/from the support account under 'Tripomonk Team',
+         whatever staff name is on it — so support stays one stable thread */
+      if(_supportUid&&me!==_supportUid&&other===_supportUid)name='Tripomonk Team';
       if(!name)return;
       if(isBlocked(name))return;   /* blocked person — keep them out of the inbox entirely */
-      const other=outbound?m.recipient_id:m.sender_id;
       if(other)_nameUidCache[name]=other;
       (byName[name]=byName[name]||[]).push(msgToRow(m,me));
     });
@@ -5274,7 +5296,9 @@ async function ensureMsgSub(){
 function stopMsgSub(){if(!msgChannel)return;try{getSupaClient().removeChannel(msgChannel);}catch(e){}msgChannel=null;}
 function onIncomingMsg(m){
   if(!m)return;
-  const name=m.sender_name||'';if(!name)return;
+  let name=m.sender_name||'';if(!name)return;
+  /* a reply from the support account always lands in the customer's 'Tripomonk Team' thread */
+  if(_supportUid&&_myUid!==_supportUid&&m.sender_id===_supportUid)name='Tripomonk Team';
   if(isBlocked(name))return;   /* blocked user — silently drop */
   if(m.sender_id)_nameUidCache[name]=m.sender_id;
   const rows=getChat(name);
@@ -5348,7 +5372,7 @@ function paintMessages(){
   hydrate(document.getElementById('messages'));
 }
 function openChat(n){chatWith=n||'Tripomonk Team';ensureMsgSub();go('chat');refreshOpenThread();}
-async function refreshOpenThread(){const name=chatWith;await flushPending(name);await loadThread(name);if(cur==='chat'&&chatWith===name)renderChat();}
+async function refreshOpenThread(){const name=chatWith;if(name==='Tripomonk Team'&&!_supportUid)await loadSupportUid();/* pick up support_uid */await flushPending(name);await loadThread(name);if(cur==='chat'&&chatWith===name)renderChat();}
 /* a call-request card in the thread — the requester sees "waiting", the recipient gets Allow/Decline */
 function callReqBubble(m,i){
   if(m.who==='me'){   /* MY request, shown on the requester's side */
@@ -5481,11 +5505,13 @@ async function sendChat(){
   const txt=(input.value||'').trim();if(!txt)return;
   if(isBlocked(chatWith)){note('You blocked '+properName(chatWith)+'. Unblock to message them.','Blocked');return;}
   if(isPrivatePerson(chatWith)&&!canSeePerson(chatWith)){note('Send a follow request first — this account is private.','Private account');return;}
-  const team=chatWith==='Tripomonk Team';
+  await myUid();
+  /* local-only when it's the Team welcome bot AND no support inbox is configured yet */
+  const localOnly=(chatWith==='Tripomonk Team'&&!teamIsLive());
   const cid='c'+(++_cidSeq);
-  const rows=getChat(chatWith);rows.push({cid,who:'me',txt,t:nowT(),type:'text',_pending:!team});saveChat(chatWith,rows);
+  const rows=getChat(chatWith);rows.push({cid,who:'me',txt,t:nowT(),type:'text',_pending:!localOnly});saveChat(chatWith,rows);
   input.value='';renderChat();
-  if(!team){await deliverMessage(chatWith,{body:txt,type:'text'},cid);renderChat();}
+  if(!localOnly){await deliverMessage(chatWith,{body:txt,type:'text'},cid);renderChat();}
 }
 
 /* ---- theme (dark / light / system) ---- */
@@ -7034,7 +7060,7 @@ async function loadAiCfg(){
   if(_aiCfg)return _aiCfg;
   _aiCfg=Object.assign({},AI_DEFAULTS);
   try{const l=JSON.parse(localStorage.getItem('tmk_appcfg')||'null');if(l)Object.assign(_aiCfg,l);}catch(e){}
-  const sb=getSupaClient();if(sb){try{const{data}=await sb.from('app_config').select('key,value');if(Array.isArray(data)){data.forEach(r=>{if(r.key&&AI_DEFAULTS.hasOwnProperty(r.key))_aiCfg[r.key]=r.value;});try{localStorage.setItem('tmk_appcfg',JSON.stringify(_aiCfg));}catch(e){}}}catch(e){}}
+  const sb=getSupaClient();if(sb){try{const{data}=await sb.from('app_config').select('key,value');if(Array.isArray(data)){data.forEach(r=>{if(!r.key)return;if(r.key==='support_uid')_supportUid=r.value;if(AI_DEFAULTS.hasOwnProperty(r.key))_aiCfg[r.key]=r.value;});try{localStorage.setItem('tmk_appcfg',JSON.stringify(_aiCfg));}catch(e){}}}catch(e){}}
   return _aiCfg;
 }
 function aiCfg(key){return (_aiCfg&&_aiCfg[key])||AI_DEFAULTS[key];}
@@ -7410,7 +7436,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='406';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='407';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
