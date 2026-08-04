@@ -3057,6 +3057,16 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .notif-badge.show{display:block;animation:livedot 1.6s ease-in-out infinite}
   .msg-badge{position:absolute;top:7px;right:7px;min-width:9px;height:9px;border-radius:9px;background:#ff3b5c;border:2px solid var(--bg,#0b1626);display:none;pointer-events:none}
   .msg-badge.show{display:block;animation:livedot 1.6s ease-in-out infinite}
+  .sheet-wrap{position:fixed;inset:0;z-index:400;background:rgba(4,10,20,.55);display:none;align-items:flex-end;justify-content:center}
+  .sheet-wrap.show{display:flex}
+  .sheet{width:100%;max-width:520px;background:var(--card,#101d30);border-radius:22px 22px 0 0;border:1px solid var(--stroke);border-bottom:0;padding:10px 12px calc(12px + var(--safe-bottom));animation:sheetUp .18s ease}
+  @keyframes sheetUp{from{transform:translateY(20px);opacity:.6}to{transform:translateY(0);opacity:1}}
+  .sheet-title{text-align:center;color:var(--muted);font-size:12.5px;font-weight:600;padding:8px 6px 6px}
+  .sheet-opts{display:flex;flex-direction:column;gap:2px}
+  .sheet-opt{all:unset;box-sizing:border-box;display:block;text-align:center;padding:15px;border-radius:14px;color:var(--text);font-size:15px;font-weight:600;cursor:pointer}
+  .sheet-opt:active{background:rgba(255,255,255,.07)}
+  .sheet-opt.danger{color:#ff5a72}
+  .sheet-cancel{all:unset;box-sizing:border-box;display:block;text-align:center;width:100%;margin-top:8px;padding:15px;border-radius:14px;background:rgba(255,255,255,.08);color:var(--text);font-size:15px;font-weight:700;cursor:pointer}
   @keyframes livedot{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.35);opacity:.7}}
   /* card entrance: gentle rise already via .stagger; add a soft glow sweep on hero */
   .hero:before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(120deg,transparent 40%,rgba(255,255,255,.06) 50%,transparent 60%);background-size:250% 100%;animation:heroSheen 7s ease-in-out infinite}
@@ -3219,6 +3229,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .profile-menu-title{font-size:12px;color:var(--muted2);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin:8px 2px 10px}#profile .mrow{border-radius:19px;background:rgba(255,255,255,.075);padding:14px 15px}
   .chat-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px}.chat-head h1{font-size:20px;margin:0}
   .chat-list-view .chat-sub{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin:6px 2px 10px;padding-left:4px}
+  .mh-search{width:52px;height:52px}.mh-search .msr{font-size:28px}
   .recent-strip{display:flex;gap:13px;overflow-x:auto;scrollbar-width:none;margin:0 -18px 16px;padding:2px 18px 8px}.recent-strip::-webkit-scrollbar{display:none}.recent-chat{flex:none;width:66px;text-align:center;cursor:pointer}.recent-chat .ring{width:60px;height:60px;border-radius:50%;padding:2px;background:linear-gradient(45deg,var(--accent),var(--accent2),var(--yellow));display:grid;place-items:center;margin:auto auto 5px}.recent-chat .ring>*{border:2px solid var(--bg);border-radius:50%;display:block}.recent-chat small{display:block;font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .chat-list .chat-row{display:flex;align-items:center;gap:12px;border-radius:22px;background:rgba(255,255,255,.085);border:1px solid var(--stroke);padding:12px;margin-bottom:10px;cursor:pointer}.chat-row .meta{flex:1;min-width:0}.chat-row b{font-size:13.5px}.chat-row p{margin:3px 0 0;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chat-row time{font-size:10px;color:var(--muted2)}
   .chat-view{padding:0;overflow:hidden}.chat-panel{height:100dvh;min-height:0;display:flex;flex-direction:column;border-radius:0;background:var(--bg);border:0;overflow:hidden}.chat-head.in-chat{flex:none;padding:calc(var(--safe-top) + 12px) calc(14px + var(--safe-right)) 12px calc(14px + var(--safe-left));margin:0;border-bottom:1px solid var(--stroke);background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02))}#chatPerson{flex:1;min-width:0}#chatPerson b{display:block;font-size:13.5px}#chatPerson small{color:var(--muted);font-size:11px}.chat-thread{flex:1;min-height:0;padding:18px calc(14px + var(--safe-right)) 18px calc(14px + var(--safe-left));display:flex;flex-direction:column;gap:10px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}.bubble{max-width:80%;padding:12px 15px;border-radius:18px;font-size:13.5px;line-height:1.5}.bubble.them{align-self:flex-start;background:rgba(255,255,255,.94);color:#17243a;border-bottom-left-radius:6px}.bubble.me{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:6px}.chat-compose{flex:none;display:flex;align-items:center;gap:9px;padding:12px calc(12px + var(--safe-right)) calc(12px + var(--safe-bottom)) calc(12px + var(--safe-left));border-top:1px solid var(--stroke);background:var(--bg)}.chat-compose input{flex:1;height:50px;border:0;border-radius:999px;background:rgba(255,255,255,.12);color:var(--text);padding:0 18px;outline:none;font-size:14.5px}.chat-compose button{width:50px;height:50px;flex:none;border-radius:50%;border:0;background:rgba(255,255,255,.12);color:var(--accent2);display:grid;place-items:center;cursor:pointer}.chat-compose button .msr{font-size:22px}.chat-compose button:last-child{background:var(--accent);color:#fff}
@@ -4008,7 +4019,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
 
   <!-- MESSAGES -->
   <section class="view flow chat-list-view" id="messages" data-nonav>
-    <div class="chat-head"><button class="rb round" onclick="back()"><span class="ic" data-i="back"></span></button><h1>Messages</h1><button class="rb round" onclick="go('peopleSearch')"><span class="msr">person_search</span></button></div>
+    <div class="chat-head"><button class="rb round" onclick="back()"><span class="ic" data-i="back"></span></button><h1>Messages</h1><button class="rb round mh-search" onclick="go('peopleSearch')" title="Find trekkers"><span class="msr">person_search</span></button></div>
     <div class="chat-sub">Recent</div>
     <div class="recent-strip" id="recentChats"></div>
     <div class="chat-sub">All chats</div>
@@ -4458,6 +4469,15 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
     </div>
   </div>
   <input type="file" id="storyFile" accept="image/*" hidden onchange="onStoryPick(this)"/>
+
+  <!-- ACTION SHEET (chat / message options) -->
+  <div class="sheet-wrap" id="actionSheet">
+    <div class="sheet">
+      <div class="sheet-title" id="sheetTitle"></div>
+      <div class="sheet-opts" id="sheetOpts"></div>
+      <button class="sheet-cancel" id="sheetCancel">Cancel</button>
+    </div>
+  </div>
 
   <!-- POST ACTIONS (three-dot) -->
   <div class="modal" id="postMenuModal">

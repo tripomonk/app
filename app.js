@@ -607,7 +607,7 @@ let photoByName={},hostByName={},unameByName={},socialsByName={};
    sticking on the first cached copy for the whole session */
 let _authorFetchedAt={};
 /* profile header counts — declared up here (renderProfile can run early); -1 = not loaded yet */
-let _myPostCount=-1,_myFollowerCount=-1;
+let _myPostCount=-1,_myFollowerCount=-1,_myFollowingCount=-1;
 /* declared up here on purpose: renderHome() runs during boot, far above the
    host-trip functions at the bottom of this file. Declaring it next to them
    put it in the temporal dead zone and killed the rest of the script. */
@@ -5232,12 +5232,17 @@ async function loadMyCounts(){
       /* my posts — count by the stable user_id (rename-proof), table is community_posts */
       const{count:pc}=await sb.from('community_posts').select('*',{count:'exact',head:true}).eq('user_id',currentUser.id);
       if(typeof pc==='number')_myPostCount=pc;
+      /* how many I follow — rows in follows where follower_id = me (real, not local state) */
+      const{count:gc}=await sb.from('follows').select('*',{count:'exact',head:true}).eq('follower_id',currentUser.id);
+      if(typeof gc==='number')_myFollowingCount=gc;
     }
   }catch(e){}
   if(_myPostCount<0)_myPostCount=userPosts.filter(p=>p.n===mine||p.n==='You').length;
   if(_myFollowerCount<0)_myFollowerCount=0;
+  if(_myFollowingCount<0)_myFollowingCount=followCount();   /* fall back to local until the query lands */
   const pe=document.getElementById('pStatPosts');if(pe)pe.textContent=_myPostCount;
   const fe=document.getElementById('pStatFlwr');if(fe)fe.textContent=_myFollowerCount.toLocaleString('en-IN');
+  const ge=document.getElementById('pStatFollowing');if(ge)ge.textContent=_myFollowingCount.toLocaleString('en-IN');
 }
 
 
@@ -5264,6 +5269,23 @@ function chatSeed(n){
 }
 function getChat(n){try{const raw=localStorage.getItem(chatKey(n));return raw?JSON.parse(raw):chatSeed(n);}catch(e){return chatSeed(n);}}
 function saveChat(n,rows){try{localStorage.setItem(chatKey(n),JSON.stringify(rows));}catch(e){}}
+/* ---- delete (for me): per-thread "cleared before" timestamp + per-message hidden ids ---- */
+function clearedChats(){try{return JSON.parse(localStorage.getItem('tmk_chat_cleared')||'{}');}catch(e){return{};}}
+function clearedAt(n){return clearedChats()[n]||'';}
+function setChatCleared(n){try{const c=clearedChats();c[n]=new Date().toISOString();localStorage.setItem('tmk_chat_cleared',JSON.stringify(c));}catch(e){}}
+function hiddenMsgSet(){try{return new Set(JSON.parse(localStorage.getItem('tmk_hidden_msgs')||'[]').map(String));}catch(e){return new Set();}}
+function hideMsg(id){if(id==null)return;try{const a=JSON.parse(localStorage.getItem('tmk_hidden_msgs')||'[]');const s=String(id);if(a.indexOf(s)<0){a.push(s);if(a.length>800)a.splice(0,a.length-800);localStorage.setItem('tmk_hidden_msgs',JSON.stringify(a));}}catch(e){}}
+/* reusable bottom action sheet → resolves the chosen item key (or null) */
+function actionSheet(title,items){return new Promise(res=>{
+  const wrap=document.getElementById('actionSheet');if(!wrap){res(null);return;}
+  const t=document.getElementById('sheetTitle'),o=document.getElementById('sheetOpts'),c=document.getElementById('sheetCancel');
+  t.textContent=title||'';t.style.display=title?'block':'none';
+  o.innerHTML=items.map((it,idx)=>`<button class="sheet-opt${it.danger?' danger':''}" data-i="${idx}">${esc(it.label)}</button>`).join('');
+  wrap.classList.add('show');
+  function done(v){wrap.classList.remove('show');o.onclick=c.onclick=wrap.onclick=null;res(v);}
+  o.onclick=e=>{const b=e.target.closest('[data-i]');if(b)done(items[+b.dataset.i].key);};
+  c.onclick=()=>done(null);wrap.onclick=e=>{if(e.target===wrap)done(null);};
+});}
 
 /* ---------- real cross-user messaging (Supabase `messages` table + realtime) ----
    The localStorage cache above stays as the instant + offline copy; the DB is the
@@ -5315,7 +5337,8 @@ async function loadThread(name){
       .or(`and(sender_id.eq.${me},recipient_id.eq.${other}),and(sender_id.eq.${other},recipient_id.eq.${me})`)
       .order('created_at',{ascending:true}).limit(300);
     if(error)throw error;
-    const server=(data||[]).map(m=>msgToRow(m,me));
+    const cl=clearedAt(name),hid=hiddenMsgSet();   /* hide deleted-for-me content */
+    const server=(data||[]).filter(m=>(!cl||(m.created_at||'')>cl)&&!hid.has(String(m.id))).map(m=>msgToRow(m,me));
     const pending=getChat(name).filter(r=>r._pending);   /* not-yet-delivered local rows */
     let rows=server.concat(pending);
     if(name==='Tripomonk Team')rows=chatSeed('Tripomonk Team').concat(rows);   /* keep the welcome on top */
@@ -5334,8 +5357,9 @@ async function loadInbox(){
       .or(`sender_id.eq.${me},recipient_id.eq.${me}`)
       .order('created_at',{ascending:true}).limit(400);
     if(!data)return;
-    const byName={},supportSet={};
+    const byName={},supportSet={},cleared=clearedChats(),hid=hiddenMsgSet();
     data.forEach(m=>{
+      if(hid.has(String(m.id)))return;   /* deleted-for-me message */
       const outbound=m.sender_id===me;
       const other=outbound?m.recipient_id:m.sender_id;
       let name=outbound?(m.recipient_name||''):(m.sender_name||'');
@@ -5343,6 +5367,7 @@ async function loadInbox(){
          whatever staff name is on it — so support stays one stable thread */
       if(_supportUid&&me!==_supportUid&&other===_supportUid)name='Tripomonk Team';
       if(!name)return;
+      if(cleared[name]&&(m.created_at||'')<=cleared[name])return;   /* deleted-chat cutoff */
       if(isBlocked(name))return;   /* blocked person — keep them out of the inbox entirely */
       /* owner side: a thread that carries a customer→'Tripomonk Team' message is a SUPPORT chat,
          kept out of the owner's personal inbox and shown in Admin → Support instead */
@@ -5559,10 +5584,50 @@ async function unblockUser(n){
   if(cur==='chat')renderChat();else if(cur==='person')renderPerson();
 }
 function toggleBlock(n){return isBlocked(n)?unblockUser(n):blockUser(n);}
-/* chat header ⋮ */
-function chatMenu(){
-  const n=chatWith;if(!n||n==='Tripomonk Team'){note('This is Tripomonk official support.','Support chat');return;}
-  toggleBlock(n);
+/* chat header ⋮ menu */
+async function chatMenu(){
+  const n=chatWith;if(!n)return;
+  const items=[{label:'Delete chat',key:'delete',danger:true}];
+  if(n!=='Tripomonk Team')items.push({label:isBlocked(n)?'Unblock '+properName(n).split(' ')[0]:'Block '+properName(n).split(' ')[0],key:'block',danger:!isBlocked(n)});
+  const pick=await actionSheet(properName(n),items);
+  if(pick==='delete')deleteChat(n);
+  else if(pick==='block')toggleBlock(n);
+}
+/* delete a whole conversation FOR ME (their copy stays theirs) */
+async function deleteChat(n){
+  if(!(await askConfirm('Delete this chat? It will be removed from your device.','Delete chat')))return;
+  /* clear locally first for instant feedback, then remove my server copies in the background */
+  setChatCleared(n);                       /* hide everything up to now on this device */
+  try{localStorage.removeItem(chatKey(n));}catch(e){}
+  _inboxNames=(_inboxNames||[]).filter(x=>x!==n);_supportNames=(_supportNames||[]).filter(x=>x!==n);
+  toast('Chat deleted');
+  if(cur==='chat')go('messages'); else renderMessages();
+  const sb=getSupaClient();const me=await myUid();const other=await nameToUid(n);
+  if(sb&&me&&other){try{await sb.from('messages').delete().eq('sender_id',me).eq('recipient_id',other);}catch(e){}}   /* remove my own sent copies */
+}
+/* delete one message */
+async function deleteMessage(i){
+  const rows=getChat(chatWith);const m=rows[i];if(!m||m.type==='sys'||m.type==='callok')return;
+  const mine=m.who==='me';
+  if(!(await askConfirm(mine&&m.id?'Delete this message for everyone?':'Delete this message?','Delete message')))return;
+  if(m.id)hideMsg(m.id);                    /* persist the local removal across refetches */
+  rows.splice(i,1);saveChat(chatWith,rows);renderChat();   /* instant */
+  if(mine&&m.id){const sb=getSupaClient();if(sb)try{await sb.from('messages').delete().eq('id',m.id);}catch(e){}}   /* delete for everyone, in background */
+}
+async function msgActions(i){
+  const rows=getChat(chatWith);const m=rows[i];if(!m||m.type==='sys'||m.type==='callok')return;
+  const pick=await actionSheet('Message',[{label:'Delete message',key:'del',danger:true}]);
+  if(pick==='del')deleteMessage(i);
+}
+/* long-press a bubble → message actions */
+let _lpTimer=null;
+function bindThreadLongPress(thread){
+  if(!thread)return;
+  const start=e=>{const b=e.target.closest('.bubble');if(!b)return;const i=+b.dataset.mi;if(isNaN(i))return;
+    clearTimeout(_lpTimer);_lpTimer=setTimeout(()=>{try{navigator.vibrate&&navigator.vibrate(12);}catch(e){}msgActions(i);},500);};
+  const cancel=()=>{clearTimeout(_lpTimer);_lpTimer=null;};
+  thread.onpointerdown=start;thread.onpointerup=cancel;thread.onpointermove=cancel;thread.onpointercancel=cancel;thread.onpointerleave=cancel;
+  thread.oncontextmenu=e=>{const b=e.target.closest('.bubble');if(b){e.preventDefault();const i=+b.dataset.mi;if(!isNaN(i))msgActions(i);}};
 }
 function renderChat(){
   const head=document.getElementById('chatPerson'),thread=document.getElementById('chatThread');if(!head||!thread)return;
@@ -5594,11 +5659,12 @@ function renderChat(){
       if(m.type==='callok')return '';   /* the number is absorbed by syncCallState, never shown raw */
       if(m.type==='callreq')return callReqBubble(m,i);
       if(m.type==='sys')return `<div class="chat-sys">${esc(m.txt)}</div>`;
-      const bubble=`<div class="bubble ${m.who==='me'?'me':'them'}${m._pending?' sending':''}">${esc(m.txt)}${m.t?`<time>${esc(m.t)}${m._pending?' · sending…':''}</time>`:''}</div>`;
+      const bubble=`<div class="bubble ${m.who==='me'?'me':'them'}${m._pending?' sending':''}" data-mi="${i}">${esc(m.txt)}${m.t?`<time>${esc(m.t)}${m._pending?' · sending…':''}</time>`:''}</div>`;
       const receipt=(i===lastMeIdx&&!team)?`<div class="msg-receipt">${m._pending?'Sending…':(m.read?'✓✓ Seen':'✓ Delivered')}</div>`:'';
       return bubble+receipt;
     }).join('');
   }
+  bindThreadLongPress(thread);   /* long-press a message to delete it */
   setTimeout(()=>{thread.scrollTop=thread.scrollHeight;},30);
 }
 async function sendChat(){
@@ -7555,7 +7621,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='411';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='413';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
