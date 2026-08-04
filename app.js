@@ -5379,7 +5379,9 @@ async function allowCallMsg(n,i){
     try{localStorage.setItem('tmk_umobile',num);}catch(e){}
   }
   const rows=getChat(n);const ids=resolveIncomingCallreqs(rows,'allowed');
-  const s=callAllowedSet();s[n]={num,t:Date.now()};try{localStorage.setItem('tmk_callok',JSON.stringify(s));}catch(e){}
+  /* IMPORTANT: allowing someone to call ME does NOT give me a number to call THEM back.
+     Do not write callAllowedSet here — that made my own call button dial my own number.
+     Only the requester stores a number (their copy of MY number, via the callok below). */
   rows.push({who:'me',type:'sys',txt:'You allowed the call — '+properName(n)+' can now call you.'});
   saveChat(n,rows);renderChat();
   markCallreqStatus(ids,'allowed');
@@ -7390,7 +7392,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='403';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='404';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
