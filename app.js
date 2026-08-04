@@ -4071,22 +4071,24 @@ async function upsertProfile(){
   /* No email here. `profiles` is publicly readable so the community can show
      names and photos — writing emails into it leaked every user's address to
      anyone with the anon key. The address already lives in auth.users. */
-  const row={id:uid,updated_at:new Date().toISOString()};
-  const nm=getSavedName();if(nm)row.name=nm;
-  const ph=getSavedPhoto();if(ph)row.photo=ph;
-  const un=getSavedUsername();if(un)row.username=un;
-  const cv=getSavedCover();if(cv)row.cover=cv;
-  const soc=getSavedSocials();if(soc&&Object.keys(soc).length)row.socials=soc;
-  const con=getConsent();if(con)row.consent=con;   /* consent record travels with the profile */
-  try{
-    const {error}=await sb.from('profiles').upsert(row);
-    /* if the consent column isn't deployed yet, the WHOLE upsert fails and name/photo
-       would silently not save. Detect that, drop consent, and retry so the rest lands. */
-    if(error&&'consent'in row&&/consent/i.test(error.message||'')){
-      delete row.consent;
-      await sb.from('profiles').upsert(row);
-    }
-  }catch(e){}
+  const ts=new Date().toISOString();
+  const nm=getSavedName(),ph=getSavedPhoto(),un=getSavedUsername(),cv=getSavedCover();
+  const soc=getSavedSocials(),con=getConsent();
+  /* A single upsert fails ATOMICALLY if ANY column is refused — and `consent`/`fitness`/
+     `training` are locked down by column-level grants on this project. That silently
+     dropped the profile PHOTO. So try richest → leanest and stop at the first that lands,
+     guaranteeing name/photo/cover/username always save even when consent is refused. */
+  const full={id:uid,updated_at:ts};
+  if(nm)full.name=nm; if(ph)full.photo=ph; if(un)full.username=un;
+  if(cv)full.cover=cv; if(soc&&Object.keys(soc).length)full.socials=soc; if(con)full.consent=con;
+  const core={id:uid,updated_at:ts};
+  if(nm)core.name=nm; if(ph)core.photo=ph; if(un)core.username=un;
+  if(cv)core.cover=cv; if(soc&&Object.keys(soc).length)core.socials=soc;   /* drop consent */
+  const minimal={id:uid,updated_at:ts};
+  if(nm)minimal.name=nm; if(ph)minimal.photo=ph; if(un)minimal.username=un; /* drop cover/socials too */
+  for(const row of [full,core,minimal]){
+    try{const{error}=await sb.from('profiles').upsert(row);if(!error)return;}catch(e){}
+  }
 }
 /* everything that identifies ONE person on this device */
 const IDENTITY_KEYS=['tmk_uname','tmk_uhandle','tmk_uphoto','tmk_ucover','tmk_socials','tmk_umobile','tmk_follows','tmk_posts','tmk_likes','tmk_comments','tmk_bookings','tmk_notif_seen','tmk_admin','tmk_admin_key','tmk_captain','tmk_plan'];
@@ -4104,7 +4106,10 @@ async function loadProfileFromServer(){
   if(prev&&prev!==currentUser.id)clearLocalIdentity();
   try{localStorage.setItem('tmk_uid',currentUser.id);}catch(e){}
   try{
-    const{data}=await sb.from('profiles').select('name,photo,prefs,username,cover,socials,consent').eq('id',currentUser.id).maybeSingle();
+    /* consent is fetched SEPARATELY: it's a column-level-restricted column on this project,
+       and including it here would fail the WHOLE read (photo/name/cover) with 42501. */
+    const{data}=await sb.from('profiles').select('name,photo,prefs,username,cover,socials').eq('id',currentUser.id).maybeSingle();
+    let dbConsent=null;try{const{data:cd}=await sb.from('profiles').select('consent').eq('id',currentUser.id).maybeSingle();if(cd)dbConsent=cd.consent;}catch(e){}
     if(data){
       if(data.name)try{localStorage.setItem('tmk_uname',data.name);}catch(e){}
       if(data.photo)try{localStorage.setItem('tmk_uphoto',data.photo);}catch(e){}
@@ -4119,7 +4124,7 @@ async function loadProfileFromServer(){
         let local=getConsent();
         if(local&&!local.uid){local.uid=currentUser.id;localStorage.setItem('tmk_consent',JSON.stringify(local));}
         else if(local&&local.uid&&local.uid!==currentUser.id){local=null;localStorage.removeItem('tmk_consent');}
-        const dbC=data.consent;
+        const dbC=dbConsent;
         if(dbC&&(!local||(dbC.at||'')>=(local.at||'')))localStorage.setItem('tmk_consent',JSON.stringify(dbC));
       }catch(e){}
     }
@@ -5193,7 +5198,14 @@ function saveChat(n,rows){try{localStorage.setItem(chatKey(n),JSON.stringify(row
    a local support bot (no real user id) — it stays on-device.  Needs SQL-add-messages.sql
    run + `messages` added to the supabase_realtime publication to work cross-device. */
 function msgTime(iso){try{return new Date(iso).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});}catch(e){return nowT();}}
-function msgToRow(m,me){return {id:m.id,who:(m.sender_id===me?'me':'them'),txt:m.body||'',type:m.type||'text',status:m.status||'',t:msgTime(m.created_at),ts:m.created_at};}
+function msgToRow(m,me){return {id:m.id,who:(m.sender_id===me?'me':'them'),txt:m.body||'',type:m.type||'text',status:m.status||'',t:msgTime(m.created_at),ts:m.created_at,read:!!m.read_at};}
+/* mark every unread message THEY sent ME in this thread as read (powers their "Seen") */
+async function markThreadRead(name){
+  if(!name||name==='Tripomonk Team')return;
+  const sb=getSupaClient();const me=await myUid();if(!sb||!me)return;
+  const other=await nameToUid(name);if(!other)return;
+  try{await sb.from('messages').update({read_at:new Date().toISOString()}).eq('recipient_id',me).eq('sender_id',other).is('read_at',null);}catch(e){}
+}
 async function myUid(){if(_myUid)return _myUid;_myUid=await authUid();return _myUid;}
 async function nameToUid(name){
   if(!name||name==='Tripomonk Team')return null;
@@ -5218,6 +5230,7 @@ async function loadThread(name){
     const rows=server.concat(pending);
     syncCallState(name,rows);   /* reveal an allowed call after a refresh */
     saveChat(name,rows);
+    if(!isBlocked(name))markThreadRead(name);   /* opening the thread = I read their messages */
     return rows;
   }catch(e){return getChat(name);}
 }
@@ -5235,6 +5248,7 @@ async function loadInbox(){
       const outbound=m.sender_id===me;
       const name=outbound?(m.recipient_name||''):(m.sender_name||'');
       if(!name)return;
+      if(isBlocked(name))return;   /* blocked person — keep them out of the inbox entirely */
       const other=outbound?m.recipient_id:m.sender_id;
       if(other)_nameUidCache[name]=other;
       (byName[name]=byName[name]||[]).push(msgToRow(m,me));
@@ -5275,7 +5289,7 @@ function onIncomingMsg(m){
   }
   saveChat(name,rows);
   if(_inboxNames.indexOf(name)<0)_inboxNames.push(name);
-  if(cur==='chat'&&chatWith===name){renderChat();sfx('notif');}
+  if(cur==='chat'&&chatWith===name){renderChat();markThreadRead(name);sfx('notif');}  /* I'm looking at it → mark read */
   else if(cur==='messages'){renderMessages();sfx('notif');}
   else sfx('notif');
 }
@@ -5312,8 +5326,8 @@ async function flushPending(name){
 function chatContacts(){
   const list=[{n:'Tripomonk Team',h:'Official support',bio:'Bookings, payments and trek help',flwr:0}];
   const seen={'Tripomonk Team':1};
-  _inboxNames.forEach(nm=>{if(nm&&!seen[nm]){seen[nm]=1;list.push({n:nm});}});   /* real conversations */
-  (peoplePool||[]).slice(0,8).forEach(p=>{if(p&&p.n&&!seen[p.n]){seen[p.n]=1;list.push(p);}});  /* suggested new chats */
+  _inboxNames.forEach(nm=>{if(nm&&!seen[nm]&&!isBlocked(nm)){seen[nm]=1;list.push({n:nm});}});   /* real conversations */
+  (peoplePool||[]).slice(0,8).forEach(p=>{if(p&&p.n&&!seen[p.n]&&!isBlocked(p.n)){seen[p.n]=1;list.push(p);}});  /* suggested new chats */
   return list;
 }
 function chatPreview(msgs){const last=msgs[msgs.length-1];if(!last)return 'Start a conversation';
@@ -5449,11 +5463,15 @@ function renderChat(){
   if(!rows.length){
     thread.innerHTML=`<div class="chat-empty"><div class="ce-ava">${avatar(chatWith,66)}</div><b>${esc(properName(chatWith))}</b><p>${team?'Ask us anything about bookings, payments or picking your next trek.':'Say hi 👋 — this is the start of your conversation.'}</p></div>`;
   }else{
+    /* WhatsApp-style: show a delivery/read receipt only under the LAST message I sent */
+    let lastMeIdx=-1;rows.forEach((m,i)=>{if(m.who==='me'&&(m.type==='text'||!m.type))lastMeIdx=i;});
     thread.innerHTML=rows.map((m,i)=>{
       if(m.type==='callok')return '';   /* the number is absorbed by syncCallState, never shown raw */
       if(m.type==='callreq')return callReqBubble(m,i);
       if(m.type==='sys')return `<div class="chat-sys">${esc(m.txt)}</div>`;
-      return `<div class="bubble ${m.who==='me'?'me':'them'}${m._pending?' sending':''}">${esc(m.txt)}${m.t?`<time>${esc(m.t)}${m._pending?' · sending…':''}</time>`:''}</div>`;
+      const bubble=`<div class="bubble ${m.who==='me'?'me':'them'}${m._pending?' sending':''}">${esc(m.txt)}${m.t?`<time>${esc(m.t)}${m._pending?' · sending…':''}</time>`:''}</div>`;
+      const receipt=(i===lastMeIdx&&!team)?`<div class="msg-receipt">${m._pending?'Sending…':(m.read?'✓✓ Seen':'✓ Delivered')}</div>`:'';
+      return bubble+receipt;
     }).join('');
   }
   setTimeout(()=>{thread.scrollTop=thread.scrollHeight;},30);
@@ -7392,7 +7410,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='404';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='406';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
