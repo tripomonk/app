@@ -4248,15 +4248,16 @@ async function loadNotifsRemote(){
     return (data||[]).filter(n=>dis.indexOf(String(n.id))<0);   /* hide anything swiped away */
   });
 }
-const NOTIF_ICON={like:'favorite',comment:'chat_bubble',follow:'person_add',mention:'alternate_email',admin:'campaign'};
+const NOTIF_ICON={like:'favorite',comment:'chat_bubble',follow:'person_add',mention:'alternate_email',admin:'campaign',message:'sms'};
 /* Magic-UI style icon tiles: an emoji on a coloured rounded square per type */
-const NOTIF_STYLE={like:{e:'💗',c:'#FF3D71'},comment:{e:'💬',c:'#1E86FF'},follow:{e:'👤',c:'#FFB800'},mention:{e:'📣',c:'#00C9A7'},admin:{e:'📣',c:'#2f6bff'}};
+const NOTIF_STYLE={like:{e:'💗',c:'#FF3D71'},comment:{e:'💬',c:'#1E86FF'},follow:{e:'👤',c:'#FFB800'},mention:{e:'📣',c:'#00C9A7'},admin:{e:'📣',c:'#2f6bff'},message:{e:'✉️',c:'#2f6bff'}};
 function notifDesc(n){
   const p=n.preview?'“'+esc(n.preview)+'”':'';
   if(n.type==='like')return 'liked your post';
   if(n.type==='comment')return 'commented '+p;
   if(n.type==='follow')return 'started following you';
   if(n.type==='mention')return 'mentioned you '+p;
+  if(n.type==='message')return 'messaged you '+p;
   if(n.type==='admin')return p||'sent you a message';
   return 'interacted with you';
 }
@@ -4266,6 +4267,7 @@ function notifText(n){
   if(n.type==='comment')return `<b>${who}</b> commented: ${n.preview?'“'+esc(n.preview)+'”':''}`;
   if(n.type==='follow')return `<b>${who}</b> started following you`;
   if(n.type==='mention')return `<b>${who}</b> mentioned you: ${n.preview?'“'+esc(n.preview)+'”':''}`;
+  if(n.type==='message')return `<b>${who}</b> messaged you${n.preview?': “'+esc(n.preview)+'”':''}`;
   if(n.type==='admin')return `<b>Tripomonk</b> ${n.preview?'“'+esc(n.preview)+'”':'sent you a message'}`;
   return `<b>${who}</b> interacted with you`;
 }
@@ -5243,10 +5245,13 @@ async function loadMyCounts(){
 let chatWith='Tripomonk Team';
 let _myUid=null;            /* cached auth uid for messaging */
 let _nameUidCache={};       /* display name -> user_id (best effort) */
-let _inboxNames=[];         /* names with a real DB conversation */
+let _inboxNames=[];         /* names with a real DB conversation (owner: excludes support chats) */
+let _supportNames=[];       /* owner only: customer conversations that came via 'Tripomonk Team' */
 let msgChannel=null;        /* realtime channel for inbound messages */
 let _cidSeq=0;              /* client id for optimistic (un-acked) messages */
 let _supportUid=null;       /* the account that receives 'Tripomonk Team' chats (owner), from app_config */
+let _msgUnread=false;       /* unread-message dot on the Messages icon */
+function setMsgUnread(on){_msgUnread=!!on;try{document.querySelectorAll('.msg-badge').forEach(b=>b.classList.toggle('show',_msgUnread));}catch(e){}}
 function chatKey(n){return 'tmk_chat_'+String(n||'team').toLowerCase().replace(/[^a-z0-9]+/g,'_');}
 /* Only the Tripomonk Team chat is pre-seeded — with a single welcome message.
    Every other conversation starts empty (no fake demo thread). */
@@ -5316,7 +5321,7 @@ async function loadThread(name){
     if(name==='Tripomonk Team')rows=chatSeed('Tripomonk Team').concat(rows);   /* keep the welcome on top */
     syncCallState(name,rows);   /* reveal an allowed call after a refresh */
     saveChat(name,rows);
-    if(!isBlocked(name))markThreadRead(name);   /* opening the thread = I read their messages */
+    if(!isBlocked(name))await markThreadRead(name);   /* opening the thread = I read their messages */
     return rows;
   }catch(e){return getChat(name);}
 }
@@ -5329,7 +5334,7 @@ async function loadInbox(){
       .or(`sender_id.eq.${me},recipient_id.eq.${me}`)
       .order('created_at',{ascending:true}).limit(400);
     if(!data)return;
-    const byName={};
+    const byName={},supportSet={};
     data.forEach(m=>{
       const outbound=m.sender_id===me;
       const other=outbound?m.recipient_id:m.sender_id;
@@ -5339,6 +5344,9 @@ async function loadInbox(){
       if(_supportUid&&me!==_supportUid&&other===_supportUid)name='Tripomonk Team';
       if(!name)return;
       if(isBlocked(name))return;   /* blocked person — keep them out of the inbox entirely */
+      /* owner side: a thread that carries a customer→'Tripomonk Team' message is a SUPPORT chat,
+         kept out of the owner's personal inbox and shown in Admin → Support instead */
+      if(me===_supportUid&&m.recipient_name==='Tripomonk Team')supportSet[name]=1;
       if(other)_nameUidCache[name]=other;
       (byName[name]=byName[name]||[]).push(msgToRow(m,me));
     });
@@ -5346,7 +5354,14 @@ async function loadInbox(){
       const pending=getChat(nm).filter(r=>r._pending);
       saveChat(nm,byName[nm].concat(pending));
     });
-    _inboxNames=Object.keys(byName);
+    const names=Object.keys(byName);
+    if(me===_supportUid){
+      _supportNames=names.filter(n=>supportSet[n]);
+      _inboxNames=names.filter(n=>!supportSet[n]);
+    }else{_inboxNames=names;_supportNames=[];}
+    /* unread dot: any message addressed to me that I haven't opened yet */
+    let unread=false;data.forEach(m=>{if(m.recipient_id===me&&m.sender_id!==me&&!m.read_at)unread=true;});
+    setMsgUnread(unread);
   }catch(e){}
 }
 /* realtime: messages addressed to me. I only ever receive INBOUND here, so my own
@@ -5360,9 +5375,15 @@ async function ensureMsgSub(){
       /* when someone READS a message I sent, its read_at flips → show "Seen" live */
       .on('postgres_changes',{event:'UPDATE',schema:'public',table:'messages',filter:'sender_id=eq.'+me},payload=>onMsgUpdated(payload.new))
       .subscribe();
+    refreshMsgBadge();   /* show the unread dot on app open */
   }catch(e){}
 }
-function stopMsgSub(){if(!msgChannel)return;try{getSupaClient().removeChannel(msgChannel);}catch(e){}msgChannel=null;}
+function stopMsgSub(){if(!msgChannel)return;try{getSupaClient().removeChannel(msgChannel);}catch(e){}msgChannel=null;setMsgUnread(false);}
+/* accurate unread dot — count messages addressed to me that I haven't read */
+async function refreshMsgBadge(){
+  const sb=getSupaClient();const me=await myUid();if(!sb||!me){setMsgUnread(false);return;}
+  try{const{count}=await sb.from('messages').select('*',{count:'exact',head:true}).eq('recipient_id',me).is('read_at',null);setMsgUnread((count||0)>0);}catch(e){}
+}
 /* a message I sent was updated (typically read_at set) — reflect "Seen" without a reopen */
 function onMsgUpdated(m){
   if(!m||!m.read_at)return;
@@ -5393,8 +5414,7 @@ function onIncomingMsg(m){
   saveChat(name,rows);
   if(_inboxNames.indexOf(name)<0)_inboxNames.push(name);
   if(cur==='chat'&&chatWith===name){renderChat();markThreadRead(name);sfx('notif');}  /* I'm looking at it → mark read */
-  else if(cur==='messages'){renderMessages();sfx('notif');}
-  else sfx('notif');
+  else{if(m.type!=='callok')setMsgUnread(true);if(cur==='messages')renderMessages();sfx('notif');}
 }
 /* deliver an outbound message to the DB. `cid` (optional) reconciles the optimistic
    local row on success/failure. Returns true if it reached the server. */
@@ -5416,6 +5436,8 @@ async function deliverMessage(name,payload,cid){
     const{data,error}=await sb.from('messages').insert(row).select('id').single();
     if(error)throw error;
     finish(data&&data.id,true);
+    /* notify the recipient (in-app bell) for real messages, not internal call/sys rows */
+    if((payload.type||'text')==='text'){try{pushNotif({recipientId:other,recipientName:name,type:'message',preview:(payload.body||'').slice(0,80)});}catch(e){}}
     return true;
   }catch(e){finish(null,false);return false;}
 }
@@ -5451,7 +5473,7 @@ function paintMessages(){
   hydrate(document.getElementById('messages'));
 }
 function openChat(n){chatWith=n||'Tripomonk Team';ensureMsgSub();go('chat');refreshOpenThread();}
-async function refreshOpenThread(){const name=chatWith;if(name==='Tripomonk Team'&&!_supportUid)await loadSupportUid();/* pick up support_uid */await flushPending(name);await loadThread(name);if(cur==='chat'&&chatWith===name)renderChat();}
+async function refreshOpenThread(){const name=chatWith;if(name==='Tripomonk Team'&&!_supportUid)await loadSupportUid();/* pick up support_uid */await flushPending(name);await loadThread(name);if(cur==='chat'&&chatWith===name)renderChat();refreshMsgBadge();}
 /* a call-request card in the thread — the requester sees "waiting", the recipient gets Allow/Decline */
 function callReqBubble(m,i){
   if(m.who==='me'){   /* MY request, shown on the requester's side */
@@ -6176,7 +6198,7 @@ const ADM_TABS=['Overview','Bookings','Users','CRM','Payments','Treks','Home','D
 /* one-line description per section, shown on the hub card */
 const ADM_TAB_DESC={Overview:'Today at a glance',Bookings:'Who has booked',Users:'Travellers & members',CRM:'Customer 360 timeline',AI:'Automated messages & rules',Payments:'Transactions, refunds & payouts',Treks:'Add & edit treks, prices, tags',
   Home:'Featured trek & popular rail',Departures:'Batch dates & seats',Packing:'Per-trek packing lists',
-  Guides:'Your trek leaders',Gear:'Rental inventory & status',Permits:'Forest & park permit requests',Support:'Tickets & help requests',Vendors:'Partner operators & listings',Community:'Moderate posts',Reviews:'Add & manage reviews',Hosts:'Applications & host trips',Training:'Who is training',
+  Guides:'Your trek leaders',Gear:'Rental inventory & status',Permits:'Forest & park permit requests',Support:'Customer chats & tickets',Vendors:'Partner operators & listings',Community:'Moderate posts',Reviews:'Add & manage reviews',Hosts:'Applications & host trips',Training:'Who is training',
   Staff:'Team roles & captains',Settings:'App build & admin'};
 /* Was a horizontally-SWIPED tab strip — sections off the right edge were invisible and
    the gesture read as flaky. Now a card GRID: tap a card to open that section behind a
@@ -7041,17 +7063,35 @@ let _tickets=null;
 async function renderAdminSupport(){
   const box=document.getElementById('adminBody');if(!box)return;
   box.innerHTML='<div class="skel skel-card"></div><div class="skel skel-card"></div>';
-  const sb=getSupaClient();if(!sb){box.innerHTML='<div class="note2">Connect Supabase to see support tickets.</div>';return;}
+  const sb=getSupaClient();if(!sb){box.innerHTML='<div class="note2">Connect Supabase to see support.</div>';return;}
+  await loadSupportUid();               /* so support threads classify correctly */
+  try{await loadInbox();}catch(e){}     /* populates _supportNames (customer 'Tripomonk Team' chats) */
   try{const{data,error}=await sb.from('support_tickets').select('*').order('created_at',{ascending:false}).limit(120);
     if(error)throw error;_tickets=data||[];}
-  catch(e){box.innerHTML='<div class="note2">No support tickets table yet — run <b>SQL-add-permits-support.sql</b>. Travellers raise tickets from Help &amp; Support.</div>';return;}
+  catch(e){_tickets=null;}             /* tickets table not deployed — still show live chats */
   paintSupport();
+}
+/* customer live chats that came through 'Tripomonk Team' — owner replies via the normal chat */
+function liveSupportHTML(){
+  const names=_supportNames||[];
+  let h='<div class="adm-sec">Live chats'+(names.length?' ('+names.length+')':'')+'</div>';
+  if(!_supportUid)return h+'<div class="adm-hint" style="margin:2px 2px 14px">Sign in as the owner once to activate the support inbox — then customer messages to “Tripomonk Team” appear here.</div>';
+  if(!names.length)return h+'<div class="adm-hint" style="margin:2px 2px 14px">No customer chats yet. Messages sent to “Tripomonk Team” from the app land here.</div>';
+  h+='<div class="adm-hint" style="margin:2px 2px 8px">Customer messages to “Tripomonk Team” — tap to reply.</div><div class="chat-list">';
+  h+=names.map(n=>{const msgs=getChat(n)||[];const last=msgs[msgs.length-1]||{};
+    const prev=(last.who==='me'?'You: ':'')+(last.txt||'Start a conversation');
+    return '<div class="chat-row" onclick="openChat(\''+jsq(n)+'\')">'+avatar(n,46)+'<div class="meta"><b>'+esc(properName(n))+'</b><p>'+esc(prev.slice(0,80))+'</p></div><time>'+esc(last.ts?timeAgo(last.ts):(last.t||''))+'</time></div>';}).join('');
+  return h+'</div><div style="height:16px"></div>';
 }
 function paintSupport(){
   const box=document.getElementById('adminBody');if(!box||adminTab!=='Support')return;
-  const t=_tickets||[];const open=t.filter(x=>(x.status||'open')!=='resolved').length;
-  box.innerHTML='<div class="adm-hint" style="margin:2px 2px 10px">'+t.length+' ticket'+(t.length!==1?'s':'')+' · '+open+' open</div>'
-    +(t.length?t.map(ticketRow).join(''):'<div class="empty"><p>No tickets yet.</p></div>');
+  const t=_tickets;const list=t||[];const open=list.filter(x=>(x.status||'open')!=='resolved').length;
+  box.innerHTML=liveSupportHTML()
+    +'<div class="adm-sec">Support tickets</div>'
+    +(t===null
+      ? '<div class="adm-hint" style="margin:2px 2px 10px">No support-tickets table yet — run <b>SQL-add-permits-support.sql</b>. Travellers raise tickets from Help &amp; Support.</div>'
+      : '<div class="adm-hint" style="margin:2px 2px 10px">'+list.length+' ticket'+(list.length!==1?'s':'')+' · '+open+' open</div>'
+        +(list.length?list.map(ticketRow).join(''):'<div class="empty"><p>No tickets yet.</p></div>'));
   hydrate(box);
 }
 function ticketRow(t){
@@ -7515,7 +7555,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='409';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='411';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
