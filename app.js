@@ -4646,7 +4646,7 @@ async function renderPerson(){if(!curPerson){go('community');return;}const p=get
     <div class="prof-top">${avatar(p.n,84)}
       <h2>${esc(properName(p.n))}${hostBadge(p.n)}</h2>${at?`<div class="handle">${esc(at)}</div>`:''}
       <p class="pbio">${esc(p.bio||'')}</p>
-      <div class="pstats"><div><b>${posts.length}</b><small>Posts</small></div><div><b id="pFlwr" data-person="${esc(p.n)}" data-base="${base}">${flwr.toLocaleString()}</b><small>Followers</small></div><div><b>${Number(following).toLocaleString()}</b><small>Following</small></div></div>
+      <div class="pstats"><div><b>${posts.length}</b><small>Posts</small></div><div onclick="openFollowList('followers','${jsq(p.n)}')"><b id="pFlwr" data-person="${esc(p.n)}" data-base="${base}">${flwr.toLocaleString()}</b><small>Followers</small></div><div onclick="openFollowList('following','${jsq(p.n)}')"><b>${Number(following).toLocaleString()}</b><small>Following</small></div></div>
       ${me?'':`<div class="profile-actions" style="margin:14px 0 0"><button class="${isFollowing(p.n)?'on':''}${(!isFollowing(p.n)&&hasRequested(p.n))?' req':''}" data-follow="${esc(p.n)}" onclick="followAction('${jsq(p.n)}')">${followBtnLabel(p.n)}</button><button onclick="${isBlocked(p.n)?`note('Unblock ${jsq(properName(p.n))} first.','Blocked')`:(canSeePerson(p.n)?`openChat('${jsq(p.n)}')`:`note('Follow this private account to message them.','Private account')`)}">Message</button></div>
       <div style="text-align:center;margin-top:10px"><button onclick="toggleBlock('${jsq(p.n)}')" style="background:none;border:0;color:${isBlocked(p.n)?'var(--accent2)':'#ff6b6b'};font-size:12.5px;font-weight:700;cursor:pointer">${isBlocked(p.n)?'Unblock':'Block'} ${esc(properName(p.n))}</button></div>`}
       <div style="margin-top:12px">${socialLinks(me?getSavedSocials():socialsByName[p.n])}</div>
@@ -5200,8 +5200,8 @@ function renderProfile(){document.getElementById('pCover').style.backgroundImage
   const ps=document.getElementById('pStats');
   if(ps){ps.innerHTML=[
     ['grid_view',(_myPostCount>=0?_myPostCount:'…'),'Posts',"go('profile')",'pStatPosts'],
-    ['group',(_myFollowerCount>=0?_myFollowerCount.toLocaleString('en-IN'):'…'),'Followers',"go('profile')",'pStatFlwr'],
-    ['person_add',following,'Following',"go('profile')",'pStatFollowing'],
+    ['group',(_myFollowerCount>=0?_myFollowerCount.toLocaleString('en-IN'):'…'),'Followers',"openFollowList('followers')",'pStatFlwr'],
+    ['person_add',(_myFollowingCount>=0?_myFollowingCount:following),'Following',"openFollowList('following')",'pStatFollowing'],
     ['landscape',trekCount,'Treks',"go('bookings')",'']
   ].map(s=>`<div class="pstat" onclick="${s[3]}"><b${s[4]?` id="${s[4]}"`:''}>${s[1]}</b><small>${s[2]}</small></div>`).join('');hydrate(ps);}
   if(isLoggedIn())loadMyCounts();
@@ -5402,8 +5402,28 @@ async function ensureMsgSub(){
       .subscribe();
     refreshMsgBadge();   /* show the unread dot on app open */
   }catch(e){}
+  startMsgPoll();   /* fallback delivery even if realtime is down/blocked */
 }
-function stopMsgSub(){if(!msgChannel)return;try{getSupaClient().removeChannel(msgChannel);}catch(e){}msgChannel=null;setMsgUnread(false);}
+function stopMsgSub(){if(!msgChannel)return;try{getSupaClient().removeChannel(msgChannel);}catch(e){}msgChannel=null;setMsgUnread(false);stopMsgPoll();}
+/* Realtime can be off/blocked on some networks — poll as a safety net so messages still
+   arrive. Cheap: only refreshes what's on screen; badge count otherwise. */
+let _msgPollTimer=null;
+function startMsgPoll(){
+  if(_msgPollTimer)return;
+  _msgPollTimer=setInterval(async()=>{
+    try{
+      if(!currentUser||document.hidden)return;
+      if(cur==='chat'&&chatWith){
+        const before=getChat(chatWith).length;
+        await loadThread(chatWith);
+        if(cur==='chat'&&getChat(chatWith).length!==before)renderChat();
+      }else if(cur==='messages'){
+        await loadInbox();if(cur==='messages')paintMessages();
+      }else{refreshMsgBadge();}
+    }catch(e){}
+  },6000);
+}
+function stopMsgPoll(){if(_msgPollTimer){clearInterval(_msgPollTimer);_msgPollTimer=null;}}
 /* accurate unread dot — count messages addressed to me that I haven't read */
 async function refreshMsgBadge(){
   const sb=getSupaClient();const me=await myUid();if(!sb||!me){setMsgUnread(false);return;}
@@ -5488,7 +5508,10 @@ function chatWhen(msgs){const last=msgs&&msgs[msgs.length-1];if(!last)return '';
 function renderMessages(){
   ensureMsgSub();
   paintMessages();                                   /* instant, from cache */
-  loadInbox().then(()=>{if(cur==='messages')paintMessages();});   /* then refresh from DB */
+  loadInbox().then(()=>{if(cur==='messages')paintMessages();
+    /* fetch real profile photos for the contacts so their DP shows (not just initials) */
+    loadAuthorPhotos(chatContacts().map(c=>c.n)).then(()=>{if(cur==='messages')paintMessages();});
+  });
 }
 function paintMessages(){
   const recent=document.getElementById('recentChats'),list=document.getElementById('messageList');if(!recent||!list)return;
@@ -5498,7 +5521,8 @@ function paintMessages(){
   hydrate(document.getElementById('messages'));
 }
 function openChat(n){chatWith=n||'Tripomonk Team';ensureMsgSub();go('chat');refreshOpenThread();}
-async function refreshOpenThread(){const name=chatWith;if(name==='Tripomonk Team'&&!_supportUid)await loadSupportUid();/* pick up support_uid */await flushPending(name);await loadThread(name);if(cur==='chat'&&chatWith===name)renderChat();refreshMsgBadge();}
+async function refreshOpenThread(){const name=chatWith;if(name==='Tripomonk Team'&&!_supportUid)await loadSupportUid();/* pick up support_uid */await flushPending(name);await loadThread(name);if(cur==='chat'&&chatWith===name)renderChat();refreshMsgBadge();
+  loadAuthorPhotos([name]).then(()=>{if(cur==='chat'&&chatWith===name)renderChat();});   /* show the person's real DP in the header */}
 /* a call-request card in the thread — the requester sees "waiting", the recipient gets Allow/Decline */
 function callReqBubble(m,i){
   if(m.who==='me'){   /* MY request, shown on the requester's side */
@@ -5842,6 +5866,39 @@ async function acceptFollowReq(fid,nm){const sb=getSupaClient();if(!sb)return;co
   uidForName(nm);pushNotif({recipientId:fid,type:'follow_accept'});toast('Accepted');renderFollowRequests();}
 async function declineFollowReq(fid){const sb=getSupaClient();if(!sb)return;const me=myName();
   try{await sb.from('follows').delete().eq('follower_id',fid).eq('following_name',me);}catch(e){}toast('Declined');renderFollowRequests();}
+/* ---- Followers / Following lists (tap a stat to see the exact people) ---- */
+let _flMode='following',_flName='';
+function openFollowList(mode,name){_flMode=(mode==='followers')?'followers':'following';_flName=name||myName();go('followList');}
+async function renderFollowList(){
+  const box=document.getElementById('followListBody');const title=document.getElementById('flTitle');
+  const followers=_flMode==='followers';
+  if(title)title.textContent=followers?'Followers':'Following';
+  if(!box)return;
+  box.innerHTML='<div class="empty"><p>Loading…</p></div>';
+  const sb=getSupaClient();if(!sb){box.innerHTML='<div class="empty"><p>Connect to see this list.</p></div>';return;}
+  const name=_flName;let names=[];
+  try{
+    if(followers){
+      /* who follows this person → rows where following_name = them (accepted only) */
+      const{data}=await sb.from('follows').select('follower_name,follower_id,status').eq('following_name',name);
+      names=(data||[]).filter(r=>(r.status||'accepted')==='accepted').map(r=>r.follower_name).filter(Boolean);
+    }else{
+      /* who this person follows → rows where follower_id = their uid */
+      const uid=(name===myName()&&currentUser)?currentUser.id:await uidForName(name);
+      if(uid){const{data}=await sb.from('follows').select('following_name,status').eq('follower_id',uid);
+        names=(data||[]).filter(r=>(r.status||'accepted')!=='declined').map(r=>r.following_name).filter(Boolean);}
+    }
+  }catch(e){}
+  names=[...new Set(names)];
+  const who=name===myName()?'you':esc(properName(name));
+  if(!names.length){
+    const msg=followers?('People who follow '+who+' will show here.'):('People '+who+' '+(name===myName()?'follow':'follows')+' will show here.');
+    box.innerHTML=`<div class="ss-empty"><span class="msr">group</span><b>${followers?'No followers yet':'Not following anyone yet'}</b><p>${msg}</p></div>`;hydrate(box);return;}
+  await loadAuthorPhotos(names);
+  box.innerHTML=names.map(n=>{const h=handleFor(n);const sub=(h&&h.toLowerCase()!==properName(n).toLowerCase())?`<small>${esc(h)}</small>`:'';
+    return `<div class="fl-row" onclick="openPerson('${jsq(n)}')">${avatar(n,46)}<div class="fl-meta"><b>${esc(properName(n))}</b>${sub}</div><span class="msr fl-go">chevron_right</span></div>`;}).join('');
+  hydrate(box);
+}
 function calPick(el){document.querySelectorAll('#cal .grid .d').forEach(d=>{if(!d.classList.contains('off'))d.classList.remove('on');});el.classList.add('on');}
 function renderSearch(){document.getElementById('searchSug').innerHTML=['Kedarkantha','Valley of Flowers','Uttarakhand','Easy treks','Roopkund'].map(s=>`<div class="chip pill" onclick="doSearch('${s}')">${s}</div>`).join('');doSearch('');const inp=document.getElementById('searchInput');if(inp&&!inp._w){inp._w=1;inp.addEventListener('input',()=>doSearch(inp.value));}}
 function doSearch(q){const inp=document.getElementById('searchInput');if(inp&&q&&inp.value!==q)inp.value=q;q=(q||'').toLowerCase();
@@ -7621,7 +7678,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='413';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='415';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -9553,6 +9610,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='emergency')renderEmergency();
   if(id==='savedPosts')renderSavedPosts();
   if(id==='followRequests')renderFollowRequests();
+  if(id==='followList')renderFollowList();
   if(id==='packing'){pkTrek=_pkForce||(cart.trek&&cart.trek.n)||'';_pkForce='';renderPacking();}
   if(id==='bookings')renderBookings();
   if(id==='guardian')renderGuardian();
