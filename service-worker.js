@@ -1,7 +1,7 @@
 /* Tripomonk service worker — caches the app shell so it loads instantly
    and works offline. Bump CACHE when you change index.html / app.js so
    users get the new version. */
-const CACHE = 'tripomonk-v419';
+const CACHE = 'tripomonk-v420';
 const ASSETS = [
   './',
   './index.html',
@@ -76,12 +76,11 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // The standalone Admin Console (/admin/) is its own app — never cache it here,
-  // so admin updates are always fresh and the app's shell logic never touches it.
-  if (url.pathname.startsWith('/admin')) {
-    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
-    return;
-  }
+  // The standalone Admin Console (/admin/) is a SEPARATE app. Let the browser handle it
+  // natively — no service worker at all. This guarantees /admin (and /admin/) load the
+  // console's own static files, are never served the app's index.html fallback, and follow
+  // the /admin → /admin/ redirect normally. The app never "opens" for the admin URL.
+  if (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) return;
 
   // Live data / config that must always be fresh: never cache. Network first,
   // fall back to cache only when truly offline.
