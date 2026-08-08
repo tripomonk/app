@@ -1,12 +1,10 @@
-<svg viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tripomonk">
-  <defs>
-    <linearGradient id="tmkbg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#1a7dff"/>
-      <stop offset="1" stop-color="#0c3f9c"/>
-    </linearGradient>
-  </defs>
-  <rect width="600" height="600" rx="132" fill="url(#tmkbg)"/>
-  <path d="M120 450 L300 100 L480 450 L352 450 L352 300 L248 300 L248 450 Z"
-        fill="#ecf500" stroke="#ecf500" stroke-width="28"
-        stroke-linejoin="round" stroke-linecap="round"/>
+<svg width="1080" height="1080" viewBox="0 0 1080 1080" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tripomonk">
+<rect width="1080" height="1080" rx="200" fill="url(#paint0_linear_2327_16350)"/>
+<path d="M514.071 232.666C525.618 212.666 554.485 212.666 566.032 232.666L838.735 705.001C850.282 725.001 835.849 750.001 812.755 750.001H618.121V507.006C618.121 501.483 613.644 497.006 608.121 497.006H476.396C470.874 497.006 466.396 501.483 466.396 507.006V750.001H267.349C244.255 750.001 229.821 725.001 241.368 705.001L514.071 232.666Z" fill="#FEF200"/>
+<defs>
+<linearGradient id="paint0_linear_2327_16350" x1="540" y1="0" x2="540" y2="1080" gradientUnits="userSpaceOnUse">
+<stop stop-color="#0065FF"/>
+<stop offset="1" stop-color="#003D99"/>
+</linearGradient>
+</defs>
 </svg>
