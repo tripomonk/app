@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="robots" content="noindex,nofollow"/>
+<title>Tripomonk — Admin Console</title>
+<style>
+  /* ---- Tripomonk brand (matches app.tripomonk.com: deep navy + blue #2f6bff + yellow #ffce1f) ---- */
+  :root{
+    --bg:#081222; --panel:#0f1e34; --panel2:#12243e; --side:#0a1526; --sideact:#12233f;
+    --line:rgba(255,255,255,.09); --line2:rgba(255,255,255,.16);
+    --accent:#2f6bff; --accent2:#4f8bff; --yellow:#ffce1f;
+    --ink:#eef3fb; --muted:rgba(238,243,251,.60); --muted2:rgba(238,243,251,.40);
+    --ok:#3ddc97; --warn:#ffce1f; --bad:#ff5a72;
+    --shadow:0 18px 40px -26px rgba(0,0,0,.8); color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Arial,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+  .hidden{display:none!important}
+  ::placeholder{color:var(--muted2)}
+  /* login */
+  #login{position:fixed;inset:0;display:grid;place-items:center;background:radial-gradient(1200px 600px at 20% -10%,#123 0,#081222 60%);padding:20px}
+  .login-card{width:100%;max-width:380px;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:30px 26px;box-shadow:0 40px 90px -40px #000}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px}
+  .brand .mk{width:36px;height:36px;line-height:0;flex:none}
+  .brand .mk svg{width:36px;height:36px;display:block}
+  .login-card p{color:var(--muted);font-size:13px;margin:8px 0 20px}
+  .fld{margin-bottom:12px}.fld label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px}
+  .fld input{width:100%;height:46px;border:1px solid var(--line);border-radius:12px;padding:0 14px;font-size:14px;outline:none;background:var(--panel2);color:var(--ink)}
+  .fld input:focus{border-color:var(--accent)}
+  .btn{width:100%;height:48px;border:0;border-radius:12px;background:var(--accent);color:#fff;font-size:15px;font-weight:700;cursor:pointer}
+  .btn:disabled{opacity:.6}
+  .login-err{color:var(--bad);font-size:12.5px;margin-top:10px;min-height:16px}
+  /* shell */
+  #shell{display:grid;grid-template-columns:252px 1fr;min-height:100vh}
+  .side{background:var(--side);border-right:1px solid var(--line);position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column}
+  .side::-webkit-scrollbar{width:6px}.side::-webkit-scrollbar-thumb{background:#1c2c4a;border-radius:6px}
+  .side-top{display:flex;align-items:center;gap:10px;padding:18px 18px 12px}
+  .tagpill{font-size:9.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--yellow);border:1px solid rgba(255,206,31,.4);border-radius:20px;padding:2px 7px;margin-left:2px}
+  .side-me{margin:2px 12px 8px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:11px;display:flex;gap:10px;align-items:center}
+  .side-me .av{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;display:grid;place-items:center;font-weight:700;font-size:14px}
+  .side-me b{display:block;font-size:12.5px}.side-me small{color:var(--muted);font-size:11px}
+  .side-sec{color:var(--muted2);font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;padding:12px 20px 5px}
+  .nav-i{display:flex;align-items:center;gap:11px;padding:8px 20px;font-size:13.5px;cursor:pointer;color:var(--muted);border-left:3px solid transparent}
+  .nav-i:hover{background:rgba(255,255,255,.04);color:var(--ink)}
+  .nav-i.on{background:linear-gradient(90deg,rgba(47,107,255,.20),transparent);color:#fff;border-left-color:var(--accent)}
+  .nav-i .ic{width:20px;text-align:center;font-size:15px}
+  .side-foot{margin-top:auto;padding:14px 20px}
+  .side-foot button{all:unset;color:var(--muted);font-size:13px;cursor:pointer;display:flex;gap:8px;align-items:center}
+  .side-foot button:hover{color:var(--bad)}
+  .main{display:flex;flex-direction:column;min-width:0}
+  .top{height:64px;background:var(--panel);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:16px;padding:0 24px;position:sticky;top:0;z-index:5}
+  .top h1{font-size:18px;margin:0;font-weight:700}.top .sub{color:var(--muted);font-size:12.5px}
+  .spacer{flex:1}
+  .searchbar{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:0 12px;height:38px;width:240px;max-width:30vw}
+  .searchbar input{border:0;background:none;outline:none;font-size:13px;width:100%;color:var(--ink)}
+  .pill{background:rgba(61,220,151,.14);color:var(--ok);border:1px solid rgba(61,220,151,.3);border-radius:20px;padding:5px 11px;font-size:11px;font-weight:700}
+  .content{padding:22px 24px 60px;min-width:0}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:var(--shadow)}
+  .kpi .ic{float:right;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-size:20px;color:#fff}
+  .kpi .lab{color:var(--muted);font-size:12.5px;font-weight:600}
+  .kpi .val{font-size:26px;font-weight:800;margin-top:6px;font-variant-numeric:tabular-nums}
+  .kpi .chg{font-size:12px;margin-top:4px;color:var(--muted)}
+  .grid2{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;margin-bottom:20px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:var(--shadow);min-width:0;margin-bottom:16px}
+  .panel h2{font-size:15px;margin:0 0 2px}.panel .desc{color:var(--muted);font-size:12px;margin:0 0 14px}
+  .tbl{width:100%;border-collapse:collapse;font-size:13px}
+  .tbl th{text-align:left;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+  .tbl td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+  .tbl tr:hover td{background:rgba(255,255,255,.025)}
+  .u{display:flex;align-items:center;gap:10px}
+  .av-s{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700;flex:none;background-size:cover;background-position:center}
+  .tag{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+  .tag.ok{background:rgba(61,220,151,.15);color:var(--ok)}.tag.warn{background:rgba(255,206,31,.16);color:var(--yellow)}.tag.bad{background:rgba(255,90,114,.16);color:var(--bad)}.tag.neutral{background:rgba(255,255,255,.08);color:var(--muted)}
+  .tbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+  .tbar input,.tbar select{height:38px;border:1px solid var(--line);border-radius:10px;padding:0 12px;font-size:13px;outline:none;background:var(--panel2);color:var(--ink)}
+  .tbar input.grow{flex:1;min-width:180px}
+  .btn2{height:38px;border:1px solid var(--line);background:var(--panel2);border-radius:10px;padding:0 14px;font-size:13px;font-weight:600;cursor:pointer;color:var(--ink)}
+  .btn2.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn2.sm{height:30px;padding:0 10px;font-size:12px;border-radius:8px}
+  .btn2.danger{color:var(--bad);border-color:rgba(255,90,114,.4)}
+  .muted{color:var(--muted)}.empty{padding:40px;text-align:center;color:var(--muted)}
+  .row-acts{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+  .skel{height:14px;border-radius:6px;background:linear-gradient(90deg,#12233c,#1a2f4e,#12233c);background-size:200% 100%;animation:sh 1.2s infinite}
+  @keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  .bars{display:flex;align-items:flex-end;gap:6px;height:180px;margin-top:8px}
+  .bars .b{flex:1;background:linear-gradient(180deg,var(--accent2),var(--accent));border-radius:6px 6px 0 0;min-height:3px;position:relative}
+  .bars .b span{position:absolute;bottom:-20px;left:0;right:0;text-align:center;font-size:9px;color:var(--muted)}
+  .stepper{display:inline-flex;align-items:center;gap:6px}
+  .stepper button{width:26px;height:26px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:7px;cursor:pointer;font-weight:700}
+  .stepper b{min-width:22px;text-align:center;font-variant-numeric:tabular-nums}
+  .ov{position:fixed;inset:0;z-index:60;display:none}.ov.show{display:block}
+  .ov .scrim{position:absolute;inset:0;background:rgba(3,8,18,.7)}
+  .modal{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:460px;max-width:94vw;max-height:88vh;overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 40px 90px -40px #000}
+  .modal h3{margin:0 0 14px;font-size:17px}
+  .modal .fld input,.modal .fld textarea,.modal .fld select{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;outline:none;font-family:inherit;background:var(--panel2);color:var(--ink)}
+  .modal .fld textarea{min-height:80px;resize:vertical}
+  .modal .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+  .drawer .panel-r{position:absolute;top:0;right:0;bottom:0;width:440px;max-width:94vw;background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding:22px}
+  .dh{display:flex;align-items:center;gap:12px;margin-bottom:16px}.dh .av-s{width:48px;height:48px;font-size:16px}
+  .ua-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+  .ua-stat{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center}
+  .ua-stat b{display:block;font-size:17px}.ua-stat small{color:var(--muted);font-size:11px}
+  .sec-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin:16px 0 8px}
+  .ua-bar{margin-bottom:10px}.ua-bar .l{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px}.ua-bar .t{height:7px;border-radius:5px;background:var(--panel2);overflow:hidden}.ua-bar .t i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+  .ua-ev{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
+  .ua-ev .d{width:8px;height:8px;border-radius:50%;background:var(--accent);margin-top:5px;flex:none}
+  .ua-ev small{color:var(--muted);font-size:11.5px;display:block}
+  #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--accent);color:#fff;padding:12px 20px;border-radius:12px;font-size:13.5px;font-weight:600;opacity:0;transition:.25s;z-index:90;pointer-events:none}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .menu-btn{display:none;width:38px;height:38px;border:1px solid var(--line);border-radius:10px;place-items:center;background:var(--panel2);color:var(--ink);cursor:pointer;font-size:18px}
+  .scrim-m{display:none}
+  @media(max-width:980px){
+    #shell{grid-template-columns:1fr}
+    .side{position:fixed;left:0;top:0;z-index:80;width:252px;transform:translateX(-100%);transition:.22s}
+    .side.open{transform:none;box-shadow:0 0 60px #000}
+    .scrim-m{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:79}
+    .scrim-m.show{display:block}
+    .kpis{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}
+    .menu-btn{display:inline-grid}
+  }
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="login-card">
+    <div class="brand"><span class="mk"><svg viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg" aria-label="Tripomonk"><defs><linearGradient id="tmk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a7dff"/><stop offset="1" stop-color="#0c3f9c"/></linearGradient></defs><rect width="600" height="600" rx="132" fill="url(#tmk)"/><path d="M120 450 L300 100 L480 450 L352 450 L352 300 L248 300 L248 450 Z" fill="#ecf500" stroke="#ecf500" stroke-width="28" stroke-linejoin="round" stroke-linecap="round"/></svg></span> Tripomonk <span class="tagpill">Admin</span></div>
+    <p>Operations console — sign in with your owner / staff account.</p>
+    <form id="loginForm">
+      <div class="fld"><label>Email</label><input id="email" type="email" autocomplete="username" placeholder="you@tripomonk.com"/></div>
+      <div class="fld"><label>Password</label><input id="pass" type="password" autocomplete="current-password" placeholder="••••••••"/></div>
+      <button class="btn" id="loginBtn" type="submit">Sign in</button>
+      <div class="login-err" id="loginErr"></div>
+    </form>
+  </div>
+</div>
+
+<div class="scrim-m" id="scrimM"></div>
+<div id="shell" class="hidden">
+  <aside class="side" id="side">
+    <div class="side-top"><span class="brand"><span class="mk"><svg viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg" aria-label="Tripomonk"><defs><linearGradient id="tmk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a7dff"/><stop offset="1" stop-color="#0c3f9c"/></linearGradient></defs><rect width="600" height="600" rx="132" fill="url(#tmk)"/><path d="M120 450 L300 100 L480 450 L352 450 L352 300 L248 300 L248 450 Z" fill="#ecf500" stroke="#ecf500" stroke-width="28" stroke-linejoin="round" stroke-linecap="round"/></svg></span> Tripomonk <span class="tagpill">Admin</span></span></div>
+    <div class="side-me"><div class="av" id="meAv">A</div><div><b id="meName">Admin</b><small id="meRole">Owner</small></div></div>
+    <div class="side-sec">Dashboard</div>
+    <div class="nav-i on" data-sec="dashboard"><span class="ic">📊</span> Overview</div>
+    <div class="side-sec">Bookings</div>
+    <div class="nav-i" data-sec="bookings"><span class="ic">🧾</span> Bookings</div>
+    <div class="side-sec">Money</div>
+    <div class="nav-i" data-sec="payments"><span class="ic">💳</span> Payments</div>
+    <div class="side-sec">Catalogue</div>
+    <div class="nav-i" data-sec="treks"><span class="ic">🏔️</span> Treks &amp; Tours</div>
+    <div class="nav-i" data-sec="destinations"><span class="ic">🧭</span> Destinations</div>
+    <div class="nav-i" data-sec="departures"><span class="ic">📅</span> Departures</div>
+    <div class="nav-i" data-sec="packing"><span class="ic">🎒</span> Packing lists</div>
+    <div class="side-sec">Gear</div>
+    <div class="nav-i" data-sec="gear"><span class="ic">🎽</span> Gear inventory</div>
+    <div class="side-sec">Operations</div>
+    <div class="nav-i" data-sec="permits"><span class="ic">📄</span> Permits</div>
+    <div class="nav-i" data-sec="support"><span class="ic">💬</span> Support</div>
+    <div class="nav-i" data-sec="vendors"><span class="ic">🏪</span> Vendors</div>
+    <div class="side-sec">People</div>
+    <div class="nav-i" data-sec="users"><span class="ic">👥</span> Users</div>
+    <div class="nav-i" data-sec="crm"><span class="ic">🗂️</span> CRM</div>
+    <div class="nav-i" data-sec="hosts"><span class="ic">🧗</span> Hosts</div>
+    <div class="nav-i" data-sec="guides"><span class="ic">🥾</span> Guides</div>
+    <div class="nav-i" data-sec="staff"><span class="ic">🛡️</span> Staff</div>
+    <div class="side-sec">Community</div>
+    <div class="nav-i" data-sec="community"><span class="ic">📷</span> Posts</div>
+    <div class="nav-i" data-sec="reviews"><span class="ic">⭐</span> Reviews</div>
+    <div class="side-sec">Growth</div>
+    <div class="nav-i" data-sec="home"><span class="ic">🏠</span> Home &amp; features</div>
+    <div class="nav-i" data-sec="training"><span class="ic">💪</span> Training</div>
+    <div class="side-sec">System</div>
+    <div class="nav-i" data-sec="ai"><span class="ic">🤖</span> AI &amp; Messages</div>
+    <div class="nav-i" data-sec="settings"><span class="ic">⚙️</span> Settings</div>
+    <div class="side-foot"><button id="logoutBtn">⎋ Sign out</button></div>
+  </aside>
+
+  <div class="main">
+    <div class="top">
+      <button class="menu-btn" id="menuBtn">☰</button>
+      <div><h1 id="secTitle">Overview</h1><div class="sub" id="secSub">At a glance</div></div>
+      <div class="spacer"></div>
+      <div class="searchbar"><span>🔎</span><input id="globalSearch" placeholder="Jump to section…"/></div>
+      <div class="pill">● live</div>
+    </div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<div class="ov drawer" id="drawer"><div class="scrim" data-close></div><div class="panel-r" id="drawerBody"></div></div>
+<div class="ov" id="modalOv"><div class="scrim" data-close></div><div class="modal" id="modalBox"></div></div>
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+/* Tripomonk Admin Console — reuses the SAME Supabase backend (tables, RLS, `admin` edge fn). */
+const CFG={ URL:"https://pdenkohcsjnagcfvwbfi.supabase.co", ANON:"sb_publishable_nC4q3VEA4nfWQaZeBSoZsQ__e5OC-X2" };
+const OWNER="vikasupadhyay9@gmail.com";
+const sb=window.supabase.createClient(CFG.URL,CFG.ANON);
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const jsv=s=>String(s==null?'':s).replace(/[\\'"<>]/g,'');
+const INR=n=>'₹'+Number(n||0).toLocaleString('en-IN');
+const ini=n=>(String(n||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('')||'?').toUpperCase();
+const timeAgo=iso=>{if(!iso)return '—';const s=(Date.now()-new Date(iso).getTime())/1000;if(s<60)return 'just now';if(s<3600)return Math.floor(s/60)+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';if(s<2592000)return Math.floor(s/86400)+'d ago';return new Date(iso).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});};
+const dshort=iso=>{try{return iso?new Date(iso).toLocaleDateString('en-IN',{day:'numeric',month:'short'}):'';}catch(e){return '';}};
+const avc=(n,ph)=>`<span class="av-s"${ph?` style="background-image:url('${esc(ph)}')"`:''}>${ph?'':esc(ini(n))}</span>`;
+let ME=null,ROLE='owner';
+
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2600);}
+function closeOv(){$('#drawer').classList.remove('show');$('#modalOv').classList.remove('show');}
+document.querySelectorAll('[data-close]').forEach(e=>e.addEventListener('click',closeOv));
+function modal(html){$('#modalBox').innerHTML=html;$('#modalOv').classList.add('show');}
+function confirmDo(msg,cb){modal(`<h3>Please confirm</h3><p class="muted" style="font-size:13.5px">${esc(msg)}</p><div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="cfDo">Confirm</button></div>`);$('#cfDo').onclick=()=>{closeOv();cb();};}
+
+async function adminCall(action,data){
+  const { data:{session} }=await sb.auth.getSession();
+  const token=session?session.access_token:CFG.ANON;
+  try{const res=await fetch(CFG.URL+'/functions/v1/admin',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token,apikey:CFG.ANON},body:JSON.stringify(Object.assign({action},data||{}))});return await res.json();}catch(e){return {error:String(e&&e.message||e)};}
+}
+async function qtbl(table,build){let b=sb.from(table).select('*');if(build)b=build(b);const {data,error}=await b;return {rows:data||[],error};}
+
+/* auth */
+async function boot(){const { data:{session} }=await sb.auth.getSession();if(session&&await gate(session.user))return showShell();showLogin();}
+async function gate(user){ME=user;const e=(user.email||'').toLowerCase();if(e===OWNER){ROLE='owner';return true;}try{const {data}=await sb.from('staff').select('role').eq('email',e).maybeSingle();if(data){ROLE=data.role||'staff';return true;}}catch(x){}return false;}
+function showLogin(){$('#login').classList.remove('hidden');$('#shell').classList.add('hidden');}
+function showShell(){$('#login').classList.add('hidden');$('#shell').classList.remove('hidden');const nm=(ME.email||'Admin').split('@')[0];$('#meName').textContent=nm;$('#meRole').textContent=ROLE==='owner'?'Owner':('Staff · '+ROLE);$('#meAv').textContent=ini(nm);select('dashboard');}
+$('#loginForm').addEventListener('submit',async e=>{e.preventDefault();const btn=$('#loginBtn'),err=$('#loginErr');err.textContent='';btn.disabled=true;btn.textContent='Signing in…';
+  const {data,error}=await sb.auth.signInWithPassword({email:$('#email').value.trim(),password:$('#pass').value});
+  if(error){err.textContent=error.message;btn.disabled=false;btn.textContent='Sign in';return;}
+  if(!(await gate(data.user))){err.textContent='This account is not an admin.';await sb.auth.signOut();btn.disabled=false;btn.textContent='Sign in';return;}
+  btn.disabled=false;btn.textContent='Sign in';showShell();});
+$('#logoutBtn').addEventListener('click',async()=>{await sb.auth.signOut();location.reload();});
+function toggleMenu(open){const s=$('#side'),m=$('#scrimM');const on=open===undefined?!s.classList.contains('open'):open;s.classList.toggle('open',on);m.classList.toggle('show',on);}
+$('#menuBtn').addEventListener('click',()=>toggleMenu());
+$('#scrimM').addEventListener('click',()=>toggleMenu(false));
+
+/* router — every section mirrors the in-app admin */
+const SEC={
+  dashboard:['Overview','At a glance',renderDashboard],
+  bookings:['Bookings','Manage every reservation',renderBookings],
+  payments:['Payments','Transactions & revenue',renderPayments],
+  treks:['Treks & Tours','Edit catalogue, prices, offers',renderTreks],
+  destinations:['Destinations','Regions & places',renderDestinations],
+  departures:['Departures','Batch dates & seats',renderDepartures],
+  packing:['Packing lists','Per-trek gear checklists',renderPacking],
+  gear:['Gear inventory','Rental stock',renderGear],
+  permits:['Permits','Forest / park permit requests',renderPermits],
+  support:['Support','Tickets',renderSupport],
+  vendors:['Vendors','Partner operators',renderVendors],
+  users:['Users','Members & behaviour',renderUsers],
+  crm:['CRM','Customer 360',renderCRM],
+  hosts:['Hosts','Applications & live trips',renderHosts],
+  guides:['Guides','Trek leaders',renderGuides],
+  staff:['Staff','Team & roles',renderStaff],
+  community:['Community posts','Moderate',renderCommunity],
+  reviews:['Reviews','Add & manage',renderReviews],
+  home:['Home & features','Featured trek & rails',renderHome],
+  training:['Training','Who is training',renderTraining],
+  ai:['AI & Messages','Automated templates',renderAI],
+  settings:['Settings','Console info',renderSettings],
+};
+let _bk=null;
+function select(sec){const S=SEC[sec];if(!S)return;document.querySelectorAll('.nav-i').forEach(n=>n.classList.toggle('on',n.dataset.sec===sec));$('#secTitle').textContent=S[0];$('#secSub').textContent=S[1];toggleMenu(false);$('#content').innerHTML='<div class="panel"><div class="skel" style="width:40%;margin-bottom:12px"></div><div class="skel" style="width:80%;margin-bottom:8px"></div><div class="skel" style="width:70%"></div></div>';S[2]();}
+document.querySelectorAll('.nav-i').forEach(n=>n.addEventListener('click',()=>select(n.dataset.sec)));
+$('#globalSearch').addEventListener('keydown',e=>{if(e.key!=='Enter')return;const v=e.target.value.toLowerCase();const hit=Object.keys(SEC).find(k=>SEC[k][0].toLowerCase().includes(v));if(hit)select(hit);});
+
+/* shared */
+async function getBookings(force){if(_bk&&!force)return _bk;const r=await adminCall('list_bookings');_bk=(r&&Array.isArray(r.bookings))?r.bookings:(Array.isArray(r)?r:[]);return _bk;}
+const paidOf=b=>Number(b.paid||b.amount||0);
+const isPaid=b=>{const s=(b.status||'').toLowerCase();return !/cancel|refund|fail/.test(s);};
+function bars(data,labels){const max=Math.max(1,...data);return `<div class="bars">${data.map((v,i)=>`<div class="b" style="height:${Math.max(3,Math.round(v/max*160))}px" title="${v}"><span>${labels[i]||''}</span></div>`).join('')}</div><div style="height:22px"></div>`;}
+function kpi(l,v,ic,col,chg){return `<div class="kpi"><div class="ic" style="background:${col}">${ic}</div><div class="lab">${l}</div><div class="val">${v}</div><div class="chg">${chg||''}</div></div>`;}
+async function tblCount(t,eq){try{let b=sb.from(t).select('id');if(eq)b=b.eq(eq[0],eq[1]);const {data}=await b.limit(5000);return (data||[]).length;}catch(e){return 0;}}
+function wrapTbl(h){return `<div style="overflow-x:auto">${h}</div>`;}
+
+/* DASHBOARD */
+async function renderDashboard(){
+  const c=$('#content');
+  const [bk,prof,hosts,trips]=await Promise.all([getBookings(),tblCount('profiles'),tblCount('host_applications'),tblCount('host_trips',['status','live'])]);
+  const rev=bk.filter(isPaid).reduce((a,b)=>a+paidOf(b),0),paidN=bk.filter(isPaid).length;
+  const days=[];for(let i=13;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push(d);}
+  const key=d=>d.toISOString().slice(0,10),byDay={};days.forEach(d=>byDay[key(d)]=0);
+  bk.forEach(b=>{const k=(b.created_at||'').slice(0,10);if(k in byDay)byDay[k]++;});
+  const series=days.map(d=>byDay[key(d)]),labels=days.map((d,i)=>i%2===0?d.getDate():'');
+  const recent=bk.slice().sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')).slice(0,8);
+  c.innerHTML=`<div class="kpis">${kpi('Total bookings',bk.length,'🧾','var(--accent)','all time')}${kpi('Revenue collected',INR(rev),'💰','#1e8f5f',paidN+' paid')}${kpi('Members',prof,'👥','#6a4bff','registered')}${kpi('Live host trips',trips,'🎒','#c79a10',hosts+' applications')}</div>
+  <div class="grid2"><div class="panel"><h2>Bookings — last 14 days</h2><p class="desc">${paidN} paid of ${bk.length} total</p>${bars(series,labels)}</div>
+    <div class="panel"><h2>Quick numbers</h2><p class="desc">Snapshot</p><table class="tbl"><tbody>
+      <tr><td>Avg booking value</td><td style="text-align:right"><b>${INR(paidN?Math.round(rev/paidN):0)}</b></td></tr>
+      <tr><td>Paid bookings</td><td style="text-align:right"><b>${paidN}</b></td></tr>
+      <tr><td>Cancelled / refunded</td><td style="text-align:right"><b>${bk.length-paidN}</b></td></tr>
+      <tr><td>Host applications</td><td style="text-align:right"><b>${hosts}</b></td></tr>
+    </tbody></table></div></div>
+  <div class="panel"><h2>Recent bookings</h2><p class="desc">Latest reservations</p>${recent.length?bkTable(recent):'<div class="empty">No bookings yet.</div>'}</div>`;
+}
+/* BOOKINGS */
+function stTag(b){const s=(b.status||'confirmed').toLowerCase();const cls=/cancel/.test(s)?'bad':/refund/.test(s)?'warn':/pending/.test(s)?'neutral':'ok';return `<span class="tag ${cls}">${esc(b.status||'Confirmed')}</span>`;}
+function bkTable(list,acts){return wrapTbl(`<table class="tbl"><thead><tr><th>Guest</th><th>Trek</th><th>Date</th><th>Pax</th><th>Paid</th><th>Captain</th><th>Status</th>${acts?'<th></th>':'<th>Booked</th>'}</tr></thead><tbody>
+  ${list.map(b=>`<tr><td><div class="u">${avc(b.name)}<div><b>${esc(b.name||'Guest')}</b><br><small class="muted">${esc(b.phone||b.email||'')}</small></div></div></td><td>${esc(b.trek||b.title||'—')}</td><td>${esc(b.date||'—')}</td><td>${esc(b.pax||1)}</td><td><b>${INR(paidOf(b))}</b></td><td class="muted">${esc(b.captain||'—')}</td><td>${stTag(b)}</td>
+    ${acts?`<td><div class="row-acts"><button class="btn2 sm" onclick="bkAction('${jsv(b.id)}','confirm')">Confirm</button><button class="btn2 sm" onclick="bkAssign('${jsv(b.id)}')">Captain</button><button class="btn2 sm danger" onclick="bkAction('${jsv(b.id)}','refund')">Refund</button></div></td>`:`<td class="muted">${dshort(b.created_at)}</td>`}</tr>`).join('')}</tbody></table>`);}
+async function renderBookings(){
+  const bk=(await getBookings()).slice().sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
+  $('#content').innerHTML=`<div class="panel"><div class="tbar"><input class="grow" id="bkq" placeholder="Search guest, trek, phone…"/><select id="bkf"><option value="">All statuses</option><option>Confirmed</option><option>Pending</option><option>Cancelled</option><option>Refunded</option></select><button class="btn2" onclick="exportCSV()">Export CSV</button></div><div id="bkT"></div></div>`;
+  const paint=r=>$('#bkT').innerHTML=r.length?bkTable(r,true):'<div class="empty">No matching bookings.</div>';
+  const apply=()=>{const q=$('#bkq').value.toLowerCase(),f=$('#bkf').value.toLowerCase();paint(bk.filter(b=>(!q||((b.name||'')+' '+(b.trek||'')+' '+(b.phone||'')+' '+(b.email||'')).toLowerCase().includes(q))&&(!f||(b.status||'confirmed').toLowerCase()===f)));};
+  $('#bkq').oninput=apply;$('#bkf').onchange=apply;paint(bk);
+}
+async function bkAction(id,kind){const map={confirm:'Confirmed',cancel:'Cancelled',refund:'Refunded'};confirmDo('Mark this booking as '+map[kind]+'?',async()=>{const r=await adminCall('update_booking',{id,status:map[kind]});if(r&&r.error){toast('Failed: '+r.error);return;}const b=(_bk||[]).find(x=>String(x.id)===String(id));if(b)b.status=map[kind];toast('Booking '+map[kind].toLowerCase());select('bookings');});}
+function bkAssign(id){modal(`<h3>Assign trip captain</h3><div class="fld"><label>Captain name</label><input id="capName" placeholder="e.g. Rohit Negi"/></div><div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="capGo">Assign</button></div>`);$('#capGo').onclick=async()=>{const name=$('#capName').value.trim();if(!name)return;closeOv();const r=await adminCall('update_booking',{id,captain:name});if(r&&r.error){toast('Failed: '+r.error);return;}const b=(_bk||[]).find(x=>String(x.id)===String(id));if(b)b.captain=name;toast('Captain assigned');select('bookings');};}
+function exportCSV(){const bk=_bk||[];const head=['Name','Trek','Date','Pax','Total','Paid','Status','Captain','Booked','PaymentID'];const rows=bk.map(b=>[b.name,b.trek||b.title,b.date,b.pax,b.total,paidOf(b),b.status,b.captain,(b.created_at||'').slice(0,10),b.payment_id||b.id]);const csv=[head].concat(rows).map(r=>r.map(x=>'"'+String(x==null?'':x).replace(/"/g,'""')+'"').join(',')).join('\r\n');const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download='tripomonk-bookings.csv';a.click();}
+/* PAYMENTS */
+async function renderPayments(){const bk=await getBookings(),paid=bk.filter(isPaid),rev=paid.reduce((a,b)=>a+paidOf(b),0),ref=bk.filter(b=>/refund/i.test(b.status||'')).reduce((a,b)=>a+paidOf(b),0);
+  $('#content').innerHTML=`<div class="kpis">${kpi('Collected',INR(rev),'💰','#1e8f5f','')}${kpi('Transactions',paid.length,'🔁','var(--accent)','')}${kpi('Refunded',INR(ref),'↩️','#c79a10','')}${kpi('Avg value',INR(paid.length?Math.round(rev/paid.length):0),'📈','#6a4bff','')}</div><div class="panel"><div class="tbar"><span class="muted">${paid.length} paid transactions</span><span class="spacer"></span><button class="btn2" onclick="exportCSV()">Export CSV</button></div>${bkTable(bk.slice().sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')),true)}</div>`;}
+/* TREKS */
+let _treks=null;
+async function renderTreks(){const {rows}=await qtbl('treks',b=>b.limit(600));_treks=rows.slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
+  $('#content').innerHTML=`<div class="panel"><div class="tbar"><input class="grow" id="tq" placeholder="Search treks & tours…"/><span class="muted">${_treks.length} in catalogue</span></div><div id="tT"></div></div>`;
+  const paint=r=>$('#tT').innerHTML=r.length?wrapTbl(`<table class="tbl"><thead><tr><th>Name</th><th>Region</th><th>Type</th><th>Price</th><th>Discount</th><th>Offer</th><th></th></tr></thead><tbody>${r.map(t=>`<tr><td><b>${esc(t.name)}</b></td><td class="muted">${esc(t.region||'')}</td><td>${esc(t.type||'trek')}</td><td>${INR(t.price)}</td><td>${t.discount?('<span class="tag warn">'+t.discount+'% off</span>'):'<span class="muted">—</span>'}</td><td class="muted">${esc(t.offer||'')}</td><td><button class="btn2 sm" onclick="trekEdit('${jsv(t.id)}')">Edit</button></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No treks found.</div>';
+  paint(_treks);$('#tq').oninput=e=>{const v=e.target.value.toLowerCase();paint(_treks.filter(t=>((t.name||'')+' '+(t.region||'')).toLowerCase().includes(v)));};}
+function trekEdit(id){const t=(_treks||[]).find(x=>String(x.id)===String(id));if(!t)return;
+  modal(`<h3>Edit — ${esc(t.name)}</h3><div class="fld"><label>Price (₹)</label><input id="teP" type="number" value="${esc(t.price||0)}"/></div><div class="fld"><label>Discount %</label><input id="teD" type="number" min="0" max="90" value="${esc(t.discount||0)}"/></div><div class="fld"><label>Offer text (yellow badge)</label><input id="teO" value="${esc(t.offer||'')}" placeholder="Early bird — save ₹1000"/></div><div class="fld"><label>Tag</label><input id="teT" value="${esc(t.tag||'')}" placeholder="Bestseller"/></div><div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="teGo">Save</button></div>`);
+  $('#teGo').onclick=async()=>{const upd=Object.assign({},t,{price:parseInt($('#teP').value)||0,discount:Math.max(0,Math.min(90,parseInt($('#teD').value)||0)),offer:$('#teO').value.trim(),tag:$('#teT').value.trim()});closeOv();const r=await adminCall('save_trek',{trek:upd});if(r&&r.error){toast('Failed: '+r.error);return;}toast('Trek updated');renderTreks();};}
+/* DESTINATIONS */
+async function renderDestinations(){const {rows,error}=await qtbl('destinations',b=>b.limit(300));if(error){$('#content').innerHTML='<div class="panel"><div class="empty">Destinations table not deployed — run <b>SQL-add-destinations.sql</b>.</div></div>';return;}
+  $('#content').innerHTML=`<div class="panel"><h2>Destinations</h2><p class="desc">${rows.length} regions/places · rich content edited in the app admin</p>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Name</th><th>State</th><th>Best season</th><th>Level</th></tr></thead><tbody>${rows.map(d=>`<tr><td><b>${esc(d.name)}</b></td><td class="muted">${esc(d.state||'')}</td><td>${esc(d.best||'')}</td><td>${esc(d.lvl||'')}</td></tr>`).join('')}</tbody></table>`):'<div class="empty">No destinations.</div>'}</div>`;}
+/* DEPARTURES */
+async function renderDepartures(){const {rows}=await qtbl('treks',b=>b.limit(600));
+  const withB=rows.map(t=>({n:t.name,b:Array.isArray(t.batches)?t.batches.length:(t.batches?Object.keys(t.batches).length:0)})).filter(x=>x.b>0).sort((a,b)=>b.b-a.b);
+  $('#content').innerHTML=`<div class="panel"><h2>Departures</h2><p class="desc">Batch dates configured per trek (edit specific dates in the app admin → Departures)</p>${withB.length?wrapTbl(`<table class="tbl"><thead><tr><th>Trek</th><th>Batches configured</th></tr></thead><tbody>${withB.map(x=>`<tr><td><b>${esc(x.n)}</b></td><td>${x.b} batch${x.b>1?'es':''}</td></tr>`).join('')}</tbody></table>`):'<div class="empty">No batch dates set. Add departures in the app admin.</div>'}</div>`;}
+/* PACKING */
+async function renderPacking(){const {rows}=await qtbl('treks',b=>b.limit(600));
+  const withP=rows.filter(t=>t.packing&&(Array.isArray(t.packing)?t.packing.length:Object.keys(t.packing||{}).length)).map(t=>t.name);
+  $('#content').innerHTML=`<div class="panel"><h2>Packing lists</h2><p class="desc">${withP.length} treks have a custom packing list (edit items in the app admin → Packing)</p>${withP.length?wrapTbl(`<table class="tbl"><thead><tr><th>Trek</th><th>Custom list</th></tr></thead><tbody>${withP.map(n=>`<tr><td><b>${esc(n)}</b></td><td><span class="tag ok">configured</span></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No custom packing lists yet.</div>'}</div>`;}
+/* GEAR */
+async function renderGear(){const {rows,error}=await qtbl('gear_inventory',b=>b.order('item'));if(error){$('#content').innerHTML='<div class="panel"><div class="empty">Gear table not deployed — run <b>SQL-add-gear-and-moderation.sql</b>.</div></div>';return;}
+  const av=g=>Math.max(0,(g.total||0)-(g.rented||0)-(g.damaged||0)-(g.maintenance||0));
+  $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Rental gear</h2><span class="spacer"></span><button class="btn2 pri" onclick="gearAdd()">+ Add item</button></div>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Item</th><th>Category</th><th>Total</th><th>Rented</th><th>Damaged</th><th>Available</th></tr></thead><tbody>${rows.map(g=>`<tr><td><b>${esc(g.item)}</b></td><td class="muted">${esc(g.category||'')}</td><td>${stepper(g.id,'total',g.total||0)}</td><td>${stepper(g.id,'rented',g.rented||0)}</td><td>${stepper(g.id,'damaged',g.damaged||0)}</td><td><b>${av(g)}</b></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No gear yet.</div>'}</div>`;}
+function stepper(id,f,v){return `<span class="stepper"><button onclick="gearAdj('${jsv(id)}','${f}',-1)">−</button><b id="g_${jsv(id)}_${f}">${v}</b><button onclick="gearAdj('${jsv(id)}','${f}',1)">+</button></span>`;}
+async function gearAdj(id,f,d){const el=document.getElementById('g_'+id+'_'+f);let v=Math.max(0,(parseInt(el.textContent)||0)+d);el.textContent=v;const o={};o[f]=v;const {error}=await sb.from('gear_inventory').update(o).eq('id',id);if(error)toast('Failed: '+error.message);}
+function gearAdd(){modal(`<h3>Add gear item</h3><div class="fld"><label>Item</label><input id="giName" placeholder="Down jacket"/></div><div class="fld"><label>Category</label><input id="giCat" placeholder="Clothing"/></div><div class="fld"><label>Total quantity</label><input id="giQty" type="number" value="0"/></div><div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="giGo">Add</button></div>`);$('#giGo').onclick=async()=>{const item=$('#giName').value.trim();if(!item)return;closeOv();const {error}=await sb.from('gear_inventory').upsert({id:'g'+Date.now(),item,category:$('#giCat').value.trim(),total:parseInt($('#giQty').value)||0,rented:0,damaged:0,maintenance:0});toast(error?('Failed: '+error.message):'Item added');if(!error)renderGear();};}
+/* PERMITS */
+async function renderPermits(){const {rows,error}=await qtbl('permit_applications',b=>b.order('created_at',{ascending:false}).limit(300));if(error){$('#content').innerHTML='<div class="panel"><div class="empty">Permit table not deployed — run <b>SQL-add-permits-support.sql</b>.</div></div>';return;}
+  $('#content').innerHTML=`<div class="panel"><h2>Permit requests</h2><p class="desc">${rows.length} requests</p>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Applicant</th><th>Permit / trek</th><th>Dates</th><th>Pax</th><th>Status</th><th></th></tr></thead><tbody>${rows.map(p=>`<tr><td><b>${esc(p.name||'—')}</b><br><small class="muted">${esc(p.phone||'')}</small></td><td>${esc(p.permit||'')} ${esc(p.trek||'')}</td><td class="muted">${esc(p.dates||'')}</td><td>${esc(p.pax||1)}</td><td><span class="tag ${/(approv)/i.test(p.status)?'ok':/reject/i.test(p.status)?'bad':'warn'}">${esc(p.status||'pending')}</span></td><td><div class="row-acts"><button class="btn2 sm" onclick="permSet('${jsv(p.id)}','approved')">Approve</button><button class="btn2 sm danger" onclick="permSet('${jsv(p.id)}','rejected')">Reject</button></div></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No permit requests.</div>'}</div>`;}
+async function permSet(id,st){const {error}=await sb.from('permit_applications').update({status:st}).eq('id',id);toast(error?('Failed: '+error.message):('Marked '+st));if(!error)renderPermits();}
+/* SUPPORT */
+async function renderSupport(){const {rows,error}=await qtbl('support_tickets',b=>b.order('created_at',{ascending:false}).limit(150));
+  $('#content').innerHTML=`<div class="panel"><h2>Support tickets</h2><p class="desc">${error?'Tickets table not deployed':rows.length+' tickets'}</p>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>From</th><th>Message</th><th>Status</th><th></th></tr></thead><tbody>${rows.map(t=>`<tr><td><b>${esc(t.name||'Trekker')}</b><br><small class="muted">${esc(t.phone||t.email||'')}</small></td><td class="muted">${esc((t.message||'').slice(0,100))}${t.reply?`<br><small style="color:var(--accent2)">↳ ${esc(t.reply)}</small>`:''}</td><td><span class="tag ${/resolved/i.test(t.status)?'ok':'warn'}">${esc(t.status||'open')}</span></td><td><div class="row-acts"><button class="btn2 sm" onclick="ticketReply('${jsv(t.id)}')">Reply</button><button class="btn2 sm" onclick="ticketResolve('${jsv(t.id)}')">Resolve</button></div></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No tickets. Live customer chats are in the app admin → Support.</div>'}</div>`;}
+function ticketReply(id){modal(`<h3>Reply to ticket</h3><div class="fld"><label>Reply (the user is notified)</label><textarea id="tkR"></textarea></div><div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="tkGo">Send</button></div>`);$('#tkGo').onclick=async()=>{const reply=$('#tkR').value.trim();if(!reply)return;closeOv();const {error}=await sb.from('support_tickets').update({reply,status:'answered'}).eq('id',id);toast(error?('Failed: '+error.message):'Reply sent');if(!error)renderSupport();};}
+async function ticketResolve(id){const {error}=await sb.from('support_tickets').update({status:'resolved'}).eq('id',id);toast(error?('Failed: '+error.message):'Resolved');if(!error)renderSupport();}
+/* VENDORS */
+async function renderVendors(){const {rows,error}=await qtbl('vendors',b=>b.order('created_at',{ascending:false}).limit(300));if(error){$('#content').innerHTML='<div class="panel"><div class="empty">Vendors table not deployed — run <b>SQL-add-vendors.sql</b>.</div></div>';return;}
+  $('#content').innerHTML=`<div class="panel"><h2>Partner operators</h2><p class="desc">${rows.length} vendors</p>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Business</th><th>Type</th><th>City</th><th>Status</th><th></th></tr></thead><tbody>${rows.map(v=>`<tr><td><b>${esc(v.business_name||'—')}</b></td><td class="muted">${esc(v.type||'')}</td><td class="muted">${esc(v.city||'')}</td><td><span class="tag ${/(approv)/i.test(v.status)?'ok':/(reject|suspend)/i.test(v.status)?'bad':'warn'}">${esc(v.status||'pending')}</span></td><td><div class="row-acts"><button class="btn2 sm" onclick="vendSet('${jsv(v.id)}','approved')">Approve</button><button class="btn2 sm danger" onclick="vendSet('${jsv(v.id)}','rejected')">Reject</button></div></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No vendor applications.</div>'}</div>`;}
+async function vendSet(id,st){const {error}=await sb.from('vendors').update({status:st}).eq('id',id);toast(error?('Failed: '+error.message):('Vendor '+st));if(!error)renderVendors();}
+/* USERS + activity */
+async function renderUsers(){const {rows}=await qtbl('profiles',b=>b.select('id,name,username,photo,is_host').order('name'));
+  $('#content').innerHTML=`<div class="panel"><div class="tbar"><input class="grow" id="uq" placeholder="Search name or @username…"/><span class="muted">${rows.length} members</span></div><div id="uT"></div></div>`;
+  const paint=l=>$('#uT').innerHTML=l.length?wrapTbl(`<table class="tbl"><thead><tr><th>Member</th><th>Username</th><th>Type</th><th></th></tr></thead><tbody>${l.map(u=>`<tr><td><div class="u">${avc(u.name,u.photo)}<b>${esc(u.name||'Trekker')}</b></div></td><td class="muted">${u.username?'@'+esc(u.username):'—'}</td><td>${u.is_host?'<span class="tag ok">Host</span>':'<span class="tag neutral">Trekker</span>'}</td><td style="text-align:right"><button class="btn2 sm" onclick="openActivity('${jsv(u.id)}','${jsv(u.name)}','${jsv(u.photo||'')}')">Activity</button></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No users found.</div>';
+  paint(rows);$('#uq').oninput=e=>{const v=e.target.value.toLowerCase();paint(rows.filter(u=>((u.name||'')+' '+(u.username||'')).toLowerCase().includes(v)));};}
+const SCR={home:'Home',explore:'Explore treks',search:'Search',community:'Community',bookings:'Bookings',profile:'Profile',messages:'Messages',chat:'Chat',detail:'Trek details',trip:'Road trip',person:'A profile',wishlist:'Wishlist',payment:'Payment',selectDate:'Choose dates',notifications:'Notifications'};
+const scL=s=>SCR[s]||s||'App';
+const EVL={login:'Signed in',view_trek:'Viewed a trek',booking:'Made a booking',message:'Sent a message',follow:'Followed someone',story_view:'Watched a story',post:'Created a post'};
+function evL(r){if(!r.event)return 'Viewed '+scL(r.screen);const m=r.meta||{};if(r.event==='view_trek'&&m.trek)return 'Viewed trek — '+m.trek;if(r.event==='booking')return 'Booked '+(m.trek||'a trek')+(m.amount?' · ₹'+m.amount:'');if(r.event==='message'&&m.to)return 'Messaged '+m.to;if(r.event==='follow'&&m.name)return 'Followed '+m.name;if(r.event==='story_view'&&m.who)return 'Watched '+m.who+'’s story';return EVL[r.event]||r.event;}
+async function openActivity(uid,name,photo){const d=$('#drawer'),body=$('#drawerBody');d.classList.add('show');
+  body.innerHTML=`<div class="dh">${avc(name,photo)}<div><b style="font-size:16px">${esc(name)}</b><br><small class="muted">Loading…</small></div><span class="spacer"></span><button class="btn2" onclick="closeOv()">Close</button></div><div class="skel" style="width:80%;margin:10px 0"></div><div class="skel" style="width:60%"></div>`;
+  let rows=[],err=null;try{const {data,error}=await sb.from('app_events').select('screen,event,seconds,session_id,created_at,meta').eq('user_id',uid).order('created_at',{ascending:false}).limit(400);err=error;rows=data||[];}catch(e){err=e;}
+  const head=`<div class="dh">${avc(name,photo)}<div><b style="font-size:16px">${esc(name)}</b><br><small class="muted">${rows.length?('Active '+timeAgo(rows[0].created_at)):'No activity'}</small></div><span class="spacer"></span><button class="btn2" onclick="closeOv()">Close</button></div>`;
+  if(err){body.innerHTML=head+'<div class="empty">Analytics not enabled — run <b>SQL-add-user-analytics.sql</b>.</div>';return;}
+  if(!rows.length){body.innerHTML=head+'<div class="empty">No activity recorded yet.</div>';return;}
+  const sess=new Set(rows.map(r=>r.session_id)).size,screens=rows.filter(r=>!r.event&&r.screen),total=rows.reduce((a,r)=>a+(+r.seconds||0),0);
+  const byS={};screens.forEach(r=>byS[r.screen]=(byS[r.screen]||0)+(+r.seconds||0));const top=Object.entries(byS).sort((a,b)=>b[1]-a[1]).slice(0,6),max=top.length?top[0][1]:1;
+  const fmt=s=>s>=3600?Math.round(s/3600)+'h':s>=60?Math.round(s/60)+'m':(s||0)+'s';
+  body.innerHTML=head+`<div class="ua-stats"><div class="ua-stat"><b>${timeAgo(rows[0].created_at).replace(/ ago$/,'')}</b><small>Last active</small></div><div class="ua-stat"><b>${sess}</b><small>Sessions</small></div><div class="ua-stat"><b>${screens.length}</b><small>Screens</small></div><div class="ua-stat"><b>${fmt(total)}</b><small>Time</small></div></div><div class="sec-t">Most-used screens</div>`+(top.length?top.map(e=>`<div class="ua-bar"><div class="l"><span>${esc(scL(e[0]))}</span><b class="muted">${fmt(e[1])}</b></div><div class="t"><i style="width:${Math.max(4,Math.round(e[1]/max*100))}%"></i></div></div>`).join(''):'<div class="muted">No screen data.</div>')+`<div class="sec-t">Recent activity</div>`+rows.slice(0,50).map(r=>`<div class="ua-ev"><span class="d"></span><div>${esc(evL(r))}<small>${esc(timeAgo(r.created_at))}${r.seconds?' · '+fmt(r.seconds):''}</small></div></div>`).join('');
+}
+/* CRM */
+async function renderCRM(){
+  $('#content').innerHTML=`<div class="panel"><h2>Customer 360</h2><p class="desc">Search a member to see their bookings, spend & activity</p><div class="tbar"><input class="grow" id="crmq" placeholder="Type a name…"/></div><div id="crmR"><div class="empty">Start typing a customer name.</div></div></div>`;
+  const {rows}=await qtbl('profiles',b=>b.select('id,name,username,photo').order('name'));
+  $('#crmq').oninput=e=>{const v=e.target.value.toLowerCase();if(!v){$('#crmR').innerHTML='<div class="empty">Start typing a customer name.</div>';return;}
+    const m=rows.filter(u=>(u.name||'').toLowerCase().includes(v)).slice(0,10);
+    $('#crmR').innerHTML=m.length?wrapTbl(`<table class="tbl"><tbody>${m.map(u=>`<tr><td><div class="u">${avc(u.name,u.photo)}<b>${esc(u.name)}</b></div></td><td style="text-align:right"><button class="btn2 sm" onclick="crmOpen('${jsv(u.id)}','${jsv(u.name)}','${jsv(u.photo||'')}')">Open 360</button></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No match.</div>';};
+}
+async function crmOpen(uid,name,photo){
+  const bk=(await getBookings()).filter(b=>(b.name||'').toLowerCase()===name.toLowerCase());
+  const spend=bk.filter(isPaid).reduce((a,b)=>a+paidOf(b),0);
+  openActivity(uid,name,photo);
+  const body=$('#drawerBody');
+  const extra=`<div class="sec-t">Bookings (${bk.length}) · lifetime ${INR(spend)}</div>`+(bk.length?bk.slice(0,8).map(b=>`<div class="ua-ev"><span class="d" style="background:var(--yellow)"></span><div>${esc(b.trek||'Trek')} · ${INR(paidOf(b))}<small>${esc(b.date||'')} · ${esc(b.status||'')}</small></div></div>`).join(''):'<div class="muted" style="font-size:12.5px">No bookings.</div>');
+  const wait=setInterval(()=>{ if(body.querySelector('.ua-stats')||body.querySelector('.empty')){ clearInterval(wait); body.insertAdjacentHTML('beforeend',extra);} },120);
+  setTimeout(()=>clearInterval(wait),3000);
+}
+/* HOSTS */
+async function renderHosts(){const [apps,trips]=await Promise.all([qtbl('host_applications',b=>b.order('created_at',{ascending:false}).limit(300)),qtbl('host_trips',b=>b.eq('status','live').limit(300))]);
+  $('#content').innerHTML=`<div class="panel"><h2>Host applications</h2><p class="desc">${apps.rows.length} applications</p>${apps.rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Name</th><th>City</th><th>Mobile</th><th>Status</th><th></th></tr></thead><tbody>${apps.rows.map(a=>`<tr><td><b>${esc(a.full_name||a.name||'—')}</b></td><td class="muted">${esc(a.city||'')}</td><td class="muted">${esc(a.mobile||a.phone||'')}</td><td><span class="tag ${/(approv)/i.test(a.status)?'ok':/reject/i.test(a.status)?'bad':'warn'}">${esc(a.status||'pending')}</span></td><td><div class="row-acts"><button class="btn2 sm" onclick="hostSet('${jsv(a.id)}','approved')">Approve</button><button class="btn2 sm danger" onclick="hostSet('${jsv(a.id)}','rejected')">Reject</button></div></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No applications.</div>'}</div>
+  <div class="panel"><h2>Live host trips</h2><p class="desc">${trips.rows.length} live</p>${trips.rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Trip</th><th>Host</th><th>Price</th><th>Dates</th></tr></thead><tbody>${trips.rows.map(t=>`<tr><td><b>${esc(t.title||'')}</b></td><td>${esc(t.host_name||'')}</td><td>${INR(t.price)}</td><td class="muted">${esc(t.dates||t.start_date||'')}</td></tr>`).join('')}</tbody></table>`):'<div class="empty">No live host trips.</div>'}</div>`;}
+async function hostSet(id,st){const {error}=await sb.from('host_applications').update({status:st}).eq('id',id);toast(error?('Approve in the app admin — '+error.message):('Host '+st));if(!error)renderHosts();}
+/* GUIDES */
+async function renderGuides(){const {rows,error}=await qtbl('guides',b=>b.limit(200));if(error){$('#content').innerHTML='<div class="panel"><div class="empty">Guides table not deployed — run <b>SQL-add-guides.sql</b>.</div></div>';return;}
+  $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Trek leaders</h2><span class="spacer"></span><button class="btn2 pri" onclick="guideAdd()">+ Add guide</button></div>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Name</th><th>Experience</th><th></th></tr></thead><tbody>${rows.map(g=>`<tr><td><div class="u">${avc(g.name,g.photo)}<b>${esc(g.name)}</b></div></td><td class="muted">${esc(g.experience||g.exp||'')}</td><td><button class="btn2 sm danger" onclick="guideDel('${jsv(g.id)}')">Remove</button></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No guides yet.</div>'}</div>`;}
+function guideAdd(){modal(`<h3>Add guide</h3><div class="fld"><label>Name</label><input id="gdN"/></div><div class="fld"><label>Experience</label><input id="gdE" placeholder="8 years, 200+ treks"/></div><div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="gdGo">Add</button></div>`);$('#gdGo').onclick=async()=>{const name=$('#gdN').value.trim();if(!name)return;closeOv();const r=await adminCall('save_guide',{guide:{name,experience:$('#gdE').value.trim()}});toast(r&&r.error?('Failed: '+r.error):'Guide added');if(!(r&&r.error))renderGuides();};}
+function guideDel(id){confirmDo('Remove this guide?',async()=>{const r=await adminCall('delete_guide',{id});toast(r&&r.error?('Failed: '+r.error):'Removed');if(!(r&&r.error))renderGuides();});}
+/* STAFF */
+async function renderStaff(){const {rows,error}=await qtbl('staff',b=>b.limit(200));
+  $('#content').innerHTML=`<div class="panel"><h2>Team</h2><p class="desc">${error?'staff table not readable':rows.length+' staff'}</p>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Name</th><th>Email</th><th>Role</th></tr></thead><tbody>${rows.map(s=>`<tr><td><b>${esc(s.name||'—')}</b></td><td class="muted">${esc(s.email||'')}</td><td><select class="btn2 sm" onchange="staffRole('${jsv(s.email)}',this.value)"><option ${s.role==='captain'?'selected':''}>captain</option><option ${s.role==='operations'?'selected':''}>operations</option><option ${s.role==='finance'?'selected':''}>finance</option><option ${s.role==='content'?'selected':''}>content</option><option ${s.role==='community'?'selected':''}>community</option></select></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No staff — add them from the app admin → Staff.</div>'}<p class="muted" style="font-size:12px;margin-top:14px">Owner (${esc(OWNER)}) always has full access.</p></div>`;}
+async function staffRole(email,role){const {error}=await sb.from('staff').update({role}).eq('email',email);toast(error?('Change roles in the app admin — '+error.message):('Role set to '+role));}
+/* COMMUNITY */
+async function renderCommunity(){const {rows,error}=await qtbl('community_posts',b=>b.order('created_at',{ascending:false}).limit(80));if(error){$('#content').innerHTML='<div class="panel"><div class="empty">Posts not readable.</div></div>';return;}
+  $('#content').innerHTML=`<div class="panel"><h2>Recent posts</h2><p class="desc">${rows.length} latest</p>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Author</th><th>Caption</th><th>Posted</th><th></th></tr></thead><tbody>${rows.map(p=>`<tr><td><div class="u">${avc(p.author_name)}<b>${esc(p.author_name||'Trekker')}</b></div></td><td class="muted">${esc((p.txt||'').slice(0,80))}</td><td class="muted">${timeAgo(p.created_at)}</td><td><div class="row-acts"><button class="btn2 sm" onclick="postFeature('${jsv(p.id)}',${p.featured?'false':'true'})">${p.featured?'Unfeature':'Feature'}</button><button class="btn2 sm danger" onclick="postDel('${jsv(p.id)}')">Delete</button></div></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No posts.</div>'}</div>`;}
+async function postFeature(id,f){const r=await adminCall('feature_post',{id,featured:f==='true'||f===true});toast(r&&r.error?('Failed: '+r.error):'Updated');if(!(r&&r.error))renderCommunity();}
+function postDel(id){confirmDo('Delete this post?',async()=>{const r=await adminCall('delete_post',{id});toast(r&&r.error?('Failed: '+r.error):'Deleted');if(!(r&&r.error))renderCommunity();});}
+/* REVIEWS */
+async function renderReviews(){const {rows,error}=await qtbl('reviews',b=>b.order('created_at',{ascending:false}).limit(200));if(error){$('#content').innerHTML='<div class="panel"><div class="empty">Reviews table not deployed — run <b>SQL-add-reviews.sql</b>.</div></div>';return;}
+  $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Reviews</h2><span class="spacer"></span><button class="btn2 pri" onclick="reviewAdd()">+ Add review</button></div>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Author</th><th>Trek</th><th>Rating</th><th>Review</th><th></th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${esc(r.author)}</b></td><td class="muted">${esc(r.trek||'')}</td><td style="color:var(--yellow)">${'★'.repeat(r.rating||5)}</td><td class="muted">${esc((r.body||'').slice(0,90))}</td><td><button class="btn2 sm danger" onclick="reviewDel('${jsv(r.id)}')">Delete</button></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No reviews yet.</div>'}</div>`;}
+function reviewAdd(){modal(`<h3>Add a review</h3><div class="fld"><label>Author</label><input id="rvA"/></div><div class="fld"><label>Trek</label><input id="rvT"/></div><div class="fld"><label>Rating (1–5)</label><input id="rvR" type="number" min="1" max="5" value="5"/></div><div class="fld"><label>Review</label><textarea id="rvB"></textarea></div><div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="rvGo">Publish</button></div>`);$('#rvGo').onclick=async()=>{const author=$('#rvA').value.trim(),body=$('#rvB').value.trim();if(!author||!body)return;const {data:{session}}=await sb.auth.getSession();closeOv();const {error}=await sb.from('reviews').insert({author,trek:$('#rvT').value.trim(),rating:Math.max(1,Math.min(5,parseInt($('#rvR').value)||5)),body,user_id:session?session.user.id:null});toast(error?('Failed: '+error.message):'Published');if(!error)renderReviews();};}
+function reviewDel(id){confirmDo('Delete this review?',async()=>{const {error}=await sb.from('reviews').delete().eq('id',id);toast(error?('Failed: '+error.message):'Deleted');if(!error)renderReviews();});}
+/* HOME & FEATURES */
+async function renderHome(){const {rows}=await qtbl('treks',b=>b.limit(600));
+  const feat=rows.filter(t=>t.featured||t.is_featured), pop=rows.filter(t=>t.popular||t.is_popular);
+  $('#content').innerHTML=`<div class="panel"><h2>Home &amp; features</h2><p class="desc">What's promoted on the app home. Layout & picks are curated in the app admin → Home.</p>
+    <div class="sec-t">Featured</div>${feat.length?feat.map(t=>`<div class="ua-ev"><span class="d" style="background:var(--yellow)"></span><div><b>${esc(t.name)}</b><small>${esc(t.region||'')} · ${INR(t.price)}</small></div></div>`).join(''):'<div class="muted" style="font-size:12.5px">No featured trek flag set — set it in the app admin.</div>'}
+    <div class="sec-t">Popular rail</div>${pop.length?pop.slice(0,10).map(t=>`<div class="ua-ev"><span class="d"></span><div>${esc(t.name)}</div></div>`).join(''):'<div class="muted" style="font-size:12.5px">Popular rail is curated in the app admin → Home.</div>'}</div>`;}
+/* TRAINING */
+async function renderTraining(){let rows=[],error=null;try{const r=await sb.from('profiles').select('name,username,training').not('training','is',null).limit(500);error=r.error;rows=r.data||[];}catch(e){error=e;}
+  if(error){$('#content').innerHTML='<div class="panel"><div class="empty">Training data column is locked down (privacy). It stays viewable in the app for the user themselves.</div></div>';return;}
+  $('#content').innerHTML=`<div class="panel"><h2>Training</h2><p class="desc">${rows.length} members have a training plan / fitness data</p>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Member</th><th>Username</th><th>Training</th></tr></thead><tbody>${rows.map(u=>`<tr><td><b>${esc(u.name||'Trekker')}</b></td><td class="muted">${u.username?'@'+esc(u.username):''}</td><td><span class="tag ok">active</span></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No training data yet.</div>'}</div>`;}
+/* AI */
+const AI_KEYS=[['welcome','Welcome message','Auto-sent in the Tripomonk Team chat.'],['sos','Emergency SOS text','Pre-filled WhatsApp text for an emergency call.'],['planner','Planner nudge','Encouragement in the trek planner.']];
+async function renderAI(){const {rows}=await qtbl('app_config',b=>b.select('key,value'));const map={};rows.forEach(r=>map[r.key]=r.value);
+  $('#content').innerHTML=`<div class="panel"><h2>Automated messages</h2><p class="desc">Live message templates the app sends — no code change needed.</p>${AI_KEYS.map(k=>`<div class="fld" style="margin-bottom:16px"><label style="font-size:12px;color:var(--muted);font-weight:600">${k[1]}</label><textarea id="ai_${k[0]}" style="width:100%;min-height:70px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-family:inherit;font-size:14px;background:var(--panel2);color:var(--ink)">${esc(map[k[0]]||'')}</textarea><div class="muted" style="font-size:11.5px;margin-top:4px">${k[2]}</div></div>`).join('')}<button class="btn2 pri" onclick="aiSave()">Save messages</button></div>`;}
+async function aiSave(){const up=AI_KEYS.map(k=>({key:k[0],value:document.getElementById('ai_'+k[0]).value}));const {error}=await sb.from('app_config').upsert(up,{onConflict:'key'});toast(error?('Failed: '+error.message):'Saved — live everywhere');}
+/* SETTINGS */
+async function renderSettings(){const ping=await adminCall('ping');
+  $('#content').innerHTML=`<div class="panel"><h2>Console</h2><p class="desc">Environment & access</p><table class="tbl"><tbody>
+    <tr><td>Signed in as</td><td style="text-align:right"><b>${esc(ME.email||'')}</b></td></tr>
+    <tr><td>Role</td><td style="text-align:right"><b>${esc(ROLE)}</b></td></tr>
+    <tr><td>Supabase project</td><td style="text-align:right"><b>${esc(CFG.URL.replace('https://','').split('.')[0])}</b></td></tr>
+    <tr><td>Admin edge function</td><td style="text-align:right">${ping&&!ping.error?'<span class="tag ok">reachable</span>':'<span class="tag bad">check requireAdmin</span>'}</td></tr>
+  </tbody></table><p class="muted" style="font-size:12px;margin-top:14px">Reuses app.tripomonk.com's Supabase backend. Writes are authorised server-side (RLS + admin edge function). A few catalogue editors (destinations content, batch dates, packing items, home layout) are managed in the in-app admin and shown read-only here.</p></div>`;}
+
+boot();
+</script>
+</body>
+</html>
