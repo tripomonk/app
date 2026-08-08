@@ -21,7 +21,13 @@
   .hidden{display:none!important}
   ::placeholder{color:var(--muted2)}
   /* login */
-  #login{position:fixed;inset:0;display:grid;place-items:center;background:radial-gradient(1200px 600px at 20% -10%,#123 0,#081222 60%);padding:20px}
+  #login,#mfa{position:fixed;inset:0;display:grid;place-items:center;background:radial-gradient(1200px 600px at 20% -10%,#123 0,#081222 60%);padding:20px;z-index:100}
+  .linklike{all:unset;color:var(--muted);font-size:12.5px;cursor:pointer;display:block;text-align:center;margin-top:14px}
+  .linklike:hover{color:var(--ink)}
+  .mfa-hint{color:var(--muted);font-size:12px;text-align:center;margin:12px 0}
+  .mfa-secret{font-size:11px;color:var(--muted);margin-top:8px;text-align:center;word-break:break-all}
+  .mfa-secret code{color:var(--ink);background:var(--panel2);padding:2px 6px;border-radius:6px}
+  #mfaBody .fld input{text-align:center;letter-spacing:6px;font-size:20px;font-weight:700}
   .login-card{width:100%;max-width:380px;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:30px 26px;box-shadow:0 40px 90px -40px #000}
   .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px}
   .brand .mk{width:36px;height:36px;line-height:0;flex:none}
@@ -139,6 +145,8 @@
   </div>
 </div>
 
+<div id="mfa" class="hidden"><div class="login-card" id="mfaBody"></div></div>
+
 <div class="scrim-m" id="scrimM"></div>
 <div id="shell" class="hidden">
   <aside class="side" id="side">
@@ -200,6 +208,15 @@
 /* Tripomonk Admin Console — reuses the SAME Supabase backend (tables, RLS, `admin` edge fn). */
 const CFG={ URL:"https://pdenkohcsjnagcfvwbfi.supabase.co", ANON:"sb_publishable_nC4q3VEA4nfWQaZeBSoZsQ__e5OC-X2" };
 const OWNER="vikasupadhyay9@gmail.com";
+/* role → sections a staff member may see (owner/super sees everything). Mirrors the app's
+   ROLE_TABS. 'captain' has NO console access (they use the in-app check-in only). */
+const ROLE_SECTIONS={
+  operations:['dashboard','bookings','treks','destinations','departures','packing','gear','permits','support','vendors','users','crm','hosts','guides'],
+  finance:['dashboard','bookings','payments','users'],
+  content:['dashboard','treks','destinations','packing','home','reviews'],
+  community:['dashboard','community','reviews','support','users'],
+};
+function allowedFor(sec){return ROLE==='owner'||(ROLE_SECTIONS[ROLE]&&ROLE_SECTIONS[ROLE].indexOf(sec)>=0);}
 const sb=window.supabase.createClient(CFG.URL,CFG.ANON);
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -225,16 +242,79 @@ async function adminCall(action,data){
 async function qtbl(table,build){let b=sb.from(table).select('*');if(build)b=build(b);const {data,error}=await b;return {rows:data||[],error};}
 
 /* auth */
-async function boot(){const { data:{session} }=await sb.auth.getSession();if(session&&await gate(session.user))return showShell();showLogin();}
-async function gate(user){ME=user;const e=(user.email||'').toLowerCase();if(e===OWNER){ROLE='owner';return true;}try{const {data}=await sb.from('staff').select('role').eq('email',e).maybeSingle();if(data){ROLE=data.role||'staff';return true;}}catch(x){}return false;}
+async function boot(){const { data:{session} }=await sb.auth.getSession();if(session&&await gate(session.user))return afterAuth();showLogin();}
+async function gate(user){ME=user;const e=(user.email||'').toLowerCase();if(e===OWNER){ROLE='owner';return true;}try{const {data}=await sb.from('staff').select('role').eq('email',e).maybeSingle();if(data){ROLE=(data.role||'').toLowerCase();if(ROLE==='owner'||ROLE_SECTIONS[ROLE])return true;/* captain / unknown roles: no console access */}}catch(x){}return false;}
 function showLogin(){$('#login').classList.remove('hidden');$('#shell').classList.add('hidden');}
-function showShell(){$('#login').classList.add('hidden');$('#shell').classList.remove('hidden');const nm=(ME.email||'Admin').split('@')[0];$('#meName').textContent=nm;$('#meRole').textContent=ROLE==='owner'?'Owner':('Staff · '+ROLE);$('#meAv').textContent=ini(nm);select('dashboard');}
+function showShell(){$('#login').classList.add('hidden');$('#shell').classList.remove('hidden');const nm=(ME.email||'Admin').split('@')[0];$('#meName').textContent=nm;$('#meRole').textContent=ROLE==='owner'?'Owner':('Staff · '+ROLE);$('#meAv').textContent=ini(nm);applyRoleNav();select('dashboard');}
+/* hide nav items (and empty group headers) this role can't access */
+function applyRoleNav(){
+  document.querySelectorAll('.nav-i').forEach(n=>{n.style.display=allowedFor(n.dataset.sec)?'':'none';});
+  const kids=[...document.querySelectorAll('#side .side-sec, #side .nav-i')];
+  kids.forEach((el,i)=>{ if(!el.classList.contains('side-sec'))return; let any=false; for(let j=i+1;j<kids.length&&!kids[j].classList.contains('side-sec');j++){ if(kids[j].style.display!=='none'){any=true;break;} } el.style.display=any?'':'none'; });
+}
 $('#loginForm').addEventListener('submit',async e=>{e.preventDefault();const btn=$('#loginBtn'),err=$('#loginErr');err.textContent='';btn.disabled=true;btn.textContent='Signing in…';
   const {data,error}=await sb.auth.signInWithPassword({email:$('#email').value.trim(),password:$('#pass').value});
   if(error){err.textContent=error.message;btn.disabled=false;btn.textContent='Sign in';return;}
   if(!(await gate(data.user))){err.textContent='This account is not an admin.';await sb.auth.signOut();btn.disabled=false;btn.textContent='Sign in';return;}
-  btn.disabled=false;btn.textContent='Sign in';showShell();});
+  btn.disabled=false;btn.textContent='Sign in';afterAuth();});
 $('#logoutBtn').addEventListener('click',async()=>{await sb.auth.signOut();location.reload();});
+/* ---- Two-factor authentication (Supabase TOTP MFA) ---- */
+const LOGO_SVG='<svg viewBox="0 0 1080 1080" xmlns="http://www.w3.org/2000/svg" aria-label="Tripomonk"><defs><linearGradient id="tmk2" x1="540" y1="0" x2="540" y2="1080" gradientUnits="userSpaceOnUse"><stop stop-color="#0065FF"/><stop offset="1" stop-color="#003D99"/></linearGradient></defs><rect width="1080" height="1080" rx="200" fill="url(#tmk2)"/><path d="M514.071 232.666C525.618 212.666 554.485 212.666 566.032 232.666L838.735 705.001C850.282 725.001 835.849 750.001 812.755 750.001H618.121V507.006C618.121 501.483 613.644 497.006 608.121 497.006H476.396C470.874 497.006 466.396 501.483 466.396 507.006V750.001H267.349C244.255 750.001 229.821 725.001 241.368 705.001L514.071 232.666Z" fill="#FEF200"/></svg>';
+const brandLine='<div class="brand"><span class="mk">'+LOGO_SVG+'</span> Tripomonk <span class="tagpill">Admin</span></div>';
+let _mfaFactorId=null;
+async function afterAuth(){
+  let aal;
+  try{ const {data,error}=await sb.auth.mfa.getAuthenticatorAssuranceLevel(); if(error)throw error; aal=data; }
+  catch(e){ return showShell(); }   /* MFA API unavailable → still password + RLS protected */
+  if(aal.currentLevel==='aal2') return showShell();     /* already 2FA-verified this session */
+  if(aal.nextLevel==='aal2') return mfaChallenge();     /* has a factor → must enter a code */
+  return mfaEnroll();                                    /* no factor → offer setup */
+}
+function showMfa(){$('#login').classList.add('hidden');$('#shell').classList.add('hidden');$('#mfa').classList.remove('hidden');}
+async function mfaChallenge(){
+  showMfa();
+  const { data } = await sb.auth.mfa.listFactors();
+  const totp=(data&&data.totp||[]).find(f=>f.status==='verified')||(data&&data.all||[]).find(f=>f.factor_type==='totp'&&f.status==='verified');
+  if(!totp) return mfaEnroll();
+  _mfaFactorId=totp.id;
+  $('#mfaBody').innerHTML=brandLine+'<p>Two-factor authentication</p>'
+    +'<div class="fld"><label>6-digit code from your authenticator app</label><input id="mfaCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000"/></div>'
+    +'<button class="btn" id="mfaGo">Verify</button><div class="login-err" id="mfaErr"></div>'
+    +'<button class="linklike" id="mfaOut">Sign in with a different account</button>';
+  $('#mfaGo').onclick=mfaVerify;$('#mfaCode').onkeydown=e=>{if(e.key==='Enter')mfaVerify();};$('#mfaCode').focus();
+  $('#mfaOut').onclick=async()=>{await sb.auth.signOut();location.reload();};
+}
+async function mfaEnroll(){
+  showMfa();
+  $('#mfaBody').innerHTML=brandLine+'<p>Add two-factor authentication to protect your admin.</p>'
+    +'<div id="mfaQr" style="text-align:center"><div class="skel" style="height:180px;border-radius:12px"></div></div>'
+    +'<div class="mfa-hint">Scan this in Google Authenticator / Authy, then enter the 6-digit code.</div>'
+    +'<div class="fld"><label>6-digit code</label><input id="mfaCode" inputmode="numeric" maxlength="6" placeholder="000000"/></div>'
+    +'<button class="btn" id="mfaGo">Enable 2FA</button><div class="login-err" id="mfaErr"></div>'
+    +'<button class="linklike" id="mfaSkip">Skip for now</button>';
+  $('#mfaSkip').onclick=()=>{$('#mfa').classList.add('hidden');showShell();};
+  try{
+    const { data:list }=await sb.auth.mfa.listFactors();
+    for(const f of ((list&&list.all)||[]).filter(f=>f.factor_type==='totp'&&f.status==='unverified')){ try{ await sb.auth.mfa.unenroll({factorId:f.id}); }catch(e){} }
+    const { data, error }=await sb.auth.mfa.enroll({factorType:'totp'});
+    if(error)throw error;
+    _mfaFactorId=data.id;
+    $('#mfaQr').innerHTML='<img src="'+data.totp.qr_code+'" alt="2FA QR" style="width:184px;height:184px;background:#fff;border-radius:12px;padding:8px"/><div class="mfa-secret">Can’t scan? Key: <code>'+esc(data.totp.secret)+'</code></div>';
+  }catch(e){ $('#mfaQr').innerHTML='<div class="login-err">Couldn’t start 2FA setup: '+esc(e.message||e)+'. Enable TOTP MFA in Supabase → Authentication, then reload.</div>'; }
+  $('#mfaGo').onclick=mfaVerify;$('#mfaCode').onkeydown=e=>{if(e.key==='Enter')mfaVerify();};
+}
+async function mfaVerify(){
+  const code=($('#mfaCode').value||'').replace(/\D/g,''),err=$('#mfaErr'),btn=$('#mfaGo');err.textContent='';
+  if(code.length<6){err.textContent='Enter the 6-digit code.';return;}
+  if(!_mfaFactorId){err.textContent='No 2FA factor — reload and try again.';return;}
+  btn.disabled=true;btn.textContent='Verifying…';
+  try{
+    const { data:ch, error:cErr }=await sb.auth.mfa.challenge({factorId:_mfaFactorId}); if(cErr)throw cErr;
+    const { error:vErr }=await sb.auth.mfa.verify({factorId:_mfaFactorId,challengeId:ch.id,code}); if(vErr)throw vErr;
+    $('#mfa').classList.add('hidden');showShell();
+  }catch(e){ err.textContent=/invalid|incorrect|expired/i.test(e.message||'')?'Wrong or expired code — try the current one.':(e.message||'Verification failed'); }
+  btn.disabled=false;btn.textContent='Verify';
+}
 function toggleMenu(open){const s=$('#side'),m=$('#scrimM');const on=open===undefined?!s.classList.contains('open'):open;s.classList.toggle('open',on);m.classList.toggle('show',on);}
 $('#menuBtn').addEventListener('click',()=>toggleMenu());
 $('#scrimM').addEventListener('click',()=>toggleMenu(false));
@@ -265,7 +345,7 @@ const SEC={
   settings:['Settings','Console info',renderSettings],
 };
 let _bk=null;
-function select(sec){const S=SEC[sec];if(!S)return;document.querySelectorAll('.nav-i').forEach(n=>n.classList.toggle('on',n.dataset.sec===sec));$('#secTitle').textContent=S[0];$('#secSub').textContent=S[1];toggleMenu(false);$('#content').innerHTML='<div class="panel"><div class="skel" style="width:40%;margin-bottom:12px"></div><div class="skel" style="width:80%;margin-bottom:8px"></div><div class="skel" style="width:70%"></div></div>';S[2]();}
+function select(sec){if(!allowedFor(sec))sec='dashboard';const S=SEC[sec];if(!S)return;document.querySelectorAll('.nav-i').forEach(n=>n.classList.toggle('on',n.dataset.sec===sec));$('#secTitle').textContent=S[0];$('#secSub').textContent=S[1];toggleMenu(false);$('#content').innerHTML='<div class="panel"><div class="skel" style="width:40%;margin-bottom:12px"></div><div class="skel" style="width:80%;margin-bottom:8px"></div><div class="skel" style="width:70%"></div></div>';S[2]();}
 document.querySelectorAll('.nav-i').forEach(n=>n.addEventListener('click',()=>select(n.dataset.sec)));
 $('#globalSearch').addEventListener('keydown',e=>{if(e.key!=='Enter')return;const v=e.target.value.toLowerCase();const hit=Object.keys(SEC).find(k=>SEC[k][0].toLowerCase().includes(v));if(hit)select(hit);});
 
