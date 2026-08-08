@@ -1,7 +1,7 @@
 /* Tripomonk service worker — caches the app shell so it loads instantly
    and works offline. Bump CACHE when you change index.html / app.js so
    users get the new version. */
-const CACHE = 'tripomonk-v415';
+const CACHE = 'tripomonk-v418';
 const ASSETS = [
   './',
   './index.html',
@@ -73,6 +73,13 @@ self.addEventListener('fetch', e => {
     // never treat a Supabase REST/auth/functions call as an image, whatever it looks like
     const isApi = /\/(rest|auth|functions|realtime)\/v\d/.test(url.pathname);
     if (isImage && !isApi) { e.respondWith(imageFirst(e.request)); }
+    return;
+  }
+
+  // The standalone Admin Console (/admin/) is its own app — never cache it here,
+  // so admin updates are always fresh and the app's shell logic never touches it.
+  if (url.pathname.startsWith('/admin')) {
+    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
     return;
   }
 

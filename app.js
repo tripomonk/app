@@ -732,6 +732,7 @@ function hasRequested(n){return !!followReqs()[n];}
 function canSeePerson(n){return !isPrivatePerson(n)||n===myName()||n==='You'||isFollowing(n);}
 /* the follow button: public -> follow/unfollow; private -> request/requested/following */
 function followAction(n){
+  logEvent('follow',{name:n});
   if(isPrivatePerson(n)&&!isFollowing(n)){
     const req=followReqs();
     if(req[n]){delete req[n];saveFollowReqs();syncFollow(n,false);toast('Request withdrawn');}
@@ -1167,6 +1168,7 @@ async function passwordAuth(){
 async function afterPasswordLogin(user){
   if(user)currentUser=user;
   await loadProfileFromServer();upsertProfile();loadStaff();_myUid=null;ensureMsgSub();loadAiCfg().then(registerSupportInbox);
+  logEvent('login');
   const r=_loginReturn;_loginReturn=null;
   go(r||lastTab||'home');
   setTimeout(maybeOnboard,500);
@@ -2605,6 +2607,7 @@ function renderInspire(id){
 }
 function openDetail(i){const t=treks[i];if(!t)return;
   if(isTour(t)){openTrip(i);return;}   /* road trips get their own distinct detail view */
+  logEvent('view_trek',{trek:t.n});
   cart.trek=t;
   const hh=document.getElementById('dHero');hh.style.transform='';
   renderHero(hh,t);   /* shimmer skeleton until the hero photo is ready */
@@ -3082,6 +3085,7 @@ async function confirmBooking(){
       const sbk=(res&&res.booking)||pricedBooking||bookingReq;
       const b={id:response.razorpay_payment_id,name:sbk.name||name,trek:sbk.trek||t.n,img:t.img,date:sbk.date||cart.date,pax:sbk.pax||cart.pax,total:sbk.total||total,paid:sbk.paid||advanceAmt,ts:Date.now(),status:'Confirmed',checkedIn:false,paymentId:response.razorpay_payment_id};
       const all=getBookings();all.unshift(b);saveBookings(all);cart.booking=b;
+      logEvent('booking',{trek:b.trek,amount:Number(b.paid)||0});
       if(window.fbTrack)window.fbTrack('Purchase',{value:Number(b.total)||Number(b.paid)||0,currency:'INR',content_name:b.trek||'',content_type:'product'});
       document.getElementById('scName').textContent=t.n;
       showTicket(b);go('success');
@@ -3327,6 +3331,7 @@ async function onStoryPick(input){
 let _svGroup=null,_svIdx=0,_svTimer=null,_svLiked=false;
 function openStory(name){
   const g=storyGroups.find(x=>x.n===name);if(!g||!g.items.length)return;
+  if(name!==myName())logEvent('story_view',{who:name});
   _svGroup=g;_svIdx=0;
   const v=document.getElementById('storyViewer');v.classList.add('show');
   document.getElementById('svClose').onclick=closeStory;
@@ -5696,6 +5701,7 @@ async function sendChat(){
   const txt=(input.value||'').trim();if(!txt)return;
   if(isBlocked(chatWith)){note('You blocked '+properName(chatWith)+'. Unblock to message them.','Blocked');return;}
   if(isPrivatePerson(chatWith)&&!canSeePerson(chatWith)){note('Send a follow request first — this account is private.','Private account');return;}
+  logEvent('message',{to:chatWith});
   await myUid();
   /* local-only when it's the Team welcome bot AND no support inbox is configured yet */
   const localOnly=(chatWith==='Tripomonk Team'&&!teamIsLive());
@@ -6970,8 +6976,10 @@ async function renderAdminUsers(){
   box.innerHTML='<div class="adm-search" style="margin:2px 0 12px"><span class="msr">search</span><input placeholder="Search by name or @username…" value="'+esc(_usersQ)+'" oninput="_usersQ=this.value;paintUsers()"></div><div id="admUsersList"><div class="skel skel-card"></div><div class="skel skel-card"></div></div>';
   const sb=getSupaClient();
   if(!sb){document.getElementById('admUsersList').innerHTML='<div class="note2">Connect Supabase to see users.</div>';return;}
-  try{const{data}=await sb.from('profiles').select('name,username,photo,is_host,created_at').order('created_at',{ascending:false}).limit(500);_usersRows=data||[];}
-  catch(e){try{const{data}=await sb.from('profiles').select('name,username,photo,is_host').limit(500);_usersRows=data||[];}catch(e2){_usersRows=[];}}
+  /* profiles has no created_at column — select only real columns. Supabase returns an
+     {error} (it does NOT throw), so check it explicitly rather than relying on catch. */
+  const{data,error}=await sb.from('profiles').select('name,username,photo,is_host').order('name',{ascending:true}).limit(500);
+  _usersRows=(!error&&Array.isArray(data))?data:[];
   paintUsers();
 }
 function paintUsers(){
@@ -6983,9 +6991,60 @@ function paintUsers(){
     +(rows.length?rows.map(u=>{const nm=jsq(u.name);
       return '<div class="usr-row"><div class="usr-av" onclick="openPerson(\''+nm+'\')">'+avatar(u.name,42)+'</div>'
         +'<div class="usr-tx" onclick="openPerson(\''+nm+'\')"><b>'+esc(properName(u.name))+(u.is_host?' <span class="msr" style="font-size:13px;color:var(--accent2);vertical-align:-2px">verified</span>':'')+'</b><small>'+(u.username?'@'+esc(u.username):'')+(u.created_at?' · joined '+esc(joined(u.created_at)):'')+'</small></div>'
+        +'<button class="usr-act" onclick="openUserActivity(\''+nm+'\')" title="View activity"><span class="msr">insights</span></button>'
         +'<button class="usr-act" onclick="admNotifyUser(\''+nm+'\')" title="Send a notification"><span class="msr">notifications</span></button></div>';
     }).join(''):'<div class="empty"><p>No users found.</p></div>');
   hydrate(el);
+}
+/* ---- per-user behaviour (Admin → Users → activity icon) ---- */
+const SCREEN_LABELS={home:'Home',explore:'Explore treks',search:'Search',community:'Community',feed:'Community feed',bookings:'My Bookings',profile:'Profile',account:'Account & security',messages:'Messages',chat:'Chat',detail:'Trek details',trip:'Road trip',itinerary:'Itinerary',selectDate:'Choose dates',travellers:'Traveller details',review:'Booking review',payment:'Payment',person:'A profile',peopleSearch:'Find trekkers',notifications:'Notifications',wishlist:'Wishlist',health:'Trek Health',navmap:'Navigation',admin:'Admin',reviews:'Reviews',passport:'Trek Passport',onboarding:'Preferences',help:'Help & Support',followList:'Followers / Following',person:'A profile',trainingPlan:'Training plan'};
+function screenLabel(s){return SCREEN_LABELS[s]||(s?properName(String(s).replace(/([A-Z])/g,' $1')):'App');}
+const EVENT_META={login:['Signed in','login'],view_trek:['Viewed a trek','landscape'],booking:['Made a booking','receipt_long'],message:['Sent a message','chat_bubble'],post:['Created a post','add_box'],follow:['Followed someone','person_add'],story_view:['Watched a story','play_circle']};
+function actIcon(r){if(r&&r.event){const m=EVENT_META[r.event];return m?m[1]:'bolt';}return 'visibility';}
+function actLabel(r){
+  if(!r.event)return 'Viewed '+screenLabel(r.screen);
+  const m=EVENT_META[r.event],meta=r.meta||{};
+  if(r.event==='view_trek'&&meta.trek)return 'Viewed trek — '+meta.trek;
+  if(r.event==='booking')return 'Booked '+(meta.trek||'a trek')+(meta.amount?' · ₹'+meta.amount:'');
+  if(r.event==='message'&&meta.to)return 'Messaged '+properName(meta.to);
+  if(r.event==='follow'&&meta.name)return 'Followed '+properName(meta.name);
+  if(r.event==='story_view'&&meta.who)return 'Watched '+properName(meta.who)+'’s story';
+  return m?m[0]:properName(String(r.event).replace(/_/g,' '));
+}
+let _uaName='';
+function openUserActivity(n){_uaName=n;go('userActivity');}
+async function renderUserActivity(){
+  const box=document.getElementById('userActivityBody'),head=document.getElementById('uaHead');
+  if(!box)return;
+  box.innerHTML='<div class="skel skel-card"></div><div class="skel skel-card"></div>';
+  if(head)head.innerHTML=avatar(_uaName,52)+'<div class="ua-id"><b>'+esc(properName(_uaName))+'</b><small id="uaSub">Loading…</small></div>';
+  const sb=getSupaClient();const uid=await uidForName(_uaName);
+  const setSub=t=>{const s=document.getElementById('uaSub');if(s)s.textContent=t;};
+  if(!sb||!uid){box.innerHTML='<div class="ss-empty"><span class="msr">insights</span><b>No activity yet</b><p>This user hasn’t been seen since analytics were enabled.</p></div>';setSub('No data');return;}
+  let rows=[],qerr=null;
+  try{const{data,error}=await sb.from('app_events').select('screen,event,seconds,session_id,created_at,meta').eq('user_id',uid).order('created_at',{ascending:false}).limit(400);qerr=error;rows=data||[];}catch(e){}
+  if(qerr){box.innerHTML='<div class="note2">Behaviour tracking isn’t enabled yet — run <b>SQL-add-user-analytics.sql</b> in Supabase, then reopen.</div>';setSub('Not enabled');return;}
+  if(!rows.length){box.innerHTML='<div class="ss-empty"><span class="msr">insights</span><b>No activity yet</b><p>Once '+esc(properName(_uaName))+' uses the app, their screens & actions appear here.</p></div>';setSub('No activity yet');return;}
+  const last=rows[0].created_at;
+  const sessions=new Set(rows.map(r=>r.session_id)).size;
+  const screens=rows.filter(r=>!r.event&&r.screen);
+  const totalSec=rows.reduce((a,r)=>a+(+r.seconds||0),0);
+  const byScreen={};screens.forEach(r=>{byScreen[r.screen]=(byScreen[r.screen]||0)+(+r.seconds||0);});
+  const top=Object.entries(byScreen).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const maxSec=top.length?top[0][1]:1;
+  const fmt=s=>s>=3600?Math.round(s/3600)+'h':s>=60?Math.round(s/60)+'m':(s||0)+'s';
+  setSub('Active '+timeAgo(last));
+  box.innerHTML=
+    '<div class="ua-stats">'
+    +'<div class="ua-stat"><b>'+esc(timeAgo(last).replace(/ ago$/,''))+'</b><small>Last active</small></div>'
+    +'<div class="ua-stat"><b>'+sessions+'</b><small>Sessions</small></div>'
+    +'<div class="ua-stat"><b>'+screens.length+'</b><small>Screens</small></div>'
+    +'<div class="ua-stat"><b>'+fmt(totalSec)+'</b><small>Time</small></div></div>'
+    +'<div class="adm-sec">Most-used screens</div>'
+    +(top.length?top.map(e=>'<div class="ua-bar"><div class="ua-bar-l"><span>'+esc(screenLabel(e[0]))+'</span><b>'+fmt(e[1])+'</b></div><div class="ua-bar-t"><i style="width:'+Math.max(4,Math.round(e[1]/maxSec*100))+'%"></i></div></div>').join(''):'<div class="adm-hint">No screen data.</div>')
+    +'<div class="adm-sec">Recent activity</div>'
+    +rows.slice(0,50).map(r=>'<div class="ua-ev"><span class="msr">'+actIcon(r)+'</span><div class="ua-ev-tx"><b>'+esc(actLabel(r))+'</b><small>'+esc(timeAgo(r.created_at))+(r.seconds?' · '+fmt(r.seconds):'')+'</small></div></div>').join('');
+  hydrate(box);
 }
 async function admNotifyUser(name){
   const msg=await askCode('Message '+properName(name),{placeholder:'Your message — they get a notification'});
@@ -7251,7 +7310,7 @@ let _crmQ='';
 async function renderAdminCRM(){
   const box=document.getElementById('adminBody');if(!box)return;
   box.innerHTML='<div class="adm-search" style="margin:2px 0 12px"><span class="msr">search</span><input placeholder="Search a customer by name…" value="'+esc(_crmQ)+'" oninput="crmSearch(this.value)"></div><div id="crmBody"></div>';
-  if(!_usersRows){const sb=getSupaClient();if(sb){try{const{data}=await sb.from('profiles').select('name,username,is_host,created_at').limit(500);_usersRows=data||[];}catch(e){_usersRows=[];}}}
+  if(!_usersRows){const sb=getSupaClient();if(sb){const{data,error}=await sb.from('profiles').select('name,username,is_host').limit(500);_usersRows=(!error&&Array.isArray(data))?data:[];}}
   crmSearch(_crmQ);hydrate(box);
 }
 function crmSearch(q){
@@ -7678,7 +7737,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='415';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='418';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -9110,6 +9169,11 @@ async function flushEvents(){
   const rows=_evBuf.splice(0,_evBuf.length);
   try{await sb.from('app_events').insert(rows);}catch(e){}
 }
+/* log a NAMED behaviour (login, view_trek, booking, message, post, follow, story_view…) */
+function logEvent(action,meta){
+  try{_evBuf.push({session_id:_sessId,user_id:currentUser?currentUser.id:null,screen:cur||'',event:action,seconds:0,meta:meta||null});
+    if(_evBuf.length>=8)flushEvents();}catch(e){}
+}
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'){trackScreenLeave();flushEvents();}});
 window.addEventListener('pagehide',function(){trackScreenLeave();flushEvents();});
 /* =========================================================================
@@ -9611,6 +9675,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='savedPosts')renderSavedPosts();
   if(id==='followRequests')renderFollowRequests();
   if(id==='followList')renderFollowList();
+  if(id==='userActivity')renderUserActivity();
   if(id==='packing'){pkTrek=_pkForce||(cart.trek&&cart.trek.n)||'';_pkForce='';renderPacking();}
   if(id==='bookings')renderBookings();
   if(id==='guardian')renderGuardian();
