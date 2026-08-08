@@ -299,7 +299,16 @@ async function mfaEnroll(){
     const { data, error }=await sb.auth.mfa.enroll({factorType:'totp'});
     if(error)throw error;
     _mfaFactorId=data.id;
-    $('#mfaQr').innerHTML='<img src="'+data.totp.qr_code+'" alt="2FA QR" style="width:184px;height:184px;background:#fff;border-radius:12px;padding:8px"/><div class="mfa-secret">Can’t scan? Key: <code>'+esc(data.totp.secret)+'</code></div>';
+    /* qr_code is an SVG data URI that contains double-quotes — set it via the DOM property,
+       NOT via an HTML string, or the quotes break the <img> and dump raw markup on screen. */
+    const qr=$('#mfaQr'); qr.innerHTML='';
+    const img=document.createElement('img');
+    img.src=data.totp.qr_code; img.alt='Scan this QR in your authenticator app';
+    img.style.cssText='width:186px;height:186px;background:#fff;border-radius:14px;padding:10px;display:inline-block';
+    qr.appendChild(img);
+    const key=document.createElement('div'); key.className='mfa-secret';
+    key.innerHTML='Can’t scan? Enter this key:<br><code>'+esc(data.totp.secret)+'</code>';
+    qr.appendChild(key);
   }catch(e){ $('#mfaQr').innerHTML='<div class="login-err">Couldn’t start 2FA setup: '+esc(e.message||e)+'. Enable TOTP MFA in Supabase → Authentication, then reload.</div>'; }
   $('#mfaGo').onclick=mfaVerify;$('#mfaCode').onkeydown=e=>{if(e.key==='Enter')mfaVerify();};
 }
