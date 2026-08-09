@@ -4860,11 +4860,11 @@ function staffHubCard(){
   const chev='<span class="ch">'+ic('back',16)+'</span>';
   let h='';
   const msr=n=>'<span class="msr" style="font-size:22px">'+n+'</span>';
-  if(isAdminUser()){
-    h+='<div class="host-hub staff" onclick="go(\'admin\')">'
-      +'<div class="hh-ic">'+msr('admin_panel_settings')+'</div>'
-      +'<div class="hh-tx"><b>Admin Dashboard</b>'
-      +'<small>Treks, home page, departures, bookings &amp; staff</small></div>'+chev+'</div>';
+  if(canOpenAdmin()){
+    h+='<div class="host-hub staff" onclick="openAdminConsole()">'
+      +'<div class="hh-ic">'+msr('open_in_new')+'</div>'
+      +'<div class="hh-tx"><b>Admin Console</b>'
+      +'<small>Opens the Tripomonk admin console in a new tab</small></div>'+chev+'</div>';
   }
   if(isStaffUser()){
     h+='<div class="host-hub staff" onclick="go(\'captain\')">'
@@ -4873,6 +4873,13 @@ function staffHubCard(){
       +'<small>Scan tickets and check trekkers in at the trailhead</small></div>'+chev+'</div>';
   }
   return h;
+}
+/* The full admin panel now lives OUTSIDE the app as a standalone console at
+   app.tripomonk.com/admin/. The app no longer renders admin screens — it just
+   launches the console in a new tab for the owner / assigned team roles. */
+function openAdminConsole(){
+  if(!canOpenAdmin()){note('Admin access is restricted to the owner and assigned team roles.','Restricted');return;}
+  try{window.open('/admin/','_blank','noopener');}catch(e){location.href='/admin/';}
 }
 /* ============================================================
    ACCOUNT & SETTINGS MENU (hamburger) — everything that isn't the
@@ -7737,7 +7744,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='420';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='421';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -9622,7 +9629,9 @@ function stopAllMedia(){
 function go(id){const el=document.getElementById(id);if(!el)return;
   stopAllMedia();
   if(id==='captain'&&!isStaffUser()){note('Trip Captain access is for staff only.','Restricted');return;}
-  if((id==='admin'||id==='adminTrip')&&!canOpenAdmin()){note('Admin access is restricted to the owner and assigned team roles.','Restricted');return;}
+  /* In-app admin removed — the admin panel is now the standalone console at /admin/.
+     Any attempt to open an admin screen inside the app launches the console instead. */
+  if(id==='admin'||id==='adminTrip'){openAdminConsole();return;}
   /* hide any live news banner when entering the login/signup flow */
   if(NO_BANNER_SCREENS.includes(id)){const b=document.getElementById('alertBanner');if(b)b.className='';}
   if(id!==cur){trackScreenLeave();hist.push(cur);try{history.pushState({s:id},'');}catch(e){}if(window.fbTrack)window.fbTrack('PageView');}cur=id;if(el.dataset.tab)lastTab=el.dataset.tab;
