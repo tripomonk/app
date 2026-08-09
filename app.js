@@ -5074,9 +5074,9 @@ async function makePledgeImage(name){
   x.fillStyle='rgba(255,255,255,.98)';x.font='700 40px '+FONT;x.fillText('Tripomonk',PAD+104,152);
   /* heading + explanation of the Mountain Promise */
   x.save();x.shadowColor='rgba(0,0,0,.55)';x.shadowBlur=12;x.shadowOffsetY=2;
-  x.fillStyle='#ffffff';x.font='700 44px '+FONT;x.fillText('What is the Mountain Promise?',PAD,300);
+  x.fillStyle='#ffffff';x.font='700 44px '+FONT;x.fillText('What is the Mountain Promise?',PAD,600);
   x.fillStyle='rgba(255,255,255,.9)';x.font='500 32px '+FONT;
-  wrap('Every Tripomonk trekker makes one promise to the mountains. Tread lightly, leave no trace, and keep the Himalaya wild for those who follow.',PAD,372,840,44);
+  wrap('Every Tripomonk trekker makes one promise to the mountains. Tread lightly, leave no trace, and keep the Himalaya wild for those who follow.',PAD,672,840,44);
   x.restore();
   /* frosted-glass confirmation chip */
   const chipY=H-1084,chipW=W-2*PAD,chipH=150;
@@ -5107,6 +5107,24 @@ async function makePledgeImage(name){
   /* CTA (big bottom padding below this) */
   x.fillStyle='rgba(255,255,255,.7)';x.font='600 32px '+FONT;const pre='Take yours at  ';x.fillText(pre,PAD,H-192);
   const pw2=x.measureText(pre).width;_gradText(x,'app.tripomonk.com',PAD+pw2,H-192,'700 32px '+FONT);
+  /* my trek score (Adventure Readiness), bottom-right ring */
+  try{
+    if(typeof computeFitness==='function'){
+      const has=(typeof hasFitness==='function')?hasFitness():false;
+      const fs=computeFitness()||{};const sc=Math.round(fs.score||0),col=(typeof scoreColor==='function')?scoreColor(sc):'#38d39f';
+      const cx2=W-PAD-150,cy2=H-330,r2=90;
+      x.textAlign='center';
+      x.save();x.shadowColor='rgba(0,0,0,.5)';x.shadowBlur=12;x.shadowOffsetY=2;x.fillStyle='rgba(255,255,255,.82)';x.font='700 24px '+FONT;x.fillText(_spaced('MY TREK SCORE'),cx2,cy2-r2-32);x.restore();
+      x.lineWidth=15;x.strokeStyle='rgba(255,255,255,.25)';x.beginPath();x.arc(cx2,cy2,r2,0,Math.PI*2);x.stroke();
+      if(has){x.strokeStyle=col;x.lineCap='round';x.beginPath();x.arc(cx2,cy2,r2,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.max(0.001,sc/100));x.stroke();x.lineCap='butt';}
+      x.textBaseline='middle';
+      x.fillStyle='#ffffff';x.font='800 66px '+FONT;x.fillText(has?String(sc):'—',cx2,cy2-6);
+      x.fillStyle='rgba(255,255,255,.7)';x.font='600 22px '+FONT;x.fillText('/ 100',cx2,cy2+40);
+      x.textBaseline='alphabetic';
+      x.fillStyle=has?col:'rgba(255,255,255,.7)';x.font='700 27px '+FONT;x.fillText(has?String(fs.level||''):'Take the test',cx2,cy2+r2+42);
+      x.textAlign='left';
+    }
+  }catch(e){}
   return await new Promise(r=>{try{c.toBlob(r,'image/png',.92);}catch(e){r(null);}});
 }
 async function sharePledge(){
@@ -7914,7 +7932,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='434';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='435';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
