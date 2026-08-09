@@ -4762,6 +4762,7 @@ function renderPassport(){
   const name=getSavedName()||'Trekker';
   const{bs,done,km,ft,badges,earned}=computePassport();
   box.innerHTML=`
+    ${pledgeCard()}
     <div class="pp-hero">
       <div class="lbl">Trek Passport</div>
       <h2>${esc(name)}</h2>
@@ -4913,6 +4914,7 @@ function accountMenuGroups(){
       ['download','Downloaded Tickets','bookings']
     ]],
     ['Trek tools',[
+      ['eco','Mountain Promise','pledge'],
       ['checklist','Packing Lists','packing'],
       ['explore','Trek Navigation','navmap'],
       ['star','My Reviews','reviews']
@@ -4953,6 +4955,127 @@ const EMERGENCY_NUMS=[
   ['1363','Tourist helpline','support_agent'],
   ['1070','Disaster helpline','crisis_alert']
 ];
+/* ---- Mountain Promise: a personal responsible-trekking pledge every trekker can take.
+   Stored on the device (tmk_pledge = ISO date). No backend needed. ---- */
+const PLEDGE_POINTS=[
+  ['forest','Tread lightly','I stay on the marked trail, keep my distance from wildlife, and never pick or disturb what grows here.'],
+  ['delete_sweep','Leave no trace','I carry back every wrapper, bottle and scrap. The mountain stays cleaner than I found it.'],
+  ['health_and_safety','Trek safe','I follow my trek leader, respect my limits, and never risk the group for a photo or a summit.'],
+  ['volunteer_activism','Support local','I respect village life and culture, and put my money into local hands — guides, porters and homestays.'],
+  ['water_drop','Use less','I go easy on water, fuel and plastic, and share what I can on the trail.'],
+  ['diversity_3','Leave it better','I help fellow trekkers, speak up for the mountains, and bring others into the promise.']
+];
+function pledgeDate(){try{return localStorage.getItem('tmk_pledge')||'';}catch(e){return '';}}
+function renderPledge(){
+  const box=document.getElementById('pledgeBody');if(!box)return;
+  const taken=pledgeDate();
+  const name=getSavedName()||'Trekker';
+  const dateStr=taken?new Date(taken).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}):'';
+  box.innerHTML=`
+    <div class="pledge-hero">
+      <span class="msr pledge-mk">landscape</span>
+      <div class="lbl">The Mountain Promise</div>
+      <h2>Trek light. Leave it better.</h2>
+      <p>Every Tripomonk trekker makes one promise to the Himalaya. Read it, mean it, and take it.</p>
+    </div>
+    <div class="pledge-count" id="pledgeCountTxt">${_pledgeCount!=null?'<span class="msr">group</span>'+esc(pledgeCountLabel()):'<span class="msr">group</span>Be part of the promise circle'}</div>
+    ${taken?`<div class="pledge-signed"><span class="msr">verified</span><div><b>${esc(name)} took the Mountain Promise</b><small>${esc(dateStr)}</small></div></div>`:''}
+    <div class="pledge-list">
+      ${PLEDGE_POINTS.map(p=>`<div class="pledge-item"><div class="pi-ic"><span class="msr">${p[0]}</span></div><div class="pi-tx"><b>${esc(p[1])}</b><span>${esc(p[2])}</span></div></div>`).join('')}
+    </div>
+    <div class="pledge-cta">
+      ${taken
+        ? `<button class="btn ghost" onclick="sharePledge()"><span class="msr">ios_share</span> Share the promise</button><button class="btn" onclick="retakePledge()"><span class="msr">favorite</span> Re-affirm my promise</button>`
+        : `<button class="btn" onclick="takePledge()"><span class="msr">front_hand</span> Take the Mountain Promise</button>`}
+    </div>
+    <p class="pledge-foot">The Mountain Promise is a personal commitment, not a contract — it’s how we keep Uttarakhand’s trails wild and welcoming for every trekker after you.</p>`;
+  hydrate(box);
+  loadPledgeCount();
+}
+/* real, shared count of trekkers who took the promise (RPC over the pledges table) */
+let _pledgeCount=null;
+function pledgeCountLabel(){const n=_pledgeCount;if(!n||n<1)return 'Be the first to take the promise';return n.toLocaleString('en-IN')+' trekker'+(n===1?'':'s')+' have taken the promise';}
+async function loadPledgeCount(){
+  const sb=getSupaClient();if(!sb)return;
+  try{const {data,error}=await sb.rpc('pledge_count');if(!error&&data!=null){_pledgeCount=Number(data);const el=document.getElementById('pledgeCountTxt');if(el)el.innerHTML='<span class="msr">group</span>'+esc(pledgeCountLabel());}}catch(e){}
+}
+/* Gentle nudge: after a trekker has spent a little time on the home screen (and hasn't
+   pledged yet), invite them once per session to take the Mountain Promise. */
+let _pledgeTimer=null;
+function schedulePledgePrompt(){
+  clearTimeout(_pledgeTimer);
+  if(pledgeDate())return;                                   /* already took it */
+  try{if(sessionStorage.getItem('tmk_pledge_prompted')==='1')return;}catch(e){}
+  loadPledgeCount();                                        /* warm the count for the copy */
+  _pledgeTimer=setTimeout(async()=>{
+    if(cur!=='home'||pledgeDate())return;                   /* moved on, or pledged meanwhile */
+    try{sessionStorage.setItem('tmk_pledge_prompted','1');}catch(e){}
+    const join=(_pledgeCount&&_pledgeCount>0)?('Join '+_pledgeCount.toLocaleString('en-IN')+' trekkers who already promised. '):'';
+    const yes=await askConfirm(join+'Take the Mountain Promise — our pledge to keep the Himalaya wild and clean. It takes ten seconds.','The Mountain Promise');
+    if(yes)go('pledge');
+  },16000);
+}
+async function takePledge(){
+  try{localStorage.setItem('tmk_pledge',new Date().toISOString());}catch(e){}
+  try{logEvent('pledge');}catch(e){}
+  renderPledge();
+  /* record to the shared count when signed in, so the number on screen is real */
+  const sb=getSupaClient();
+  if(sb&&isLoggedIn()){
+    try{const uid=await authUid();if(uid)await sb.from('pledges').upsert({user_id:uid,name:getSavedName()||'Trekker'},{onConflict:'user_id'});}catch(e){}
+    loadPledgeCount();
+  }
+  note('Thank you for taking the Mountain Promise. Trek light, and leave it better.','Promise taken');
+}
+function retakePledge(){note('Your promise still stands — thank you for keeping it.','Mountain Promise');}
+/* compact banner reused on the Passport (and anywhere) to promote / show the pledge */
+function pledgeCard(){
+  if(pledgeDate())return `<div class="pledge-signed" style="cursor:pointer" onclick="go('pledge')"><span class="msr">verified</span><div><b>Mountain Promise taken</b><small>Tap to view your pledge</small></div><span class="msr" style="margin-left:auto;color:var(--muted)">chevron_right</span></div>`;
+  return `<div class="pledge-signed" style="cursor:pointer;background:linear-gradient(150deg,#0b5cff,#0a3aa0);border-color:transparent" onclick="go('pledge')"><span class="msr" style="color:#fff">front_hand</span><div><b style="color:#fff">Take the Mountain Promise</b><small style="color:rgba(255,255,255,.85)">Our responsible-trekking pledge</small></div><span class="msr" style="margin-left:auto;color:rgba(255,255,255,.9)">chevron_right</span></div>`;
+}
+const PLEDGE_LINK='https://app.tripomonk.com/#take-promise';
+/* a real Himalayan trek photo (Unsplash, CORS-safe) used when no featured trek image is loaded */
+const PLEDGE_BG='https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1080&q=70';
+function loadImg(src){return new Promise((res,rej)=>{const i=new Image();i.crossOrigin='anonymous';i.onload=()=>res(i);i.onerror=rej;i.src=src;});}
+/* build a 1080×1920 Instagram-story card for the promise. Background = a REAL trek photo,
+   faded behind a dark overlay. Type stays at semibold (≤600). Only built at share time. */
+async function makePledgeImage(name){
+  const W=1080,H=1920,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+  /* pick a real trek photo — the featured/first loaded trek if it's a CORS-safe Unsplash
+     image, otherwise the curated Himalaya fallback. Never a drawn vector. */
+  let bg=PLEDGE_BG;
+  try{const t=(window.treks||[]).find(k=>k.feat&&/unsplash\.com/.test(k.img||''))||(window.treks||[]).find(k=>/unsplash\.com/.test(k.img||''));if(t&&t.img)bg=t.img;}catch(e){}
+  try{
+    const im=await loadImg(bg);
+    const iw=im.naturalWidth||im.width, ih=im.naturalHeight||im.height, s=Math.max(W/iw,H/ih), dw=iw*s, dh=ih*s;
+    x.drawImage(im,(W-dw)/2,(H-dh)/2,dw,dh);
+  }catch(e){x.fillStyle='#0b1f3a';x.fillRect(0,0,W,H);}
+  /* dark navy wash so the photo reads as a faded backdrop and text stays legible */
+  const ov=x.createLinearGradient(0,0,0,H);ov.addColorStop(0,'rgba(6,18,42,.58)');ov.addColorStop(.5,'rgba(6,18,42,.46)');ov.addColorStop(1,'rgba(6,18,42,.85)');x.fillStyle=ov;x.fillRect(0,0,W,H);
+  try{const logo=await loadImg('icons/icon-512.png');const sz=176;x.drawImage(logo,(W-sz)/2,H*0.15,sz,sz);}catch(e){}
+  x.textAlign='center';
+  x.fillStyle='#ffce1f';x.font='600 34px system-ui,Arial,sans-serif';x.fillText('T H E   M O U N T A I N   P R O M I S E',W/2,H*0.36);
+  x.fillStyle='#ffffff';x.font='600 90px system-ui,Arial,sans-serif';x.fillText('I took the',W/2,H*0.45);x.fillText('Mountain Promise',W/2,H*0.45+106);
+  x.fillStyle='rgba(255,255,255,.92)';x.font='500 44px system-ui,Arial,sans-serif';x.fillText('— '+((name||'A Tripomonk trekker')).slice(0,28)+' —',W/2,H*0.585);
+  x.fillStyle='rgba(255,255,255,.9)';x.font='500 46px system-ui,Arial,sans-serif';x.fillText('Trek light. Leave it better.',W/2,H*0.70);
+  x.fillStyle='#ffce1f';x.font='600 38px system-ui,Arial,sans-serif';x.fillText('Take your promise at',W/2,H*0.85);
+  x.fillStyle='#ffffff';x.font='600 48px system-ui,Arial,sans-serif';x.fillText('app.tripomonk.com',W/2,H*0.85+64);
+  return await new Promise(r=>{try{c.toBlob(r,'image/png',.92);}catch(e){r(null);}});
+}
+async function sharePledge(){
+  const name=getSavedName()||'';
+  const text='I took the Tripomonk Mountain Promise — trek light and leave the Himalaya better than I found it. Take yours:';
+  let file=null;
+  try{const blob=await makePledgeImage(name);if(blob)file=new File([blob],'mountain-promise.png',{type:'image/png'});}catch(e){}
+  try{
+    if(file&&navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],text,url:PLEDGE_LINK});return;}
+    if(navigator.share){await navigator.share({title:'The Mountain Promise',text,url:PLEDGE_LINK});return;}
+  }catch(e){if(e&&e.name==='AbortError')return;}
+  /* fallback (desktop / no share sheet): save the image + copy the invite link */
+  if(file){const a=document.createElement('a');a.href=URL.createObjectURL(file);a.download='mountain-promise.png';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);}
+  try{await navigator.clipboard.writeText(PLEDGE_LINK);}catch(e){}
+  note('Promise card saved and invite link copied — post it to your Instagram story so your trek crew can take the promise too.','Share the promise');
+}
 function renderEmergency(){
   const box=document.getElementById('emergencyBody');if(!box)return;
   const wa=getWa();
@@ -7744,7 +7867,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='421';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='424';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -9681,6 +9804,8 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='passport')renderPassport();
   if(id==='dataPrivacy')renderDataPrivacy();
   if(id==='emergency')renderEmergency();
+  if(id==='pledge')renderPledge();
+  if(id==='home')schedulePledgePrompt(); else clearTimeout(_pledgeTimer);
   if(id==='savedPosts')renderSavedPosts();
   if(id==='followRequests')renderFollowRequests();
   if(id==='followList')renderFollowList();
@@ -9880,6 +10005,9 @@ async function refreshCurrent(){
     setTimeout(show,1200);
   });
 })();
+
+/* deep link: someone opened a shared promise link — take them straight to the pledge */
+document.addEventListener('DOMContentLoaded',()=>{try{if(/take-promise/.test(location.hash||'')){setTimeout(()=>{try{go('pledge');}catch(e){}},600);}}catch(e){}});
 
 /* ---------- update prompt ---------- */
 let _updateReady=false;
