@@ -379,7 +379,7 @@ document.querySelectorAll('.nav-i').forEach(n=>n.addEventListener('click',()=>se
 $('#globalSearch').addEventListener('keydown',e=>{if(e.key!=='Enter')return;const v=e.target.value.toLowerCase();const hit=Object.keys(SEC).find(k=>SEC[k][0].toLowerCase().includes(v));if(hit)select(hit);});
 
 /* shared */
-async function getBookings(force){if(_bk&&!force)return _bk;const r=await adminCall('list_bookings');_bk=(r&&Array.isArray(r.bookings))?r.bookings:(Array.isArray(r)?r:[]);return _bk;}
+async function getBookings(force){if(_bk&&!force)return _bk;const r=await adminCall('list_bookings');_bk=(r&&Array.isArray(r.rows))?r.rows:(r&&Array.isArray(r.bookings))?r.bookings:(Array.isArray(r)?r:[]);return _bk;}
 const paidOf=b=>Number(b.paid||b.amount||0);
 const isPaid=b=>{const s=(b.status||'').toLowerCase();return !/cancel|refund|fail/.test(s);};
 function bars(data,labels){const max=Math.max(1,...data);return `<div class="bars">${data.map((v,i)=>`<div class="b" style="height:${Math.max(3,Math.round(v/max*160))}px" title="${v}"><span>${labels[i]||''}</span></div>`).join('')}</div><div style="height:22px"></div>`;}
@@ -428,12 +428,50 @@ async function renderPayments(){const bk=await getBookings(),paid=bk.filter(isPa
 /* TREKS */
 let _treks=null;
 async function renderTreks(){const {rows}=await qtbl('treks',b=>b.limit(600));_treks=rows.slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
-  $('#content').innerHTML=`<div class="panel"><div class="tbar"><input class="grow" id="tq" placeholder="Search treks & tours…"/><span class="muted">${_treks.length} in catalogue</span></div><div id="tT"></div></div>`;
-  const paint=r=>$('#tT').innerHTML=r.length?wrapTbl(`<table class="tbl"><thead><tr><th>Name</th><th>Region</th><th>Type</th><th>Price</th><th>Discount</th><th>Offer</th><th></th></tr></thead><tbody>${r.map(t=>`<tr><td><b>${esc(t.name)}</b></td><td data-l="Region" class="muted">${esc(t.region||'')}</td><td data-l="Type">${esc(t.type||'trek')}</td><td data-l="Price">${INR(t.price)}</td><td data-l="Discount">${t.discount?('<span class="tag warn">'+t.discount+'% off</span>'):'<span class="muted">—</span>'}</td><td data-l="Offer" class="muted">${esc(t.offer||'')}</td><td><button class="btn2 sm" onclick="trekEdit('${jsv(t.id)}')">Edit</button></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No treks found.</div>';
-  paint(_treks);$('#tq').oninput=e=>{const v=e.target.value.toLowerCase();paint(_treks.filter(t=>((t.name||'')+' '+(t.region||'')).toLowerCase().includes(v)));};}
-function trekEdit(id){const t=(_treks||[]).find(x=>String(x.id)===String(id));if(!t)return;
-  modal(`<h3>Edit — ${esc(t.name)}</h3><div class="fld"><label>Price (₹)</label><input id="teP" type="number" value="${esc(t.price||0)}"/></div><div class="fld"><label>Discount %</label><input id="teD" type="number" min="0" max="90" value="${esc(t.discount||0)}"/></div><div class="fld"><label>Offer text (yellow badge)</label><input id="teO" value="${esc(t.offer||'')}" placeholder="Early bird — save ₹1000"/></div><div class="fld"><label>Tag</label><input id="teT" value="${esc(t.tag||'')}" placeholder="Bestseller"/></div><div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="teGo">Save</button></div>`);
-  $('#teGo').onclick=async()=>{const upd=Object.assign({},t,{price:parseInt($('#teP').value)||0,discount:Math.max(0,Math.min(90,parseInt($('#teD').value)||0)),offer:$('#teO').value.trim(),tag:$('#teT').value.trim()});closeOv();const r=await adminCall('save_trek',{trek:upd});if(r&&r.error){toast('Failed: '+r.error);return;}toast('Trek updated');renderTreks();};}
+  const regions=[...new Set(_treks.map(t=>t.region).filter(Boolean))].sort();
+  $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Treks &amp; Tours</h2><span class="spacer"></span><button class="btn2 pri" onclick="trekEdit()">+ Add trek / tour</button></div>
+    <div class="tbar"><input class="grow" id="tq" placeholder="Search name or region…"/>
+      <select id="tType" class="btn2"><option value="all">All types</option><option value="trek">Treks</option><option value="tour">Tours</option></select>
+      <select id="tReg" class="btn2"><option value="">All regions</option>${regions.map(r=>`<option>${esc(r)}</option>`).join('')}</select>
+      <select id="tLvl" class="btn2"><option value="">All levels</option><option>Easy</option><option>Moderate</option><option>Difficult</option></select>
+      <select id="tSt" class="btn2"><option value="">Live &amp; soon</option><option value="live">Live only</option><option value="soon">Coming soon</option></select>
+    </div><div id="tCount" class="muted" style="margin:0 2px 8px"></div><div id="tT"></div></div>`;
+  const paint=()=>{const q=($('#tq').value||'').toLowerCase(),ty=$('#tType').value,rg=$('#tReg').value,lv=$('#tLvl').value,st=$('#tSt').value;
+    let r=_treks.filter(t=>((t.name||'')+' '+(t.region||'')).toLowerCase().includes(q));
+    if(ty!=='all')r=r.filter(t=>(t.type||'trek')===ty);
+    if(rg)r=r.filter(t=>t.region===rg); if(lv)r=r.filter(t=>(t.level||'')===lv);
+    if(st==='live')r=r.filter(t=>!t.soon); if(st==='soon')r=r.filter(t=>t.soon);
+    $('#tCount').textContent=r.length+' of '+_treks.length+' in catalogue';
+    $('#tT').innerHTML=r.length?wrapTbl(`<table class="tbl"><thead><tr><th>Name</th><th>Region</th><th>Type</th><th>Price</th><th>Discount</th><th>Flags</th><th></th></tr></thead><tbody>${r.map(t=>`<tr><td><b>${esc(t.name)}</b>${t.soon?' <span class="tag warn">soon</span>':''}</td><td data-l="Region" class="muted">${esc(t.region||'')}</td><td data-l="Type">${esc(t.type||'trek')}</td><td data-l="Price">${INR(t.price)}</td><td data-l="Discount">${t.discount?('<span class="tag warn">'+t.discount+'% off</span>'):'<span class="muted">—</span>'}</td><td data-l="Flags">${t.featured?'<span class="tag ok">★ featured</span> ':''}${t.popular?'<span class="tag neutral">popular</span>':''}</td><td><div class="row-acts"><button class="btn2 sm" onclick="trekEdit('${jsv(t.id)}')">Edit</button><button class="btn2 sm danger" onclick="trekDel('${jsv(t.id)}')">Delete</button></div></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No treks match.</div>';};
+  ['tq','tType','tReg','tLvl','tSt'].forEach(id=>{const el=$('#'+id);el.oninput=paint;el.onchange=paint;});paint();}
+function trekEdit(id){const t=id?((_treks||[]).find(x=>String(x.id)===String(id))||{}):{};const isNew=!id;
+  const sel=(cur,opts)=>opts.map(o=>`<option ${String(cur||'')===o?'selected':''}>${o}</option>`).join('');
+  modal(`<h3>${isNew?'Add trek / tour':'Edit — '+esc(t.name)}</h3>
+    <div class="fld"><label>Name</label><input id="teN" value="${esc(t.name||'')}"/></div>
+    <div class="fld"><label>Region</label><input id="teR" value="${esc(t.region||'')}" placeholder="Uttarakhand"/></div>
+    <div class="fld"><label>Type</label><select id="teTy"><option value="trek" ${(t.type||'trek')==='trek'?'selected':''}>Trek</option><option value="tour" ${t.type==='tour'?'selected':''}>Tour / road trip</option></select></div>
+    <div class="fld"><label>Level</label><select id="teL">${sel(t.level||'Easy',['Easy','Moderate','Difficult'])}</select></div>
+    <div class="fld"><label>Days</label><input id="teDy" type="number" value="${esc(t.days||'')}"/></div>
+    <div class="fld"><label>Price (₹)</label><input id="teP" type="number" value="${esc(t.price||0)}"/></div>
+    <div class="fld"><label>Discount %</label><input id="teD" type="number" min="0" max="90" value="${esc(t.discount||0)}"/></div>
+    <div class="fld"><label>Offer text (yellow badge)</label><input id="teO" value="${esc(t.offer||'')}" placeholder="Early bird — save ₹1000"/></div>
+    <div class="fld"><label>Tag</label><input id="teT" value="${esc(t.tag||'')}" placeholder="Bestseller"/></div>
+    <div class="fld"><label>Altitude</label><input id="teA" value="${esc(t.altitude||'')}" placeholder="3,810 m"/></div>
+    <div class="fld"><label>Distance</label><input id="teDi" value="${esc(t.distance||'')}" placeholder="20 km"/></div>
+    <div class="fld"><label>Best time</label><input id="teB" value="${esc(t.best_time||'')}" placeholder="Dec – Apr"/></div>
+    <div class="fld"><label>Image URL</label><input id="teImg" value="${esc(t.img||'')}" placeholder="https://…"/></div>
+    <div class="fld"><label>Description</label><textarea id="teDesc">${esc(t.description||'')}</textarea></div>
+    <div class="fld"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="teSoon" ${t.soon?'checked':''} style="width:auto"/> Coming soon (hidden from booking)</label></div>
+    <div class="fld"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="teFeat" ${t.featured?'checked':''} style="width:auto"/> Featured hero on home</label></div>
+    <div class="fld"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="tePop" ${t.popular?'checked':''} style="width:auto"/> Show in Popular rail</label></div>
+    <div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="teGo">${isNew?'Add':'Save'}</button></div>`);
+  $('#teGo').onclick=async()=>{const name=($('#teN').value||'').trim();if(!name){toast('Name is required');return;}
+    const upd=Object.assign({},t,{name,region:$('#teR').value.trim(),type:$('#teTy').value,level:$('#teL').value,days:parseInt($('#teDy').value)||null,
+      price:parseInt($('#teP').value)||0,discount:Math.max(0,Math.min(90,parseInt($('#teD').value)||0)),offer:$('#teO').value.trim(),tag:$('#teT').value.trim(),
+      altitude:$('#teA').value.trim(),distance:$('#teDi').value.trim(),best_time:$('#teB').value.trim(),img:$('#teImg').value.trim(),description:$('#teDesc').value.trim(),
+      soon:$('#teSoon').checked,featured:$('#teFeat').checked,popular:$('#tePop').checked});
+    closeOv();const r=await adminCall('save_trek',{trek:upd});if(r&&r.error){toast('Failed: '+r.error);return;}toast(isNew?'Added ✓':'Trek updated ✓');renderTreks();};}
+function trekDel(id){const t=(_treks||[]).find(x=>String(x.id)===String(id));confirmDo('Delete "'+((t&&t.name)||'this trek')+'"? It’s removed from the app catalogue.',async()=>{const r=await adminCall('delete_trek',{id});if(r&&r.error){toast('Failed: '+r.error);return;}toast('Deleted');renderTreks();});}
 /* DESTINATIONS */
 let _dests=[];
 function slugify(s){return String(s||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');}
@@ -474,14 +512,64 @@ async function destSave(id){
   if(!error)renderDestinations();
 }
 function destDel(id){confirmDo('Delete this destination? (It’s removed from the app catalogue too.)',async()=>{const {error}=await sb.from('destinations').delete().eq('id',id);toast(error?('Failed: '+error.message):'Deleted');if(!error)renderDestinations();});}
-/* DEPARTURES */
+/* DEPARTURES — per-trek batch dates. Click a trek to view/add/edit/delete its departures.
+   Saved through the admin edge fn (save_batches) into treks.batches → shows on the app. */
+let _depTreks=[];
+const _batOf=t=>Array.isArray(t.batches)?t.batches:[];
+function _fmtBat(iso){if(!iso)return '';const d=new Date(iso+'T00:00:00');if(isNaN(d))return '';return d.getDate()+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];}
 async function renderDepartures(){const {rows}=await qtbl('treks',b=>b.limit(600));
-  const withB=rows.map(t=>({n:t.name,b:Array.isArray(t.batches)?t.batches.length:(t.batches?Object.keys(t.batches).length:0)})).filter(x=>x.b>0).sort((a,b)=>b.b-a.b);
-  $('#content').innerHTML=`<div class="panel"><h2>Departures</h2><p class="desc">Batch dates configured per trek (edit specific dates in the app admin → Departures)</p>${withB.length?wrapTbl(`<table class="tbl"><thead><tr><th>Trek</th><th>Batches configured</th></tr></thead><tbody>${withB.map(x=>`<tr><td><b>${esc(x.n)}</b></td><td>${x.b} batch${x.b>1?'es':''}</td></tr>`).join('')}</tbody></table>`):'<div class="empty">No batch dates set. Add departures in the app admin.</div>'}</div>`;}
-/* PACKING */
+  _depTreks=rows.slice().sort((a,b)=>_batOf(b).length-_batOf(a).length||String(a.name||'').localeCompare(String(b.name||'')));
+  $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Departures</h2><span class="spacer"></span><input class="grow" id="dpq" placeholder="Search trek…" style="max-width:240px"/></div><p class="desc">Click a trek to manage its departure dates &amp; seat status.</p><div id="dpT"></div></div>`;
+  const paint=()=>{const q=($('#dpq').value||'').toLowerCase();const l=_depTreks.filter(t=>(t.name||'').toLowerCase().includes(q));
+    $('#dpT').innerHTML=l.length?wrapTbl(`<table class="tbl"><thead><tr><th>Trek</th><th>Region</th><th>Departures</th><th></th></tr></thead><tbody>${l.map(t=>`<tr><td><b>${esc(t.name)}</b></td><td data-l="Region" class="muted">${esc(t.region||'')}</td><td data-l="Departures">${_batOf(t).length?('<span class="tag ok">'+_batOf(t).length+' set</span>'):'<span class="muted">none</span>'}</td><td style="text-align:right"><button class="btn2 sm" onclick="depOpen('${jsv(t.id)}')">Manage</button></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No treks match.</div>';};
+  $('#dpq').oninput=paint;paint();}
+function depOpen(id){const t=_depTreks.find(x=>String(x.id)===String(id));if(!t)return;const list=_batOf(t);
+  $('#content').innerHTML=`<div class="panel"><div class="tbar"><button class="btn2 sm" onclick="renderDepartures()">← All treks</button><span class="spacer"></span></div>
+    <h2 style="margin:6px 0 2px">${esc(t.name)}</h2><p class="desc">${esc(t.region||'')} · base price ${INR(t.price)}</p>
+    <div class="sec-t">Departures (${list.length})</div>
+    <div id="depList">${list.length?wrapTbl(`<table class="tbl"><thead><tr><th>Dates</th><th>Seats status</th><th>Price</th><th></th></tr></thead><tbody>${list.map((b,i)=>`<tr><td><b>${esc(b.label||'')}</b></td><td data-l="Seats" class="muted">${esc(b.seats||'Available')}</td><td data-l="Price">${INR(b.price||t.price)}</td><td style="text-align:right"><button class="btn2 sm danger" onclick="depDel('${jsv(id)}',${i})">Delete</button></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No departures yet — add the first below.</div>'}</div>
+    <div class="sec-t">Add a departure</div>
+    <div class="fld"><label>From</label><input id="dpFrom" type="date"/></div>
+    <div class="fld"><label>Till</label><input id="dpTill" type="date"/></div>
+    <div class="fld"><label>Seats status</label><input id="dpSeats" placeholder="Few seats left / Available"/></div>
+    <div class="fld"><label>Price ₹ (blank = base price)</label><input id="dpPrice" type="number"/></div>
+    <button class="btn2 pri" onclick="depAdd('${jsv(id)}')">+ Add departure</button></div>`;}
+async function depAdd(id){const t=_depTreks.find(x=>String(x.id)===String(id));if(!t)return;
+  const from=$('#dpFrom').value,till=$('#dpTill').value;
+  if(!from){toast('Pick a start date');return;} if(till&&till<from){toast('End date is before start');return;}
+  const end=till||from;const label=_fmtBat(from)+' – '+_fmtBat(end);
+  const list=_batOf(t).slice();
+  list.push({label,seats:($('#dpSeats').value||'').trim()||'Available',price:parseInt($('#dpPrice').value)||t.price,start:from,end});
+  await depSave(id,list);}
+function depDel(id,i){confirmDo('Remove this departure?',async()=>{const t=_depTreks.find(x=>String(x.id)===String(id));if(!t)return;const list=_batOf(t).slice();list.splice(i,1);await depSave(id,list);});}
+async function depSave(id,list){const r=await adminCall('save_batches',{id,batches:list});
+  if(r&&r.error){toast('Failed: '+r.error);return;}
+  const t=_depTreks.find(x=>String(x.id)===String(id));if(t)t.batches=list;
+  toast('Departures saved ✓');depOpen(id);}
+/* PACKING — per-trek packing list editor. Categories mirror the app (PK_CATS). Saved via
+   the admin edge fn (save_packing) into treks.packing → the app shows it on the trek page. */
+const PK_CATS=['Essentials','Clothing','Gear','Others'];
+let _pkTreks=[], _pkEdit=null, _pkId=null;
+function _pkNorm(p){const out={};PK_CATS.forEach(c=>{const v=(p&&p[c])||[];out[c]=(Array.isArray(v)?v:[]).map(it=>Array.isArray(it)?it[1]:String(it));});return out;}
+function _pkCount(t){const p=_pkNorm(t.packing);return PK_CATS.reduce((a,c)=>a+p[c].length,0);}
 async function renderPacking(){const {rows}=await qtbl('treks',b=>b.limit(600));
-  const withP=rows.filter(t=>t.packing&&(Array.isArray(t.packing)?t.packing.length:Object.keys(t.packing||{}).length)).map(t=>t.name);
-  $('#content').innerHTML=`<div class="panel"><h2>Packing lists</h2><p class="desc">${withP.length} treks have a custom packing list (edit items in the app admin → Packing)</p>${withP.length?wrapTbl(`<table class="tbl"><thead><tr><th>Trek</th><th>Custom list</th></tr></thead><tbody>${withP.map(n=>`<tr><td><b>${esc(n)}</b></td><td><span class="tag ok">configured</span></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No custom packing lists yet.</div>'}</div>`;}
+  _pkTreks=rows.slice().sort((a,b)=>_pkCount(b)-_pkCount(a)||String(a.name||'').localeCompare(String(b.name||'')));
+  $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Packing lists</h2><span class="spacer"></span><input class="grow" id="pkq" placeholder="Search trek…" style="max-width:240px"/></div><p class="desc">Click a trek to edit its packing checklist.</p><div id="pkT"></div></div>`;
+  const paint=()=>{const q=($('#pkq').value||'').toLowerCase();const l=_pkTreks.filter(t=>(t.name||'').toLowerCase().includes(q));
+    $('#pkT').innerHTML=l.length?wrapTbl(`<table class="tbl"><thead><tr><th>Trek</th><th>Items</th><th></th></tr></thead><tbody>${l.map(t=>{const n=_pkCount(t);return `<tr><td><b>${esc(t.name)}</b></td><td data-l="Items">${n?('<span class="tag ok">'+n+' items</span>'):'<span class="muted">none</span>'}</td><td style="text-align:right"><button class="btn2 sm" onclick="pkOpen('${jsv(t.id)}')">Manage</button></td></tr>`;}).join('')}</tbody></table>`):'<div class="empty">No treks match.</div>';};
+  $('#pkq').oninput=paint;paint();}
+function pkOpen(id){const t=_pkTreks.find(x=>String(x.id)===String(id));if(!t)return;
+  if(_pkId!==String(id)){_pkEdit=_pkNorm(t.packing);_pkId=String(id);}
+  $('#content').innerHTML=`<div class="panel"><div class="tbar"><button class="btn2 sm" onclick="_pkId=null;renderPacking()">← All treks</button><span class="spacer"></span><button class="btn2 pri" onclick="pkSave('${jsv(id)}')">Save packing list</button></div>
+    <h2 style="margin:6px 0 2px">${esc(t.name)}</h2><p class="desc">${esc(t.region||'')}</p>
+    ${PK_CATS.map(c=>`<div class="sec-t">${c}</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">${(_pkEdit[c]||[]).map((it,i)=>`<span class="tag neutral" style="display:inline-flex;align-items:center;gap:6px">${esc(it)} <button onclick="pkDel('${jsv(c)}',${i})" style="background:none;border:0;color:#ff5a5a;cursor:pointer;font-weight:700">×</button></span>`).join('')||'<span class="muted" style="font-size:12.5px">No items</span>'}</div>
+      <div class="tbar"><input class="grow" id="pkAdd_${c}" placeholder="Add to ${c}… (Enter)" onkeydown="if(event.key==='Enter'){event.preventDefault();pkAdd('${jsv(c)}');}"/><button class="btn2 sm" onclick="pkAdd('${jsv(c)}')">Add</button></div>`).join('')}</div>`;}
+function pkAdd(c){const inp=$('#pkAdd_'+c);const v=(inp.value||'').trim();if(!v)return;_pkEdit[c]=_pkEdit[c]||[];_pkEdit[c].push(v);pkOpen(_pkId);}
+function pkDel(c,i){_pkEdit[c].splice(i,1);pkOpen(_pkId);}
+async function pkSave(id){const r=await adminCall('save_packing',{id,packing:_pkEdit});
+  if(r&&r.error){toast('Failed: '+r.error);return;}
+  const t=_pkTreks.find(x=>String(x.id)===String(id));if(t)t.packing=_pkEdit;
+  toast('Packing list saved ✓');}
 /* GEAR */
 async function renderGear(){const {rows,error}=await qtbl('gear_inventory',b=>b.order('item'));if(error){$('#content').innerHTML='<div class="panel"><div class="empty">Gear table not deployed — run <b>SQL-add-gear-and-moderation.sql</b>.</div></div>';return;}
   const av=g=>Math.max(0,(g.total||0)-(g.rented||0)-(g.damaged||0)-(g.maintenance||0));
@@ -504,9 +592,26 @@ async function renderVendors(){const {rows,error}=await qtbl('vendors',b=>b.orde
 async function vendSet(id,st){const {error}=await sb.from('vendors').update({status:st}).eq('id',id);toast(error?('Failed: '+error.message):('Vendor '+st));if(!error)renderVendors();}
 /* USERS + activity */
 async function renderUsers(){const {rows}=await qtbl('profiles',b=>b.select('id,name,username,photo,is_host').order('name'));
-  $('#content').innerHTML=`<div class="panel"><div class="tbar"><input class="grow" id="uq" placeholder="Search name or @username…"/><span class="muted">${rows.length} members</span></div><div id="uT"></div></div>`;
-  const paint=l=>$('#uT').innerHTML=l.length?wrapTbl(`<table class="tbl"><thead><tr><th>Member</th><th>Username</th><th>Type</th><th></th></tr></thead><tbody>${l.map(u=>`<tr><td><div class="u">${avc(u.name,u.photo)}<b>${esc(u.name||'Trekker')}</b></div></td><td class="muted">${u.username?'@'+esc(u.username):'—'}</td><td>${u.is_host?'<span class="tag ok">Host</span>':'<span class="tag neutral">Trekker</span>'}</td><td style="text-align:right"><button class="btn2 sm" onclick="openActivity('${jsv(u.id)}','${jsv(u.name)}','${jsv(u.photo||'')}')">Activity</button></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No users found.</div>';
-  paint(rows);$('#uq').oninput=e=>{const v=e.target.value.toLowerCase();paint(rows.filter(u=>((u.name||'')+' '+(u.username||'')).toLowerCase().includes(v)));};}
+  /* last-active per user from app_events (best-effort — section still works if analytics isn't deployed) */
+  const lastAct={};let hasEvents=false;
+  try{const {data,error}=await sb.from('app_events').select('user_id,created_at').order('created_at',{ascending:false}).limit(5000);
+    if(!error&&data){hasEvents=true;data.forEach(e=>{if(e.user_id&&!lastAct[e.user_id])lastAct[e.user_id]=e.created_at;});}}catch(e){}
+  const DAY=86400000,now=Date.now();
+  const activeWithin=(uid,d)=>{const t=lastAct[uid];return t&&(now-new Date(t).getTime())<=d*DAY;};
+  $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Users</h2><span class="spacer"></span><span class="muted" id="uCount">${rows.length} members</span></div>
+    <div class="tbar"><input class="grow" id="uq" placeholder="Search name or @username…"/>
+      <select id="uType" class="btn2"><option value="all">All types</option><option value="host">Hosts</option><option value="trekker">Trekkers</option></select>
+      <select id="uAct" class="btn2" ${hasEvents?'':'disabled title="Deploy SQL-add-user-analytics.sql"'}><option value="any">Any activity</option><option value="7">Active last 7 days</option><option value="30">Active last 30 days</option><option value="never">Never active</option></select>
+      <select id="uSort" class="btn2"><option value="name">Sort: Name</option><option value="active">Sort: Recently active</option></select>
+    </div><div id="uT"></div></div>`;
+  const paint=()=>{const q=($('#uq').value||'').toLowerCase(),ty=$('#uType').value,ac=$('#uAct').value,so=$('#uSort').value;
+    let l=rows.filter(u=>((u.name||'')+' '+(u.username||'')).toLowerCase().includes(q));
+    if(ty==='host')l=l.filter(u=>u.is_host); if(ty==='trekker')l=l.filter(u=>!u.is_host);
+    if(ac==='7')l=l.filter(u=>activeWithin(u.id,7)); else if(ac==='30')l=l.filter(u=>activeWithin(u.id,30)); else if(ac==='never')l=l.filter(u=>!lastAct[u.id]);
+    if(so==='active')l=l.slice().sort((a,b)=>String(lastAct[b.id]||'').localeCompare(String(lastAct[a.id]||'')));
+    $('#uCount').textContent=l.length+' of '+rows.length+' members';
+    $('#uT').innerHTML=l.length?wrapTbl(`<table class="tbl"><thead><tr><th>Member</th><th>Username</th><th>Type</th><th>Last active</th><th></th></tr></thead><tbody>${l.map(u=>`<tr><td><div class="u">${avc(u.name,u.photo)}<b>${esc(u.name||'Trekker')}</b></div></td><td data-l="Username" class="muted">${u.username?'@'+esc(u.username):'—'}</td><td data-l="Type">${u.is_host?'<span class="tag ok">Host</span>':'<span class="tag neutral">Trekker</span>'}</td><td data-l="Last active" class="muted">${lastAct[u.id]?timeAgo(lastAct[u.id]):'—'}</td><td style="text-align:right"><button class="btn2 sm" onclick="openActivity('${jsv(u.id)}','${jsv(u.name)}','${jsv(u.photo||'')}')">Activity</button></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No users match.</div>';};
+  ['uq','uType','uAct','uSort'].forEach(id=>{const el=$('#'+id);el.oninput=paint;el.onchange=paint;});paint();}
 const SCR={home:'Home',explore:'Explore treks',search:'Search',community:'Community',bookings:'Bookings',profile:'Profile',messages:'Messages',chat:'Chat',detail:'Trek details',trip:'Road trip',person:'A profile',wishlist:'Wishlist',payment:'Payment',selectDate:'Choose dates',notifications:'Notifications'};
 const scL=s=>SCR[s]||s||'App';
 const EVL={login:'Signed in',view_trek:'Viewed a trek',booking:'Made a booking',message:'Sent a message',follow:'Followed someone',story_view:'Watched a story',post:'Created a post'};
@@ -522,26 +627,53 @@ async function openActivity(uid,name,photo){const d=$('#drawer'),body=$('#drawer
   const fmt=s=>s>=3600?Math.round(s/3600)+'h':s>=60?Math.round(s/60)+'m':(s||0)+'s';
   body.innerHTML=head+`<div class="ua-stats"><div class="ua-stat"><b>${timeAgo(rows[0].created_at).replace(/ ago$/,'')}</b><small>Last active</small></div><div class="ua-stat"><b>${sess}</b><small>Sessions</small></div><div class="ua-stat"><b>${screens.length}</b><small>Screens</small></div><div class="ua-stat"><b>${fmt(total)}</b><small>Time</small></div></div><div class="sec-t">Most-used screens</div>`+(top.length?top.map(e=>`<div class="ua-bar"><div class="l"><span>${esc(scL(e[0]))}</span><b class="muted">${fmt(e[1])}</b></div><div class="t"><i style="width:${Math.max(4,Math.round(e[1]/max*100))}%"></i></div></div>`).join(''):'<div class="muted">No screen data.</div>')+`<div class="sec-t">Recent activity</div>`+rows.slice(0,50).map(r=>`<div class="ua-ev"><span class="d"></span><div>${esc(evL(r))}<small>${esc(timeAgo(r.created_at))}${r.seconds?' · '+fmt(r.seconds):''}</small></div></div>`).join('');
 }
-/* CRM */
+/* CRM — every customer who has booked, aggregated with spend + filters. */
+let _crm=[], _crmProfiles=[];
 async function renderCRM(){
-  $('#content').innerHTML=`<div class="panel"><h2>Customer 360</h2><p class="desc">Search a member to see their bookings, spend & activity</p><div class="tbar"><input class="grow" id="crmq" placeholder="Type a name…"/></div><div id="crmR"><div class="empty">Start typing a customer name.</div></div></div>`;
-  const {rows}=await qtbl('profiles',b=>b.select('id,name,username,photo').order('name'));
-  $('#crmq').oninput=e=>{const v=e.target.value.toLowerCase();if(!v){$('#crmR').innerHTML='<div class="empty">Start typing a customer name.</div>';return;}
-    const m=rows.filter(u=>(u.name||'').toLowerCase().includes(v)).slice(0,10);
-    $('#crmR').innerHTML=m.length?wrapTbl(`<table class="tbl"><tbody>${m.map(u=>`<tr><td><div class="u">${avc(u.name,u.photo)}<b>${esc(u.name)}</b></div></td><td style="text-align:right"><button class="btn2 sm" onclick="crmOpen('${jsv(u.id)}','${jsv(u.name)}','${jsv(u.photo||'')}')">Open 360</button></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No match.</div>';};
+  $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Customers</h2><span class="spacer"></span><span class="muted" id="crmCount"></span></div><p class="desc">Everyone who has booked a trek — click a customer for their full 360.</p><div class="tbar"><input class="grow" id="crmq" placeholder="Search name or phone…"/><select id="crmf" class="btn2"><option value="all">All customers</option><option value="paid">Paying only</option><option value="repeat">Repeat (2+ bookings)</option></select></div><div id="crmR"><div class="skel" style="height:14px;width:50%"></div></div></div>`;
+  const [{rows:profs},bk]=await Promise.all([qtbl('profiles',b=>b.select('id,name,username,photo')),getBookings()]);
+  _crmProfiles=profs;
+  const by={};
+  bk.forEach(b=>{const nm=(b.name||'Guest').trim();const key=(b.phone||nm).toLowerCase();
+    if(!by[key])by[key]={name:nm,phone:b.phone||'',n:0,spend:0,last:'',trek:''};
+    const c=by[key];c.n++;c.spend+=isPaid(b)?paidOf(b):0;
+    const dt=b.created_at||b.date||'';if(dt>c.last){c.last=dt;c.trek=b.trek||'';}
+    if(!c.phone&&b.phone)c.phone=b.phone;});
+  _crm=Object.values(by).sort((a,b)=>b.spend-a.spend);
+  const paint=()=>{const q=($('#crmq').value||'').toLowerCase(),f=$('#crmf').value;
+    let l=_crm.filter(c=>!q||(c.name+' '+c.phone).toLowerCase().includes(q));
+    if(f==='paid')l=l.filter(c=>c.spend>0); if(f==='repeat')l=l.filter(c=>c.n>=2);
+    $('#crmCount').textContent=_crm.length+' customers · '+INR(_crm.reduce((a,c)=>a+c.spend,0))+' lifetime';
+    $('#crmR').innerHTML=l.length?wrapTbl(`<table class="tbl"><thead><tr><th>Customer</th><th>Phone</th><th>Bookings</th><th>Lifetime spend</th><th>Last trek</th><th></th></tr></thead><tbody>${l.map(c=>`<tr><td><div class="u">${avc(c.name)}<b>${esc(c.name)}</b></div></td><td data-l="Phone" class="muted">${esc(c.phone||'—')}</td><td data-l="Bookings">${c.n}</td><td data-l="Spend"><b>${INR(c.spend)}</b></td><td data-l="Last" class="muted">${esc(c.trek||'')} ${c.last?'· '+dshort(c.last):''}</td><td style="text-align:right"><button class="btn2 sm" onclick="crmOpen('${jsv(c.name)}','${jsv(c.phone||'')}')">Open 360</button></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No customers match.</div>';};
+  $('#crmq').oninput=paint;$('#crmf').onchange=paint;paint();
 }
-async function crmOpen(uid,name,photo){
-  const bk=(await getBookings()).filter(b=>(b.name||'').toLowerCase()===name.toLowerCase());
+async function crmOpen(name,phone){
+  const bk=(await getBookings()).filter(b=>(b.name||'').toLowerCase()===name.toLowerCase()||(phone&&b.phone===phone));
   const spend=bk.filter(isPaid).reduce((a,b)=>a+paidOf(b),0);
-  openActivity(uid,name,photo);
+  const prof=_crmProfiles.find(p=>(p.name||'').toLowerCase()===name.toLowerCase());
   const body=$('#drawerBody');
-  const extra=`<div class="sec-t">Bookings (${bk.length}) · lifetime ${INR(spend)}</div>`+(bk.length?bk.slice(0,8).map(b=>`<div class="ua-ev"><span class="d" style="background:var(--yellow)"></span><div>${esc(b.trek||'Trek')} · ${INR(paidOf(b))}<small>${esc(b.date||'')} · ${esc(b.status||'')}</small></div></div>`).join(''):'<div class="muted" style="font-size:12.5px">No bookings.</div>');
-  const wait=setInterval(()=>{ if(body.querySelector('.ua-stats')||body.querySelector('.empty')){ clearInterval(wait); body.insertAdjacentHTML('beforeend',extra);} },120);
-  setTimeout(()=>clearInterval(wait),3000);
+  const extra=`<div class="sec-t">Bookings (${bk.length}) · lifetime ${INR(spend)}</div>`+(bk.length?bk.slice(0,12).map(b=>`<div class="ua-ev"><span class="d" style="background:var(--yellow)"></span><div>${esc(b.trek||'Trek')} · ${INR(paidOf(b))}<small>${esc(b.date||dshort(b.created_at)||'')} · ${esc(b.status||'')}</small></div></div>`).join(''):'<div class="muted" style="font-size:12.5px">No bookings.</div>');
+  if(prof){
+    /* openActivity replaces the drawer body once its async render finishes — wait for the
+       FINAL markers (.ua-stats / .empty) before appending, or the bookings get wiped. */
+    openActivity(prof.id,prof.name,prof.photo||'');
+    const wait=setInterval(()=>{ if(body.querySelector('.ua-stats')||body.querySelector('.empty')){ clearInterval(wait); body.insertAdjacentHTML('beforeend',extra);} },120);
+    setTimeout(()=>clearInterval(wait),4000);
+  }else{
+    $('#drawer').classList.add('show');
+    body.innerHTML=`<div class="dh">${avc(name)}<div><b style="font-size:16px">${esc(name)}</b><br><small class="muted">${esc(phone||'')}</small></div><span class="spacer"></span><button class="btn2" onclick="closeOv()">Close</button></div><div class="muted" style="font-size:12.5px;margin:8px 0">No app account linked — booking history only.</div>`+extra;
+  }
 }
 /* HOSTS */
 async function renderHosts(){const [apps,trips]=await Promise.all([qtbl('host_applications',b=>b.order('created_at',{ascending:false}).limit(300)),qtbl('host_trips',b=>b.eq('status','live').limit(300))]);
-  $('#content').innerHTML=`<div class="panel"><h2>Host applications</h2><p class="desc">${apps.rows.length} applications</p>${apps.rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Name</th><th>City</th><th>Mobile</th><th>Status</th><th></th></tr></thead><tbody>${apps.rows.map(a=>`<tr><td><b>${esc(a.full_name||a.name||'—')}</b></td><td class="muted">${esc(a.city||'')}</td><td class="muted">${esc(a.mobile||a.phone||'')}</td><td><span class="tag ${/(approv)/i.test(a.status)?'ok':/reject/i.test(a.status)?'bad':'warn'}">${esc(a.status||'pending')}</span></td><td><div class="row-acts"><button class="btn2 sm" onclick="hostSet('${jsv(a.id)}','approved')">Approve</button><button class="btn2 sm danger" onclick="hostSet('${jsv(a.id)}','rejected')">Reject</button></div></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No applications.</div>'}</div>
+  const hostActs=a=>{const s=(a.status||'pending').toLowerCase(),id=jsv(a.id);
+    const appr=`<button class="btn2 sm" onclick="hostSet('${id}','approved')">Approve</button>`;
+    const rej=`<button class="btn2 sm danger" onclick="hostSet('${id}','rejected')">Reject</button>`;
+    const rev=`<button class="btn2 sm danger" onclick="hostSet('${id}','rejected')">Revoke</button>`;
+    let inner;
+    if(/approv/.test(s))inner=rev; else if(/reject/.test(s))inner=appr; else inner=appr+rej;
+    return `<div class="row-acts">${inner}</div>`;};
+  $('#content').innerHTML=`<div class="panel"><h2>Host applications</h2><p class="desc">${apps.rows.length} applications</p>${apps.rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Name</th><th>City</th><th>Mobile</th><th>Status</th><th></th></tr></thead><tbody>${apps.rows.map(a=>`<tr><td><b>${esc(a.full_name||a.name||'—')}</b></td><td data-l="City" class="muted">${esc(a.city||'')}</td><td data-l="Mobile" class="muted">${esc(a.mobile||a.phone||'')}</td><td data-l="Status"><span class="tag ${/(approv)/i.test(a.status)?'ok':/reject/i.test(a.status)?'bad':'warn'}">${esc(a.status||'pending')}</span></td><td>${hostActs(a)}</td></tr>`).join('')}</tbody></table>`):'<div class="empty">No applications.</div>'}</div>
   <div class="panel"><h2>Live host trips</h2><p class="desc">${trips.rows.length} live</p>${trips.rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Trip</th><th>Host</th><th>Price</th><th>Dates</th></tr></thead><tbody>${trips.rows.map(t=>`<tr><td><b>${esc(t.title||'')}</b></td><td>${esc(t.host_name||'')}</td><td>${INR(t.price)}</td><td class="muted">${esc(t.dates||t.start_date||'')}</td></tr>`).join('')}</tbody></table>`):'<div class="empty">No live host trips.</div>'}</div>`;}
 async function hostSet(id,st){const {error}=await sb.from('host_applications').update({status:st}).eq('id',id);toast(error?('Approve in the app admin — '+error.message):('Host '+st));if(!error)renderHosts();}
 /* GUIDES */
@@ -570,16 +702,51 @@ async function renderReviews(){const {rows,error}=await qtbl('reviews',b=>b.orde
   $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Reviews</h2><span class="spacer"></span><button class="btn2 pri" onclick="reviewAdd()">+ Add review</button></div>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Author</th><th>Trek</th><th>Rating</th><th>Review</th><th></th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${esc(r.author)}</b></td><td class="muted">${esc(r.trek||'')}</td><td style="color:var(--yellow)">${'★'.repeat(r.rating||5)}</td><td class="muted">${esc((r.body||'').slice(0,90))}</td><td><button class="btn2 sm danger" onclick="reviewDel('${jsv(r.id)}')">Delete</button></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No reviews yet.</div>'}</div>`;}
 function reviewAdd(){modal(`<h3>Add a review</h3><div class="fld"><label>Author</label><input id="rvA"/></div><div class="fld"><label>Trek</label><input id="rvT"/></div><div class="fld"><label>Rating (1–5)</label><input id="rvR" type="number" min="1" max="5" value="5"/></div><div class="fld"><label>Review</label><textarea id="rvB"></textarea></div><div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="rvGo">Publish</button></div>`);$('#rvGo').onclick=async()=>{const author=$('#rvA').value.trim(),body=$('#rvB').value.trim();if(!author||!body)return;const {data:{session}}=await sb.auth.getSession();closeOv();const {error}=await sb.from('reviews').insert({author,trek:$('#rvT').value.trim(),rating:Math.max(1,Math.min(5,parseInt($('#rvR').value)||5)),body,user_id:session?session.user.id:null});toast(error?('Failed: '+error.message):'Published');if(!error)renderReviews();};}
 function reviewDel(id){confirmDo('Delete this review?',async()=>{const {error}=await sb.from('reviews').delete().eq('id',id);toast(error?('Failed: '+error.message):'Deleted');if(!error)renderReviews();});}
-/* HOME & FEATURES */
+/* HOME & FEATURES — live editor. Star = the single Featured hero. Tick = Popular rail.
+   Saves through the SAME admin edge function the app uses (save_home, by trek name), so
+   the change lands in the treks.featured / treks.popular columns and shows on the app home. */
+let _homeTreks=[], _homeFeat=null, _homePop=new Set(), _homeQ='';
 async function renderHome(){const {rows}=await qtbl('treks',b=>b.limit(600));
-  const feat=rows.filter(t=>t.featured||t.is_featured), pop=rows.filter(t=>t.popular||t.is_popular);
-  $('#content').innerHTML=`<div class="panel"><h2>Home &amp; features</h2><p class="desc">What's promoted on the app home. Layout & picks are curated in the app admin → Home.</p>
-    <div class="sec-t">Featured</div>${feat.length?feat.map(t=>`<div class="ua-ev"><span class="d" style="background:var(--yellow)"></span><div><b>${esc(t.name)}</b><small>${esc(t.region||'')} · ${INR(t.price)}</small></div></div>`).join(''):'<div class="muted" style="font-size:12.5px">No featured trek flag set — set it in the app admin.</div>'}
-    <div class="sec-t">Popular rail</div>${pop.length?pop.slice(0,10).map(t=>`<div class="ua-ev"><span class="d"></span><div>${esc(t.name)}</div></div>`).join(''):'<div class="muted" style="font-size:12.5px">Popular rail is curated in the app admin → Home.</div>'}</div>`;}
-/* TRAINING */
-async function renderTraining(){let rows=[],error=null;try{const r=await sb.from('profiles').select('name,username,training').not('training','is',null).limit(500);error=r.error;rows=r.data||[];}catch(e){error=e;}
-  if(error){$('#content').innerHTML='<div class="panel"><div class="empty">Training data column is locked down (privacy). It stays viewable in the app for the user themselves.</div></div>';return;}
-  $('#content').innerHTML=`<div class="panel"><h2>Training</h2><p class="desc">${rows.length} members have a training plan / fitness data</p>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Member</th><th>Username</th><th>Training</th></tr></thead><tbody>${rows.map(u=>`<tr><td><b>${esc(u.name||'Trekker')}</b></td><td class="muted">${u.username?'@'+esc(u.username):''}</td><td><span class="tag ok">active</span></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No training data yet.</div>'}</div>`;}
+  _homeTreks=rows.slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
+  const f=_homeTreks.find(t=>t.featured); _homeFeat=f?f.name:null;
+  _homePop=new Set(_homeTreks.filter(t=>t.popular).map(t=>t.name)); _homeQ='';
+  $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Home &amp; features</h2><span class="spacer"></span><button class="btn2 pri" onclick="homeSave()">Save home page</button></div>
+    <p class="desc">The <b>★ star</b> sets the big <b>Featured</b> hero (one trek). The <b>✓ tick</b> adds a trek to the <b>Popular</b> rail. Saves live to the app home for everyone.</p>
+    <div id="homeSummary"></div>
+    <div class="tbar"><input class="grow" id="hq" placeholder="Search treks & tours…"/></div>
+    <div id="homeList"></div></div>`;
+  $('#hq').oninput=e=>{_homeQ=e.target.value.toLowerCase();paintHome();};
+  paintHome();}
+function paintHome(){
+  const list=_homeTreks.filter(t=>!_homeQ||((t.name||'')+' '+(t.region||'')).toLowerCase().includes(_homeQ));
+  const sum=$('#homeSummary');if(sum)sum.innerHTML=`<div class="sec-t">Now showing</div><div class="ua-ev"><span class="d" style="background:var(--yellow)"></span><div><b>${_homeFeat?esc(_homeFeat):'No featured trek'}</b><small>Featured hero</small></div></div><div class="ua-ev"><span class="d"></span><div><b>${_homePop.size} trek${_homePop.size!==1?'s':''}</b><small>Popular rail</small></div></div>`;
+  const box=$('#homeList');if(!box)return;
+  box.innerHTML=list.length?wrapTbl(`<table class="tbl"><thead><tr><th>Trek / tour</th><th>Region</th><th>Featured</th><th>Popular</th></tr></thead><tbody>${list.map(t=>`<tr><td><b>${esc(t.name)}</b>${t.soon?' <span class="tag warn">soon</span>':''}</td><td data-l="Region" class="muted">${esc(t.region||'')}</td><td data-l="Featured" style="text-align:center"><button class="btn2 sm ${_homeFeat===t.name?'pri':''}" onclick="homeSetFeat('${jsv(t.name)}')">${_homeFeat===t.name?'★ Featured':'☆ Set'}</button></td><td data-l="Popular" style="text-align:center"><button class="btn2 sm ${_homePop.has(t.name)?'pri':''}" onclick="homeTogglePop('${jsv(t.name)}')">${_homePop.has(t.name)?'✓ In rail':'+ Add'}</button></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No treks match.</div>';}
+function homeSetFeat(n){_homeFeat=(_homeFeat===n?null:n);paintHome();}
+function homeTogglePop(n){if(_homePop.has(n))_homePop.delete(n);else _homePop.add(n);paintHome();}
+async function homeSave(){const r=await adminCall('save_home',{featured:_homeFeat||'',popular:[..._homePop]});
+  if(r&&r.error){toast('Failed: '+r.error+' — deploy latest admin fn + SQL-add-home-picks.sql');return;}
+  toast('Home page updated for everyone ✓');}
+/* TRAINING — members' fitness / training plans. The `training` column may be privacy-locked
+   at the DB grant level; if so we still show the member roster + how to unlock full plans. */
+async function renderTraining(){
+  let rows=[],locked=false;
+  /* preferred: owner-only security-definer RPC (SQL-admin-training-read.sql) */
+  try{const rp=await sb.rpc('admin_training');if(!rp.error&&Array.isArray(rp.data)){rows=rp.data;}else{throw rp.error||new Error('no rpc');}}
+  catch(_){ /* fall back to a direct column read; if the grant blocks it, show the roster */
+    try{const r=await sb.from('profiles').select('name,username,training').not('training','is',null).limit(500);
+      if(r.error){locked=true;}else{rows=r.data||[];}}catch(e){locked=true;} }
+  if(locked){
+    /* fall back to a plain roster so the section is never blank */
+    const {rows:members}=await qtbl('profiles',b=>b.select('id,name,username,photo,is_host').order('name'));
+    $('#content').innerHTML=`<div class="panel"><h2>Training</h2>
+      <div class="tag warn" style="display:inline-block;margin-bottom:8px">Training plans are privacy-locked at the database</div>
+      <p class="desc">To see each member's fitness plan here, run <b>SQL-admin-training-read.sql</b> in Supabase (grants the owner read access). Members always see their own plan in the app.</p>
+      ${members.length?wrapTbl(`<table class="tbl"><thead><tr><th>Member</th><th>Username</th><th>Type</th></tr></thead><tbody>${members.map(u=>`<tr><td><div class="u">${avc(u.name,u.photo)}<b>${esc(u.name||'Trekker')}</b></div></td><td data-l="Username" class="muted">${u.username?'@'+esc(u.username):'—'}</td><td data-l="Type">${u.is_host?'<span class="tag ok">Host</span>':'<span class="tag neutral">Trekker</span>'}</td></tr>`).join('')}</tbody></table>`):'<div class="empty">No members yet.</div>'}</div>`;
+    return;
+  }
+  const summ=t=>{if(t==null)return '';if(typeof t==='string')return t.slice(0,60);if(typeof t==='object'){return esc([t.goal,t.level,t.plan,t.weeks?t.weeks+' wks':''].filter(Boolean).join(' · ').slice(0,60));}return String(t).slice(0,60);};
+  $('#content').innerHTML=`<div class="panel"><h2>Training</h2><p class="desc">${rows.length} member${rows.length!==1?'s':''} have a training / fitness plan</p>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Member</th><th>Username</th><th>Plan</th></tr></thead><tbody>${rows.map(u=>`<tr><td><b>${esc(u.name||'Trekker')}</b></td><td data-l="Username" class="muted">${u.username?'@'+esc(u.username):'—'}</td><td data-l="Plan">${summ(u.training)?'<span class="muted">'+summ(u.training)+'</span>':'<span class="tag ok">active</span>'}</td></tr>`).join('')}</tbody></table>`):'<div class="empty">No member has added a training plan yet.</div>'}</div>`;}
 /* AI */
 const AI_KEYS=[['welcome','Welcome message','Auto-sent in the Tripomonk Team chat.'],['sos','Emergency SOS text','Pre-filled WhatsApp text for an emergency call.'],['planner','Planner nudge','Encouragement in the trek planner.']];
 async function renderAI(){const {rows}=await qtbl('app_config',b=>b.select('key,value'));const map={};rows.forEach(r=>map[r.key]=r.value);
@@ -595,7 +762,7 @@ async function renderSettings(){const ping=await adminCall('ping');
   </tbody></table>
   <div style="margin-top:16px"><button class="btn2 pri" onclick="runDiag()">Run diagnostics</button> <span class="muted" style="font-size:12px">Tests read + write access for every section on this device.</span></div>
   <div id="diag" style="margin-top:14px"></div>
-  <p class="muted" style="font-size:12px;margin-top:14px">Reuses app.tripomonk.com's Supabase backend. Writes are authorised server-side (RLS + admin edge function). A few catalogue editors (destinations content, batch dates, packing items, home layout) are managed in the in-app admin and shown read-only here.</p></div>`;}
+  <p class="muted" style="font-size:12px;margin-top:14px">Reuses app.tripomonk.com's Supabase backend. Writes are authorised server-side (RLS + admin edge function). This console is now the single admin — treks, tours, destinations, departures, packing, home &amp; features are all fully editable here and reflect on the app.</p></div>`;}
 async function runDiag(){
   const box=$('#diag');if(!box)return;box.innerHTML='<div class="skel" style="height:14px;width:55%"></div>';
   const tables=[['treks','id'],['destinations','id'],['guides','id'],['gear_inventory','id'],['permit_applications','id'],['support_tickets','id'],['vendors','id'],['reviews','id'],['community_posts','id'],['host_applications','id'],['staff','email'],['app_config','key'],['profiles','id'],['app_events','id']];
