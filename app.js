@@ -4991,6 +4991,7 @@ function renderPledge(){
     <p class="pledge-foot">The Mountain Promise is a personal commitment, not a contract — it’s how we keep Uttarakhand’s trails wild and welcoming for every trekker after you.</p>`;
   hydrate(box);
   loadPledgeCount();
+  loadMyPledge();
 }
 /* real, shared count of trekkers who took the promise (RPC over the pledges table) */
 let _pledgeCount=null;
@@ -4998,6 +4999,16 @@ function pledgeCountLabel(){const n=_pledgeCount;if(!n||n<1)return 'Be the first
 async function loadPledgeCount(){
   const sb=getSupaClient();if(!sb)return;
   try{const {data,error}=await sb.rpc('pledge_count');if(!error&&data!=null){_pledgeCount=Number(data);const el=document.getElementById('pledgeCountTxt');if(el)el.innerHTML='<span class="msr">group</span>'+esc(pledgeCountLabel());}}catch(e){}
+}
+/* cross-device: if this account already pledged (stored in the DB), reflect it on THIS
+   device so every device shows the signed / "re-affirm" state — never "take" it again. */
+async function loadMyPledge(){
+  if(pledgeDate())return;                       /* already known on this device */
+  const sb=getSupaClient();if(!sb||!isLoggedIn())return;
+  try{const uid=await authUid();if(!uid)return;
+    const {data}=await sb.from('pledges').select('created_at').eq('user_id',uid).maybeSingle();
+    if(data){try{localStorage.setItem('tmk_pledge',data.created_at||new Date().toISOString());}catch(e){}if(cur==='pledge')renderPledge();}
+  }catch(e){}
 }
 /* Gentle nudge: after a trekker has spent a little time on the home screen (and hasn't
    pledged yet), invite them once per session to take the Mountain Promise. */
@@ -5007,6 +5018,7 @@ function schedulePledgePrompt(){
   if(pledgeDate())return;                                   /* already took it */
   try{if(sessionStorage.getItem('tmk_pledge_prompted')==='1')return;}catch(e){}
   loadPledgeCount();                                        /* warm the count for the copy */
+  loadMyPledge();                                           /* sync DB pledge state before prompting */
   _pledgeTimer=setTimeout(async()=>{
     if(cur!=='home'||pledgeDate())return;                   /* moved on, or pledged meanwhile */
     try{sessionStorage.setItem('tmk_pledge_prompted','1');}catch(e){}
@@ -5037,29 +5049,64 @@ const PLEDGE_LINK='https://app.tripomonk.com/#take-promise';
 /* a real Himalayan trek photo (Unsplash, CORS-safe) used when no featured trek image is loaded */
 const PLEDGE_BG='https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1080&q=70';
 function loadImg(src){return new Promise((res,rej)=>{const i=new Image();i.crossOrigin='anonymous';i.onload=()=>res(i);i.onerror=rej;i.src=src;});}
-/* build a 1080×1920 Instagram-story card for the promise. Background = a REAL trek photo,
-   faded behind a dark overlay. Type stays at semibold (≤600). Only built at share time. */
+/* build a 1080×1920 Instagram-story card — editorial "postcard from the mountains".
+   Background = a REAL trek photo (never a drawn vector). Type stays ≤ semibold (600).
+   Only ever built at share time. */
+const FONT='-apple-system,"Segoe UI Semibold","Segoe UI",system-ui,Arial,sans-serif';
+function _spaced(s,n){return String(s).split('').join(n===2?'  ':' ');} /* thin-space letter tracking */
+function _rrect(x,rx,ry,rw,rh,r){x.beginPath();x.moveTo(rx+r,ry);x.arcTo(rx+rw,ry,rx+rw,ry+rh,r);x.arcTo(rx+rw,ry+rh,rx,ry+rh,r);x.arcTo(rx,ry+rh,rx,ry,r);x.arcTo(rx,ry,rx+rw,ry,r);x.closePath();}
+function _gradText(x,txt,px,py,font){x.font=font;const w=x.measureText(txt).width;const g=x.createLinearGradient(px,0,px+w,0);g.addColorStop(0,'#2f6bff');g.addColorStop(.52,'#ff7a1a');g.addColorStop(1,'#ffce1f');x.fillStyle=g;x.fillText(txt,px,py);return w;}
 async function makePledgeImage(name){
-  const W=1080,H=1920,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
-  /* pick a real trek photo — the featured/first loaded trek if it's a CORS-safe Unsplash
-     image, otherwise the curated Himalaya fallback. Never a drawn vector. */
+  const W=1080,H=1920,PAD=96,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+  const wrap=(text,px,py,maxW,lh)=>{const words=String(text).split(' ');let line='',yy=py;for(let i=0;i<words.length;i++){const test=line?line+' '+words[i]:words[i];if(x.measureText(test).width>maxW&&line){x.fillText(line,px,yy);line=words[i];yy+=lh;}else line=test;}if(line)x.fillText(line,px,yy);return yy;};
+  /* real trek photo — featured/first loaded trek if CORS-safe Unsplash, else curated Himalaya */
   let bg=PLEDGE_BG;
   try{const t=(window.treks||[]).find(k=>k.feat&&/unsplash\.com/.test(k.img||''))||(window.treks||[]).find(k=>/unsplash\.com/.test(k.img||''));if(t&&t.img)bg=t.img;}catch(e){}
-  try{
-    const im=await loadImg(bg);
-    const iw=im.naturalWidth||im.width, ih=im.naturalHeight||im.height, s=Math.max(W/iw,H/ih), dw=iw*s, dh=ih*s;
-    x.drawImage(im,(W-dw)/2,(H-dh)/2,dw,dh);
-  }catch(e){x.fillStyle='#0b1f3a';x.fillRect(0,0,W,H);}
-  /* dark navy wash so the photo reads as a faded backdrop and text stays legible */
-  const ov=x.createLinearGradient(0,0,0,H);ov.addColorStop(0,'rgba(6,18,42,.58)');ov.addColorStop(.5,'rgba(6,18,42,.46)');ov.addColorStop(1,'rgba(6,18,42,.85)');x.fillStyle=ov;x.fillRect(0,0,W,H);
-  try{const logo=await loadImg('icons/icon-512.png');const sz=176;x.drawImage(logo,(W-sz)/2,H*0.15,sz,sz);}catch(e){}
-  x.textAlign='center';
-  x.fillStyle='#ffce1f';x.font='600 34px system-ui,Arial,sans-serif';x.fillText('T H E   M O U N T A I N   P R O M I S E',W/2,H*0.36);
-  x.fillStyle='#ffffff';x.font='600 90px system-ui,Arial,sans-serif';x.fillText('I took the',W/2,H*0.45);x.fillText('Mountain Promise',W/2,H*0.45+106);
-  x.fillStyle='rgba(255,255,255,.92)';x.font='500 44px system-ui,Arial,sans-serif';x.fillText('— '+((name||'A Tripomonk trekker')).slice(0,28)+' —',W/2,H*0.585);
-  x.fillStyle='rgba(255,255,255,.9)';x.font='500 46px system-ui,Arial,sans-serif';x.fillText('Trek light. Leave it better.',W/2,H*0.70);
-  x.fillStyle='#ffce1f';x.font='600 38px system-ui,Arial,sans-serif';x.fillText('Take your promise at',W/2,H*0.85);
-  x.fillStyle='#ffffff';x.font='600 48px system-ui,Arial,sans-serif';x.fillText('app.tripomonk.com',W/2,H*0.85+64);
+  try{const im=await loadImg(bg);const iw=im.naturalWidth||im.width,ih=im.naturalHeight||im.height,s=Math.max(W/iw,H/ih),dw=iw*s,dh=ih*s;x.drawImage(im,(W-dw)/2,(H-dh)/2,dw,dh);}
+  catch(e){const gg=x.createLinearGradient(0,0,W,H);gg.addColorStop(0,'#0b5cff');gg.addColorStop(1,'#08183a');x.fillStyle=gg;x.fillRect(0,0,W,H);}
+  /* scrims: overall cool darken + stronger top (for the description) + heavy bottom */
+  x.fillStyle='rgba(6,14,30,.34)';x.fillRect(0,0,W,H);
+  let tg=x.createLinearGradient(0,0,0,H*0.34);tg.addColorStop(0,'rgba(4,10,24,.72)');tg.addColorStop(1,'rgba(4,10,24,0)');x.fillStyle=tg;x.fillRect(0,0,W,H*0.34);
+  let bd=x.createLinearGradient(0,H*0.30,0,H);bd.addColorStop(0,'rgba(3,9,22,0)');bd.addColorStop(.5,'rgba(3,9,22,.74)');bd.addColorStop(1,'rgba(3,9,22,.97)');x.fillStyle=bd;x.fillRect(0,H*0.30,W,H*0.70);
+  /* top brand row (left) — wordmark is "Tripomonk", normal case, no letter-spacing */
+  try{const logo=await loadImg('icons/icon-512.png');x.drawImage(logo,PAD,92,86,86);}catch(e){}
+  x.textAlign='left';x.textBaseline='alphabetic';
+  x.fillStyle='rgba(255,255,255,.98)';x.font='700 40px '+FONT;x.fillText('Tripomonk',PAD+104,152);
+  /* heading + explanation of the Mountain Promise */
+  x.save();x.shadowColor='rgba(0,0,0,.55)';x.shadowBlur=12;x.shadowOffsetY=2;
+  x.fillStyle='#ffffff';x.font='700 44px '+FONT;x.fillText('What is the Mountain Promise?',PAD,300);
+  x.fillStyle='rgba(255,255,255,.9)';x.font='500 32px '+FONT;
+  wrap('Every Tripomonk trekker makes one promise to the mountains. Tread lightly, leave no trace, and keep the Himalaya wild for those who follow.',PAD,372,840,44);
+  x.restore();
+  /* frosted-glass confirmation chip */
+  const chipY=H-1084,chipW=W-2*PAD,chipH=150;
+  x.save();x.shadowColor='rgba(0,0,0,.35)';x.shadowBlur=30;x.shadowOffsetY=10;x.fillStyle='rgba(255,255,255,.14)';_rrect(x,PAD,chipY,chipW,chipH,28);x.fill();x.restore();
+  x.strokeStyle='rgba(255,255,255,.22)';x.lineWidth=1.5;_rrect(x,PAD,chipY,chipW,chipH,28);x.stroke();
+  try{const l2=await loadImg('icons/icon-512.png');x.drawImage(l2,PAD+28,chipY+37,76,76);}catch(e){}
+  x.fillStyle='#ffffff';x.font='700 32px '+FONT;x.fillText('Tripomonk',PAD+130,chipY+62);
+  x.fillStyle='rgba(255,255,255,.82)';x.font='500 28px '+FONT;
+  const chipMsg=(_pledgeCount&&_pledgeCount>0)?('You joined '+_pledgeCount.toLocaleString('en-IN')+' trekkers who promised'):'You took the Mountain Promise';
+  x.fillText(chipMsg,PAD+130,chipY+104);
+  /* circular user profile picture (photo if available, else initials) */
+  const acx=PAD+70,acy=H-812,ar=70;
+  x.save();x.shadowColor='rgba(0,0,0,.45)';x.shadowBlur=26;x.shadowOffsetY=8;x.beginPath();x.arc(acx,acy,ar+6,0,Math.PI*2);x.fillStyle='rgba(255,255,255,.96)';x.fill();x.restore();
+  let drew=false;const avSrc=(typeof getSavedPhoto==='function'?getSavedPhoto():'')||'';
+  if(avSrc){try{const pi=await loadImg(avSrc);x.save();x.beginPath();x.arc(acx,acy,ar,0,Math.PI*2);x.clip();const pw=pi.naturalWidth||pi.width,ph=pi.naturalHeight||pi.height,ps=Math.max((ar*2)/pw,(ar*2)/ph);x.drawImage(pi,acx-pw*ps/2,acy-ph*ps/2,pw*ps,ph*ps);x.restore();drew=true;}catch(e){}}
+  if(!drew){x.save();x.beginPath();x.arc(acx,acy,ar,0,Math.PI*2);x.clip();const ig=x.createLinearGradient(acx-ar,acy-ar,acx+ar,acy+ar);ig.addColorStop(0,'#2f6bff');ig.addColorStop(1,'#0a3aa0');x.fillStyle=ig;x.fillRect(acx-ar,acy-ar,ar*2,ar*2);x.fillStyle='#fff';x.font='700 58px '+FONT;x.textAlign='center';x.textBaseline='middle';const ini=((name||'Trekker').trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('')||'T').toUpperCase();x.fillText(ini,acx,acy+3);x.restore();x.textAlign='left';x.textBaseline='alphabetic';}
+  /* big display headline with gradient accent */
+  x.fillStyle='rgba(255,255,255,.72)';x.font='700 30px '+FONT;x.fillText(_spaced('THE MOUNTAIN PROMISE'),PAD,H-660);
+  x.save();x.shadowColor='rgba(0,0,0,.4)';x.shadowBlur=16;x.shadowOffsetY=3;
+  x.fillStyle='#ffffff';x.font='800 88px '+FONT;x.fillText('I took the',PAD,H-568);
+  _gradText(x,'Mountain',PAD,H-452,'800 112px '+FONT);
+  _gradText(x,'Promise.',PAD,H-336,'800 112px '+FONT);
+  x.restore();
+  /* name and date */
+  const dISO=pledgeDate();const dTxt=dISO?new Date(dISO).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'';
+  const who=(name||'A Tripomonk trekker').slice(0,26);
+  x.fillStyle='rgba(255,255,255,.9)';x.font='600 36px '+FONT;x.fillText(dTxt?who+'   ·   '+dTxt:who,PAD,H-252);
+  /* CTA (big bottom padding below this) */
+  x.fillStyle='rgba(255,255,255,.7)';x.font='600 32px '+FONT;const pre='Take yours at  ';x.fillText(pre,PAD,H-192);
+  const pw2=x.measureText(pre).width;_gradText(x,'app.tripomonk.com',PAD+pw2,H-192,'700 32px '+FONT);
   return await new Promise(r=>{try{c.toBlob(r,'image/png',.92);}catch(e){r(null);}});
 }
 async function sharePledge(){
@@ -7867,7 +7914,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='424';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='434';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
