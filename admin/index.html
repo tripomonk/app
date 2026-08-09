@@ -127,6 +127,26 @@
     .scrim-m.show{display:block}
     .kpis{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}
     .menu-btn{display:inline-grid}
+    /* tighter, touch-friendlier tables + action buttons that wrap so they stay reachable */
+    .content{padding:16px 12px 48px}
+    .tbl{font-size:12.5px}.tbl th,.tbl td{padding:9px 8px}
+    .row-acts{flex-wrap:wrap;justify-content:flex-start;gap:5px}
+    .btn2.sm{height:30px}
+    /* horizontal-scroll tables get a subtle right fade so it's clear they swipe */
+    .panel [style*="overflow-x"]{position:relative;-webkit-overflow-scrolling:touch}
+    .searchbar{display:none}
+  }
+  /* phone: tables become tap-friendly cards so every action button is reachable (no sideways scroll) */
+  @media(max-width:720px){
+    .tbl thead{display:none}
+    .tbl,.tbl tbody,.tbl tr,.tbl td{display:block;width:100%}
+    .tbl tr{border:1px solid var(--line);border-radius:12px;padding:10px 13px;margin-bottom:10px;background:var(--panel2)}
+    .tbl tr:hover td{background:transparent}
+    .tbl td{border:0;padding:6px 0;text-align:left;display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:0}
+    .tbl td:first-child{border-bottom:1px solid var(--line);padding-bottom:9px;margin-bottom:3px}
+    .tbl td[data-l]::before{content:attr(data-l);color:var(--muted);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;flex:none}
+    .tbl td .row-acts{justify-content:flex-end;flex-wrap:wrap}
+    .tbl td select{max-width:60%}
   }
 </style>
 </head>
@@ -390,8 +410,8 @@ async function renderDashboard(){
 /* BOOKINGS */
 function stTag(b){const s=(b.status||'confirmed').toLowerCase();const cls=/cancel/.test(s)?'bad':/refund/.test(s)?'warn':/pending/.test(s)?'neutral':'ok';return `<span class="tag ${cls}">${esc(b.status||'Confirmed')}</span>`;}
 function bkTable(list,acts){return wrapTbl(`<table class="tbl"><thead><tr><th>Guest</th><th>Trek</th><th>Date</th><th>Pax</th><th>Paid</th><th>Captain</th><th>Status</th>${acts?'<th></th>':'<th>Booked</th>'}</tr></thead><tbody>
-  ${list.map(b=>`<tr><td><div class="u">${avc(b.name)}<div><b>${esc(b.name||'Guest')}</b><br><small class="muted">${esc(b.phone||b.email||'')}</small></div></div></td><td>${esc(b.trek||b.title||'—')}</td><td>${esc(b.date||'—')}</td><td>${esc(b.pax||1)}</td><td><b>${INR(paidOf(b))}</b></td><td class="muted">${esc(b.captain||'—')}</td><td>${stTag(b)}</td>
-    ${acts?`<td><div class="row-acts"><button class="btn2 sm" onclick="bkAction('${jsv(b.id)}','confirm')">Confirm</button><button class="btn2 sm" onclick="bkAssign('${jsv(b.id)}')">Captain</button><button class="btn2 sm danger" onclick="bkAction('${jsv(b.id)}','refund')">Refund</button></div></td>`:`<td class="muted">${dshort(b.created_at)}</td>`}</tr>`).join('')}</tbody></table>`);}
+  ${list.map(b=>`<tr><td><div class="u">${avc(b.name)}<div><b>${esc(b.name||'Guest')}</b><br><small class="muted">${esc(b.phone||b.email||'')}</small></div></div></td><td data-l="Trek">${esc(b.trek||b.title||'—')}</td><td data-l="Date">${esc(b.date||'—')}</td><td data-l="Pax">${esc(b.pax||1)}</td><td data-l="Paid"><b>${INR(paidOf(b))}</b></td><td data-l="Captain" class="muted">${esc(b.captain||'—')}</td><td data-l="Status">${stTag(b)}</td>
+    ${acts?`<td><div class="row-acts"><button class="btn2 sm" onclick="bkAction('${jsv(b.id)}','confirm')">Confirm</button><button class="btn2 sm" onclick="bkAssign('${jsv(b.id)}')">Captain</button><button class="btn2 sm danger" onclick="bkAction('${jsv(b.id)}','refund')">Refund</button></div></td>`:`<td data-l="Booked" class="muted">${dshort(b.created_at)}</td>`}</tr>`).join('')}</tbody></table>`);}
 async function renderBookings(){
   const bk=(await getBookings()).slice().sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
   $('#content').innerHTML=`<div class="panel"><div class="tbar"><input class="grow" id="bkq" placeholder="Search guest, trek, phone…"/><select id="bkf"><option value="">All statuses</option><option>Confirmed</option><option>Pending</option><option>Cancelled</option><option>Refunded</option></select><button class="btn2" onclick="exportCSV()">Export CSV</button></div><div id="bkT"></div></div>`;
@@ -409,14 +429,51 @@ async function renderPayments(){const bk=await getBookings(),paid=bk.filter(isPa
 let _treks=null;
 async function renderTreks(){const {rows}=await qtbl('treks',b=>b.limit(600));_treks=rows.slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
   $('#content').innerHTML=`<div class="panel"><div class="tbar"><input class="grow" id="tq" placeholder="Search treks & tours…"/><span class="muted">${_treks.length} in catalogue</span></div><div id="tT"></div></div>`;
-  const paint=r=>$('#tT').innerHTML=r.length?wrapTbl(`<table class="tbl"><thead><tr><th>Name</th><th>Region</th><th>Type</th><th>Price</th><th>Discount</th><th>Offer</th><th></th></tr></thead><tbody>${r.map(t=>`<tr><td><b>${esc(t.name)}</b></td><td class="muted">${esc(t.region||'')}</td><td>${esc(t.type||'trek')}</td><td>${INR(t.price)}</td><td>${t.discount?('<span class="tag warn">'+t.discount+'% off</span>'):'<span class="muted">—</span>'}</td><td class="muted">${esc(t.offer||'')}</td><td><button class="btn2 sm" onclick="trekEdit('${jsv(t.id)}')">Edit</button></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No treks found.</div>';
+  const paint=r=>$('#tT').innerHTML=r.length?wrapTbl(`<table class="tbl"><thead><tr><th>Name</th><th>Region</th><th>Type</th><th>Price</th><th>Discount</th><th>Offer</th><th></th></tr></thead><tbody>${r.map(t=>`<tr><td><b>${esc(t.name)}</b></td><td data-l="Region" class="muted">${esc(t.region||'')}</td><td data-l="Type">${esc(t.type||'trek')}</td><td data-l="Price">${INR(t.price)}</td><td data-l="Discount">${t.discount?('<span class="tag warn">'+t.discount+'% off</span>'):'<span class="muted">—</span>'}</td><td data-l="Offer" class="muted">${esc(t.offer||'')}</td><td><button class="btn2 sm" onclick="trekEdit('${jsv(t.id)}')">Edit</button></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No treks found.</div>';
   paint(_treks);$('#tq').oninput=e=>{const v=e.target.value.toLowerCase();paint(_treks.filter(t=>((t.name||'')+' '+(t.region||'')).toLowerCase().includes(v)));};}
 function trekEdit(id){const t=(_treks||[]).find(x=>String(x.id)===String(id));if(!t)return;
   modal(`<h3>Edit — ${esc(t.name)}</h3><div class="fld"><label>Price (₹)</label><input id="teP" type="number" value="${esc(t.price||0)}"/></div><div class="fld"><label>Discount %</label><input id="teD" type="number" min="0" max="90" value="${esc(t.discount||0)}"/></div><div class="fld"><label>Offer text (yellow badge)</label><input id="teO" value="${esc(t.offer||'')}" placeholder="Early bird — save ₹1000"/></div><div class="fld"><label>Tag</label><input id="teT" value="${esc(t.tag||'')}" placeholder="Bestseller"/></div><div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="teGo">Save</button></div>`);
   $('#teGo').onclick=async()=>{const upd=Object.assign({},t,{price:parseInt($('#teP').value)||0,discount:Math.max(0,Math.min(90,parseInt($('#teD').value)||0)),offer:$('#teO').value.trim(),tag:$('#teT').value.trim()});closeOv();const r=await adminCall('save_trek',{trek:upd});if(r&&r.error){toast('Failed: '+r.error);return;}toast('Trek updated');renderTreks();};}
 /* DESTINATIONS */
-async function renderDestinations(){const {rows,error}=await qtbl('destinations',b=>b.limit(300));if(error){$('#content').innerHTML='<div class="panel"><div class="empty">Destinations table not deployed — run <b>SQL-add-destinations.sql</b>.</div></div>';return;}
-  $('#content').innerHTML=`<div class="panel"><h2>Destinations</h2><p class="desc">${rows.length} regions/places · rich content edited in the app admin</p>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Name</th><th>State</th><th>Best season</th><th>Level</th></tr></thead><tbody>${rows.map(d=>`<tr><td><b>${esc(d.name)}</b></td><td class="muted">${esc(d.state||'')}</td><td>${esc(d.best||'')}</td><td>${esc(d.lvl||'')}</td></tr>`).join('')}</tbody></table>`):'<div class="empty">No destinations.</div>'}</div>`;}
+let _dests=[];
+function slugify(s){return String(s||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');}
+async function renderDestinations(){const {rows,error}=await qtbl('destinations',b=>b.order('sort',{ascending:true}).limit(300));if(error){$('#content').innerHTML='<div class="panel"><div class="empty">Destinations table not deployed — run <b>SQL-add-destinations.sql</b>.</div></div>';return;}
+  _dests=rows;
+  $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Destinations</h2><span class="spacer"></span><button class="btn2 pri" onclick="destEdit()">+ Add destination</button></div>
+    ${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Name</th><th>State</th><th>Best season</th><th>Level</th><th></th></tr></thead><tbody>${rows.map(d=>`<tr><td><b>${esc(d.name)}</b>${d.soon?' <span class="tag warn">soon</span>':''}</td><td data-l="State" class="muted">${esc(d.state||'')}</td><td data-l="Best">${esc(d.best||'')}</td><td data-l="Level">${esc(d.lvl||'')}</td><td><div class="row-acts"><button class="btn2 sm" onclick="destEdit('${jsv(d.id)}')">Edit</button><button class="btn2 sm danger" onclick="destDel('${jsv(d.id)}')">Delete</button></div></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No destinations yet. Add your first.</div>'}</div>`;}
+function destEdit(id){
+  const d=id?(_dests.find(x=>String(x.id)===String(id))||{}):{};
+  const nl=a=>Array.isArray(a)?a.join('\n'):'';
+  const cs=a=>Array.isArray(a)?a.join(', '):'';
+  modal(`<h3>${id?'Edit destination':'Add destination'}</h3>
+    <div class="fld"><label>Name</label><input id="dN" value="${esc(d.name||'')}"/></div>
+    <div class="fld"><label>State / region</label><input id="dS" value="${esc(d.state||'')}"/></div>
+    <div class="fld"><label>Best season</label><input id="dB" value="${esc(d.best||'')}" placeholder="Sep – Jun"/></div>
+    <div class="fld"><label>Level</label><input id="dL" value="${esc(d.lvl||'')}" placeholder="Beginner friendly"/></div>
+    <div class="fld"><label>Budget / day</label><input id="dBu" value="${esc(d.budget||'')}" placeholder="Rs 2,000 – 5,000 / day"/></div>
+    <div class="fld"><label>Image URL</label><input id="dImg" value="${esc(d.img||'')}" placeholder="https://…"/></div>
+    <div class="fld"><label>Blurb</label><textarea id="dBl">${esc(d.blurb||'')}</textarea></div>
+    <div class="fld"><label>Attractions (one per line)</label><textarea id="dA">${esc(nl(d.attractions))}</textarea></div>
+    <div class="fld"><label>Tips (one per line)</label><textarea id="dT">${esc(nl(d.tips))}</textarea></div>
+    <div class="fld"><label>Nearby (comma separated)</label><input id="dNr" value="${esc(cs(d.near))}"/></div>
+    <div class="fld"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="dSoon" ${d.soon?'checked':''} style="width:auto"/> Mark as “coming soon”</label></div>
+    <div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="dGo">${id?'Save':'Add'}</button></div>`);
+  $('#dGo').onclick=()=>destSave(id||'');
+}
+async function destSave(id){
+  const name=($('#dN').value||'').trim();if(!name){toast('Name is required');return;}
+  const lines=v=>(v||'').split('\n').map(s=>s.trim()).filter(Boolean);
+  const csv=v=>(v||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const row={id:id||slugify(name),name,state:$('#dS').value.trim(),best:$('#dB').value.trim(),lvl:$('#dL').value.trim(),
+    budget:$('#dBu').value.trim(),img:$('#dImg').value.trim(),blurb:$('#dBl').value.trim(),
+    attractions:lines($('#dA').value),tips:lines($('#dT').value),near:csv($('#dNr').value),soon:$('#dSoon').checked};
+  if(!id)row.sort=(_dests.length||0)+1;
+  closeOv();
+  const {error}=await sb.from('destinations').upsert(row,{onConflict:'id'});
+  toast(error?('Failed: '+error.message):(id?'Destination updated':'Destination added'));
+  if(!error)renderDestinations();
+}
+function destDel(id){confirmDo('Delete this destination? (It’s removed from the app catalogue too.)',async()=>{const {error}=await sb.from('destinations').delete().eq('id',id);toast(error?('Failed: '+error.message):'Deleted');if(!error)renderDestinations();});}
 /* DEPARTURES */
 async function renderDepartures(){const {rows}=await qtbl('treks',b=>b.limit(600));
   const withB=rows.map(t=>({n:t.name,b:Array.isArray(t.batches)?t.batches.length:(t.batches?Object.keys(t.batches).length:0)})).filter(x=>x.b>0).sort((a,b)=>b.b-a.b);
@@ -428,7 +485,7 @@ async function renderPacking(){const {rows}=await qtbl('treks',b=>b.limit(600));
 /* GEAR */
 async function renderGear(){const {rows,error}=await qtbl('gear_inventory',b=>b.order('item'));if(error){$('#content').innerHTML='<div class="panel"><div class="empty">Gear table not deployed — run <b>SQL-add-gear-and-moderation.sql</b>.</div></div>';return;}
   const av=g=>Math.max(0,(g.total||0)-(g.rented||0)-(g.damaged||0)-(g.maintenance||0));
-  $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Rental gear</h2><span class="spacer"></span><button class="btn2 pri" onclick="gearAdd()">+ Add item</button></div>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Item</th><th>Category</th><th>Total</th><th>Rented</th><th>Damaged</th><th>Available</th></tr></thead><tbody>${rows.map(g=>`<tr><td><b>${esc(g.item)}</b></td><td class="muted">${esc(g.category||'')}</td><td>${stepper(g.id,'total',g.total||0)}</td><td>${stepper(g.id,'rented',g.rented||0)}</td><td>${stepper(g.id,'damaged',g.damaged||0)}</td><td><b>${av(g)}</b></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No gear yet.</div>'}</div>`;}
+  $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Rental gear</h2><span class="spacer"></span><button class="btn2 pri" onclick="gearAdd()">+ Add item</button></div>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Item</th><th>Category</th><th>Total</th><th>Rented</th><th>Damaged</th><th>Available</th></tr></thead><tbody>${rows.map(g=>`<tr><td><b>${esc(g.item)}</b></td><td data-l="Category" class="muted">${esc(g.category||'')}</td><td data-l="Total">${stepper(g.id,'total',g.total||0)}</td><td data-l="Rented">${stepper(g.id,'rented',g.rented||0)}</td><td data-l="Damaged">${stepper(g.id,'damaged',g.damaged||0)}</td><td data-l="Available"><b>${av(g)}</b></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No gear yet.</div>'}</div>`;}
 function stepper(id,f,v){return `<span class="stepper"><button onclick="gearAdj('${jsv(id)}','${f}',-1)">−</button><b id="g_${jsv(id)}_${f}">${v}</b><button onclick="gearAdj('${jsv(id)}','${f}',1)">+</button></span>`;}
 async function gearAdj(id,f,d){const el=document.getElementById('g_'+id+'_'+f);let v=Math.max(0,(parseInt(el.textContent)||0)+d);el.textContent=v;const o={};o[f]=v;const {error}=await sb.from('gear_inventory').update(o).eq('id',id);if(error)toast('Failed: '+error.message);}
 function gearAdd(){modal(`<h3>Add gear item</h3><div class="fld"><label>Item</label><input id="giName" placeholder="Down jacket"/></div><div class="fld"><label>Category</label><input id="giCat" placeholder="Clothing"/></div><div class="fld"><label>Total quantity</label><input id="giQty" type="number" value="0"/></div><div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="giGo">Add</button></div>`);$('#giGo').onclick=async()=>{const item=$('#giName').value.trim();if(!item)return;closeOv();const {error}=await sb.from('gear_inventory').upsert({id:'g'+Date.now(),item,category:$('#giCat').value.trim(),total:parseInt($('#giQty').value)||0,rented:0,damaged:0,maintenance:0});toast(error?('Failed: '+error.message):'Item added');if(!error)renderGear();};}
@@ -494,8 +551,15 @@ function guideAdd(){modal(`<h3>Add guide</h3><div class="fld"><label>Name</label
 function guideDel(id){confirmDo('Remove this guide?',async()=>{const r=await adminCall('delete_guide',{id});toast(r&&r.error?('Failed: '+r.error):'Removed');if(!(r&&r.error))renderGuides();});}
 /* STAFF */
 async function renderStaff(){const {rows,error}=await qtbl('staff',b=>b.limit(200));
-  $('#content').innerHTML=`<div class="panel"><h2>Team</h2><p class="desc">${error?'staff table not readable':rows.length+' staff'}</p>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Name</th><th>Email</th><th>Role</th></tr></thead><tbody>${rows.map(s=>`<tr><td><b>${esc(s.name||'—')}</b></td><td class="muted">${esc(s.email||'')}</td><td><select class="btn2 sm" onchange="staffRole('${jsv(s.email)}',this.value)"><option ${s.role==='captain'?'selected':''}>captain</option><option ${s.role==='operations'?'selected':''}>operations</option><option ${s.role==='finance'?'selected':''}>finance</option><option ${s.role==='content'?'selected':''}>content</option><option ${s.role==='community'?'selected':''}>community</option></select></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No staff — add them from the app admin → Staff.</div>'}<p class="muted" style="font-size:12px;margin-top:14px">Owner (${esc(OWNER)}) always has full access.</p></div>`;}
-async function staffRole(email,role){const {error}=await sb.from('staff').update({role}).eq('email',email);toast(error?('Change roles in the app admin — '+error.message):('Role set to '+role));}
+  const ROLES=['operations','finance','content','community','captain'];
+  $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Team &amp; admins</h2><span class="spacer"></span><button class="btn2 pri" onclick="staffAdd()">+ Add admin</button></div>
+    <p class="desc">${error?('staff table not readable — '+(error.code||'')):(rows.length+' team member'+(rows.length!==1?'s':''))}</p>
+    ${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Email</th><th>Role</th><th></th></tr></thead><tbody>${rows.map(s=>`<tr><td><b>${esc(s.email||'')}</b></td><td><select class="btn2 sm" onchange="staffRole('${jsv(s.email)}',this.value)">${ROLES.map(r=>`<option ${(''+s.role)===r?'selected':''}>${r}</option>`).join('')}</select></td><td style="text-align:right"><button class="btn2 sm danger" onclick="staffDel('${jsv(s.email)}')">Remove</button></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No staff yet. Add your first admin.</div>'}
+    <p class="muted" style="font-size:12px;margin-top:14px">The owner (${esc(OWNER)}) always has full access. A new admin must <b>also sign up in the app with that same email</b> before they can log in here. Roles limit what they see: operations, finance, content, community. (captain = in-app trek check-in only, no console.)</p></div>`;}
+function staffAdd(){modal(`<h3>Add an admin / staff member</h3><div class="fld"><label>Email (must match their Tripomonk account)</label><input id="stEmail" type="email" placeholder="name@example.com"/></div><div class="fld"><label>Role</label><select id="stRole"><option value="operations">operations</option><option value="finance">finance</option><option value="content">content</option><option value="community">community</option><option value="captain">captain (app check-in only)</option></select></div><div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="stGo">Add admin</button></div>`);
+  $('#stGo').onclick=async()=>{const email=($('#stEmail').value||'').trim().toLowerCase();if(!/.+@.+\..+/.test(email)){toast('Enter a valid email');return;}closeOv();const {error}=await sb.from('staff').upsert({email,role:$('#stRole').value},{onConflict:'email'});toast(error?('Failed: '+error.message):('Added '+email));if(!error)renderStaff();};}
+function staffDel(email){if((email||'').toLowerCase()===OWNER){toast('The owner can’t be removed.');return;}confirmDo('Remove '+email+' from the team?',async()=>{const {error}=await sb.from('staff').delete().eq('email',email);toast(error?('Failed: '+error.message):'Removed');if(!error)renderStaff();});}
+async function staffRole(email,role){const {error}=await sb.from('staff').update({role}).eq('email',email);toast(error?('Role update blocked — run SQL-admin-writes-fix.sql ('+(error.code||error.message)+')'):('Role set to '+role));}
 /* COMMUNITY */
 async function renderCommunity(){const {rows,error}=await qtbl('community_posts',b=>b.order('created_at',{ascending:false}).limit(80));if(error){$('#content').innerHTML='<div class="panel"><div class="empty">Posts not readable.</div></div>';return;}
   $('#content').innerHTML=`<div class="panel"><h2>Recent posts</h2><p class="desc">${rows.length} latest</p>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Author</th><th>Caption</th><th>Posted</th><th></th></tr></thead><tbody>${rows.map(p=>`<tr><td><div class="u">${avc(p.author_name)}<b>${esc(p.author_name||'Trekker')}</b></div></td><td class="muted">${esc((p.txt||'').slice(0,80))}</td><td class="muted">${timeAgo(p.created_at)}</td><td><div class="row-acts"><button class="btn2 sm" onclick="postFeature('${jsv(p.id)}',${p.featured?'false':'true'})">${p.featured?'Unfeature':'Feature'}</button><button class="btn2 sm danger" onclick="postDel('${jsv(p.id)}')">Delete</button></div></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No posts.</div>'}</div>`;}
@@ -528,7 +592,23 @@ async function renderSettings(){const ping=await adminCall('ping');
     <tr><td>Role</td><td style="text-align:right"><b>${esc(ROLE)}</b></td></tr>
     <tr><td>Supabase project</td><td style="text-align:right"><b>${esc(CFG.URL.replace('https://','').split('.')[0])}</b></td></tr>
     <tr><td>Admin edge function</td><td style="text-align:right">${ping&&!ping.error?'<span class="tag ok">reachable</span>':'<span class="tag bad">check requireAdmin</span>'}</td></tr>
-  </tbody></table><p class="muted" style="font-size:12px;margin-top:14px">Reuses app.tripomonk.com's Supabase backend. Writes are authorised server-side (RLS + admin edge function). A few catalogue editors (destinations content, batch dates, packing items, home layout) are managed in the in-app admin and shown read-only here.</p></div>`;}
+  </tbody></table>
+  <div style="margin-top:16px"><button class="btn2 pri" onclick="runDiag()">Run diagnostics</button> <span class="muted" style="font-size:12px">Tests read + write access for every section on this device.</span></div>
+  <div id="diag" style="margin-top:14px"></div>
+  <p class="muted" style="font-size:12px;margin-top:14px">Reuses app.tripomonk.com's Supabase backend. Writes are authorised server-side (RLS + admin edge function). A few catalogue editors (destinations content, batch dates, packing items, home layout) are managed in the in-app admin and shown read-only here.</p></div>`;}
+async function runDiag(){
+  const box=$('#diag');if(!box)return;box.innerHTML='<div class="skel" style="height:14px;width:55%"></div>';
+  const tables=[['treks','id'],['destinations','id'],['guides','id'],['gear_inventory','id'],['permit_applications','id'],['support_tickets','id'],['vendors','id'],['reviews','id'],['community_posts','id'],['host_applications','id'],['staff','email'],['app_config','key'],['profiles','id'],['app_events','id']];
+  const out=[];
+  for(const [t,col] of tables){ try{ const {data,error}=await sb.from(t).select(col).limit(1000); out.push([t, error?('❌ '+(error.code||'')+' '+(error.message||'').slice(0,32)):('✅ read ('+((data||[]).length)+')')]); }catch(e){ out.push([t,'❌ exception']); } }
+  let edge; try{ const r=await adminCall('ping'); edge=(r&&r.ok)?'✅ reachable':('❌ '+((r&&r.error)||'no ok — requireAdmin?')); }catch(e){ edge='❌ '+(e&&e.message||e); }
+  let wr; try{ const {error}=await sb.from('app_config').upsert({key:'_diag',value:String(Date.now())},{onConflict:'key'}); wr=error?('❌ '+(error.code||'')+' '+(error.message||'').slice(0,36)):'✅ owner write OK'; }catch(e){ wr='❌ '+(e&&e.message||e); }
+  box.innerHTML=`<div class="sec-t">Diagnostics — signed in as ${esc(ME.email||'')} (${esc(ROLE)})</div><div style="overflow-x:auto"><table class="tbl"><tbody>
+    <tr><td><b>Admin edge fn</b> (treks/guides/bookings/posts writes)</td><td style="text-align:right">${edge}</td></tr>
+    <tr><td><b>Owner direct write</b> (reviews/gear/permits/vendors/AI/dest.)</td><td style="text-align:right">${wr}</td></tr>
+    ${out.map(o=>`<tr><td>${esc(o[0])}</td><td style="text-align:right">${o[1]}</td></tr>`).join('')}
+  </tbody></table></div><p class="muted" style="font-size:12px;margin-top:8px">Screenshot the ❌ rows and send them — each maps to one exact fix (usually a missing RLS policy).</p>`;
+}
 
 boot();
 </script>
