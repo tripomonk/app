@@ -679,7 +679,7 @@ async function syncFollow(n,on){
   const sb=getSupaClient();if(!sb)return true;
   const uid=await authUid();if(!uid)return false;
   try{
-    if(on){const{error}=await sb.from('follows').upsert({follower_id:uid,following_name:n},{onConflict:'follower_id,following_name'});if(error)throw error;}
+    if(on){const{error}=await sb.from('follows').upsert({follower_id:uid,follower_name:myName(),following_name:n},{onConflict:'follower_id,following_name'});if(error)throw error;}
     else{const{error}=await sb.from('follows').delete().eq('follower_id',uid).eq('following_name',n);if(error)throw error;}
     return true;
   }catch(e){return false;}
@@ -4281,12 +4281,23 @@ async function refreshMyProfile(){
     }
   }catch(e){}
 }
+let _uidForNameCache={};
 async function uidForName(name){
   const sb=getSupaClient();if(!sb||!name)return null;
-  /* profiles first (covers users who haven't posted yet), then posts */
-  try{const{data}=await sb.from('profiles').select('id').eq('name',name).limit(1);if(data&&data[0])return data[0].id;}catch(e){}
-  const{data:d2}=await sb.from('community_posts').select('user_id').eq('author_name',name).not('user_id','is',null).limit(1);
-  return(d2&&d2[0])?d2[0].user_id:null;
+  name=String(name).trim();if(!name)return null;
+  if(_uidForNameCache[name])return _uidForNameCache[name];   /* cache successes only, so a later signup still resolves */
+  let uid=null;
+  try{
+    /* 1) exact name  2) case-insensitive/trimmed name  3) username (handles a @handle or username passed as name) */
+    let r=await sb.from('profiles').select('id').eq('name',name).limit(1);
+    if(r.data&&r.data[0])uid=r.data[0].id;
+    if(!uid){r=await sb.from('profiles').select('id').ilike('name',name).limit(1);if(r.data&&r.data[0])uid=r.data[0].id;}
+    if(!uid){const h=name.replace(/^@/,'');if(h){r=await sb.from('profiles').select('id').ilike('username',h).limit(1);if(r.data&&r.data[0])uid=r.data[0].id;}}
+    /* 4) fall back to whoever authored posts under this name */
+    if(!uid){const r2=await sb.from('community_posts').select('user_id').eq('author_name',name).not('user_id','is',null).limit(1);if(r2.data&&r2.data[0])uid=r2.data[0].user_id;}
+  }catch(e){}
+  if(uid)_uidForNameCache[name]=uid;
+  return uid;
 }
 /* Notifications the user swiped away. The DB delete can be a no-op (the table has
    no delete RLS policy on older projects), so we also remember dismissals locally
@@ -4691,7 +4702,7 @@ async function renderPerson(){if(!curPerson){go('community');return;}const p=get
   if(sb){try{
     const uid=await uidForName(p.n);
     const[fr,fg]=await Promise.all([
-      sb.from('follows').select('*',{count:'exact',head:true}).eq('following_name',p.n),
+      sb.from('follows').select('*',{count:'exact',head:true}).ilike('following_name',p.n),
       uid?sb.from('follows').select('*',{count:'exact',head:true}).eq('follower_id',uid):Promise.resolve({count:me?followCount():0})
     ]);
     followers=fr.count||0; following=fg.count||0;
@@ -5564,8 +5575,8 @@ async function nameToUid(name){
   if(!name)return null;
   if(name==='Tripomonk Team')return teamIsLive()?_supportUid:null;   /* Team routes to the support account */
   if(name==='You'||name===myName())return await myUid();
-  if(_nameUidCache[name]!==undefined)return _nameUidCache[name];
-  const uid=await uidForName(name);_nameUidCache[name]=uid||null;return _nameUidCache[name];
+  if(_nameUidCache[name])return _nameUidCache[name];   /* cache successes only — a failed lookup must retry, or the message never delivers */
+  const uid=await uidForName(name);if(uid)_nameUidCache[name]=uid;return uid;
 }
 /* 'Tripomonk Team' is a real conversation with the support account when one is configured
    AND I'm a customer (not the support account itself). Otherwise it's the local welcome bot. */
@@ -6139,8 +6150,13 @@ async function renderFollowList(){
   try{
     if(followers){
       /* who follows this person → rows where following_name = them (accepted only) */
-      const{data}=await sb.from('follows').select('follower_name,follower_id,status').eq('following_name',name);
-      names=(data||[]).filter(r=>(r.status||'accepted')==='accepted').map(r=>r.follower_name).filter(Boolean);
+      const{data}=await sb.from('follows').select('follower_name,follower_id,status').ilike('following_name',name);
+      const rows=(data||[]).filter(r=>(r.status||'accepted')==='accepted');
+      /* older follow rows saved no follower_name — resolve those from the profile id so
+         nobody is silently missing from the list */
+      const missIds=[...new Set(rows.filter(r=>!r.follower_name&&r.follower_id).map(r=>r.follower_id))];
+      if(missIds.length){try{const{data:profs}=await sb.from('profiles').select('id,name').in('id',missIds);const byId={};(profs||[]).forEach(p=>{if(p.id)byId[p.id]=p.name;});rows.forEach(r=>{if(!r.follower_name&&byId[r.follower_id])r.follower_name=byId[r.follower_id];});}catch(e){}}
+      names=rows.map(r=>r.follower_name).filter(Boolean);
     }else{
       /* who this person follows → rows where follower_id = their uid */
       const uid=(name===myName()&&currentUser)?currentUser.id:await uidForName(name);
@@ -7990,7 +8006,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='440';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='441';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
