@@ -2218,10 +2218,15 @@ function doCompare(){
 }
 function cmpSearch(v){_cmpQ=v||'';renderCompare();}
 function shareTrekByName(name){
+  const t=(typeof treks!=='undefined'?treks:[]).find(x=>x.n===name)||{n:name};
   const url=window.location.origin+'/t/'+slugify(name);
-  const data={title:'Tripomonk — '+name,text:'Check out the '+name+' trek on Tripomonk 🏔️',url};
-  if(navigator.share){navigator.share(data).catch(()=>{});return;}
-  try{navigator.clipboard.writeText(url);toast('Trek link copied');}catch(e){note(url,'Share');}
+  const price=t.price?INR(typeof discPrice==='function'?discPrice(t.price,t):t.price):'';
+  const meta=[t.region,t.days?t.days+'D':'',t.lvl].filter(Boolean).join('   ·   ');
+  const b=_shareBits(t);
+  shareWithCard(
+    {img:t.img,title:name,badge:(typeof isTour==='function'&&isTour(t))?'ROAD TRIP':'GUIDED TREK',meta:meta,price:price,priceLabel:'FROM',priceUnit:'/ person',depart:b.depart,seats:b.seats,offer:b.offer},
+    {url:url,text:'Check out the '+name+' trek on Tripomonk',title:'Tripomonk - '+name,fileName:slugify(name)}
+  );
 }
 function renderCompare(){
   const box=document.getElementById('compareBody');if(!box)return;
@@ -2766,14 +2771,23 @@ function pickupBlockHTML(t){
     +(pk.map?'<a class="pickup-map" href="'+esc(pk.map)+'" target="_blank" rel="noopener"><span class="msr">map</span>Open pickup point in Maps →</a>':'')
     +'</div>';
 }
+/* booking bits for a trek share card: next departure date, seats status, offer/discount */
+function _shareBits(t){
+  let depart='',seats='',offer='';
+  try{if(typeof getBatches==='function'&&t&&t.n){const bs=getBatches(t.n)||[];let nx=(typeof batchState==='function')?bs.find(b=>batchState(b.seats)!=='full'):null;nx=nx||bs[0];if(nx){depart=(nx.label?String(nx.label).split(/[–—-]/)[0].trim():'')||((typeof fmtBatchDate==='function')?fmtBatchDate(nx.start):'');seats=nx.seats||'';}}}catch(e){}
+  if(t&&t.discount>0)offer=t.discount+'% OFF';else if(t&&t.offer)offer=String(t.offer).slice(0,22);
+  return {depart:depart,seats:seats,offer:offer};
+}
 async function shareTrek(){
   const t=cart.trek;if(!t)return;
-  /* path URL (not #hash) so it gets a rich share card via the /t/ edge function */
   const url=window.location.origin+'/t/'+slugify(t.n);
-  const data={title:'Tripomonk — '+t.n,text:`Check out the ${t.n} trek (${t.region}) on Tripomonk`,url};
-  if(navigator.share){try{await navigator.share(data);return;}catch(e){if(e&&e.name==='AbortError')return;}}
-  try{await navigator.clipboard.writeText(url);note('Trip link copied — share it anywhere!','Link copied');}
-  catch(e){note(url,'Share this trip');}
+  const price=t.price?INR(typeof discPrice==='function'?discPrice(t.price,t):t.price):'';
+  const meta=[t.region,t.days?t.days+'D':'',t.lvl].filter(Boolean).join('   ·   ');
+  const b=_shareBits(t);
+  await shareWithCard(
+    {img:t.img,title:t.n,badge:(typeof isTour==='function'&&isTour(t))?'ROAD TRIP':'GUIDED TREK',meta:meta,price:price,priceLabel:'FROM',priceUnit:'/ person',depart:b.depart,seats:b.seats,offer:b.offer},
+    {url:url,text:'Check out the '+t.n+' trek on Tripomonk',title:'Tripomonk - '+t.n,fileName:slugify(t.n)}
+  );
 }
 /* open a trek/post directly from a shared deep link (#trek=Name) */
 function handleDeepLink(){
@@ -4288,10 +4302,12 @@ async function uidForName(name){
   if(_uidForNameCache[name])return _uidForNameCache[name];   /* cache successes only, so a later signup still resolves */
   let uid=null;
   try{
-    /* 1) exact name  2) case-insensitive/trimmed name  3) username (handles a @handle or username passed as name) */
-    let r=await sb.from('profiles').select('id').eq('name',name).limit(1);
+    /* 1) exact name  2) case-insensitive/trimmed name  3) username (handles a @handle or username passed as name).
+       When duplicate profiles share a name, PREFER the completed one (has a username) — otherwise an
+       empty duplicate gets picked and its 0 follows/messages break counts + delivery. */
+    let r=await sb.from('profiles').select('id,username').eq('name',name).order('username',{ascending:true,nullsFirst:false}).limit(1);
     if(r.data&&r.data[0])uid=r.data[0].id;
-    if(!uid){r=await sb.from('profiles').select('id').ilike('name',name).limit(1);if(r.data&&r.data[0])uid=r.data[0].id;}
+    if(!uid){r=await sb.from('profiles').select('id,username').ilike('name',name).order('username',{ascending:true,nullsFirst:false}).limit(1);if(r.data&&r.data[0])uid=r.data[0].id;}
     if(!uid){const h=name.replace(/^@/,'');if(h){r=await sb.from('profiles').select('id').ilike('username',h).limit(1);if(r.data&&r.data[0])uid=r.data[0].id;}}
     /* 4) fall back to whoever authored posts under this name */
     if(!uid){const r2=await sb.from('community_posts').select('user_id').eq('author_name',name).not('user_id','is',null).limit(1);if(r2.data&&r2.data[0])uid=r2.data[0].user_id;}
@@ -5114,6 +5130,62 @@ const PLEDGE_LINK='https://app.tripomonk.com/#take-promise';
 /* a real Himalayan trek photo (Unsplash, CORS-safe) used when no featured trek image is loaded */
 const PLEDGE_BG='https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1080&q=70';
 function loadImg(src){return new Promise((res,rej)=>{const i=new Image();i.crossOrigin='anonymous';i.onload=()=>res(i);i.onerror=rej;i.src=src;});}
+/* Shareable 1080x1920 card for a trek / tour / host trip (same idea as the Mountain
+   Promise card): real photo background, brand row, title, meta, price, CTA. */
+async function makeShareCard(o){
+  o=o||{};const W=1080,H=1920,PAD=96,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+  const wrapC=(t,px,py,maxW,lh,maxLines)=>{const words=String(t||'').split(' ');let line='',yy=py,n=1;for(let i=0;i<words.length;i++){const test=line?line+' '+words[i]:words[i];if(x.measureText(test).width>maxW&&line){if(maxLines&&n>=maxLines){let rest=line;while(x.measureText(rest+'...').width>maxW&&rest.length>1)rest=rest.slice(0,-1);x.fillText(rest+'...',px,yy);return yy;}x.fillText(line,px,yy);line=words[i];yy+=lh;n++;}else line=test;}x.fillText(line,px,yy);return yy;};
+  /* background: the trip photo, else a curated Himalaya photo, else a gradient */
+  let drew=false;
+  for(const src of [o.img,PLEDGE_BG]){if(drew||!src)continue;try{const im=await loadImg(src);const iw=im.naturalWidth||im.width,ih=im.naturalHeight||im.height,s=Math.max(W/iw,H/ih);x.drawImage(im,(W-iw*s)/2,(H-ih*s)/2,iw*s,ih*s);drew=true;}catch(e){}}
+  if(!drew){const gg=x.createLinearGradient(0,0,W,H);gg.addColorStop(0,'#0b5cff');gg.addColorStop(1,'#08183a');x.fillStyle=gg;x.fillRect(0,0,W,H);}
+  x.fillStyle='rgba(6,14,30,.30)';x.fillRect(0,0,W,H);
+  let tg=x.createLinearGradient(0,0,0,H*0.26);tg.addColorStop(0,'rgba(4,10,24,.55)');tg.addColorStop(1,'rgba(4,10,24,0)');x.fillStyle=tg;x.fillRect(0,0,W,H*0.26);
+  let bd=x.createLinearGradient(0,H*0.32,0,H);bd.addColorStop(0,'rgba(3,9,22,0)');bd.addColorStop(.5,'rgba(3,9,22,.72)');bd.addColorStop(1,'rgba(3,9,22,.97)');x.fillStyle=bd;x.fillRect(0,H*0.32,W,H*0.68);
+  x.textAlign='left';x.textBaseline='alphabetic';
+  /* badge + title are BOTTOM-anchored just above the meta line, so a short 1-line name
+     doesn't leave a big gap and a long 2-line name still fits. */
+  const metaY=H-372,maxW=W-2*PAD,lh=86;
+  x.font='800 80px '+FONT;
+  let lines=[],line='';for(const w of String(o.title||'').split(' ')){const test=line?line+' '+w:w;if(x.measureText(test).width>maxW&&line){lines.push(line);line=w;if(lines.length>=2)break;}else line=test;}
+  if(line&&lines.length<2)lines.push(line);lines=lines.slice(0,2);
+  if(lines.length===2){let l2=lines[1];while(x.measureText(l2+'...').width>maxW&&l2.length>1)l2=l2.slice(0,-1);if(l2!==lines[1])lines[1]=l2+'...';}
+  const firstBaseline=(metaY-58)-(lines.length-1)*lh;
+  if(o.badge){x.fillStyle='#ffce1f';x.font='700 30px '+FONT;x.fillText(_spaced(String(o.badge)),PAD,firstBaseline-92);}
+  x.save();x.shadowColor='rgba(0,0,0,.45)';x.shadowBlur=16;x.shadowOffsetY=3;
+  x.fillStyle='#ffffff';x.font='800 80px '+FONT;lines.forEach((ln,i)=>x.fillText(ln,PAD,firstBaseline+i*lh));
+  x.restore();
+  /* brand logo mark, right-aligned beside the title block (rounded corners) */
+  try{const logo=await loadImg('icons/icon-512.png');const lz=118,lx=W-PAD-lz,ly=firstBaseline-96,lr=28;x.save();_rrect(x,lx,ly,lz,lz,lr);x.clip();x.drawImage(logo,lx,ly,lz,lz);x.restore();}catch(e){}
+  if(o.meta){x.fillStyle='rgba(255,255,255,.9)';x.font='500 36px '+FONT;x.fillText(o.meta,PAD,metaY);}
+  /* next departure + seats (booking driver) */
+  if(o.depart||o.seats){const seatsHot=/few|last|filling|left/i.test(o.seats||'');
+    x.font='600 30px '+FONT;let dx=PAD;
+    if(o.depart){x.fillStyle='rgba(255,255,255,.9)';const dt='Next: '+o.depart;x.fillText(dt,dx,H-312);dx+=x.measureText(dt).width;}
+    if(o.seats){x.fillStyle=seatsHot?'#ffce1f':'rgba(255,255,255,.7)';const st=(o.depart?'   ·   ':'')+o.seats;x.fillText(st,dx,H-312);}}
+  if(o.price){
+    x.fillStyle='rgba(255,255,255,.62)';x.font='700 26px '+FONT;x.fillText(_spaced(o.priceLabel||'FROM'),PAD,H-246);
+    const w1=_gradText(x,o.price,PAD,H-176,'800 74px '+FONT);
+    let endx=PAD+w1;
+    if(o.priceUnit){x.fillStyle='rgba(255,255,255,.72)';x.font='600 34px '+FONT;const u=' '+o.priceUnit;x.fillText(u,PAD+w1+16,H-176);endx=PAD+w1+16+x.measureText(u).width;}
+    if(o.offer){const ot=String(o.offer).toUpperCase();x.font='800 28px '+FONT;const tw=x.measureText(ot).width,pw2=tw+40,ph2=56,px2=endx+26,py2=H-176-42;x.fillStyle='#ffce1f';_rrect(x,px2,py2,pw2,ph2,28);x.fill();x.fillStyle='#0a2a6b';x.fillText(ot,px2+20,py2+38);}
+  }
+  x.fillStyle='rgba(255,255,255,.7)';x.font='600 32px '+FONT;const pre='Book on  ';x.fillText(pre,PAD,H-88);const pw=x.measureText(pre).width;_gradText(x,'app.tripomonk.com',PAD+pw,H-88,'700 32px '+FONT);
+  return await new Promise(r=>{try{c.toBlob(r,'image/png',.9);}catch(e){r(null);}});
+}
+/* share `cardOpts` as an image + link. Instagram/WhatsApp get the image on mobile;
+   desktop falls back to downloading the image and copying the link. */
+async function shareWithCard(cardOpts,share){
+  let file=null;
+  try{const blob=await makeShareCard(cardOpts);if(blob)file=new File([blob],(share.fileName||'tripomonk')+'.png',{type:'image/png'});}catch(e){}
+  try{
+    if(file&&navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],text:share.text,url:share.url});return;}
+    if(navigator.share){await navigator.share({title:share.title,text:share.text,url:share.url});return;}
+  }catch(e){if(e&&e.name==='AbortError')return;}
+  if(file){const a=document.createElement('a');a.href=URL.createObjectURL(file);a.download=file.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);}
+  try{await navigator.clipboard.writeText(share.url);}catch(e){}
+  if(typeof toast==='function')toast('Share image saved & link copied');
+}
 /* build a 1080×1920 Instagram-story card — editorial "postcard from the mountains".
    Background = a REAL trek photo (never a drawn vector). Type stays ≤ semibold (600).
    Only ever built at share time. */
@@ -8006,7 +8078,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='441';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='448';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -11489,10 +11561,15 @@ async function shareHostTrip(id,title){
   const t=findHostTrip(id);
   if(t&&t.status&&t.status!=='live'){note('This trip goes public once Tripomonk publishes it. You can share it then to get bookings.','Not live yet');return;}
   const url=hostTripUrl(id,title);
-  const data={title:'Tripomonk — '+title,text:'Join my trek “'+title+'” on Tripomonk 🏔️',url};
-  if(navigator.share){try{await navigator.share(data);return;}catch(e){if(e&&e.name==='AbortError')return;}}
-  try{await navigator.clipboard.writeText(url);toast('Trip link copied — share it anywhere');}
-  catch(e){note(url,'Share this trip');}
+  const price=(t&&t.price)?INR(t.price):'';
+  const meta=t?[t.destination,t.days?t.days+'D':'',t.difficulty].filter(Boolean).join('   ·   '):'';
+  const first=(t&&t.host_name)?String(t.host_name).trim().split(' ')[0].toUpperCase():'';
+  const depart=(t&&t.start_date&&typeof fmtBatchDate==='function')?fmtBatchDate(t.start_date):'';
+  const seats=(t&&t.max_people)?('Max '+t.max_people+' spots'):'';
+  await shareWithCard(
+    {img:t?t.img:'',title:title,badge:first?('HOSTED BY '+first):'HOSTED TRIP',meta:meta,price:price,priceLabel:'FROM',priceUnit:'/ person',depart:depart,seats:seats},
+    {url:url,text:'Join my trek '+title+' on Tripomonk',title:'Tripomonk - '+title,fileName:slugify(title)}
+  );
 }
 /* share a trip INSIDE the community as a post, so it markets itself in the feed */
 async function postTripToCommunity(id){
