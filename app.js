@@ -602,7 +602,7 @@ const AVG=[['#ffd27a','#ff7a59'],['#7ad1ff','#2f6bff'],['#b7f5c0','#2fb56b'],['#
 function initials(n){return n.split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase();}
 function avHash(n){let h=0;for(let i=0;i<n.length;i++)h=(h*31+n.charCodeAt(i))|0;return Math.abs(h);}
 /* other people's profile photos, keyed by display name (filled from `profiles`) */
-let photoByName={},hostByName={},unameByName={},socialsByName={};
+let photoByName={},hostByName={},unameByName={},socialsByName={},bioByName={},categoryByName={};
 /* when each name was last fetched — so a changed DP/username refreshes instead of
    sticking on the first cached copy for the whole session */
 let _authorFetchedAt={};
@@ -1461,6 +1461,25 @@ function onUsernameInput(v){
 const SOCIALS=[['instagram','Instagram','#E1306C'],['facebook','Facebook','#1877F2'],['youtube','YouTube','#FF0000'],
   ['linkedin','LinkedIn','#0A66C2'],['x','X (Twitter)','#111827'],['reddit','Reddit','#FF4500'],['website','Website','#2f6bff']];
 function getSavedSocials(){try{return JSON.parse(localStorage.getItem('tmk_socials')||'{}')||{};}catch(e){return{};}}
+/* brand glyphs for the social icon chips (Material Symbols + brand letters) */
+const SOC_ICON={instagram:'<span class="msr">photo_camera</span>',facebook:'<b>f</b>',youtube:'<span class="msr">smart_display</span>',linkedin:'<b>in</b>',x:'<b>X</b>',reddit:'<span class="msr">forum</span>',website:'<span class="msr">language</span>'};
+function renderSocialChips(){
+  const sc=document.getElementById('epSocials');if(!sc)return;const soc=getSavedSocials();
+  sc.innerHTML='<div class="soc-chips">'+SOCIALS.map(s=>`<button type="button" class="soc-chip${soc[s[0]]?' on':''}" id="socchip_${s[0]}" style="--sc:${s[2]}" title="${esc(s[1])}" onclick="toggleSoc('${s[0]}')">${SOC_ICON[s[0]]||'<span class="msr">link</span>'}</button>`).join('')+'</div>'
+    +'<div id="socInputs">'+SOCIALS.map(s=>`<div class="soc-inp-row" id="socrow_${s[0]}" style="display:${soc[s[0]]?'flex':'none'}"><span class="soc-dot" style="background:${s[2]}"></span><input id="epSoc_${s[0]}" placeholder="${esc(s[1])} — handle or link" autocapitalize="none" autocorrect="off" spellcheck="false" value="${esc(soc[s[0]]||'')}" oninput="markSocChip('${s[0]}',this.value)"/></div>`).join('')+'</div>';
+}
+function toggleSoc(key){const row=document.getElementById('socrow_'+key);if(!row)return;const show=(row.style.display==='none'||!row.style.display);row.style.display=show?'flex':'none';if(show){const inp=document.getElementById('epSoc_'+key);if(inp)inp.focus();}}
+function markSocChip(key,val){const c=document.getElementById('socchip_'+key);if(c)c.classList.toggle('on',!!String(val).trim());}
+/* gender + category (stored locally + best-effort to profiles.gender / profiles.category) */
+const GENDERS=['Male','Female','Other','Prefer not to say'];
+const CATEGORIES=['Traveller','Trekker','Backpacker','Solo Traveller','Mountaineer','Hiker','Camper','Cyclist','Road Tripper','Explorer','Creator','Blogger','Vlogger','Influencer','Photographer','Videographer','Host','Trip Organiser','Guide','Trek Leader','Student','Nature Lover','Wildlife Enthusiast','Adventure Pro'];
+function getSavedGender(){try{return localStorage.getItem('tmk_gender')||'';}catch(e){return'';}}
+function getSavedCategory(){try{return localStorage.getItem('tmk_category')||'';}catch(e){return'';}}
+function getSavedBio(){try{return localStorage.getItem('tmk_bio')||'';}catch(e){return'';}}
+function renderSelect(id,icon,ph,opts,cur,fn){const el=document.getElementById(id);if(!el)return;
+  el.innerHTML='<div class="inp sel-inp"><span class="msr" style="font-size:20px;color:var(--muted)">'+icon+'</span><select onchange="'+fn+'(this.value)"><option value="">'+esc(ph)+'</option>'+opts.map(o=>`<option ${o===cur?'selected':''}>${esc(o)}</option>`).join('')+'</select><span class="msr sel-caret">expand_more</span></div>';}
+function pickGender(v){try{localStorage.setItem('tmk_gender',v);}catch(e){}}
+function pickCategory(v){try{localStorage.setItem('tmk_category',v);}catch(e){}}
 /* turn a handle or partial into a full https link */
 function socialUrl(key,val){
   val=String(val||'').trim();if(!val)return '';
@@ -1568,11 +1587,32 @@ function socialLinks(soc){
     '<a class="socchip" style="--sc:'+s[2]+'" href="'+esc(socialUrl(s[0],soc[s[0]]))+'" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">'+esc(s[1].split(' ')[0])+'</a>'
   ).join('')+'</div>';
 }
+/* ---- preset trekker avatars (choose instead of uploading a photo) ---- */
+const AVATARS=Array.from({length:12},(_,i)=>'avatars/avatar-'+(i+1)+'.jpg');
+function avatarUrl(n){return location.origin+'/avatars/avatar-'+n+'.jpg';}
+function renderAvatarGrid(){
+  const ag=document.getElementById('avatarSheetGrid');if(!ag)return;
+  const cur=getSavedPhoto();
+  ag.innerHTML=AVATARS.map((rel,i)=>{const on=cur&&(cur===avatarUrl(i+1)||cur.endsWith(rel));return `<img src="${rel}" alt="Trekker avatar ${i+1}" loading="lazy" class="${on?'on':''}" onclick="pickAvatar(${i+1})"/>`;}).join('');
+}
+function openAvatarSheet(){renderAvatarGrid();const s=document.getElementById('avatarSheet');if(s)s.classList.add('show');}
+function closeAvatarSheet(){const s=document.getElementById('avatarSheet');if(s)s.classList.remove('show');}
+function pickAvatar(n){
+  const full=avatarUrl(n);
+  try{localStorage.setItem('tmk_uphoto',full);localStorage.removeItem('tmk_uphoto_src');}catch(e){}
+  const av=document.getElementById('epAv');
+  if(av){av.style.backgroundImage=`url('${full}')`;av.style.backgroundSize='cover';av.style.backgroundPosition='center';av.textContent='';
+    const badge=document.createElement('span');badge.style.cssText='position:absolute;bottom:0;right:0;width:26px;height:26px;border-radius:50%;background:var(--accent);display:grid;place-items:center';badge.innerHTML='<span class="msr" style="font-size:14px;color:#fff">photo_camera</span>';av.appendChild(badge);}
+  closeAvatarSheet();
+  if(typeof toast==='function')toast('Avatar selected — tap Save Changes to keep it');
+}
 function renderEditProfile(){
   const name=getSavedName();const mobile=getSavedMobile();const email=getUserEmail()||'';const photo=getSavedPhoto();
-  /* build the social-link inputs from SOCIALS and fill saved values */
-  const soc=getSavedSocials();const sc=document.getElementById('epSocials');
-  if(sc)sc.innerHTML=SOCIALS.map(s=>`<div class="inp soc-inp"><span class="soc-dot" style="background:${s[2]}"></span><input id="epSoc_${s[0]}" placeholder="${esc(s[1])} — handle or link" autocapitalize="none" autocorrect="off" spellcheck="false" value="${esc(soc[s[0]]||'')}"/></div>`).join('');
+  /* social links (icon chips + tap-to-fill), gender + category */
+  renderSocialChips();
+  renderSelect('epGender','wc','Select gender',GENDERS,getSavedGender(),'pickGender');
+  renderSelect('epCategory','category','Choose your category',CATEGORIES,getSavedCategory(),'pickCategory');
+  const bioEl=document.getElementById('epBio');if(bioEl)bioEl.value=getSavedBio();
   const inp=id=>document.getElementById(id);
   if(inp('epName'))inp('epName').value=name;
   /* mobile = country-code selector + number; auto-fill the code from the visitor's location */
@@ -1597,9 +1637,11 @@ function renderEditProfile(){
   }
   const pa=document.getElementById('epPhotoActions');
   if(pa){
-    pa.innerHTML='<button type="button" class="photo-link" onclick="document.getElementById(\'epPhoto\').click()"><span class="msr" style="font-size:14px">add_a_photo</span> Change photo</button>'
-      +(photo?'<span class="photo-sep">·</span><button type="button" class="photo-link" onclick="reCropPhoto()"><span class="msr" style="font-size:14px">crop_rotate</span> Reposition &amp; resize</button>':'');
+    pa.innerHTML='<button type="button" class="photo-link" onclick="openAvatarSheet()"><span class="msr" style="font-size:14px">face</span> Choose an avatar</button>'
+      +'<span class="photo-sep">·</span><button type="button" class="photo-link" onclick="document.getElementById(\'epPhoto\').click()"><span class="msr" style="font-size:14px">add_a_photo</span> Upload photo</button>'
+      +(photo?'<span class="photo-sep">·</span><button type="button" class="photo-link" onclick="reCropPhoto()"><span class="msr" style="font-size:14px">crop_rotate</span> Reposition</button>':'');
   }
+  renderAvatarGrid();
 }
 
 /* ---------- profile photo: crop / zoom / reposition before saving ---------- */
@@ -1785,6 +1827,7 @@ async function saveProfile(){
     if(name)localStorage.setItem('tmk_uname',name);
     if(mobile)localStorage.setItem('tmk_umobile',mobile);
     localStorage.setItem('tmk_socials',JSON.stringify(soc));
+    const bioEl=document.getElementById('epBio');if(bioEl)localStorage.setItem('tmk_bio',(bioEl.value||'').trim());
   }catch(e){}
   await upsertProfile();   /* keep the public profile (name/photo/username/socials) in sync */
   restore();
@@ -3916,6 +3959,9 @@ async function loadAuthorPhotos(names){
   try{
     const{data}=await sb.from('profiles').select('name,photo,is_host,username,socials').in('name',need);
     (data||[]).forEach(r=>{if(r.name){photoByName[r.name]=r.photo||'';hostByName[r.name]=!!r.is_host;unameByName[r.name]=r.username||'';socialsByName[r.name]=r.socials||null;_authorFetchedAt[r.name]=now;}});
+    /* bio + category live in optional columns — fetched separately so a missing column
+       never breaks author photos/names in the feed */
+    try{const{data:xd}=await sb.from('profiles').select('name,bio,category').in('name',need);(xd||[]).forEach(r=>{if(r.name){if(r.bio!=null)bioByName[r.name]=r.bio;if(r.category!=null)categoryByName[r.name]=r.category;}});}catch(e){}
   }catch(e){}
   /* remember the misses too, so we don't re-query every render */
   need.forEach(n=>{if(!(n in photoByName))photoByName[n]='';_authorFetchedAt[n]=now;});
@@ -4158,12 +4204,17 @@ async function upsertProfile(){
   if(cv)core.cover=cv; if(soc&&Object.keys(soc).length)core.socials=soc;   /* drop consent */
   const minimal={id:uid,updated_at:ts};
   if(nm)minimal.name=nm; if(ph)minimal.photo=ph; if(un)minimal.username=un; /* drop cover/socials too */
+  let saved=false;
   for(const row of [full,core,minimal]){
-    try{const{error}=await sb.from('profiles').upsert(row);if(!error)return;}catch(e){}
+    try{const{error}=await sb.from('profiles').upsert(row);if(!error){saved=true;break;}}catch(e){}
   }
+  /* gender + category live in optional columns — saved separately so a missing column
+     never blocks the core profile save (needs SQL-add-profile-fields.sql to persist) */
+  const g=getSavedGender(),cat=getSavedCategory(),bio=getSavedBio();
+  if(saved&&(g||cat||bio)){try{await sb.from('profiles').upsert({id:uid,updated_at:ts,gender:g||null,category:cat||null,bio:bio||null});}catch(e){}}
 }
 /* everything that identifies ONE person on this device */
-const IDENTITY_KEYS=['tmk_uname','tmk_uhandle','tmk_uphoto','tmk_ucover','tmk_socials','tmk_umobile','tmk_follows','tmk_posts','tmk_likes','tmk_comments','tmk_bookings','tmk_notif_seen','tmk_admin','tmk_admin_key','tmk_captain','tmk_plan'];
+const IDENTITY_KEYS=['tmk_uname','tmk_uhandle','tmk_uphoto','tmk_ucover','tmk_socials','tmk_umobile','tmk_gender','tmk_category','tmk_bio','tmk_follows','tmk_posts','tmk_likes','tmk_comments','tmk_bookings','tmk_notif_seen','tmk_admin','tmk_admin_key','tmk_captain','tmk_plan'];
 function clearLocalIdentity(){
   try{IDENTITY_KEYS.forEach(k=>localStorage.removeItem(k));}catch(e){}
   followState={};staffSet=new Set();_prefSkippedSession=false;
@@ -4182,6 +4233,8 @@ async function loadProfileFromServer(){
        and including it here would fail the WHOLE read (photo/name/cover) with 42501. */
     const{data}=await sb.from('profiles').select('name,photo,prefs,username,cover,socials').eq('id',currentUser.id).maybeSingle();
     let dbConsent=null;try{const{data:cd}=await sb.from('profiles').select('consent').eq('id',currentUser.id).maybeSingle();if(cd)dbConsent=cd.consent;}catch(e){}
+    /* gender + category fetched separately so a missing column never fails the whole read */
+    try{const{data:gc}=await sb.from('profiles').select('gender,category,bio').eq('id',currentUser.id).maybeSingle();if(gc){if(gc.gender)localStorage.setItem('tmk_gender',gc.gender);if(gc.category)localStorage.setItem('tmk_category',gc.category);if(gc.bio)localStorage.setItem('tmk_bio',gc.bio);}}catch(e){}
     if(data){
       if(data.name)try{localStorage.setItem('tmk_uname',data.name);}catch(e){}
       if(data.photo)try{localStorage.setItem('tmk_uphoto',data.photo);}catch(e){}
@@ -4650,7 +4703,8 @@ async function renderPerson(){if(!curPerson){go('community');return;}const p=get
   body.innerHTML=`
     <div class="prof-top">${avatar(p.n,84)}
       <h2>${esc(properName(p.n))}${hostBadge(p.n)}</h2>${at?`<div class="handle">${esc(at)}</div>`:''}
-      <p class="pbio">${esc(p.bio||'')}</p>
+      ${(me?getSavedCategory():(categoryByName[p.n]||''))?`<div class="pcat"><span class="msr">hiking</span>${esc(me?getSavedCategory():categoryByName[p.n])}</div>`:''}
+      ${(me?getSavedBio():(bioByName[p.n]||''))?`<p class="pbio">${esc(me?getSavedBio():bioByName[p.n])}</p>`:''}
       <div class="pstats"><div><b>${posts.length}</b><small>Posts</small></div><div onclick="openFollowList('followers','${jsq(p.n)}')"><b id="pFlwr" data-person="${esc(p.n)}" data-base="${base}">${flwr.toLocaleString()}</b><small>Followers</small></div><div onclick="openFollowList('following','${jsq(p.n)}')"><b>${Number(following).toLocaleString()}</b><small>Following</small></div></div>
       ${me?'':`<div class="profile-actions" style="margin:14px 0 0"><button class="${isFollowing(p.n)?'on':''}${(!isFollowing(p.n)&&hasRequested(p.n))?' req':''}" data-follow="${esc(p.n)}" onclick="followAction('${jsq(p.n)}')">${followBtnLabel(p.n)}</button><button onclick="${isBlocked(p.n)?`note('Unblock ${jsq(properName(p.n))} first.','Blocked')`:(canSeePerson(p.n)?`openChat('${jsq(p.n)}')`:`note('Follow this private account to message them.','Private account')`)}">Message</button></div>
       <div style="text-align:center;margin-top:10px"><button onclick="toggleBlock('${jsq(p.n)}')" style="background:none;border:0;color:${isBlocked(p.n)?'var(--accent2)':'#ff6b6b'};font-size:12.5px;font-weight:700;cursor:pointer">${isBlocked(p.n)?'Unblock':'Block'} ${esc(properName(p.n))}</button></div>`}
@@ -5393,6 +5447,10 @@ function renderProfile(){document.getElementById('pCover').style.backgroundImage
     const un=getSavedUsername();
     psub.textContent=isLoggedIn()?(un?'@'+un:(getUserEmail()||'Trekker')):'Sign in to track your treks';
   }
+  const pbEl=document.getElementById('profileBio');
+  if(pbEl){const cat=getSavedCategory(),bio=getSavedBio();
+    pbEl.innerHTML=isLoggedIn()?((cat?`<span class="pcat"><span class="msr">hiking</span>${esc(cat)}</span>`:'')+(bio?`<div style="margin-top:6px">${esc(bio)}</div>`:'')):'';
+    hydrate(pbEl);}
   /* dynamic, tappable stat tiles — social first (posts / followers / following), trek count kept */
   const bs=getBookings();
   const trekCount=new Set(bs.map(b=>b.trek)).size;
@@ -7932,7 +7990,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='435';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='439';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>

@@ -3115,6 +3115,34 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .pledge-hero .pledge-mk{font-size:48px;display:block;width:max-content;margin:0 auto 8px;line-height:1;color:#fff}
   .pledge-count{display:flex;align-items:center;justify-content:center;gap:7px;text-align:center;font-size:12.8px;color:var(--muted);font-weight:600;margin:-2px 0 14px}
   .pledge-count .msr{font-size:16px;color:var(--accent2)}
+  /* avatar picker (edit profile) */
+  .av-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:10px;margin-top:6px}
+  .av-grid img{width:100%;aspect-ratio:1;border-radius:50%;object-fit:cover;cursor:pointer;border:3px solid transparent;background:var(--card);transition:border-color .15s,transform .1s}
+  .av-grid img.on{border-color:var(--accent);box-shadow:0 0 0 2px rgba(47,107,255,.25)}
+  .av-grid img:active{transform:scale(.93)}
+  /* social icon chips */
+  .soc-chips{display:flex;flex-wrap:wrap;gap:11px;margin-bottom:6px}
+  .soc-chip{all:unset;box-sizing:border-box;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:var(--card);border:2px solid var(--stroke);color:var(--muted);cursor:pointer;position:relative;transition:transform .1s,border-color .15s,background .15s}
+  .soc-chip .msr{font-size:22px}.soc-chip b{font-size:18px;font-weight:800;letter-spacing:-.5px}
+  .soc-chip.on{background:var(--sc);border-color:var(--sc);color:#fff}
+  .soc-chip:active{transform:scale(.9)}
+  .soc-chip.on:after{content:'';position:absolute;bottom:-2px;right:-2px;width:15px;height:15px;border-radius:50%;background:#38d39f;border:2.5px solid var(--bg,#0b1626)}
+  .soc-inp-row{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:var(--card);border:1px solid var(--stroke);margin-top:8px}
+  .soc-inp-row input{all:unset;flex:1;color:var(--text);font-size:14px}
+  .soc-dot{width:10px;height:10px;border-radius:50%;flex:none}
+  /* choice chips (gender / category) */
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px}
+  .chip-sel{all:unset;box-sizing:border-box;padding:9px 16px;border-radius:999px;background:var(--card);border:1px solid var(--stroke);color:var(--muted);font-size:13.5px;font-weight:600;cursor:pointer;transition:.15s}
+  .chip-sel.on{background:rgba(47,107,255,.16);border-color:var(--accent);color:var(--text)}
+  .chip-sel:active{transform:scale(.95)}
+  /* dropdown select (gender / category) — matches .inp fields */
+  .sel-inp{cursor:pointer}
+  .sel-inp select{all:unset;flex:1;color:var(--text);font-size:15px;cursor:pointer;padding:2px 0}
+  .sel-inp select option{background:#0c1c30;color:#eef3fb}
+  .sel-inp .sel-caret{margin-left:auto;color:var(--muted);font-size:22px;pointer-events:none}
+  /* category pill shown on profiles */
+  .pcat{display:inline-flex;align-items:center;gap:5px;background:rgba(47,107,255,.16);color:var(--accent2);border:1px solid rgba(47,107,255,.35);border-radius:999px;padding:4px 12px;font-size:12.5px;font-weight:700;margin:4px 0 2px}
+  .pcat .msr{font-size:15px}
   .pledge-hero .lbl{font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:var(--yellow);font-weight:700}
   .pledge-hero h2{margin:5px 0 6px;font-size:21px;color:#fff}
   .pledge-hero p{font-size:12.8px;line-height:1.6;color:rgba(255,255,255,.88);margin:0 auto;max-width:340px}
@@ -3712,9 +3740,14 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
       <div class="inp"><span class="uname-at">@</span><input id="epUser" placeholder="yourname" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="20" oninput="onUsernameInput(this.value)"/><span class="uname-spin" id="epUserSpin"></span></div>
       <small class="uname-msg" id="epUserMsg">3–20 characters · letters, numbers, dots and underscores</small>
     </div>
+    <div class="field"><label>About me <small style="color:var(--muted2);font-weight:400">— shown on your profile</small></label>
+      <div class="inp" style="align-items:flex-start"><span class="msr" style="font-size:20px;color:var(--muted);margin-top:2px">notes</span><textarea id="epBio" rows="3" maxlength="300" placeholder="A line about you — your treks, what you love, where you're headed next…" style="all:unset;flex:1;color:var(--text);font-size:15px;line-height:1.5;resize:none;width:100%"></textarea></div>
+    </div>
     <div class="field"><label>Mobile</label><div id="epMobileWrap"></div></div>
     <div class="field"><label>Email</label><div class="inp"><span class="msr" style="font-size:20px;color:var(--muted)">mail</span><input id="epEmail" type="email" placeholder="you@email.com" readonly style="opacity:.6"/></div></div>
-    <div class="field"><label>Social links <small style="color:var(--muted2);font-weight:400">— add any you like</small></label>
+    <div class="field"><label>Gender</label><div id="epGender"></div></div>
+    <div class="field"><label>I am a… <small style="color:var(--muted2);font-weight:400">— your category</small></label><div id="epCategory"></div></div>
+    <div class="field"><label>Social links <small style="color:var(--muted2);font-weight:400">— tap an icon to add</small></label>
       <div id="epSocials" class="socinputs"></div>
     </div>
     <button class="btn" id="epSaveBtn" style="margin-top:8px" onclick="saveProfile()">Save Changes</button>
@@ -4528,6 +4561,15 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   <input type="file" id="storyFile" accept="image/*" hidden onchange="onStoryPick(this)"/>
 
   <!-- ACTION SHEET (chat / message options) -->
+  <!-- AVATAR PICKER SHEET -->
+  <div class="sheet-wrap" id="avatarSheet" onclick="if(event.target===this)closeAvatarSheet()">
+    <div class="sheet">
+      <div class="sheet-title">Choose your trekker avatar</div>
+      <div class="av-grid" id="avatarSheetGrid" style="padding:6px 4px 4px"></div>
+      <button class="sheet-cancel" onclick="closeAvatarSheet()">Close</button>
+    </div>
+  </div>
+
   <div class="sheet-wrap" id="actionSheet">
     <div class="sheet">
       <div class="sheet-title" id="sheetTitle"></div>
