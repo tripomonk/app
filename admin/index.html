@@ -201,6 +201,7 @@
     <div class="side-sec">Growth</div>
     <div class="nav-i" data-sec="home"><span class="ic">🏠</span> Home &amp; features</div>
     <div class="nav-i" data-sec="training"><span class="ic">💪</span> Training</div>
+    <div class="nav-i" data-sec="pledges"><span class="ic">🤝</span> Mountain Promise</div>
     <div class="side-sec">System</div>
     <div class="nav-i" data-sec="ai"><span class="ic">🤖</span> AI &amp; Messages</div>
     <div class="nav-i" data-sec="settings"><span class="ic">⚙️</span> Settings</div>
@@ -370,6 +371,7 @@ const SEC={
   reviews:['Reviews','Add & manage',renderReviews],
   home:['Home & features','Featured trek & rails',renderHome],
   training:['Training','Who is training',renderTraining],
+  pledges:['Mountain Promise','Who took the promise',renderPledges],
   ai:['AI & Messages','Automated templates',renderAI],
   settings:['Settings','Console info',renderSettings],
 };
@@ -665,17 +667,59 @@ async function crmOpen(name,phone){
   }
 }
 /* HOSTS */
-async function renderHosts(){const [apps,trips]=await Promise.all([qtbl('host_applications',b=>b.order('created_at',{ascending:false}).limit(300)),qtbl('host_trips',b=>b.eq('status','live').limit(300))]);
+async function renderPledges(){const {rows,error}=await qtbl('pledges',b=>b.order('created_at',{ascending:false}).limit(1000));
+  if(error){$('#content').innerHTML='<div class="panel"><div class="empty">Pledges table not deployed - run <b>SQL-add-pledges.sql</b>.</div></div>';return;}
+  $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Mountain Promise</h2><span class="spacer"></span><span class="muted">${rows.length} trekker${rows.length!==1?'s':''} pledged</span></div><p class="desc">Everyone who has taken the Mountain Promise.</p>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>#</th><th>Name</th><th>Taken</th></tr></thead><tbody>${rows.map((p,i)=>`<tr><td class="muted">${i+1}</td><td><div class="u">${avc(p.name)}<b>${esc(p.name||'Trekker')}</b></div></td><td data-l="Taken" class="muted">${timeAgo(p.created_at)}</td></tr>`).join('')}</tbody></table>`):'<div class="empty">No one has taken the promise yet.</div>'}</div>`;}
+let _hostApps=[],_hostTrips=[];
+async function _ownerUid(){if(typeof ME!=='undefined'&&ME&&ME.id)return ME.id;try{const {data}=await sb.auth.getUser();return data&&data.user?data.user.id:null;}catch(e){return null;}}
+async function renderHosts(){
+  const [apps,trips]=await Promise.all([qtbl('host_applications',b=>b.order('created_at',{ascending:false}).limit(300)),qtbl('host_trips',b=>b.order('created_at',{ascending:false}).limit(400))]);
+  _hostApps=apps.rows;_hostTrips=trips.rows;
   const hostActs=a=>{const s=(a.status||'pending').toLowerCase(),id=jsv(a.id);
     const appr=`<button class="btn2 sm" onclick="hostSet('${id}','approved')">Approve</button>`;
     const rej=`<button class="btn2 sm danger" onclick="hostSet('${id}','rejected')">Reject</button>`;
     const rev=`<button class="btn2 sm danger" onclick="hostSet('${id}','rejected')">Revoke</button>`;
-    let inner;
-    if(/approv/.test(s))inner=rev; else if(/reject/.test(s))inner=appr; else inner=appr+rej;
-    return `<div class="row-acts">${inner}</div>`;};
-  $('#content').innerHTML=`<div class="panel"><h2>Host applications</h2><p class="desc">${apps.rows.length} applications</p>${apps.rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Name</th><th>City</th><th>Mobile</th><th>Status</th><th></th></tr></thead><tbody>${apps.rows.map(a=>`<tr><td><b>${esc(a.full_name||a.name||'—')}</b></td><td data-l="City" class="muted">${esc(a.city||'')}</td><td data-l="Mobile" class="muted">${esc(a.mobile||a.phone||'')}</td><td data-l="Status"><span class="tag ${/(approv)/i.test(a.status)?'ok':/reject/i.test(a.status)?'bad':'warn'}">${esc(a.status||'pending')}</span></td><td>${hostActs(a)}</td></tr>`).join('')}</tbody></table>`):'<div class="empty">No applications.</div>'}</div>
-  <div class="panel"><h2>Live host trips</h2><p class="desc">${trips.rows.length} live</p>${trips.rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Trip</th><th>Host</th><th>Price</th><th>Dates</th></tr></thead><tbody>${trips.rows.map(t=>`<tr><td><b>${esc(t.title||'')}</b></td><td>${esc(t.host_name||'')}</td><td>${INR(t.price)}</td><td class="muted">${esc(t.dates||t.start_date||'')}</td></tr>`).join('')}</tbody></table>`):'<div class="empty">No live host trips.</div>'}</div>`;}
-async function hostSet(id,st){const {error}=await sb.from('host_applications').update({status:st}).eq('id',id);toast(error?('Approve in the app admin — '+error.message):('Host '+st));if(!error)renderHosts();}
+    let dec; if(/approv/.test(s))dec=rev; else if(/reject/.test(s))dec=appr; else dec=appr+rej;
+    return `<div class="row-acts"><button class="btn2 sm" onclick="hostProfile('${id}')">Profile</button><button class="btn2 sm" onclick="hostMsg('${id}')">Message</button>${dec}</div>`;};
+  const stTag=s=>`<span class="tag ${/live/i.test(s)?'ok':/reject/i.test(s)?'bad':'warn'}">${esc(s||'draft')}</span>`;
+  $('#content').innerHTML=`
+    <div class="panel"><h2>Host applications</h2><p class="desc">${_hostApps.length} applications</p>${_hostApps.length?wrapTbl(`<table class="tbl"><thead><tr><th>Name</th><th>City</th><th>Mobile</th><th>Status</th><th></th></tr></thead><tbody>${_hostApps.map(a=>`<tr><td><b>${esc(a.full_name||a.name||'-')}</b></td><td data-l="City" class="muted">${esc(a.city||'')}</td><td data-l="Mobile" class="muted">${esc(a.mobile||a.phone||'')}</td><td data-l="Status"><span class="tag ${/(approv)/i.test(a.status)?'ok':/reject/i.test(a.status)?'bad':'warn'}">${esc(a.status||'pending')}</span></td><td>${hostActs(a)}</td></tr>`).join('')}</tbody></table>`):'<div class="empty">No applications.</div>'}</div>
+    <div class="panel"><h2>Host trips</h2><p class="desc">${_hostTrips.length} trips - edit price, dates &amp; status</p>${_hostTrips.length?wrapTbl(`<table class="tbl"><thead><tr><th>Trip</th><th>Host</th><th>Price</th><th>Dates</th><th>Status</th><th></th></tr></thead><tbody>${_hostTrips.map(t=>`<tr><td><b>${esc(t.title||'')}</b><br><small class="muted">${esc(t.destination||'')}</small></td><td data-l="Host" class="muted">${esc(t.host_name||'')}</td><td data-l="Price">${INR(t.price)}</td><td data-l="Dates" class="muted">${esc(t.start_date||'')}${t.end_date?' to '+esc(t.end_date):''}</td><td data-l="Status">${stTag(t.status)}</td><td><div class="row-acts"><button class="btn2 sm" onclick="hostTripEdit('${jsv(t.id)}')">Edit</button>${/live/i.test(t.status)?`<button class="btn2 sm" onclick="hostTripStatus('${jsv(t.id)}','draft')">Unlist</button>`:`<button class="btn2 sm" onclick="hostTripStatus('${jsv(t.id)}','live')">Publish</button>`}</div></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No host trips yet.</div>'}</div>`;}
+async function hostSet(id,st){const {error}=await sb.from('host_applications').update({status:st}).eq('id',id);toast(error?('Update blocked - run SQL-admin-writes-fix.sql ('+(error.code||error.message)+')'):('Host '+st));if(!error)renderHosts();}
+function hostProfile(id){
+  const a=_hostApps.find(x=>String(x.id)===String(id));if(!a)return;
+  const d=$('#drawer'),body=$('#drawerBody');d.classList.add('show');
+  const row=(l,v)=>v?`<div class="ua-ev"><span class="d"></span><div>${esc(String(v))}<small>${esc(l)}</small></div></div>`:'';
+  const ans=a.answers||{};
+  const trips=_hostTrips.filter(t=>t.host_id===a.user_id);
+  body.innerHTML=`<div class="dh">${avc(a.full_name||a.name)}<div><b style="font-size:16px">${esc(a.full_name||a.name||'Host')}</b><br><small class="muted">${esc(a.city||'')}${a.status?' · '+esc(a.status):''}</small></div><span class="spacer"></span><button class="btn2" onclick="closeOv()">Close</button></div>
+    <div class="sec-t">Contact</div>${row('Mobile',a.mobile||a.phone)}${row('WhatsApp',a.whatsapp)}${row('Email',a.email)}
+    <div class="sec-t">About</div>${row('Bio',a.bio||ans.bio)}${row('Hosting style',ans.hosting_style)}${row('Audience',ans.audience_size)}${row('DOB',a.dob)}${row('Instagram',a.instagram||ans.instagram)}
+    <div class="sec-t">Trips (${trips.length})</div>${trips.length?trips.map(t=>`<div class="ua-ev"><span class="d" style="background:var(--yellow)"></span><div>${esc(t.title||'')} · ${INR(t.price)}<small>${esc(t.status||'')} · ${esc(t.start_date||'')}</small></div></div>`).join(''):'<div class="muted" style="font-size:12.5px">No trips yet.</div>'}
+    <div style="margin-top:14px"><button class="btn2 pri" onclick="hostMsg('${jsv(a.id)}')">Message host</button></div>`;}
+function hostMsg(id){
+  const a=_hostApps.find(x=>String(x.id)===String(id));if(!a){toast('Host not found');return;}
+  if(!a.user_id){toast('This host has no linked app account to message.');return;}
+  const first=String(a.full_name||a.name||'').split(' ')[0]||'there';
+  modal(`<h3>Message ${esc(a.full_name||a.name||'host')}</h3><div class="fld"><label>Message (sent from Tripomonk, appears in their app chat)</label><textarea id="hmMsg" placeholder="Hi ${esc(first)}, ..."></textarea></div><div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="hmGo">Send</button></div>`);
+  $('#hmGo').onclick=async()=>{const body=($('#hmMsg').value||'').trim();if(!body){toast('Type a message');return;}const uid=await _ownerUid();if(!uid){toast('Not signed in');return;}closeOv();const {error}=await sb.from('messages').insert({sender_id:uid,sender_name:'Tripomonk',recipient_id:a.user_id,recipient_name:a.full_name||a.name||'Host',body,type:'text'});toast(error?('Failed: '+error.message):'Message sent to '+(a.full_name||a.name||'host'));};}
+function hostTripEdit(id){
+  const t=_hostTrips.find(x=>String(x.id)===String(id));if(!t)return;
+  const sel=(cur,opts)=>opts.map(o=>`<option ${String(cur||'')===o?'selected':''}>${o}</option>`).join('');
+  modal(`<h3>Edit trip</h3>
+    <div class="fld"><label>Title</label><input id="htT" value="${esc(t.title||'')}"/></div>
+    <div class="fld"><label>Destination</label><input id="htD" value="${esc(t.destination||'')}"/></div>
+    <div class="fld"><label>Price</label><input id="htP" type="number" value="${esc(t.price||0)}"/></div>
+    <div class="fld"><label>Start date</label><input id="htS" type="date" value="${esc(t.start_date||'')}"/></div>
+    <div class="fld"><label>End date</label><input id="htE" type="date" value="${esc(t.end_date||'')}"/></div>
+    <div class="fld"><label>Days</label><input id="htDy" type="number" value="${esc(t.days||'')}"/></div>
+    <div class="fld"><label>Max people</label><input id="htM" type="number" value="${esc(t.max_people||'')}"/></div>
+    <div class="fld"><label>Difficulty</label><select id="htDf">${sel(t.difficulty||'Moderate',['Easy','Moderate','Difficult'])}</select></div>
+    <div class="fld"><label>Status</label><select id="htSt">${sel(t.status||'draft',['draft','live','rejected'])}</select></div>
+    <div class="fld"><label>Description</label><textarea id="htDesc">${esc(t.description||'')}</textarea></div>
+    <div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="htGo">Save</button></div>`);
+  $('#htGo').onclick=async()=>{const upd={title:$('#htT').value.trim(),destination:$('#htD').value.trim(),price:parseInt($('#htP').value)||0,start_date:$('#htS').value||null,end_date:$('#htE').value||null,days:parseInt($('#htDy').value)||null,max_people:parseInt($('#htM').value)||null,difficulty:$('#htDf').value,status:$('#htSt').value,description:$('#htDesc').value.trim()};closeOv();const {error}=await sb.from('host_trips').update(upd).eq('id',id);toast(error?('Failed: '+error.message):'Trip updated');if(!error)renderHosts();};}
+async function hostTripStatus(id,st){const {error}=await sb.from('host_trips').update({status:st}).eq('id',id);toast(error?('Failed: '+error.message):('Trip '+(st==='live'?'published':'unlisted')));if(!error)renderHosts();}
 /* GUIDES */
 async function renderGuides(){const {rows,error}=await qtbl('guides',b=>b.limit(200));if(error){$('#content').innerHTML='<div class="panel"><div class="empty">Guides table not deployed — run <b>SQL-add-guides.sql</b>.</div></div>';return;}
   $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Trek leaders</h2><span class="spacer"></span><button class="btn2 pri" onclick="guideAdd()">+ Add guide</button></div>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Name</th><th>Experience</th><th></th></tr></thead><tbody>${rows.map(g=>`<tr><td><div class="u">${avc(g.name,g.photo)}<b>${esc(g.name)}</b></div></td><td class="muted">${esc(g.experience||g.exp||'')}</td><td><button class="btn2 sm danger" onclick="guideDel('${jsv(g.id)}')">Remove</button></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No guides yet.</div>'}</div>`;}
