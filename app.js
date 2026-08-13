@@ -1093,12 +1093,25 @@ function pwLoginGated(){
 /* set / change a password for the CURRENT signed-in account. Supabase Auth hashes and
    stores it — the app never sees or keeps the raw password. Lets the user then sign in
    with email + password on any device. */
+/* one password rule everywhere: 8+ chars, a letter AND a number, and not a common/breached
+   one. Free-tier stand-in for Supabase's Pro leaked-password check; the minimum length is
+   ALSO enforced server-side in Auth settings. */
+const COMMON_PW=new Set(['password','12345678','123456789','1234567890','password1','password123','qwerty123','qwertyuiop','111111','000000','iloveyou','abc12345','admin123','letmein','welcome1','tripomonk','1q2w3e4r','q1w2e3r4','123123123','asdfghjkl','trekking1','mountain1','changeme','qwerty12']);
+function passwordError(pw){pw=String(pw||'');
+  if(pw.length<8)return 'Use at least 8 characters.';
+  if(!/[A-Za-z]/.test(pw)||!/[0-9]/.test(pw))return 'Include at least one letter and one number.';
+  if(COMMON_PW.has(pw.toLowerCase()))return 'That password is too common — please choose a stronger one.';
+  return '';}
+/* client-side login backstop (Supabase already rate-limits server-side; this adds friction
+   to same-session brute forcing): after 5 bad tries, lock with escalating cooldown up to 5m. */
+let _loginFails=0,_loginLockUntil=0;
+function loginLockRemaining(){return Math.max(0,Math.ceil((_loginLockUntil-Date.now())/1000));}
 async function setMyPassword(){
   const sb=getSupaClient();const uid=sb?await authUid():null;
   if(!sb||!uid){note('Please sign in first, then set a password.','Sign in required');return;}
   const pw=await askCode('Set a password',{password:true,placeholder:'New password (min 8)'});
   if(pw==null)return;
-  if(pw.length<8){await note('Use at least 8 characters.','Too short');return setMyPassword();}
+  {const pe=passwordError(pw);if(pe){await note(pe,'Weak password');return setMyPassword();}}
   const pw2=await askCode('Confirm password',{password:true,placeholder:'Re-enter password'});
   if(pw2==null)return;
   if(pw!==pw2){await note('The two entries did not match.','Try again');return setMyPassword();}
@@ -1119,7 +1132,7 @@ async function passwordAuth(){
 
   if(_authMode==='signup'){
     if(!id.includes('@')){note('Enter a valid email address to sign up.','Invalid email');return;}
-    if(pass.length<6){note('Password must be at least 6 characters.','Weak password');return;}
+    {const pe=passwordError(pass);if(pe){note(pe,'Weak password');return;}}
     busy('Creating…');
     const{data,error}=await sb.auth.signUp({email:id,password:pass});
     done();
@@ -1140,6 +1153,7 @@ async function passwordAuth(){
   /* sign in */
   if(!id){note('Enter your email or username.','Missing details');return;}
   if(!pass){note('Enter your password.','Missing password');return;}
+  const _lr=loginLockRemaining();if(_lr>0){note('Too many attempts. Please wait '+_lr+'s before trying again.','Slow down');return;}
   busy('Signing in…');
   try{
     if(id.includes('@')){
@@ -1160,12 +1174,15 @@ async function passwordAuth(){
   }catch(e){
     done();
     const m=(e&&e.message)||'Login failed.';
-    note(/invalid login|credentials|not found/i.test(m)?'Wrong username/email or password.':m,'Could not sign in');
+    const bad=/invalid login|credentials|not found|password/i.test(m);
+    if(bad){_loginFails++;if(_loginFails>=5){const secs=Math.min(300,30*Math.pow(2,_loginFails-5));_loginLockUntil=Date.now()+secs*1000;}}
+    note(bad?'Wrong username/email or password.':m,'Could not sign in');
     return;
   }
   done();
 }
 async function afterPasswordLogin(user){
+  _loginFails=0;_loginLockUntil=0;   /* successful login clears the throttle */
   if(user)currentUser=user;
   await loadProfileFromServer();upsertProfile();loadStaff();loadSavedPostsFromServer();_myUid=null;ensureMsgSub();loadAiCfg().then(registerSupportInbox);
   logEvent('login');
@@ -1186,9 +1203,9 @@ async function authByUsername(username,password){
 }
 /* fired when the user opens a reset link — collect a new password and set it */
 async function promptNewPassword(){
-  const pw=await askCode('Set a new password',{password:true,placeholder:'New password (min 6)'});
+  const pw=await askCode('Set a new password',{password:true,placeholder:'New password (min 8)'});
   if(pw==null)return;
-  if(pw.length<6){note('Password must be at least 6 characters.','Too short').then(promptNewPassword);return;}
+  {const pe=passwordError(pw);if(pe){note(pe,'Weak password').then(promptNewPassword);return;}}
   const sb=getSupaClient();if(!sb)return;
   const{error}=await sb.auth.updateUser({password:pw});
   if(error){note(error.message,'Error');return;}
@@ -8103,7 +8120,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='451';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='452';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
