@@ -28,19 +28,26 @@
 <meta name="twitter:title" content="Tripomonk — Guided Himalayan Treks in India"/>
 <meta name="twitter:description" content="140+ curated Himalayan treks with certified leaders, fixed departures and gear rental."/>
 <meta name="twitter:image" content="https://app.tripomonk.com/icons/icon-512.png"/>
+<!-- Structured data (schema.org). Still TODO to complete the brand entity: add "sameAs"
+     (real Instagram/Facebook/YouTube/LinkedIn profile URLs), optional "geo", and a wide
+     1200x630 brand "image". Phone, email + contactPoint are set. Valid and shippable as-is. -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@graph": [
     {
-      "@type": "TravelAgency",
+      "@type": ["TravelAgency","LocalBusiness"],
       "@id": "https://app.tripomonk.com/#org",
       "name": "Tripomonk",
       "url": "https://app.tripomonk.com/",
-      "logo": "https://app.tripomonk.com/icons/icon-512.png",
+      "logo": {"@type":"ImageObject","url":"https://app.tripomonk.com/icons/icon-512.png","width":512,"height":512},
       "image": "https://app.tripomonk.com/icons/icon-512.png",
       "description": "Adventure and trekking company offering guided Himalayan treks across India, with certified leaders, fixed departures, gear rental and safety-first itineraries.",
       "slogan": "Discover the Himalayas the safe, guided way.",
+      "priceRange": "₹₹",
+      "telephone": "+918924813959",
+      "email": "hello@tripomonk.com",
+      "contactPoint": {"@type":"ContactPoint","contactType":"customer service","telephone":"+918924813959","email":"hello@tripomonk.com","availableLanguage":["en","hi"],"areaServed":"IN"},
       "areaServed": ["Uttarakhand","Himachal Pradesh","Ladakh","Jammu and Kashmir","Sikkim","Arunachal Pradesh","West Bengal","Meghalaya","Nagaland","India"],
       "address": {"@type":"PostalAddress","addressRegion":"Uttarakhand","addressCountry":"IN"},
       "knowsAbout": ["Himalayan trekking","Adventure travel","Fixed departure treks","Trek gear rental","Trek permits"]
@@ -57,6 +64,35 @@
         "target": {"@type":"EntryPoint","urlTemplate":"https://app.tripomonk.com/?q={search_term_string}"},
         "query-input": "required name=search_term_string"
       }
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://app.tripomonk.com/#webpage",
+      "url": "https://app.tripomonk.com/",
+      "name": "Tripomonk — Book Guided Himalayan Treks in India",
+      "isPartOf": {"@id":"https://app.tripomonk.com/#website"},
+      "about": {"@id":"https://app.tripomonk.com/#org"},
+      "primaryImageOfPage": "https://app.tripomonk.com/icons/icon-512.png",
+      "inLanguage": "en"
+    },
+    {
+      "@type": "Service",
+      "@id": "https://app.tripomonk.com/#service",
+      "serviceType": "Guided Himalayan trekking & adventure tours",
+      "provider": {"@id":"https://app.tripomonk.com/#org"},
+      "areaServed": {"@type":"Country","name":"India"},
+      "audience": {"@type":"Audience","audienceType":"Trekkers and adventure travellers"}
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://app.tripomonk.com/#faq",
+      "mainEntity": [
+        {"@type":"Question","name":"Are Tripomonk treks suitable for beginners?","acceptedAnswer":{"@type":"Answer","text":"Yes. Many of our fixed-departure treks such as Kedarkantha, Brahmatal and Nag Tibba are graded easy to moderate and are ideal for first-time trekkers, with certified leaders and a safe acclimatisation pace."}},
+        {"@type":"Question","name":"What is included in a Tripomonk trek package?","acceptedAnswer":{"@type":"Answer","text":"Packages typically include a certified trek leader, meals on the trek, twin or triple sharing tented or lodge stay, forest and eco permits, first-aid and safety equipment. Personal gear can be rented as an add-on."}},
+        {"@type":"Question","name":"What is your cancellation and refund policy?","acceptedAnswer":{"@type":"Answer","text":"Cancel more than 30 days before departure for a full refund less gateway charges; 15 to 29 days: 75 percent; 7 to 14 days: 50 percent; under 7 days or no-show: no refund. If Tripomonk cancels for weather or safety, you get a full refund or a free date change."}},
+        {"@type":"Question","name":"Do you provide trekking gear on rent?","acceptedAnswer":{"@type":"Answer","text":"Yes. Down jackets, trekking poles, headlamps, gaiters and more are available to rent per trek and can be added during booking."}},
+        {"@type":"Question","name":"How fit do I need to be for a Himalayan trek?","acceptedAnswer":{"@type":"Answer","text":"Each trek shows a required fitness score in the app. As a guide, you should be able to walk 5 km comfortably and climb stairs without strain; we recommend 2 to 4 weeks of cardio prep for moderate treks."}}
+      ]
     }
   ]
 }
