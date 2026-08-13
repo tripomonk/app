@@ -897,7 +897,7 @@ async function initAuth(){
     await loadProfileFromServer();
     seedIdentityFromAuth();   /* fill name/photo from the Google account if still unset */
     upsertProfile();   /* register this user so others can @mention/follow/notify them */
-    loadStaff();       /* role check */
+    loadStaff();loadSavedPostsFromServer();       /* role check + sync saved posts */
     _myUid=null;ensureMsgSub();loadAiCfg().then(registerSupportInbox);   /* messaging + support inbox */
     refreshAuthUI();   /* again, now that the name/photo are back */
     if(fromOAuth){
@@ -1167,7 +1167,7 @@ async function passwordAuth(){
 }
 async function afterPasswordLogin(user){
   if(user)currentUser=user;
-  await loadProfileFromServer();upsertProfile();loadStaff();_myUid=null;ensureMsgSub();loadAiCfg().then(registerSupportInbox);
+  await loadProfileFromServer();upsertProfile();loadStaff();loadSavedPostsFromServer();_myUid=null;ensureMsgSub();loadAiCfg().then(registerSupportInbox);
   logEvent('login');
   const r=_loginReturn;_loginReturn=null;
   go(r||lastTab||'home');
@@ -5313,19 +5313,44 @@ function isSavedPost(id){return getSavedPostIds().indexOf(String(id))>=0;}
 function toggleSavePost(id,el){
   id=String(id);let a=getSavedPostIds();const i=a.indexOf(id);const nowSaved=i<0;
   if(i>=0)a.splice(i,1);else a.unshift(id);
-  try{localStorage.setItem('tmk_savedposts',JSON.stringify(a.slice(0,200)));}catch(e){}
+  try{localStorage.setItem('tmk_savedposts',JSON.stringify(a.slice(0,300)));}catch(e){}
   if(el){el.classList.toggle('on',nowSaved);const g=el.querySelector('.msr');if(g)g.textContent=nowSaved?'bookmark':'bookmark_border';}
   toast(nowSaved?'Saved ✓':'Removed from Saved');
   if(cur==='savedPosts')renderSavedPosts();
+  syncSavedPost(id,nowSaved);   /* mirror to the account so it syncs across devices */
+}
+/* write a save/unsave through to the DB so it follows the account */
+async function syncSavedPost(id,save){
+  const sb=getSupaClient();if(!sb||!isLoggedIn())return;
+  try{const uid=await authUid();if(!uid)return;
+    if(save)await sb.from('saved_posts').upsert({user_id:uid,post_id:String(id)},{onConflict:'user_id,post_id'});
+    else await sb.from('saved_posts').delete().eq('user_id',uid).eq('post_id',String(id));
+  }catch(e){}
+}
+/* pull the account's saved-post list so a fresh device shows the same saves.
+   Server is the source of truth when signed in; local stays untouched on any failure. */
+async function loadSavedPostsFromServer(){
+  const sb=getSupaClient();if(!sb||!isLoggedIn())return;
+  try{const uid=await authUid();if(!uid)return;
+    const{data,error}=await sb.from('saved_posts').select('post_id').eq('user_id',uid).order('created_at',{ascending:false}).limit(300);
+    if(error||!data)return;
+    const ids=data.map(r=>String(r.post_id));
+    try{localStorage.setItem('tmk_savedposts',JSON.stringify(ids));}catch(e){}
+  }catch(e){}
 }
 async function renderSavedPosts(){
   const box=document.getElementById('savedPostsBody');if(!box)return;
   const empty='<div class="ss-empty"><span class="msr">bookmark_border</span><b>No saved posts yet</b><p>Tap the bookmark on any community post to keep it here for later.</p><button class="btn" style="max-width:220px;margin:4px auto 0" onclick="go(\'community\')">Explore community</button></div>';
+  await loadSavedPostsFromServer();   /* pull the account's saves so a new device matches */
   const ids=getSavedPostIds();
   if(!ids.length){box.innerHTML=empty;hydrate(box);return;}
   box.innerHTML='<div class="empty"><p>Loading your saved posts…</p></div>';
-  try{if(typeof loadPostsRemote==='function')await loadPostsRemote();}catch(e){}
-  const posts=ids.map(id=>postById(id)).filter(Boolean);
+  /* fetch the saved posts DIRECTLY by id (not just from the small recent feed window),
+     so a post saved long ago still shows. Preserve saved order (newest-saved first). */
+  const found={};const sb=getSupaClient();
+  if(sb){try{const{data}=await sb.from('community_posts').select('*').in('id',ids);(data||[]).forEach(p=>{found[String(p.id)]={id:p.id,uid:p.user_id||null,n:p.author_name||'Trekker',when:timeAgo(p.created_at),txt:p.txt||'',imgs:p.imgs||[],likes:p.likes||0,comments:[],trek:p.trek_tag||'',tagged:p.tagged||[]};});}catch(e){}}
+  ids.forEach(id=>{if(!found[String(id)]){const p=postById(id);if(p)found[String(id)]=p;}});
+  const posts=ids.map(id=>found[String(id)]).filter(Boolean);
   box.innerHTML=posts.length?posts.map(postCard).join('')
     :'<div class="ss-empty"><span class="msr">bookmark_border</span><b>Nothing to show</b><p>Your saved posts may have been removed, or you’re offline.</p><button class="btn" style="max-width:220px;margin:4px auto 0" onclick="go(\'community\')">Explore community</button></div>';
   hydrate(box);
@@ -8078,7 +8103,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='448';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='451';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
