@@ -1293,6 +1293,16 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .mrow{display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:15px;margin-bottom:10px;cursor:pointer}
   .mrow .ic{color:var(--accent2)}.mrow .t{flex:1;font-size:14px;font-weight:600}.mrow .ch{color:var(--muted2)}
 
+  /* boot / loading screen — flat brand blue (matches the PWA launch background) with just the
+     bare yellow mark pulsing. No tile, no gradient, no crop box. Fades out once the app is ready. */
+  #boot{position:absolute;inset:0;z-index:9999;background:#034db7;display:flex;align-items:center;justify-content:center;
+    opacity:1;transition:opacity .55s ease}
+  #boot.hidden{opacity:0;pointer-events:none}
+  #boot .boot-mark{width:32%;max-width:148px;height:auto;transform-origin:center;animation:bootPulse 1.5s ease-in-out infinite}
+  @keyframes bootPulse{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.09);opacity:1}}
+  @media(prefers-reduced-motion:reduce){#boot .boot-mark{animation:bootFade 1.4s ease-in-out infinite alternate}}
+  @keyframes bootFade{from{opacity:.7}to{opacity:1}}
+
   /* splash */
   /* splash / login / otp always sit on the dark mountain photo — keep text white in BOTH themes */
   #splash,#login,#otp{color:#fff}
@@ -3377,6 +3387,11 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
 </head>
 <body>
 <div class="phone"><div class="screen">
+  <div id="boot" aria-hidden="true">
+    <svg class="boot-mark" viewBox="215 185 650 590" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tripomonk">
+      <path d="M514.071 232.666C525.618 212.666 554.485 212.666 566.032 232.666L838.735 705.001C850.282 725.001 835.849 750.001 812.755 750.001H618.121V507.006C618.121 501.483 613.644 497.006 608.121 497.006H476.396C470.874 497.006 466.396 501.483 466.396 507.006V750.001H267.349C244.255 750.001 229.821 725.001 241.368 705.001L514.071 232.666Z" fill="#FEF200"/>
+    </svg>
+  </div>
   <div id="ptr"><span class="msr">refresh</span></div>
 
   <!-- SPLASH -->
@@ -4723,6 +4738,22 @@ if('serviceWorker' in navigator){
     }).catch(()=>{});
   });
 }
+</script>
+<script>
+/* Dismiss the boot/loading screen once the shell has painted. A hard cap guarantees it
+   never sticks on a slow or offline start. */
+(function(){
+  var done=false;
+  function hideBoot(){
+    if(done)return;done=true;
+    var b=document.getElementById('boot');if(!b)return;
+    b.classList.add('hidden');
+    setTimeout(function(){if(b.parentNode)b.parentNode.removeChild(b);},650);
+  }
+  if(document.readyState==='complete'){setTimeout(hideBoot,250);}
+  else{window.addEventListener('load',function(){setTimeout(hideBoot,250);});}
+  setTimeout(hideBoot,2200);              /* fail-safe cap */
+})();
 </script>
 </body>
 </html>
