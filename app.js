@@ -3823,7 +3823,9 @@ function postCard(p){
   const likeCount=(likeCounts[p.id]||0);
   const dots=media.length>1?`<div class="car-dots">${media.map((_,i)=>`<span class="${i===0?'on':''}"></span>`).join('')}</div>`:'';
   const follow=me?'':` · <span class="ig-follow${isFollowing(p.n)?' on':''}" data-follow="${esc(p.n)}" onclick="toggleFollow('${sn}')">${isFollowing(p.n)?'Following':'Follow'}</span>`;
-  const more=me?`<span class="ig-more" onclick="postMenu('${p.id}')" title="Post options"><span class="msr" style="font-size:21px">more_horiz</span></span>`:'';
+  const more=me
+    ?`<span class="ig-more" onclick="postMenu('${p.id}')" title="Post options"><span class="msr" style="font-size:21px">more_horiz</span></span>`
+    :`<span class="ig-more" onclick="postReportMenu('${p.id}','${sn}')" title="Report"><span class="msr" style="font-size:21px">more_horiz</span></span>`;
   /* the actions live under the photo only — no duplicate overlay rail */
   /* tagged trekkers chips */
   const tagged=(p.tagged&&p.tagged.length)
@@ -3866,6 +3868,30 @@ async function repostPost(id){
   commTab='For You';renderFeed();
   sfx('repost');
   note('Reposted to your feed ✓');
+}
+/* three-dots menu on someone else's post: Report or Block */
+async function postReportMenu(id,name){
+  const choice=await actionSheet('',[
+    {key:'report',label:'Report post',danger:true},
+    {key:'block',label:(isBlocked(name)?'Unblock ':'Block ')+properName(name)},
+  ]);
+  if(choice==='report')return reportPost(id,name);
+  if(choice==='block')return toggleBlock(name);
+}
+/* file a report against a post → report_post RPC (dedup + auto-hide after 3 reporters) */
+async function reportPost(id,name){
+  if(!isLoggedIn()){note('Please sign in to report a post.','Sign in required').then(()=>{_loginReturn='community';go('login');});return;}
+  const reason=await actionSheet('Why are you reporting this?',[
+    {key:'nudity',label:'Nudity or sexual content',danger:true},
+    {key:'violence',label:'Violence or dangerous behaviour'},
+    {key:'spam',label:'Spam or scam'},
+    {key:'other',label:'Something else'},
+  ]);
+  if(!reason)return;
+  const sb=getSupaClient();
+  try{if(sb)await sb.rpc('report_post',{p_post_id:id,p_reason:reason});}catch(e){console.warn('report failed',e&&e.message);}
+  const el=document.querySelector('.post[data-pid="'+id+'"]');if(el)el.remove();   /* hide it for me right away */
+  toast('Thanks — reported for review');
 }
 function carScroll(track){
   const i=Math.round(track.scrollLeft/track.clientWidth);
@@ -4173,8 +4199,31 @@ async function savePostRemote(post){
   const{error}=await sb.from('community_posts').insert({
     id:post.id,user_id:uid,
     author_name:post.n,txt:post.txt||'',imgs:post.imgs||[],likes:0,trek_tag:post.trek||null,tagged:post.tagged||[]
+    /* status defaults to 'live' — the post publishes instantly, exactly like before.
+       Moderation runs in the BACKGROUND below and pulls it only if it's adult/explicit. */
   });
-  if(error)note('Post saved locally but could not sync: '+error.message,'Sync error');
+  if(error){note('Post saved locally but could not sync: '+error.message,'Sync error');return;}
+  /* fire-and-forget: never make the user wait on the AI check */
+  moderatePost(post.id).then(st=>{if(st==='rejected')onPostRejected(post);}).catch(()=>{});
+}
+/* a post the AI flagged as adult/explicit → pull it from the author's own view + tell them.
+   Everyone else already stops seeing it the moment its status flips (RLS hides non-live). */
+function onPostRejected(post){
+  const i=userPosts.findIndex(x=>x.id===post.id);if(i>=0){userPosts.splice(i,1);savePosts();}
+  const el=document.querySelector('.post[data-pid="'+post.id+'"]');if(el)el.remove();
+  if(typeof cur!=='undefined'&&cur==='community')renderFeed();
+  note('Your post was removed because it looked inappropriate (adult or explicit content). If this is a mistake, contact support.','Post removed');
+}
+/* Run a new post through server-side moderation (OpenAI, via the `moderate` edge fn).
+   Returns 'live' | 'rejected' | 'pending'. The DB row is authoritative; this return
+   just lets the composer react (pull a rejected post, or say "under review"). */
+async function moderatePost(id){
+  const sb=getSupaClient();if(!sb)return 'live';
+  try{
+    const{data,error}=await sb.functions.invoke('moderate',{body:{post_id:id}});
+    if(error)throw error;
+    return (data&&data.status)||'pending';
+  }catch(e){console.warn('moderate call failed:',e&&e.message);return 'pending';}
 }
 async function loadPostsRemote(){
   const sb=getSupaClient();if(!sb)return null;
@@ -4583,7 +4632,7 @@ function addPost(){
     const post={id:'p'+Date.now(),uid:currentUser?currentUser.id:null,n:authorName,when:'just now',txt:txt||'',imgs:mediaUrls,likes:0,comments:[],trek:trekTag,tagged:postTags.slice()};
     userPosts.unshift(post);
     savePosts();
-    await savePostRemote(post);
+    await savePostRemote(post);          /* publishes instantly; AI moderation runs in the background */
     notifyMentions(post.txt,post.id);   /* ping anyone @mentioned in the caption */
     close();commTab='For You';renderFeed();
   };
@@ -5876,11 +5925,24 @@ async function flushPending(name){
   const pend=getChat(name).filter(r=>r._pending&&r.cid);
   for(const r of pend){await deliverMessage(name,{body:r.txt||'',type:r.type||'text',status:r.status},r.cid);}
 }
+/* recency key for inbox ordering: newest message time (ms) in a thread, 0 if none */
+function chatLastTs(name){
+  const msgs=getChat(name);let mx=0;
+  for(let i=0;i<msgs.length;i++){const r=msgs[i];if(r&&r.ts){const t=Date.parse(r.ts);if(t>mx)mx=t;}}
+  return mx;
+}
 function chatContacts(){
   const list=[{n:'Tripomonk Team',h:'Official support',bio:'Bookings, payments and trek help',flwr:0}];
   const seen={'Tripomonk Team':1};
   _inboxNames.forEach(nm=>{if(nm&&!seen[nm]&&!isBlocked(nm)){seen[nm]=1;list.push({n:nm});}});   /* real conversations */
   (peoplePool||[]).slice(0,8).forEach(p=>{if(p&&p.n&&!seen[p.n]&&!isBlocked(p.n)){seen[p.n]=1;list.push(p);}});  /* suggested new chats */
+  /* newest conversation first (WhatsApp-style) — whoever just sent/received a message
+     jumps to the top; threads with no messages sink to the bottom. Support stays pinned. */
+  list.sort((a,b)=>{
+    if(a.n==='Tripomonk Team')return -1;
+    if(b.n==='Tripomonk Team')return 1;
+    return chatLastTs(b.n)-chatLastTs(a.n);
+  });
   return list;
 }
 function chatPreview(msgs){const last=msgs[msgs.length-1];if(!last)return 'Start a conversation';
@@ -6084,7 +6146,7 @@ async function sendChat(){
   /* local-only when it's the Team welcome bot AND no support inbox is configured yet */
   const localOnly=(chatWith==='Tripomonk Team'&&!teamIsLive());
   const cid='c'+(++_cidSeq);
-  const rows=getChat(chatWith);rows.push({cid,who:'me',txt,t:nowT(),type:'text',_pending:!localOnly});saveChat(chatWith,rows);
+  const rows=getChat(chatWith);rows.push({cid,who:'me',txt,t:nowT(),ts:new Date().toISOString(),type:'text',_pending:!localOnly});saveChat(chatWith,rows);
   input.value='';renderChat();
   if(!localOnly){await deliverMessage(chatWith,{body:txt,type:'text'},cid);renderChat();}
 }
@@ -7837,22 +7899,38 @@ async function renderVendorDash(){
   hydrate(box);
 }
 function vendorApplyHTML(){
+  const opt=t=>'<option style="color:#000">'+esc(t)+'</option>';
+  const f=(lbl,inner)=>'<div class="field"><label>'+lbl+'</label><div class="inp">'+inner+'</div></div>';
   return '<div class="vend-hero"><span class="msr">handshake</span><div><b>Partner with Tripomonk</b><small>Hotels · transport · activities · gear</small></div></div>'
-    +'<div class="adm-hint" style="margin:10px 0 12px">List your services and get bookings from Tripomonk trekkers. Apply below — we review every partner.</div>'
-    +'<div class="field"><label>Business name</label><div class="inp"><input id="vdName" placeholder="e.g. Himalayan Stays"></div></div>'
-    +'<div class="field"><label>Type</label><div class="inp"><select id="vdType" style="all:unset;flex:1;color:var(--text)">'+VENDOR_TYPES.map(t=>'<option style="color:#000">'+esc(t)+'</option>').join('')+'</select></div></div>'
-    +'<div class="field"><label>City</label><div class="inp"><input id="vdCity" placeholder="e.g. Manali"></div></div>'
-    +'<div class="field"><label>WhatsApp number</label><div class="inp"><input id="vdPhone" inputmode="tel" maxlength="10" placeholder="10-digit mobile"></div></div>'
+    +'<div class="adm-hint" style="margin:10px 0 12px">List your services and get bookings from Tripomonk trekkers. Fill in your details — we review every partner.</div>'
+    +f('Business name','<input id="vdName" placeholder="e.g. Himalayan Stays">')
+    +f('Type','<select id="vdType" style="all:unset;flex:1;color:var(--text)">'+VENDOR_TYPES.map(opt).join('')+'</select>')
+    +f('Contact person','<input id="vdContact" placeholder="Your full name">')
+    +f('WhatsApp number','<input id="vdPhone" inputmode="tel" maxlength="10" placeholder="10-digit mobile">')
+    +f('Email','<input id="vdEmail" inputmode="email" placeholder="you@business.com">')
+    +f('City','<input id="vdCity" placeholder="e.g. Manali">')
+    +f('State / region you cover','<input id="vdRegion" placeholder="e.g. Himachal Pradesh">')
+    +f('Website or Instagram <span style="opacity:.6">(optional)</span>','<input id="vdSite" placeholder="link or @handle">')
+    +f('Years in business <span style="opacity:.6">(optional)</span>','<input id="vdExp" inputmode="numeric" maxlength="2" placeholder="e.g. 5">')
+    +f('GST number <span style="opacity:.6">(optional)</span>','<input id="vdGst" placeholder="15-digit GSTIN">')
+    +f('What do you offer?','<textarea id="vdAbout" rows="3" style="all:unset;flex:1;color:var(--text);min-height:62px;line-height:1.4" placeholder="Rooms, vehicles, activities, capacity, rates…"></textarea>')
     +'<button class="btn" onclick="applyVendor()"><span class="msr">send</span> Apply to partner</button>';
 }
 async function applyVendor(){
-  const g=id=>document.getElementById(id);
-  const name=(g('vdName').value||'').trim(),type=(g('vdType').value||'').trim(),city=(g('vdCity').value||'').trim(),phone=(g('vdPhone').value||'').replace(/\D/g,'');
+  const val=id=>{const el=document.getElementById(id);return ((el&&el.value)||'').trim();};
+  const name=val('vdName'),type=val('vdType'),city=val('vdCity'),phone=val('vdPhone').replace(/\D/g,'');
+  const contact=val('vdContact'),email=val('vdEmail'),region=val('vdRegion'),site=val('vdSite'),about=val('vdAbout'),gst=val('vdGst');
+  const exp=parseInt(val('vdExp').replace(/\D/g,''),10)||null;
   if(!name){note('Enter your business name.','Name needed');return;}
   if(phone.length<10){note('Enter a valid 10-digit WhatsApp number.','Number needed');return;}
+  if(email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){note('Enter a valid email or leave it blank.','Check email');return;}
   const sb=getSupaClient();const uid=sb?await authUid():null;if(!sb||!uid){note('Please sign in.','Sign in required');return;}
-  const{error}=await sb.from('vendors').insert({user_id:uid,business_name:name.slice(0,120),type,city:city.slice(0,80),phone,status:'pending'});
-  if(error){note('Could not apply: '+error.message,'Error');return;}
+  const{error}=await sb.from('vendors').insert({
+    user_id:uid,business_name:name.slice(0,120),type,city:city.slice(0,80),phone,status:'pending',
+    contact_name:contact.slice(0,120)||null,email:email.slice(0,140)||null,region:region.slice(0,80)||null,
+    website:site.slice(0,200)||null,experience:exp,about:about.slice(0,800)||null,gst:gst.slice(0,20)||null
+  });
+  if(error){note('Could not apply: '+error.message+(/column|schema/i.test(error.message)?' (run SQL-add-vendor-fields.sql)':''),'Error');return;}
   note('Application sent! We’ll review your partner request and get back to you.','Applied ✓');renderVendorDash();
 }
 function vendorListingRow(l){
