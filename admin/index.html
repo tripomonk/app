@@ -63,6 +63,18 @@
   .searchbar{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:0 12px;height:38px;width:240px;max-width:30vw}
   .searchbar input{border:0;background:none;outline:none;font-size:13px;width:100%;color:var(--ink)}
   .pill{background:rgba(61,220,151,.14);color:var(--ok);border:1px solid rgba(61,220,151,.3);border-radius:20px;padding:5px 11px;font-size:11px;font-weight:700}
+  .bell{position:relative;background:none;border:0;font-size:19px;line-height:1;cursor:pointer;padding:6px;border-radius:10px;color:var(--ink)}
+  .bell:hover{background:var(--panel2)}
+  .bell-dot{position:absolute;top:0;right:0;min-width:16px;height:16px;padding:0 4px;background:var(--bad);color:#fff;font-size:10px;font-weight:800;border-radius:9px;display:flex;align-items:center;justify-content:center}
+  .notif-pop{position:fixed;top:60px;right:20px;width:294px;max-width:88vw;background:var(--panel2);border:1px solid var(--line2);border-radius:14px;box-shadow:var(--shadow);padding:8px;z-index:60}
+  .notif-pop h4{margin:6px 8px 8px;font-size:13px;color:var(--ink)}
+  .notif-row{display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:9px;cursor:pointer}
+  .notif-row:hover{background:var(--sideact)}
+  .notif-row .nr-ic{font-size:15px;width:20px;text-align:center}
+  .notif-row .nr-t{flex:1;font-size:13px;color:var(--ink)}
+  .notif-row .nr-c{background:var(--bad);color:#fff;font-size:11px;font-weight:800;border-radius:8px;padding:1px 7px}
+  .notif-empty{padding:18px 10px;color:var(--muted);font-size:12.5px;text-align:center}
+  .nav-i .nav-b{margin-left:auto;background:var(--bad);color:#fff;font-size:10px;font-weight:800;border-radius:8px;padding:1px 6px;min-width:16px;text-align:center}
   .content{padding:22px 24px 60px;min-width:0}
   .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
   .kpi{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:var(--shadow)}
@@ -214,6 +226,8 @@
       <div><h1 id="secTitle">Overview</h1><div class="sub" id="secSub">At a glance</div></div>
       <div class="spacer"></div>
       <div class="searchbar"><span>🔎</span><input id="globalSearch" placeholder="Jump to section…"/></div>
+      <button class="bell" id="bellBtn" title="Notifications">🔔<span class="bell-dot" id="bellDot" hidden></span></button>
+      <div class="notif-pop" id="notifPop" hidden></div>
       <div class="pill">● live</div>
     </div>
     <div class="content" id="content"></div>
@@ -266,7 +280,7 @@ async function qtbl(table,build){let b=sb.from(table).select('*');if(build)b=bui
 async function boot(){const { data:{session} }=await sb.auth.getSession();if(session&&await gate(session.user))return afterAuth();showLogin();}
 async function gate(user){ME=user;const e=(user.email||'').toLowerCase();if(e===OWNER){ROLE='owner';return true;}try{const {data}=await sb.from('staff').select('role').eq('email',e).maybeSingle();if(data){ROLE=(data.role||'').toLowerCase();if(ROLE==='owner'||ROLE_SECTIONS[ROLE])return true;/* captain / unknown roles: no console access */}}catch(x){}return false;}
 function showLogin(){$('#login').classList.remove('hidden');$('#shell').classList.add('hidden');}
-function showShell(){$('#login').classList.add('hidden');$('#shell').classList.remove('hidden');const nm=(ME.email||'Admin').split('@')[0];$('#meName').textContent=nm;$('#meRole').textContent=ROLE==='owner'?'Owner':('Staff · '+ROLE);$('#meAv').textContent=ini(nm);applyRoleNav();select('dashboard');}
+function showShell(){$('#login').classList.add('hidden');$('#shell').classList.remove('hidden');const nm=(ME.email||'Admin').split('@')[0];$('#meName').textContent=nm;$('#meRole').textContent=ROLE==='owner'?'Owner':('Staff · '+ROLE);$('#meAv').textContent=ini(nm);applyRoleNav();select('dashboard');startNotifs();}
 /* hide nav items (and empty group headers) this role can't access */
 function applyRoleNav(){
   document.querySelectorAll('.nav-i').forEach(n=>{n.style.display=allowedFor(n.dataset.sec)?'':'none';});
@@ -376,8 +390,56 @@ const SEC={
   settings:['Settings','Console info',renderSettings],
 };
 let _bk=null;
-function select(sec){if(!allowedFor(sec))sec='dashboard';const S=SEC[sec];if(!S)return;document.querySelectorAll('.nav-i').forEach(n=>n.classList.toggle('on',n.dataset.sec===sec));$('#secTitle').textContent=S[0];$('#secSub').textContent=S[1];toggleMenu(false);$('#content').innerHTML='<div class="panel"><div class="skel" style="width:40%;margin-bottom:12px"></div><div class="skel" style="width:80%;margin-bottom:8px"></div><div class="skel" style="width:70%"></div></div>';S[2]();}
+function select(sec){if(!allowedFor(sec))sec='dashboard';const S=SEC[sec];if(!S)return;document.querySelectorAll('.nav-i').forEach(n=>n.classList.toggle('on',n.dataset.sec===sec));$('#secTitle').textContent=S[0];$('#secSub').textContent=S[1];toggleMenu(false);$('#content').innerHTML='<div class="panel"><div class="skel" style="width:40%;margin-bottom:12px"></div><div class="skel" style="width:80%;margin-bottom:8px"></div><div class="skel" style="width:70%"></div></div>';if(typeof admMarkSeenFor==='function')admMarkSeenFor(sec);S[2]();}
 document.querySelectorAll('.nav-i').forEach(n=>n.addEventListener('click',()=>select(n.dataset.sec)));
+/* ---- Notifications: new bookings / host requests / vendor requests / support / permits / reports ---- */
+const NOTIF_CATS=[
+  {cat:'bookings',  sec:'bookings',  ic:'🧾', label:'new booking'},
+  {cat:'hosts',     sec:'hosts',     table:'host_applications',   ic:'🧗', label:'host request'},
+  {cat:'vendors',   sec:'vendors',   table:'vendors',             ic:'🏪', label:'vendor request'},
+  {cat:'support',   sec:'support',   table:'support_tickets',     ic:'💬', label:'support ticket'},
+  {cat:'permits',   sec:'permits',   table:'permit_applications', ic:'📄', label:'permit request'},
+  {cat:'community', sec:'community',  table:'post_reports',        ic:'🚩', label:'reported post'},
+];
+let _notifs={}, _notifTimer=null;
+function admSeen(){try{return JSON.parse(localStorage.getItem('tmk_adm_seen')||'{}');}catch(e){return{};}}
+function admSetSeen(cat){const s=admSeen();s[cat]=new Date().toISOString();try{localStorage.setItem('tmk_adm_seen',JSON.stringify(s));}catch(e){}}
+function admMarkSeenFor(sec){const n=NOTIF_CATS.find(x=>x.sec===sec);if(n&&(_notifs[n.cat]||0)>0){admSetSeen(n.cat);_notifs[n.cat]=0;paintBell();}}
+async function loadNotifs(){
+  if(typeof ME==='undefined'||!ME)return;
+  const seen=admSeen(),since=c=>seen[c]||'2000-01-01T00:00:00Z',out={};
+  try{out.bookings=allowedFor('bookings')?(await getBookings()).filter(b=>(b.created_at||'')>since('bookings')).length:0;}catch(e){out.bookings=0;}
+  for(const n of NOTIF_CATS){if(!n.table){continue;}
+    if(!allowedFor(n.sec)){out[n.cat]=0;continue;}
+    try{const{data}=await sb.from(n.table).select('id').gt('created_at',since(n.cat)).limit(300);out[n.cat]=(data||[]).length;}catch(e){out[n.cat]=0;}
+  }
+  _notifs=out;paintBell();
+}
+function paintBell(){
+  const total=NOTIF_CATS.reduce((a,n)=>a+(_notifs[n.cat]||0),0);
+  const dot=$('#bellDot');if(dot){dot.hidden=total===0;dot.textContent=total>99?'99+':String(total);}
+  NOTIF_CATS.forEach(n=>{const nav=document.querySelector('.nav-i[data-sec="'+n.sec+'"]');if(!nav)return;
+    let b=nav.querySelector('.nav-b');const c=_notifs[n.cat]||0;
+    if(c>0){if(!b){b=document.createElement('span');b.className='nav-b';nav.appendChild(b);}b.textContent=c>99?'99+':String(c);}
+    else if(b){b.remove();}});
+}
+function openNotifs(){const pop=$('#notifPop');if(!pop)return;
+  if(!pop.hidden){pop.hidden=true;return;}
+  const items=NOTIF_CATS.filter(n=>(_notifs[n.cat]||0)>0),pl=(c,w)=>c+' '+w+(c===1?'':'s');
+  pop.innerHTML='<h4>Notifications</h4>'+(items.length
+    ? items.map(n=>`<div class="notif-row" onclick="gotoNotif('${n.cat}','${n.sec}')"><span class="nr-ic">${n.ic}</span><span class="nr-t">${pl(_notifs[n.cat],n.label)}</span><span class="nr-c">${_notifs[n.cat]}</span></div>`).join('')
+      +`<div class="notif-row" style="justify-content:center" onclick="clearNotifs()"><span class="nr-t" style="flex:0;color:var(--muted)">Mark all as read</span></div>`
+    : '<div class="notif-empty">You’re all caught up 🎉</div>');
+  pop.hidden=false;
+}
+function gotoNotif(cat,sec){admSetSeen(cat);_notifs[cat]=0;$('#notifPop').hidden=true;select(sec);paintBell();}
+function clearNotifs(){NOTIF_CATS.forEach(n=>{admSetSeen(n.cat);_notifs[n.cat]=0;});$('#notifPop').hidden=true;paintBell();}
+function startNotifs(){
+  if(!localStorage.getItem('tmk_adm_seen')){const s={};NOTIF_CATS.forEach(n=>s[n.cat]=new Date().toISOString());try{localStorage.setItem('tmk_adm_seen',JSON.stringify(s));}catch(e){}}
+  const bell=$('#bellBtn');if(bell)bell.onclick=e=>{e.stopPropagation();openNotifs();};
+  document.addEventListener('click',e=>{const p=$('#notifPop');if(p&&!p.hidden&&!e.target.closest('#notifPop')&&!e.target.closest('#bellBtn'))p.hidden=true;});
+  loadNotifs();if(_notifTimer)clearInterval(_notifTimer);_notifTimer=setInterval(loadNotifs,60000);
+}
 $('#globalSearch').addEventListener('keydown',e=>{if(e.key!=='Enter')return;const v=e.target.value.toLowerCase();const hit=Object.keys(SEC).find(k=>SEC[k][0].toLowerCase().includes(v));if(hit)select(hit);});
 
 /* shared */
@@ -589,8 +651,17 @@ async function renderSupport(){const {rows,error}=await qtbl('support_tickets',b
 function ticketReply(id){modal(`<h3>Reply to ticket</h3><div class="fld"><label>Reply (the user is notified)</label><textarea id="tkR"></textarea></div><div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="tkGo">Send</button></div>`);$('#tkGo').onclick=async()=>{const reply=$('#tkR').value.trim();if(!reply)return;closeOv();const {error}=await sb.from('support_tickets').update({reply,status:'answered'}).eq('id',id);toast(error?('Failed: '+error.message):'Reply sent');if(!error)renderSupport();};}
 async function ticketResolve(id){const {error}=await sb.from('support_tickets').update({status:'resolved'}).eq('id',id);toast(error?('Failed: '+error.message):'Resolved');if(!error)renderSupport();}
 /* VENDORS */
+let _vendors=[];
 async function renderVendors(){const {rows,error}=await qtbl('vendors',b=>b.order('created_at',{ascending:false}).limit(300));if(error){$('#content').innerHTML='<div class="panel"><div class="empty">Vendors table not deployed — run <b>SQL-add-vendors.sql</b>.</div></div>';return;}
-  $('#content').innerHTML=`<div class="panel"><h2>Partner operators</h2><p class="desc">${rows.length} vendors</p>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Business</th><th>Type</th><th>City</th><th>Status</th><th></th></tr></thead><tbody>${rows.map(v=>`<tr><td><b>${esc(v.business_name||'—')}</b></td><td class="muted">${esc(v.type||'')}</td><td class="muted">${esc(v.city||'')}</td><td><span class="tag ${/(approv)/i.test(v.status)?'ok':/(reject|suspend)/i.test(v.status)?'bad':'warn'}">${esc(v.status||'pending')}</span></td><td><div class="row-acts"><button class="btn2 sm" onclick="vendSet('${jsv(v.id)}','approved')">Approve</button><button class="btn2 sm danger" onclick="vendSet('${jsv(v.id)}','rejected')">Reject</button></div></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No vendor applications.</div>'}</div>`;}
+  _vendors=rows;const pend=rows.filter(v=>(v.status||'pending')==='pending').length;
+  const stag=v=>`<span class="tag ${/(approv)/i.test(v.status)?'ok':/(reject|suspend)/i.test(v.status)?'bad':'warn'}">${esc(v.status||'pending')}</span>`;
+  $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Partner operators</h2><span class="spacer"></span><span class="tag ${pend?'warn':'ok'}">${pend} pending</span></div><p class="desc">${rows.length} total</p>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Business</th><th>Type</th><th>Contact</th><th>City</th><th>Status</th><th></th></tr></thead><tbody>${rows.map(v=>`<tr><td><b>${esc(v.business_name||'—')}</b>${v.gst?`<br><small class="muted">GST ${esc(v.gst)}</small>`:''}</td><td class="muted">${esc(v.type||'')}</td><td class="muted">${esc(v.contact_name||'—')}${v.phone?`<br><small>${esc(v.phone)}</small>`:''}</td><td class="muted">${esc(v.city||'')}${v.region?', '+esc(v.region):''}</td><td>${stag(v)}</td><td><div class="row-acts"><button class="btn2 sm" onclick="vendView('${jsv(v.id)}')">Details</button><button class="btn2 sm" onclick="vendSet('${jsv(v.id)}','approved')">Approve</button><button class="btn2 sm danger" onclick="vendSet('${jsv(v.id)}','rejected')">Reject</button></div></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No vendor applications.</div>'}</div>`;}
+function vendView(id){const v=(_vendors||[]).find(x=>String(x.id)===String(id));if(!v)return;
+  const r=(l,val)=>val?`<tr><td class="muted">${l}</td><td style="text-align:right"><b>${esc(val)}</b></td></tr>`:'';
+  modal(`<h3>${esc(v.business_name||'Vendor')}</h3>
+    <table class="tbl"><tbody>${r('Type',v.type)}${r('Contact',v.contact_name)}${r('WhatsApp',v.phone)}${r('Email',v.email)}${r('City',v.city)}${r('Region',v.region)}${r('Website / IG',v.website)}${r('Years in business',v.experience)}${r('GST',v.gst)}${r('Applied',v.created_at?dshort(v.created_at):'')}${r('Status',v.status||'pending')}</tbody></table>
+    ${v.about?`<div style="margin-top:12px"><div class="muted" style="font-size:12px;margin-bottom:4px">What they offer</div><div style="font-size:13px;line-height:1.5">${esc(v.about)}</div></div>`:''}
+    <div class="actions" style="margin-top:14px"><button class="btn2" onclick="closeOv()">Close</button><button class="btn2 danger" onclick="closeOv();vendSet('${jsv(v.id)}','rejected')">Reject</button><button class="btn2 pri" onclick="closeOv();vendSet('${jsv(v.id)}','approved')">Approve</button></div>`);}
 async function vendSet(id,st){const {error}=await sb.from('vendors').update({status:st}).eq('id',id);toast(error?('Failed: '+error.message):('Vendor '+st));if(!error)renderVendors();}
 /* USERS + activity */
 async function renderUsers(){const {rows}=await qtbl('profiles',b=>b.select('id,name,username,photo,is_host').order('name'));
@@ -737,10 +808,31 @@ function staffAdd(){modal(`<h3>Add an admin / staff member</h3><div class="fld">
 function staffDel(email){if((email||'').toLowerCase()===OWNER){toast('The owner can’t be removed.');return;}confirmDo('Remove '+email+' from the team?',async()=>{const {error}=await sb.from('staff').delete().eq('email',email);toast(error?('Failed: '+error.message):'Removed');if(!error)renderStaff();});}
 async function staffRole(email,role){const {error}=await sb.from('staff').update({role}).eq('email',email);toast(error?('Role update blocked — run SQL-admin-writes-fix.sql ('+(error.code||error.message)+')'):('Role set to '+role));}
 /* COMMUNITY */
-async function renderCommunity(){const {rows,error}=await qtbl('community_posts',b=>b.order('created_at',{ascending:false}).limit(80));if(error){$('#content').innerHTML='<div class="panel"><div class="empty">Posts not readable.</div></div>';return;}
-  $('#content').innerHTML=`<div class="panel"><h2>Recent posts</h2><p class="desc">${rows.length} latest</p>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Author</th><th>Caption</th><th>Posted</th><th></th></tr></thead><tbody>${rows.map(p=>`<tr><td><div class="u">${avc(p.author_name)}<b>${esc(p.author_name||'Trekker')}</b></div></td><td class="muted">${esc((p.txt||'').slice(0,80))}</td><td class="muted">${timeAgo(p.created_at)}</td><td><div class="row-acts"><button class="btn2 sm" onclick="postFeature('${jsv(p.id)}',${p.featured?'false':'true'})">${p.featured?'Unfeature':'Feature'}</button><button class="btn2 sm danger" onclick="postDel('${jsv(p.id)}')">Delete</button></div></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No posts.</div>'}</div>`;}
+async function renderCommunity(){const {rows,error}=await qtbl('community_posts',b=>b.order('created_at',{ascending:false}).limit(120));if(error){$('#content').innerHTML='<div class="panel"><div class="empty">Posts not readable. Run <b>SQL-add-moderation.sql</b> and make sure you are signed in as the owner.</div></div>';return;}
+  const needs=rows.filter(p=>['pending','flagged','rejected'].includes(p.status)||(p.reports||0)>0);
+  const liveList=rows.filter(p=>needs.indexOf(p)<0);
+  const SB={live:'ok',pending:'warn',flagged:'warn',rejected:'bad'};
+  const thumb=p=>{const im=(p.imgs&&p.imgs[0])||'';return im&&/^https?:/.test(im)?`<img src="${esc(im)}" style="width:46px;height:46px;border-radius:8px;object-fit:cover"/>`:'<span class="muted" style="font-size:11px">text</span>';};
+  const badge=p=>{const s=p.status||'live';return `<span class="tag ${SB[s]||'neutral'}">${s}</span>${(p.reports||0)>0?` <span class="tag bad">${p.reports}⚑</span>`:''}${p.mod_reason?`<div class="muted" style="font-size:11px;margin-top:3px">${esc(p.mod_reason)}</div>`:''}`;};
+  const acts=p=>{const b=[];
+    if((p.status||'live')==='live'){
+      b.push(`<button class="btn2 sm" onclick="postFeature('${jsv(p.id)}',${p.featured?'false':'true'})">${p.featured?'Unfeature':'Feature'}</button>`);
+      b.push(`<button class="btn2 sm" onclick="postStatus('${jsv(p.id)}','flagged')">Hide</button>`);
+    }else{
+      b.push(`<button class="btn2 sm" onclick="postStatus('${jsv(p.id)}','live')">Approve</button>`);
+      if(p.status!=='rejected')b.push(`<button class="btn2 sm danger" onclick="postStatus('${jsv(p.id)}','rejected')">Reject</button>`);
+    }
+    b.push(`<button class="btn2 sm danger" onclick="postDel('${jsv(p.id)}')">Delete</button>`);
+    return `<div class="row-acts">${b.join('')}</div>`;};
+  const tbl=list=>wrapTbl(`<table class="tbl"><thead><tr><th></th><th>Author</th><th>Caption</th><th>Status</th><th>Posted</th><th></th></tr></thead><tbody>${list.map(p=>`<tr><td>${thumb(p)}</td><td><div class="u">${avc(p.author_name)}<b>${esc(p.author_name||'Trekker')}</b></div></td><td class="muted">${esc((p.txt||'').slice(0,70))}</td><td>${badge(p)}</td><td class="muted">${timeAgo(p.created_at)}</td><td>${acts(p)}</td></tr>`).join('')}</tbody></table>`);
+  $('#content').innerHTML=`
+    <div class="panel"><div class="tbar"><h2 style="margin:0">Needs review</h2><span class="spacer"></span><span class="tag ${needs.length?'bad':'ok'}">${needs.length}</span></div>
+      <p class="desc">Posts pending moderation, auto-rejected by AI, or reported by users.</p>
+      ${needs.length?tbl(needs):'<div class="empty">Nothing waiting — all clear.</div>'}</div>
+    <div class="panel"><h2>Live posts</h2><p class="desc">${liveList.length} shown</p>${liveList.length?tbl(liveList):'<div class="empty">No live posts.</div>'}</div>`;}
 async function postFeature(id,f){const r=await adminCall('feature_post',{id,featured:f==='true'||f===true});toast(r&&r.error?('Failed: '+r.error):'Updated');if(!(r&&r.error))renderCommunity();}
-function postDel(id){confirmDo('Delete this post?',async()=>{const r=await adminCall('delete_post',{id});toast(r&&r.error?('Failed: '+r.error):'Deleted');if(!(r&&r.error))renderCommunity();});}
+async function postStatus(id,status){const r=await adminCall('set_post_status',{id,status});toast(r&&r.error?('Failed: '+r.error):(status==='live'?'Approved ✓':status==='rejected'?'Rejected':'Hidden'));if(!(r&&r.error))renderCommunity();}
+function postDel(id){confirmDo('Delete this post permanently?',async()=>{const r=await adminCall('delete_post',{id});toast(r&&r.error?('Failed: '+r.error):'Deleted');if(!(r&&r.error))renderCommunity();});}
 /* REVIEWS */
 async function renderReviews(){const {rows,error}=await qtbl('reviews',b=>b.order('created_at',{ascending:false}).limit(200));if(error){$('#content').innerHTML='<div class="panel"><div class="empty">Reviews table not deployed — run <b>SQL-add-reviews.sql</b>.</div></div>';return;}
   $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Reviews</h2><span class="spacer"></span><button class="btn2 pri" onclick="reviewAdd()">+ Add review</button></div>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Author</th><th>Trek</th><th>Rating</th><th>Review</th><th></th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${esc(r.author)}</b></td><td class="muted">${esc(r.trek||'')}</td><td style="color:var(--yellow)">${'★'.repeat(r.rating||5)}</td><td class="muted">${esc((r.body||'').slice(0,90))}</td><td><button class="btn2 sm danger" onclick="reviewDel('${jsv(r.id)}')">Delete</button></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No reviews yet.</div>'}</div>`;}
