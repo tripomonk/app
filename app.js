@@ -6488,8 +6488,7 @@ function doSearch(q){const inp=document.getElementById('searchInput');if(inp&&q&
 let _planMsgs=[], _planBusy=false;
 function renderPlanner(){
   if(!_planMsgs.length){
-    _planMsgs=[{role:'assistant',content:"Hi! I'm your Tripomonk trip planner. Tell me your budget, dates, who's coming, or the vibe — and I'll find the right trek or tour for you.",
-      followups:["Easy trek for beginners","3-day trip under ₹8,000 from Delhi","Adventure + camping with friends","5 days, ₹20,000 — suggest something","Like Kedarkantha but easier"]}];
+    _planMsgs=[{role:'assistant',content:"Hi! I'm your Tripomonk trip planner. Tell me your budget, dates, who's coming, or the vibe — and I'll find the right trek or tour for you."}];
   }
   paintPlanner();
   const inp=document.getElementById('plannerInput');if(inp)setTimeout(()=>{try{inp.focus();}catch(e){}},120);
@@ -6514,9 +6513,6 @@ function paintPlanner(){
   }).join('');
   if(_planBusy)html+=`<div class="pl-row pl-row-assistant"><div class="pl-msg pl-assistant pl-typing"><span></span><span></span><span></span></div></div>`;
   chat.innerHTML=html;hydrate(chat);
-  const last=_planMsgs[_planMsgs.length-1];
-  const chips=document.getElementById('plannerChips');
-  if(chips){const fu=(!_planBusy&&last&&last.role==='assistant'&&last.followups)||[];chips.innerHTML=fu.map(f=>`<button class="pl-chip" onclick="plannerChip('${jsq(f)}')">${esc(f)}</button>`).join('');}
   chat.scrollTop=chat.scrollHeight;
 }
 function plannerChip(text){const inp=document.getElementById('plannerInput');if(inp)inp.value=text;sendPlan();}
