@@ -882,6 +882,9 @@ async function authUid(){
     return session.user.id;
   }catch(e){return currentUser?currentUser.id:null;}
 }
+/* true only while the user is on the reset-password screen via an email link — the app
+   must load NO account data and treat them as logged-out until they set a new password. */
+let _recoveryMode=false;
 async function initAuth(){
   const sb=getSupaClient();
   if(!sb){_authResolved=true;return;}
@@ -892,40 +895,46 @@ async function initAuth(){
   const isRecovery=/type=recovery/.test(window.location.hash||'')||/type=recovery/.test(window.location.search||'');
   let session=null;
   try{({data:{session}}=await sb.auth.getSession());}catch(e){}
-  currentUser=session?session.user:null;
-  _authResolved=true;          /* from here on isLoggedIn() is strict, not optimistic */
-  refreshAuthUI();             /* repaint the shell that booted before we knew */
-  if(session){
-    /* restore name/photo/follows BEFORE upserting, or an empty local copy overwrites the stored one */
-    await loadProfileFromServer();
-    seedIdentityFromAuth();   /* fill name/photo from the Google account if still unset */
-    upsertProfile();   /* register this user so others can @mention/follow/notify them */
-    loadStaff();loadSavedPostsFromServer();       /* role check + sync saved posts */
-    _myUid=null;ensureMsgSub();loadAiCfg().then(registerSupportInbox);   /* messaging + support inbox */
-    refreshAuthUI();   /* again, now that the name/photo are back */
-    if(isRecovery){
-      /* password-reset link: clean the token out of the URL and let them set a new password */
-      try{history.replaceState(null,'',window.location.pathname);}catch(e){}
-      promptNewPassword();
-    } else if(fromOAuth){
-      /* clean the token hash out of the URL and land on home */
-      try{history.replaceState(null,'',window.location.pathname);}catch(e){}
-      go('home');
-    } else if(cur==='login'||cur==='splash'||cur==='otp'){
-      const ret=_loginReturn;_loginReturn=null;
-      go(ret||'home');
+  if(isRecovery){
+    /* Password-reset link. The session it creates is VALID, but we must NOT load the
+       account or treat them as logged in until they actually set a new password —
+       otherwise anyone holding the reset link would see the account's data. So we gate
+       straight to the reset screen and load nothing. */
+    _authResolved=true;
+    try{history.replaceState(null,'',window.location.pathname);}catch(e){}
+    if(session){_recoveryMode=true;currentUser=null;refreshAuthUI();go('reset');}
+    else{currentUser=null;refreshAuthUI();note('This password-reset link has expired or was already used. Please request a new one.','Link expired');go('login');}
+  } else {
+    currentUser=session?session.user:null;
+    _authResolved=true;          /* from here on isLoggedIn() is strict, not optimistic */
+    refreshAuthUI();             /* repaint the shell that booted before we knew */
+    if(session){
+      /* restore name/photo/follows BEFORE upserting, or an empty local copy overwrites the stored one */
+      await loadProfileFromServer();
+      seedIdentityFromAuth();   /* fill name/photo from the Google account if still unset */
+      upsertProfile();   /* register this user so others can @mention/follow/notify them */
+      loadStaff();loadSavedPostsFromServer();       /* role check + sync saved posts */
+      _myUid=null;ensureMsgSub();loadAiCfg().then(registerSupportInbox);   /* messaging + support inbox */
+      refreshAuthUI();   /* again, now that the name/photo are back */
+      if(fromOAuth){
+        /* clean the token hash out of the URL and land on home */
+        try{history.replaceState(null,'',window.location.pathname);}catch(e){}
+        go('home');
+      } else if(cur==='login'||cur==='splash'||cur==='otp'){
+        const ret=_loginReturn;_loginReturn=null;
+        go(ret||'home');
+      }
+      setTimeout(maybeOnboard,600);  /* first-time users pick their preferences */
     }
-    if(!isRecovery)setTimeout(maybeOnboard,600);  /* first-time users pick their preferences */
-  } else if(isRecovery){
-    /* recovery token didn't resolve to a session — expired or already used */
-    note('This password-reset link has expired or was already used. Please request a new one.','Link expired');
-    go('login');
   }
   sb.auth.onAuthStateChange(async(evt,session)=>{
+    /* a reset link fired PASSWORD_RECOVERY — gate to the reset screen and load nothing */
+    if(evt==='PASSWORD_RECOVERY'){_recoveryMode=true;currentUser=null;_authResolved=true;refreshAuthUI();go('reset');return;}
+    /* while holding on the reset screen, ignore token refreshes / user-updated so no
+       account data loads until they actually reset (or sign in fresh) */
+    if(_recoveryMode)return;
     currentUser=session?session.user:null;
     _authResolved=true;
-    /* arrived via a password-reset link — let them set a new password now */
-    if(evt==='PASSWORD_RECOVERY'){promptNewPassword();return;}
     if(!session){_profileLoadedFor=null;refreshAuthUI();}
     /* reload whenever a DIFFERENT account is in play — keyed on the user id, not on
        "was anyone logged in", so switching accounts swaps identity properly.
@@ -1213,15 +1222,41 @@ async function authByUsername(username,password){
   }catch(e){return{error:'Could not reach the login service.'};}
 }
 /* fired when the user opens a reset link — collect a new password and set it */
-async function promptNewPassword(){
-  const pw=await askCode('Set a new password',{password:true,placeholder:'New password (min 8)'});
-  if(pw==null)return;
-  {const pe=passwordError(pw);if(pe){note(pe,'Weak password').then(promptNewPassword);return;}}
-  const sb=getSupaClient();if(!sb)return;
+/* ---- dedicated reset-password screen (reached only from an email link) ---- */
+function renderReset(){
+  const err=document.getElementById('rpErr');if(err)err.textContent='';
+  const p=document.getElementById('rpPass'),p2=document.getElementById('rpPass2');
+  if(p){p.value='';p.type='password';}if(p2)p2.value='';
+  const tog=document.getElementById('rpToggle');if(tog)tog.textContent='visibility';
+  const btn=document.getElementById('rpBtn');if(btn){btn.disabled=false;btn.textContent='Update password';}
+  setTimeout(()=>{if(p)p.focus();},90);
+}
+function toggleResetPw(){
+  const p=document.getElementById('rpPass'),t=document.getElementById('rpToggle');if(!p)return;
+  const show=p.type==='password';p.type=show?'text':'password';if(t)t.textContent=show?'visibility_off':'visibility';
+}
+async function submitNewPassword(){
+  const p=document.getElementById('rpPass'),p2=document.getElementById('rpPass2'),err=document.getElementById('rpErr'),btn=document.getElementById('rpBtn');
+  const showErr=m=>{if(err)err.textContent=m||'';};
+  const pw=(p&&p.value)||'',pw2=(p2&&p2.value)||'';
+  const pe=passwordError(pw);if(pe){showErr(pe);return;}
+  if(pw!==pw2){showErr('Both passwords must match.');return;}
+  const sb=getSupaClient();if(!sb){showErr('Something went wrong. Please try again.');return;}
+  showErr('');if(btn){btn.disabled=true;btn.textContent='Updating…';}
   const{error}=await sb.auth.updateUser({password:pw});
-  if(error){note(error.message,'Error');return;}
-  try{history.replaceState(null,'',window.location.pathname);}catch(e){}
-  note('Password updated. You are signed in.','Done').then(()=>go(lastTab||'home'));
+  if(error){showErr(error.message||'Could not update password.');if(btn){btn.disabled=false;btn.textContent='Update password';}return;}
+  /* Success. Drop the recovery session entirely and make them sign in with the NEW
+     password — nothing from the account was loaded during the reset. */
+  _recoveryMode=false;
+  try{await sb.auth.signOut();}catch(e){}
+  currentUser=null;_profileLoadedFor=null;refreshAuthUI();
+  note('Password updated. Please sign in with your new password.','All set').then(()=>{_loginReturn=null;go('login');});
+}
+function cancelReset(){
+  /* backed out of the reset — clear the recovery session so no data can load, go to login */
+  _recoveryMode=false;
+  const sb=getSupaClient();if(sb)sb.auth.signOut().catch(()=>{});
+  currentUser=null;refreshAuthUI();go('login');
 }
 async function forgotPassword(){
   const id=(document.getElementById('emailInput').value||'').trim();
@@ -8209,7 +8244,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='458';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='459';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -10181,6 +10216,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='language')renderLanguage();
   if(id==='payments')renderPayments();
   if(id==='compare')renderCompare();
+  if(id==='reset')renderReset();
   if(id==='fitness')renderFitness();
   if(id==='fitnessTest')renderFitnessTest();
   if(id==='trainingPlan')renderTrainingPlan();
@@ -10233,7 +10269,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections,addStaff,removeStaff,setStaffRole,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab,openReviewModal,closeReviewModal,submitReview,setRevStars,adminAddReview,adminDelReview,toggleSavePost,renderEmergency,renderSavedPosts,followAction,requestCall,declineCall,allowCallMsg,togglePrivateAccount,renderFollowRequests,acceptFollowReq,declineFollowReq,admToggleHl,filterAdminHub,admAssignCaptain,admChangeBatch,admRefund,admCancelBooking,admInvoice,renderAdminUsers,paintUsers,admNotifyUser,renderAdminPayments,admPayFilter,admExportCSV,admRevenueCSV,renderAdminGear,gearAdj,gearAddItem,gearDelItem,gearSeed,renderAdminCommunity,admDeletePost,admFeaturePost,renderAdminPermits,permSet,renderAdminSupport,ticketReply,ticketResolve,raiseTicket,renderAdminCRM,crmSearch,crmOpen,renderAdminAI,saveAiCfg,renderAdminVendors,vendorSet,openVendorDash,renderVendorDash,applyVendor,vendorAddListing,vendorToggleListing,vendorDelListing});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,submitNewPassword,toggleResetPw,cancelReset,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections,addStaff,removeStaff,setStaffRole,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab,openReviewModal,closeReviewModal,submitReview,setRevStars,adminAddReview,adminDelReview,toggleSavePost,renderEmergency,renderSavedPosts,followAction,requestCall,declineCall,allowCallMsg,togglePrivateAccount,renderFollowRequests,acceptFollowReq,declineFollowReq,admToggleHl,filterAdminHub,admAssignCaptain,admChangeBatch,admRefund,admCancelBooking,admInvoice,renderAdminUsers,paintUsers,admNotifyUser,renderAdminPayments,admPayFilter,admExportCSV,admRevenueCSV,renderAdminGear,gearAdj,gearAddItem,gearDelItem,gearSeed,renderAdminCommunity,admDeletePost,admFeaturePost,renderAdminPermits,permSet,renderAdminSupport,ticketReply,ticketResolve,raiseTicket,renderAdminCRM,crmSearch,crmOpen,renderAdminAI,saveAiCfg,renderAdminVendors,vendorSet,openVendorDash,renderVendorDash,applyVendor,vendorAddListing,vendorToggleListing,vendorDelListing});
 
 /* init */
 applyTheme();   /* dark / light / system theme */
