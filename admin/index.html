@@ -423,6 +423,7 @@ const NOTIF_CATS=[
   {cat:'bookings',   sec:'bookings',  ic:'🧾', label:'new booking'},
   {cat:'hosts',      sec:'hosts',     table:'host_applications',   ic:'🧗', label:'host request'},
   {cat:'host_trips', sec:'hosts',     table:'host_trips',          ic:'🗺️', label:'new trip listing'},
+  {cat:'guide_apps', sec:'guides',    table:'guide_applications',  ic:'🧗', label:'guide application'},
   {cat:'vendors',    sec:'vendors',   table:'vendors',             ic:'🏪', label:'vendor request'},
   {cat:'support',    sec:'support',   table:'support_tickets',     ic:'💬', label:'support ticket'},
   {cat:'permits',    sec:'permits',   table:'permit_applications', ic:'📄', label:'permit request'},
@@ -1078,11 +1079,77 @@ function hostTripEdit(id){
     <div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="htGo">Save</button></div>`);
   $('#htGo').onclick=async()=>{const upd={title:$('#htT').value.trim(),destination:$('#htD').value.trim(),price:parseInt($('#htP').value)||0,start_date:$('#htS').value||null,end_date:$('#htE').value||null,days:parseInt($('#htDy').value)||null,max_people:parseInt($('#htM').value)||null,difficulty:$('#htDf').value,status:$('#htSt').value,description:$('#htDesc').value.trim()};closeOv();const {error}=await sb.from('host_trips').update(upd).eq('id',id);toast(error?('Failed: '+error.message):'Trip updated');if(!error)hostReload();};}
 async function hostTripStatus(id,st){const {error}=await sb.from('host_trips').update({status:st}).eq('id',id);toast(error?('Failed: '+error.message):('Trip '+(st==='live'?'published':'unlisted')));if(!error)hostReload();}
-/* GUIDES */
-async function renderGuides(){const {rows,error}=await qtbl('guides',b=>b.limit(200));if(error){$('#content').innerHTML='<div class="panel"><div class="empty">Guides table not deployed — run <b>SQL-add-guides.sql</b>.</div></div>';return;}
-  $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Trek leaders</h2><span class="spacer"></span><button class="btn2 pri" onclick="guideAdd()">+ Add guide</button></div>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Name</th><th>Experience</th><th></th></tr></thead><tbody>${rows.map(g=>`<tr><td><div class="u">${avc(g.name,g.photo)}<b>${esc(g.name)}</b></div></td><td class="muted">${esc(g.experience||g.exp||'')}</td><td><button class="btn2 sm danger" onclick="guideDel('${jsv(g.id)}')">Remove</button></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No guides yet.</div>'}</div>`;}
-function guideAdd(){modal(`<h3>Add guide</h3><div class="fld"><label>Name</label><input id="gdN"/></div><div class="fld"><label>Experience</label><input id="gdE" placeholder="8 years, 200+ treks"/></div><div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="gdGo">Add</button></div>`);$('#gdGo').onclick=async()=>{const name=$('#gdN').value.trim();if(!name)return;closeOv();const r=await adminCall('save_guide',{guide:{name,experience:$('#gdE').value.trim()}});toast(r&&r.error?('Failed: '+r.error):'Guide added');if(!(r&&r.error))renderGuides();};}
-function guideDel(id){confirmDo('Remove this guide?',async()=>{const r=await adminCall('delete_guide',{id});toast(r&&r.error?('Failed: '+r.error):'Removed');if(!(r&&r.error))renderGuides();});}
+/* GUIDES — applications (evaluate & approve) + assignable roster */
+let _guideApps=[], _guideRoster=[], _guideTab=null;
+async function guideAppList(){
+  try{const r=await adminCall('list_guide_apps',{});if(r&&Array.isArray(r.rows))return r.rows;}catch(e){}
+  const q=await qtbl('guide_applications',b=>b.order('created_at',{ascending:false}).limit(500));
+  return q.rows||[];
+}
+async function guideRosterList(){const q=await qtbl('guides',b=>b.limit(200));return q.rows||[];}
+async function renderGuides(){
+  _guideApps=await guideAppList();
+  _guideRoster=await guideRosterList();
+  _guideTab=null;guideBoxes();
+}
+async function guideReload(){
+  _guideApps=await guideAppList();
+  _guideRoster=await guideRosterList();
+  if(_guideTab==='apps')guideDetail('apps');else if(_guideTab==='roster')guideDetail('roster');else guideBoxes();
+}
+function guideView(which){_guideTab=which;guideDetail(which);}
+function guideBoxes(){
+  const pend=_guideApps.filter(a=>!/(approv|reject)/i.test(a.status||'pending')).length;
+  const box=(title,total,badge,cls,sub,which)=>`<div class="panel" onclick="guideView('${which}')" style="cursor:pointer">
+    <div class="tbar"><h2 style="margin:0">${title}</h2><span class="spacer"></span><span class="tag ${cls}">${badge}</span></div>
+    <div style="font-size:38px;font-weight:800;line-height:1;margin:4px 0 6px">${total}</div>
+    <p class="desc" style="margin:0">${sub} <span style="color:var(--accent2)">View &rarr;</span></p></div>`;
+  $('#content').innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">
+    ${box('Guide applications',_guideApps.length,pend+' pending',pend?'warn':'ok','Evaluate &amp; approve trek leaders.','apps')}
+    ${box('Trek leaders',_guideRoster.length,'roster',_guideRoster.length?'ok':'warn','Assignable guide roster.','roster')}
+  </div>`;}
+function guideStTag(s){s=(s||'pending').toLowerCase();return `<span class="tag ${/approv/.test(s)?'ok':/reject/.test(s)?'bad':'warn'}">${esc(s)}</span>`;}
+function guideAppActs(a){const s=(a.status||'pending').toLowerCase(),id=jsv(a.id);
+  const appr=`<button class="btn2 sm" onclick="guideSet('${id}','approved')">Approve</button>`;
+  const rej=`<button class="btn2 sm danger" onclick="guideSet('${id}','rejected')">Reject</button>`;
+  const rev=`<button class="btn2 sm danger" onclick="guideSet('${id}','rejected')">Revoke</button>`;
+  let dec; if(/approv/.test(s))dec=rev; else if(/reject/.test(s))dec=appr; else dec=appr+rej;
+  return `<div class="row-acts"><button class="btn2 sm" onclick="guideProfile('${id}')">View</button>${dec}</div>`;}
+function guideDetail(which){
+  const back=`<button class="btn2" onclick="renderGuides()">&larr; Back</button>`;
+  if(which==='apps'){
+    $('#content').innerHTML=`<div class="panel"><div class="tbar">${back}<h2 style="margin:0 0 0 10px">Guide applications</h2><span class="spacer"></span><span class="tag">${_guideApps.length}</span></div><p class="desc">Tap <b>View</b> to read the full application, then approve or reject.</p>${_guideApps.length?wrapTbl(`<table class="tbl"><thead><tr><th>Name</th><th>City</th><th>Experience</th><th>Status</th><th></th></tr></thead><tbody>${_guideApps.map(a=>`<tr><td><b>${esc(a.full_name||'-')}</b><br><small class="muted">${esc(a.regions||'')}</small></td><td data-l="City" class="muted">${esc(a.city||'')}${a.state?', '+esc(a.state):''}</td><td data-l="Experience" class="muted">${esc(((a.experience_years!=null?a.experience_years+' yrs':'')+(a.treks_led?' · '+a.treks_led:''))||'-')}</td><td data-l="Status">${guideStTag(a.status)}</td><td>${guideAppActs(a)}</td></tr>`).join('')}</tbody></table>`):'<div class="empty">No applications yet.</div>'}</div>`;
+  }else{
+    $('#content').innerHTML=`<div class="panel"><div class="tbar">${back}<h2 style="margin:0 0 0 10px">Trek leaders</h2><span class="spacer"></span><button class="btn2 pri" onclick="guideAdd()">+ Add guide</button></div><p class="desc">Assignable roster. Approved applicants are added here automatically.</p>${_guideRoster.length?wrapTbl(`<table class="tbl"><thead><tr><th>Name</th><th>Experience</th><th></th></tr></thead><tbody>${_guideRoster.map(g=>`<tr><td><div class="u">${avc(g.name,g.photo)}<b>${esc(g.name)}</b></div></td><td data-l="Experience" class="muted">${esc(g.experience||g.exp||'')}</td><td><button class="btn2 sm danger" onclick="guideDel('${jsv(g.id)}')">Remove</button></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No guides yet.</div>'}</div>`;
+  }}
+function guideProfile(id){
+  const a=_guideApps.find(x=>String(x.id)===String(id));if(!a)return;
+  const d=$('#drawer'),body=$('#drawerBody');if(!d||!body)return;d.classList.add('show');
+  const row=(l,v)=>(v||v===0)?`<div class="ua-ev"><span class="d"></span><div>${esc(String(v))}<small>${esc(l)}</small></div></div>`:'';
+  const ph=String(a.whatsapp||a.phone||'');const telNum=ph.replace(/[^0-9+]/g,'');
+  let waDigits=ph.replace(/[^0-9]/g,'').replace(/^0+/,'');if(waDigits.length===10)waDigits='91'+waDigits;
+  const s=(a.status||'pending').toLowerCase();
+  const dec=/approv/.test(s)?`<button class="btn2 sm danger" onclick="guideSet('${jsv(a.id)}','rejected')">Revoke</button>`
+    :/reject/.test(s)?`<button class="btn2 pri sm" onclick="guideSet('${jsv(a.id)}','approved')">Approve</button>`
+    :`<button class="btn2 pri sm" onclick="guideSet('${jsv(a.id)}','approved')">Approve</button><button class="btn2 sm danger" onclick="guideSet('${jsv(a.id)}','rejected')">Reject</button>`;
+  body.innerHTML=`<div class="dh">${avc(a.full_name)}<div><b style="font-size:16px">${esc(a.full_name||'Guide')}</b><br><small class="muted">${esc(a.city||'')}${a.city&&a.state?', ':''}${esc(a.state||'')} · ${esc(s)}</small></div><span class="spacer"></span><button class="btn2" onclick="closeOv()">Close</button></div>
+    <div class="sec-t">Contact</div>${row('Phone',a.phone)}${row('WhatsApp',a.whatsapp)}${row('Email',a.email)}${row('Gender',a.gender)}${row('DOB',a.dob)}
+    <div class="sec-t">Experience</div>${row('Years guiding',a.experience_years)}${row('Treks led',a.treks_led)}${row('Highest altitude',a.max_altitude)}${row('Regions',a.regions)}${row('Languages',a.languages)}
+    <div class="sec-t">Skills &amp; safety</div>${row('Certifications',a.certifications)}${row('First-aid trained',a.first_aid?'Yes':'No')}${row('Fitness',a.fitness)}
+    <div class="sec-t">Track record</div>${row('Notable treks',a.notable_treks)}${row('Availability',a.availability)}${row('Day rate',a.day_rate?('₹'+a.day_rate):'')}
+    <div class="sec-t">Links</div>${row('Instagram',a.instagram)}${row('Website',a.website)}
+    <div class="sec-t">About</div>${row('About',a.about)}${row('Why guide with Tripomonk',a.why_guide)}
+    <div class="sec-t">References</div>${row('Reference name',a.reference_name)}${row('Reference phone',a.reference_phone)}${row('Consent given',a.consent?'Yes':'No')}
+    <div class="sec-t">Decision</div><div class="row-acts" style="justify-content:flex-start;margin-bottom:10px">${dec}</div>
+    ${telNum?`<div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn2" style="text-decoration:none" href="tel:${esc(telNum)}">Call</a><a class="btn2" style="text-decoration:none" href="https://wa.me/${esc(waDigits)}" target="_blank" rel="noopener">WhatsApp</a></div>`:''}`;}
+async function guideSet(id,st){
+  const r=await adminCall('set_guide_app_status',{id,status:st});
+  if(r&&r.error){toast('Failed: '+r.error+(/relation|column/i.test(r.error)?' — run SQL-add-guide-applications.sql':''));return;}
+  toast('Guide '+(st==='approved'?'approved & added to roster':st));
+  closeOv();guideReload();
+}
+function guideAdd(){modal(`<h3>Add guide</h3><div class="fld"><label>Name</label><input id="gdN"/></div><div class="fld"><label>Experience</label><input id="gdE" placeholder="8 years, 200+ treks"/></div><div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="gdGo">Add</button></div>`);$('#gdGo').onclick=async()=>{const name=$('#gdN').value.trim();if(!name)return;closeOv();const r=await adminCall('save_guide',{guide:{name,experience:$('#gdE').value.trim()}});toast(r&&r.error?('Failed: '+r.error):'Guide added');if(!(r&&r.error))guideReload();};}
+function guideDel(id){confirmDo('Remove this guide?',async()=>{const r=await adminCall('delete_guide',{id});toast(r&&r.error?('Failed: '+r.error):'Removed');if(!(r&&r.error))guideReload();});}
 /* STAFF */
 async function renderStaff(){const {rows,error}=await qtbl('staff',b=>b.limit(200));
   const ROLES=['operations','finance','content','community','captain'];
