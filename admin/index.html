@@ -109,7 +109,16 @@
   .tabbar .tab:hover{color:var(--ink)}
   .tk-body{max-height:56vh;overflow-y:auto;padding-right:4px}
   .tk-body .fld2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  @media(max-width:560px){.tk-body .fld2{grid-template-columns:1fr}}
+  .wiki-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+  .wiki-grid img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid transparent;background:var(--panel2)}
+  .wiki-grid img:hover{border-color:var(--line2)}
+  .wiki-grid img.sel{border-color:var(--accent)}
+  @media(max-width:560px){
+    .tk-body .fld2{grid-template-columns:1fr}
+    .wiki-grid{grid-template-columns:repeat(2,1fr)}
+    .tk-body{max-height:none}
+    .tabbar{position:sticky;top:-2px;background:var(--panel);z-index:2}
+  }
   .skel{height:14px;border-radius:6px;background:linear-gradient(90deg,#12233c,#1a2f4e,#12233c);background-size:200% 100%;animation:sh 1.2s infinite}
   @keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
   .bars{display:flex;align-items:flex-end;gap:6px;height:180px;margin-top:8px}
@@ -121,10 +130,19 @@
   .ov{position:fixed;inset:0;z-index:60;display:none}.ov.show{display:block}
   .ov .scrim{position:absolute;inset:0;background:rgba(3,8,18,.7)}
   .modal{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:460px;max-width:94vw;max-height:88vh;overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 40px 90px -40px #000}
+  /* the trek CMS form is big — give it a much wider desktop modal */
+  .modal.modal-wide{width:920px;max-width:94vw;max-height:90vh;padding:24px 26px}
+  .modal.modal-wide .tk-body{max-height:64vh}
   .modal h3{margin:0 0 14px;font-size:17px}
   .modal .fld input,.modal .fld textarea,.modal .fld select{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;outline:none;font-family:inherit;background:var(--panel2);color:var(--ink)}
   .modal .fld textarea{min-height:80px;resize:vertical}
   .modal .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+  /* mobile: the edit modal becomes a full-width bottom sheet (placed AFTER the base .modal so it wins) */
+  @media(max-width:560px){
+    .modal,.modal.modal-wide{width:100%;max-width:100%;left:0;right:0;top:auto;bottom:0;transform:none;max-height:92vh;border-radius:16px 16px 0 0;padding:18px 16px}
+    .modal.modal-wide .tk-body{max-height:none}
+    .modal .actions{position:sticky;bottom:-2px;background:var(--panel);padding:12px 0 2px;margin-top:12px}
+  }
   .drawer .panel-r{position:absolute;top:0;right:0;bottom:0;width:440px;max-width:94vw;background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding:22px}
   .dh{display:flex;align-items:center;gap:12px;margin-bottom:16px}.dh .av-s{width:48px;height:48px;font-size:16px}
   .ua-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
@@ -274,7 +292,7 @@ let ME=null,ROLE='owner';
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2600);}
 function closeOv(){$('#drawer').classList.remove('show');$('#modalOv').classList.remove('show');}
 document.querySelectorAll('[data-close]').forEach(e=>e.addEventListener('click',closeOv));
-function modal(html){$('#modalBox').innerHTML=html;$('#modalOv').classList.add('show');}
+function modal(html){$('#modalBox').classList.remove('modal-wide');$('#modalBox').innerHTML=html;$('#modalOv').classList.add('show');}
 function confirmDo(msg,cb){modal(`<h3>Please confirm</h3><p class="muted" style="font-size:13.5px">${esc(msg)}</p><div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="cfDo">Confirm</button></div>`);$('#cfDo').onclick=()=>{closeOv();cb();};}
 
 async function adminCall(action,data){
@@ -584,7 +602,8 @@ function trekEdit(id,preset){
       </div>
       <div class="tabpane" data-p="diff" hidden>
         ${two(fld('Overall difficulty',sel('teL',t.level||'Moderate',['Easy','Moderate','Difficult','Very Difficult','Extreme'])),fld('Overall required score (0–100)',num('teReq',t.req_score)))}
-        <p class="desc" style="margin:6px 2px 10px">Structured requirements — used later by Trek Readiness / Personalised Trek Match.</p>
+        <p class="desc" style="margin:6px 2px 6px">Structured requirements powering Trek Readiness / Personalised Trek Match. The system fills these from the trek's difficulty, altitude, distance and duration — tap Auto-fill, then adjust any slider if needed. (Left blank, they're auto-filled on save.)</p>
+        <button type="button" class="btn2 pri" onclick="autofillRequirements()" style="margin:0 0 12px">✨ Auto-fill from trek details</button>
         ${rq('teqFit','Fitness',t.req_fitness)}${rq('teqEnd','Endurance',t.req_endurance)}${rq('teqStr','Strength',t.req_strength)}
         ${rq('teqExp','Trekking experience',t.req_experience)}${rq('teqAlt','Altitude tolerance',t.req_altitude)}${rq('teqRec','Recovery',t.req_recovery)}
       </div>
@@ -596,6 +615,11 @@ function trekEdit(id,preset){
       <div class="tabpane" data-p="media" hidden>
         ${fld('Cover image',`<input id="teImg" value="${V(t.img)}" placeholder="Paste a URL, or upload below"/>
           <div style="display:flex;align-items:center;gap:10px;margin-top:8px"><img id="teImgPrev" src="${V(t.img)}" alt="" style="width:70px;height:46px;border-radius:8px;object-fit:cover;background:var(--panel2);border:1px solid var(--line);${t.img?'':'display:none'}"/><label class="btn2 sm" style="cursor:pointer;margin:0">Upload image<input id="teImgFile" type="file" accept="image/*" hidden/></label><span class="muted" id="teImgMsg" style="font-size:12px"></span></div>`)}
+        <div class="fld"><label>Or find a cover on Wikimedia Commons</label>
+          <div style="display:flex;gap:8px"><input id="teWiki" placeholder="e.g. Kedarkantha Himalaya trek" style="flex:1"/><button type="button" class="btn2" onclick="wikiSearch()">Search</button></div>
+          <div id="teWikiGrid" class="wiki-grid"></div>
+          <p class="desc" id="teWikiMsg" style="margin-top:6px"></p>
+        </div>
         <p class="desc">Multi-image gallery (reorder, captions, alt text) arrives in the next phase.</p>
       </div>
       <div class="tabpane" data-p="inc" hidden>
@@ -638,6 +662,7 @@ function trekEdit(id,preset){
       </div>
     </div>
     <div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="teGo">${isNew?'Add trek':'Save changes'}</button></div>`);
+  $('#modalBox').classList.add('modal-wide');   /* the trek CMS form gets the wide desktop modal */
   document.querySelectorAll('#tkTabs .tab').forEach(b=>b.onclick=()=>{
     document.querySelectorAll('#tkTabs .tab').forEach(x=>x.classList.toggle('on',x===b));
     document.querySelectorAll('.tk-body .tabpane').forEach(p=>p.hidden=(p.dataset.p!==b.dataset.t));
@@ -650,6 +675,7 @@ function trekEdit(id,preset){
   if(slugEl)slugEl.addEventListener('input',()=>{slugEl.dataset.touched='1';});
   $('#teImgFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;$('#teImgMsg').textContent='Uploading…';const url=await uploadImg(f,'treks');if(url){$('#teImg').value=url;const p=$('#teImgPrev');p.src=url;p.style.display='';$('#teImgMsg').textContent='Uploaded ✓';}else{$('#teImgMsg').textContent='Upload failed';}e.target.value='';};
   $('#teImg').oninput=()=>{const p=$('#teImgPrev'),v=$('#teImg').value.trim();if(v){p.src=v;p.style.display='';}else{p.style.display='none';}};
+  if($('#teWiki'))$('#teWiki').value=t.name||'';   /* prefill the Wikimedia search with the trek name */
   $('#teGo').onclick=async()=>{
     const val=i=>{const el=$('#'+i);return el?(el.value||'').trim():'';};
     const nOr=i=>{const v=val(i);return v===''?null:(parseInt(v.replace(/[^0-9-]/g,''),10)||0);};
@@ -657,12 +683,14 @@ function trekEdit(id,preset){
     const lines=i=>val(i).split('\n').map(s=>s.trim()).filter(Boolean);
     const pairs=i=>lines(i).map(l=>{const p=l.split('|');return {label:(p[0]||'').trim(),amount:parseInt((p[1]||'').replace(/[^0-9]/g,''),10)||0};}).filter(x=>x.label);
     const name=val('teN');if(!name){toast('Name is required');document.querySelector('#tkTabs .tab[data-t="basic"]').click();return;}
+    const _reqRaw=[nOr('teqFit'),nOr('teqEnd'),nOr('teqStr'),nOr('teqExp'),nOr('teqAlt'),nOr('teqRec')];
+    const _d=_reqRaw.every(v=>!v)?deriveTrekRequirements():null;   /* all sliders left at 0 → system fills them */
     const upd=Object.assign({},t,{
       name,slug:val('teSlug')||name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''),
       short_description:val('teShort'),description:val('teDesc'),type:$('#teTy').value,region:val('teR'),state:val('teState'),country:val('teCountry'),dest_id:val('teDest'),
       start_point:val('teStart'),end_point:val('teEnd'),basecamp:val('teBase'),meeting_point:val('teMeet'),pickup:val('tePickup'),dropoff:val('teDrop'),pickup_map:val('teMap'),lat:val('teLat'),lng:val('teLng'),
       days:nOr('teDy'),distance:val('teDi'),altitude:val('teA'),min_altitude:val('teMinAlt'),elevation_gain:val('teElev'),best_time:val('teB'),min_age:nOr('teMinAge'),max_age:nOr('teMaxAge'),group_size:val('teGroup'),terrain:val('teTerrain'),weather:val('teWeather'),route_type:val('teRoute'),
-      level:$('#teL').value,req_score:nOr('teReq'),req_fitness:nOr('teqFit'),req_endurance:nOr('teqEnd'),req_strength:nOr('teqStr'),req_experience:nOr('teqExp'),req_altitude:nOr('teqAlt'),req_recovery:nOr('teqRec'),
+      level:$('#teL').value,req_score:nOr('teReq')||(_d?_d.overall:null),req_fitness:_d?_d.fitness:nOr('teqFit'),req_endurance:_d?_d.endurance:nOr('teqEnd'),req_strength:_d?_d.strength:nOr('teqStr'),req_experience:_d?_d.experience:nOr('teqExp'),req_altitude:_d?_d.altitude:nOr('teqAlt'),req_recovery:_d?_d.recovery:nOr('teqRec'),
       itinerary:itinCollect(),itinerary_url:val('teItinUrl'),img:val('teImg'),
       inclusions:lines('teInc'),exclusions:lines('teExc'),
       packing_tiers:{essential:lines('tePkE'),recommended:lines('tePkR'),optional:lines('tePkO')},
@@ -687,6 +715,59 @@ async function uploadImg(file,folder){
   if(error){toast('Upload failed: '+error.message);return null;}
   const {data}=sb.storage.from('community').getPublicUrl(path);
   return data?data.publicUrl:null;
+}
+/* search Wikimedia Commons for a cover image (anonymous CORS; returns ~1024px thumbnails) */
+async function wikiSearch(){
+  const q=($('#teWiki').value||'').trim(),grid=$('#teWikiGrid'),msg=$('#teWikiMsg');
+  if(!q){msg.textContent='Type what to search for.';return;}
+  grid.innerHTML='';msg.textContent='Searching Wikimedia…';
+  try{
+    const url='https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch='+
+      encodeURIComponent(q+' filetype:bitmap')+'&gsrlimit=18&gsrnamespace=6&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=1024';
+    const r=await fetch(url);const j=await r.json();
+    const pages=(j&&j.query&&j.query.pages)?Object.values(j.query.pages):[];
+    const imgs=pages.map(p=>{const ii=(p.imageinfo||[])[0];return (ii&&ii.thumburl&&/\.(jpe?g|png)$/i.test(p.title||''))?{thumb:ii.thumburl,title:p.title}:null;}).filter(Boolean);
+    if(!imgs.length){msg.textContent='No images found — try a different search.';return;}
+    msg.textContent='Tap an image to use it as the cover.';
+    grid.innerHTML=imgs.slice(0,18).map(x=>`<img src="${esc(x.thumb)}" onclick="wikiPick(this)" loading="lazy" title="${esc((x.title||'').replace(/^File:/,''))}"/>`).join('');
+  }catch(e){msg.textContent='Could not reach Wikimedia. Check your connection.';}
+}
+function wikiPick(imgEl){
+  const url=imgEl.getAttribute('src');if(!url)return;
+  $('#teImg').value=url;
+  const p=$('#teImgPrev');if(p){p.src=url;p.style.display='';}
+  document.querySelectorAll('#teWikiGrid img').forEach(i=>i.classList.remove('sel'));
+  imgEl.classList.add('sel');
+  toast('Cover set from Wikimedia');
+}
+/* Derive the 6 structured requirements (0-100) from the trek's own attributes — so the admin
+   doesn't hand-set sliders. Reads the CURRENT form values (difficulty, altitude, distance, days,
+   elevation). Deterministic; the admin can still tweak. Returns the 6 + a blended `overall`. */
+function deriveTrekRequirements(){
+  const val=i=>{const el=document.getElementById(i);return el?(el.value||'').trim():'';};
+  const nInt=s=>parseInt(String(s||'').replace(/[^0-9]/g,''),10)||0;
+  const level=(document.getElementById('teL')&&document.getElementById('teL').value)||'Moderate';
+  const base={'Easy':34,'Moderate':54,'Difficult':72,'Very Difficult':84,'Extreme':92}[level]||54;
+  const days=nInt(val('teDy'))||4, distKm=nInt(val('teDi'));
+  const toM=s=>{let n=nInt(s);if(!n)return 0;if(/ft|feet|'/i.test(s)||n>6500)n=Math.round(n*0.3048);return n;};   /* feet → metres */
+  const elevM=toM(val('teElev')), altM=toM(val('teA'));
+  const clamp=x=>Math.max(0,Math.min(100,Math.round(x)));
+  const daysF=Math.min(22,(days-2)*4), distF=Math.min(18,distKm*0.4), elevF=Math.min(22,elevM/110);
+  const altScore=altM?clamp((altM-1500)/50):base;                       /* altitude tolerance from max altitude */
+  const fitness=clamp(base+distF*0.4+daysF*0.3);
+  const endurance=clamp(base-4+daysF+distF*0.5);
+  const strength=clamp(base-6+elevF+distF*0.3);
+  const experience=clamp(base+(altScore>base?(altScore-base)*0.4:0)+((level==='Very Difficult'||level==='Extreme')?8:0));
+  const altitude=clamp(altScore), recovery=clamp(base-6+daysF*0.8);
+  const overall=clamp(fitness*0.3+endurance*0.25+experience*0.2+altitude*0.15+strength*0.1);
+  return {fitness,endurance,strength,experience,altitude,recovery,overall};
+}
+function autofillRequirements(){
+  const r=deriveTrekRequirements();
+  const set=(id,v)=>{const el=document.getElementById(id);if(!el)return;el.value=v;const lbl=el.previousElementSibling,sp=lbl&&lbl.querySelector('.muted');if(sp)sp.textContent=v;};
+  set('teqFit',r.fitness);set('teqEnd',r.endurance);set('teqStr',r.strength);set('teqExp',r.experience);set('teqAlt',r.altitude);set('teqRec',r.recovery);
+  const reqEl=document.getElementById('teReq');if(reqEl&&!(reqEl.value||'').trim())reqEl.value=r.overall;
+  toast('Requirements auto-filled from trek details');
 }
 /* one itinerary day = [title, desc, distance, hours] */
 function itinAddRow(title,desc,dist,hrs){
