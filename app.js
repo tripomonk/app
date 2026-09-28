@@ -1081,7 +1081,7 @@ function authTab(mode){
   }else{
     on(si);off(su);
     if(nameRow)nameRow.style.display='none';
-    if(idIn){idIn.placeholder='Email or username';idIn.type='text';idIn.setAttribute('autocomplete','username');}
+    if(idIn){idIn.placeholder='Email or username';idIn.type='text';idIn.removeAttribute('inputmode');idIn.setAttribute('autocomplete','username');}
     if(idIcon)idIcon.textContent='alternate_email';
     if(pw)pw.setAttribute('autocomplete','current-password');
     if(pwBtn)pwBtn.textContent='Sign in';
@@ -1170,7 +1170,8 @@ async function passwordAuth(){
     return;
   }
 
-  /* sign in */
+  /* sign in — email OR username (username resolves via the `authlogin` edge fn, server-side,
+     so the browser never sees anyone's email) */
   if(!id){note('Enter your email or username.','Missing details');return;}
   if(!pass){note('Enter your password.','Missing password');return;}
   const _lr=loginLockRemaining();if(_lr>0){note('Too many attempts. Please wait '+_lr+'s before trying again.','Slow down');return;}
@@ -1182,8 +1183,7 @@ async function passwordAuth(){
       if(error)throw error;
       await afterPasswordLogin(data.user);
     }else{
-      /* username login — resolve + authenticate SERVER-SIDE so the browser
-         never sees anyone's email. The edge function returns a session. */
+      /* username login — resolved + authenticated SERVER-SIDE by the authlogin edge fn */
       const res=await authByUsername(id,pass);
       if(res.error)throw new Error(res.error);
       if(!res.access_token)throw new Error('Login failed.');
@@ -1218,8 +1218,11 @@ async function authByUsername(username,password){
       headers:{'Content-Type':'application/json',apikey:SB.SUPABASE_ANON_KEY,Authorization:'Bearer '+SB.SUPABASE_ANON_KEY},
       body:JSON.stringify({username:username,password:password})
     });
-    return await r.json();
-  }catch(e){return{error:'Could not reach the login service.'};}
+    /* the authlogin edge function isn't deployed → 404 (and an HTML body that isn't JSON) */
+    if(r.status===404)return{error:'Username sign-in isn’t enabled yet. Please sign in with your email.'};
+    let j=null;try{j=await r.json();}catch(_e){return{error:'Username sign-in is unavailable right now — please use your email.'};}
+    return j||{error:'Login failed.'};
+  }catch(e){return{error:'Could not reach the login service. Check your connection, or sign in with your email.'};}
 }
 /* fired when the user opens a reset link — collect a new password and set it */
 /* ---- dedicated reset-password screen (reached only from an email link) ---- */
@@ -8255,7 +8258,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='460';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='462';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
