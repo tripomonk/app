@@ -6539,13 +6539,49 @@ async function sendPlan(text){
 }
 /* local fallback so the planner still helps if the AI is unavailable: parse budget,
    duration, difficulty and region, then filter the real catalogue */
+/* Offline answers to common questions so the planner is still useful when the AI edge fn
+   isn't deployed. Returns a reply string, or null to fall through to trek search. */
+function plannerFaq(ql){
+  if(!ql)return null;
+  const has=re=>re.test(ql);
+  if(has(/^(hi|hey|hello|yo|hola|namaste|namaskar|sup)\b/)||/^good\s*(morning|afternoon|evening|day)\b/.test(ql))
+    return "Hey! I'm your Tripomonk trip planner. Tell me your budget, how many days you have, who's coming, or the kind of trek you want — and I'll suggest the right ones.";
+  if(has(/\b(thanks|thank you|thankyou|thx|ty|great|awesome|cool|nice|ok(ay)?)\b/)&&ql.length<=18)
+    return "You're welcome! Want me to suggest a trek by your budget, dates or difficulty?";
+  if(has(/what can you do|who are you|how (do|does) (you|this|it) work|what do you do|^help\b|help me|what is this/))
+    return "I help you find the right Himalayan trek or tour. Tell me things like your budget (₹), number of days, group (solo/friends/family), fitness or difficulty, region, or a trek you already like — and I'll match real Tripomonk trips. You can also ask me about the best season, permits, fitness or packing.";
+  if(has(/best time|when (to|should|is best)|which (month|season)|good season|weather|climate|temperature|snow(fall)?( in| during)?/))
+    return "Broadly, spring (Mar–Jun) and autumn (Sep–Nov) are the prime trekking windows; snow treks like Kedarkantha and Brahmatal shine Dec–Apr, and the monsoon (Jul–Aug) is mostly avoided in the Garhwal Himalaya. Tell me a trek and I'll be specific.";
+  if(has(/permit|forest (fee|entry)|id proof|documents?|aadhaar|aadhar/))
+    return "Most Uttarakhand treks need a forest entry permit and a valid government photo ID — Tripomonk arranges the permits as part of the trip. Ask me about a specific trek for its exact requirements.";
+  if(has(/how fit|fitness|training|prepare|acclimat|altitude sickness|how hard|difficulty|difficult|challenging/))
+    return "Fitness depends on the trek: easy ones suit first-timers with basic cardio, while moderate/difficult ones want a few weeks of walking or jogging beforehand. Open any trek to see your personal Trek Match %, or tell me your fitness and I'll suggest suitable options.";
+  if(has(/what (to|should i) (pack|bring|carry)|packing|gear|equipment|shoes|clothes/))
+    return "Essentials: sturdy trekking shoes, warm layers, a rain layer, headlamp, water bottle, sunscreen and a small daypack. Every Tripomonk trek page has a full packing list — tell me the trek for specifics.";
+  if(has(/how (do i|to) book|booking|payment|pay\b|upi|refund|cancel|price includes|what.s included|inclusion/))
+    return "You can book right in the app — pick a batch, add travellers and pay securely (UPI or card). Tell me a budget or dates and I'll shortlist treks you can book now.";
+  if(has(/contact|call you|phone|whatsapp|reach you|customer (care|support)|talk to (someone|human|team)/))
+    return "You can reach the Tripomonk team from Profile → Help & Support in the app. Meanwhile I can help you plan — what kind of trip are you after?";
+  if(has(/\b(solo|alone|safe|safety|women|woman|female|girls?)\b/)&&!/\d|₹|budget|day/.test(ql))
+    return "Tripomonk treks run in guided groups, which makes them well-suited to solo and first-time trekkers, including women. Share your dates or budget and I'll suggest good options.";
+  return null;
+}
 function plannerFallback(q){
-  const ql=(q||'').toLowerCase();
+  const ql=(q||'').toLowerCase().trim();
+  const faq=plannerFaq(ql);
+  if(faq)return {reply:faq,treks:[],followups:[]};
   let budget=0;const bm=ql.match(/(?:₹|rs\.?|inr|under|below|budget|upto|up to)?\s*([0-9][0-9,]{1,})\s*(k)?/i);
   if(bm){budget=parseInt(bm[1].replace(/[^0-9]/g,''),10)||0;if((bm[2]||/\b\d+\s*k\b/.test(ql))&&budget<1000)budget*=1000;}
   const dm=ql.match(/(\d+)\s*[- ]?\s*day/);const days=dm?parseInt(dm[1],10):0;
   let lvl='';if(/beginner|easy|parents|family|first[- ]?time|senior/.test(ql))lvl='Easy';else if(/very difficult|hard|tough|challeng|extreme/.test(ql))lvl='Difficult';else if(/moderate/.test(ql))lvl='Moderate';
   let region='';['uttarakhand','himachal','kashmir','ladakh','sikkim','spiti'].forEach(r=>{if(ql.includes(r))region=r;});
+  /* Don't dump treks for greetings / small talk. Only search when there's real trip intent. */
+  const hasCriteria=!!(budget||days||lvl||region);
+  const intentWords=/(trek|tour|trip|travel|mountain|himalaya|camp|budget|cheap|expensive|price|₹|rs\b|inr|day|week|weekend|month|easy|hard|moder|difficult|beginner|family|parents|friend|solo|couple|honeymoon|group|adventure|snow|winter|summer|monsoon|autumn|spring|suggest|recommend|show|plan|option|match|valley|flower|glacier|lake|pass|peak|summit|manali|leh|rishikesh|dehradun|delhi|from\b)/i;
+  const nameHit=treks.some(t=>{const n=String(t.n||'').toLowerCase();return n.length>3&&ql.includes(n);});
+  if(!hasCriteria && !nameHit && !intentWords.test(ql)){
+    return {reply:"I'm your Tripomonk trek & tour planner, so that's a little outside what I can answer here — but I can suggest trips by budget, days, difficulty, region or group, and answer things like best season, permits, fitness and packing. What would you like to plan?",treks:[],followups:[]};
+  }
   let list=treks.filter(t=>!t.soon);
   if(budget)list=list.filter(t=>(t.price||0)<=budget*1.05);
   if(days)list=list.filter(t=>Math.abs((t.days||0)-days)<=1);
