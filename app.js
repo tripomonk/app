@@ -8324,7 +8324,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='464';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='465';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -11771,6 +11771,12 @@ function renderHdBody(){
     +_hdTrips.map(hdTripRow).join('');
   hydrate(box);
 }
+/* a trip is "old" once its end date (or start date) has passed — ISO YYYY-MM-DD compares lexically */
+function isPastTrip(t){
+  const d=String((t&&(t.end_date||t.start_date))||'').slice(0,10);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return false;   /* unknown date format → treat as not-past (safe) */
+  return d < new Date().toISOString().slice(0,10);
+}
 function hdTripRow(t){
   const chip='<span class="hstat '+(t.status==='live'?'approved':t.status==='rejected'?'rejected':'pending')
     +'" style="margin:0;padding:3px 8px;font-size:10px">'+esc(t.status)+'</span>';
@@ -11786,16 +11792,20 @@ function hdTripRow(t){
     +(editable
        ? '<div class="tact"><button onclick="openHostTrip(\''+jsq(t.id)+'\')">Edit</button>'
          +'<button class="dz" onclick="deleteHostTrip(\''+jsq(t.id)+'\',\''+jsq(t.title)+'\')">Delete</button>'+mk+'</div>'
-       : '<span class="tlock">Live trips are locked — message us to change dates, price or seats.</span>'
-         +'<div class="tact">'+mk
-         +'<button onclick="wa(\'Hi Tripomonk, I need to update my live trip: '+jsq(t.title)+'\')">Message us</button></div>')
+       : (isPastTrip(t)
+          ? '<span class="tlock">This trip has ended.</span>'
+            +'<div class="tact"><button class="dz" onclick="deleteHostTrip(\''+jsq(t.id)+'\',\''+jsq(t.title)+'\')">Delete old trip</button>'+mk+'</div>'
+          : '<span class="tlock">Live trips are locked — message us to change dates, price or seats.</span>'
+            +'<div class="tact">'+mk
+            +'<button onclick="wa(\'Hi Tripomonk, I need to update my live trip: '+jsq(t.title)+'\')">Message us</button></div>'))
     +'</div>'
     +'<div class="tpr">'+INR(t.price||0)+'</div></div>';
 }
 async function deleteHostTrip(id,title){
   const t=_hdTrips.find(x=>String(x.id)===String(id));
-  if(t&&t.status==='live'){note('Live trips cannot be deleted here — message us.','Locked');return;}
-  if(!(await askConfirm('Delete "'+title+'"? This cannot be undone.','Delete trip')))return;
+  if(t&&t.status==='live'&&!isPastTrip(t)){note('Upcoming live trips are locked — message us to change or cancel.','Locked');return;}
+  const warn=(t&&t.status==='live')?'Delete "'+title+'"? This past trip will be removed from your dashboard. Your booking records stay intact. This cannot be undone.':'Delete "'+title+'"? This cannot be undone.';
+  if(!(await askConfirm(warn,'Delete trip')))return;
   const sb=getSupaClient();const uid=sb?await authUid():null;
   if(!sb||!uid)return;
   const r=await sb.from('host_trips').delete().eq('id',id).eq('host_id',uid).select('id');
