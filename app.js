@@ -5198,6 +5198,7 @@ function accountMenuGroups(){
     : [['hiking','Become a Host','becomeHost']];
   groups.push(['Hosting',host]);
   groups.push(['Partner with us',[['storefront','List your hotel / transport / gear','vendorDash']]]);
+  groups.push(['Work with us',[['flag','Become a Trek Leader / Guide','becomeGuide']]]);
   groups.push(['Support & legal',[
     ['help','Help & Support','help'],
     ['emergency','Emergency Contacts','emergency'],
@@ -8401,7 +8402,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='466';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='467';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -10339,6 +10340,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='act')renderAct();
   if(id==='cart')renderCart();
   if(id==='becomeHost')renderBecomeHost();
+  if(id==='becomeGuide')renderBecomeGuide();
   if(id==='hostTrip')renderHostTrip();
   if(id==='hostDash')renderHostDash();
   if(id==='hostProfile')renderHostProfile();
@@ -10427,7 +10429,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,renderPlanner,sendPlan,plannerChip,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,submitNewPassword,toggleResetPw,cancelReset,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections,addStaff,removeStaff,setStaffRole,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab,openReviewModal,closeReviewModal,submitReview,setRevStars,adminAddReview,adminDelReview,toggleSavePost,renderEmergency,renderSavedPosts,followAction,requestCall,declineCall,allowCallMsg,togglePrivateAccount,renderFollowRequests,acceptFollowReq,declineFollowReq,admToggleHl,filterAdminHub,admAssignCaptain,admChangeBatch,admRefund,admCancelBooking,admInvoice,renderAdminUsers,paintUsers,admNotifyUser,renderAdminPayments,admPayFilter,admExportCSV,admRevenueCSV,renderAdminGear,gearAdj,gearAddItem,gearDelItem,gearSeed,renderAdminCommunity,admDeletePost,admFeaturePost,renderAdminPermits,permSet,renderAdminSupport,ticketReply,ticketResolve,raiseTicket,renderAdminCRM,crmSearch,crmOpen,renderAdminAI,saveAiCfg,renderAdminVendors,vendorSet,openVendorDash,renderVendorDash,applyVendor,vendorAddListing,vendorToggleListing,vendorDelListing});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,renderPlanner,sendPlan,plannerChip,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,submitNewPassword,toggleResetPw,cancelReset,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections,addStaff,removeStaff,setStaffRole,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab,openReviewModal,closeReviewModal,submitReview,setRevStars,adminAddReview,adminDelReview,toggleSavePost,renderEmergency,renderSavedPosts,followAction,requestCall,declineCall,allowCallMsg,togglePrivateAccount,renderFollowRequests,acceptFollowReq,declineFollowReq,admToggleHl,filterAdminHub,admAssignCaptain,admChangeBatch,admRefund,admCancelBooking,admInvoice,renderAdminUsers,paintUsers,admNotifyUser,renderAdminPayments,admPayFilter,admExportCSV,admRevenueCSV,renderAdminGear,gearAdj,gearAddItem,gearDelItem,gearSeed,renderAdminCommunity,admDeletePost,admFeaturePost,renderAdminPermits,permSet,renderAdminSupport,ticketReply,ticketResolve,raiseTicket,renderAdminCRM,crmSearch,crmOpen,renderAdminAI,saveAiCfg,renderAdminVendors,vendorSet,openVendorDash,renderVendorDash,applyVendor,vendorAddListing,vendorToggleListing,vendorDelListing,renderBecomeGuide,submitGuideApplication});
 
 /* init */
 applyTheme();   /* dark / light / system theme */
@@ -10653,6 +10655,92 @@ function hostField(f){
   const id=f[0],label=f[1],type=f[2],ph=f[3],req=f[4];
   return '<div class="field"><label>'+label+(req?' *':'')+'</label>'
     +'<div class="inp"><input id="'+id+'" type="'+type+'" placeholder="'+ph+'"/></div></div>';
+}
+/* ===== Become a Trek Leader / Guide — in-depth application (evaluated in admin) ===== */
+let _guideApp=null;
+async function renderBecomeGuide(){
+  const box=document.getElementById('guideBody');if(!box)return;
+  if(!isLoggedIn()){
+    box.innerHTML='<div class="empty" style="padding:26px 0;text-align:center"><p>Sign in to apply as a Trek Leader.</p><div style="display:flex;justify-content:center;margin-top:14px"><button class="btn sm" style="min-width:150px" onclick="_loginReturn=\'becomeGuide\';go(\'login\')">Sign in</button></div></div>';
+    return;
+  }
+  box.innerHTML='<div class="note2" style="margin:14px 2px">Loading…</div>';
+  try{const sb=getSupaClient();const uid=await authUid();
+    if(sb&&uid){const{data}=await sb.from('guide_applications').select('*').eq('user_id',uid).order('created_at',{ascending:false}).limit(1).maybeSingle();_guideApp=data||null;}
+  }catch(e){_guideApp=null;}
+  if(_guideApp&&(_guideApp.status==='approved'||_guideApp.status==='pending')){box.innerHTML=guideStatusHTML(_guideApp);}
+  else if(_guideApp&&_guideApp.status==='rejected'){box.innerHTML=guideStatusHTML(_guideApp)+guideFormHTML(_guideApp);}
+  else{box.innerHTML=guideFormHTML({});}
+  hydrate(box);
+}
+function guideStatusHTML(a){
+  const s=a.status,color=s==='approved'?'#3ddc84':s==='rejected'?'#ff7a7a':'#ffce1f';
+  const msg=s==='approved'?'You are an approved Tripomonk Trek Leader. We’ll reach out with trips to lead.'
+    :s==='rejected'?'Your application wasn’t approved this time. You can update and reapply below.'
+    :'Your application is under review. We’ll let you know once it’s decided.';
+  return '<div class="vend-hero" style="margin-top:14px"><span class="msr">hiking</span><div><b>Trek Leader application</b><small style="color:'+color+'"> '+esc(s)+'</small></div></div><div class="adm-hint" style="margin:10px 2px 14px">'+esc(msg)+'</div>';
+}
+function guideFormHTML(a){
+  const V=v=>esc(v==null?'':v);
+  const f=(l,inner)=>'<div class="field"><label>'+l+'</label><div class="inp">'+inner+'</div></div>';
+  const txt=(id,v,ph)=>'<input id="'+id+'" value="'+V(v)+'" placeholder="'+(ph||'')+'">';
+  const num=(id,v,ph)=>'<input id="'+id+'" type="number" value="'+(v==null?'':v)+'" placeholder="'+(ph||'')+'">';
+  const ta=(id,v,ph)=>'<textarea id="'+id+'" style="all:unset;flex:1;color:var(--text);min-height:60px;line-height:1.4" placeholder="'+(ph||'')+'">'+V(v)+'</textarea>';
+  const sec=t=>'<div style="font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted2);margin:18px 2px 8px">'+t+'</div>';
+  return '<div class="vend-hero" style="margin-top:14px"><span class="msr">hiking</span><div><b>Become a Trek Leader / Guide</b><small>Lead treks with Tripomonk</small></div></div>'
+    +'<div class="adm-hint" style="margin:10px 0 4px">Tell us about your guiding experience so our team can evaluate your application. * = required.</div>'
+    +sec('About you')
+    +f('Full name *',txt('gaName',a.full_name||getSavedName()))
+    +f('WhatsApp / phone *',txt('gaPhone',a.phone||getSavedMobile(),'10-digit mobile'))
+    +f('Email',txt('gaEmail',a.email||getUserEmail()))
+    +f('City',txt('gaCity',a.city))+f('State',txt('gaState',a.state))+f('Gender',txt('gaGender',a.gender))
+    +sec('Experience')
+    +f('Years guiding *',num('gaYears',a.experience_years,'e.g. 5'))
+    +f('Treks led',txt('gaTreks',a.treks_led,'e.g. 200+'))
+    +f('Highest altitude led',txt('gaAlt',a.max_altitude,'e.g. 5,000 m'))
+    +f('Regions you can guide',txt('gaRegions',a.regions,'e.g. Uttarakhand, Himachal'))
+    +f('Languages',txt('gaLang',a.languages,'e.g. Hindi, English, Garhwali'))
+    +sec('Skills & safety')
+    +f('Certifications',ta('gaCert',a.certifications,'e.g. Basic Mountaineering Course (NIM), Wilderness First Responder'))
+    +'<div class="field"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="gaFirstAid" '+(a.first_aid?'checked':'')+' style="width:auto"> First-aid / medical trained</label></div>'
+    +f('Fitness (how you stay trek-fit)',txt('gaFit',a.fitness,'e.g. run 10k, regular high-altitude treks'))
+    +sec('Track record & availability')
+    +f('Notable treks you’ve led',ta('gaNotable',a.notable_treks,'A few treks, group sizes, years'))
+    +f('Availability',txt('gaAvail',a.availability,'e.g. Mar–Jun, Sep–Dec'))
+    +f('Expected day rate (₹, optional)',num('gaRate',a.day_rate,'e.g. 2500'))
+    +sec('Links')
+    +f('Instagram',txt('gaInsta',a.instagram,'link or @handle'))+f('Website / portfolio',txt('gaSite',a.website))
+    +sec('About & references')
+    +f('About you',ta('gaAbout',a.about,'A short intro'))
+    +f('Why guide with Tripomonk?',ta('gaWhy',a.why_guide,''))
+    +f('Reference name',txt('gaRefName',a.reference_name))+f('Reference phone',txt('gaRefPhone',a.reference_phone))
+    +'<label class="consent-row" style="margin:14px 2px"><input type="checkbox" id="gaConsent" '+(a.consent?'checked':'')+'><span>The details above are accurate and I consent to Tripomonk reviewing them.</span></label>'
+    +'<button class="btn" onclick="submitGuideApplication()"><span class="msr">send</span> Submit application</button>';
+}
+async function submitGuideApplication(){
+  const val=id=>{const el=document.getElementById(id);return el?(el.value||'').trim():'';};
+  const chk=id=>{const el=document.getElementById(id);return !!(el&&el.checked);};
+  const nOr=id=>{const v=val(id).replace(/[^0-9]/g,'');return v?parseInt(v,10):null;};
+  const name=val('gaName'),phone=val('gaPhone').replace(/\D/g,'');
+  if(!name){note('Enter your full name.','Name needed');return;}
+  if(phone.length<10){note('Enter a valid 10-digit phone.','Number needed');return;}
+  if(nOr('gaYears')==null){note('Enter your years of guiding experience.','Experience needed');return;}
+  if(!chk('gaConsent')){note('Please confirm the details and consent.','Consent needed');return;}
+  const sb=getSupaClient();const uid=sb?await authUid():null;if(!sb||!uid){note('Please sign in.','Sign in required');return;}
+  const row={user_id:uid,status:'pending',
+    full_name:name.slice(0,120),phone,whatsapp:phone,email:val('gaEmail').slice(0,140)||null,city:val('gaCity').slice(0,80)||null,state:val('gaState').slice(0,80)||null,gender:val('gaGender').slice(0,20)||null,
+    experience_years:nOr('gaYears'),treks_led:val('gaTreks').slice(0,80)||null,max_altitude:val('gaAlt').slice(0,60)||null,regions:val('gaRegions').slice(0,200)||null,languages:val('gaLang').slice(0,140)||null,
+    certifications:val('gaCert').slice(0,600)||null,first_aid:chk('gaFirstAid'),fitness:val('gaFit').slice(0,300)||null,
+    notable_treks:val('gaNotable').slice(0,1000)||null,availability:val('gaAvail').slice(0,140)||null,day_rate:nOr('gaRate'),
+    instagram:val('gaInsta').slice(0,200)||null,website:val('gaSite').slice(0,200)||null,
+    about:val('gaAbout').slice(0,800)||null,why_guide:val('gaWhy').slice(0,800)||null,reference_name:val('gaRefName').slice(0,120)||null,reference_phone:val('gaRefPhone').slice(0,20)||null,
+    consent:true};
+  let r;
+  if(_guideApp&&_guideApp.status==='pending'){r=await sb.from('guide_applications').update(row).eq('id',_guideApp.id).eq('user_id',uid).select('id');}
+  else{r=await sb.from('guide_applications').insert(row).select('id');}
+  if(r.error){note('Could not submit: '+r.error.message+(/relation|column/i.test(r.error.message)?' (run SQL-add-guide-applications.sql)':''),'Error');return;}
+  await note('Application submitted! Our team will review it and get back to you.','Applied ✓');
+  renderBecomeGuide();
 }
 async function renderBecomeHost(){
   const body=document.getElementById('hostBody');if(!body)return;
