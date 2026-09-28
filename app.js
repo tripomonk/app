@@ -1413,13 +1413,23 @@ async function verifyOtp(){
   setTimeout(maybeOnboard,600);
 }
 async function signOut(){
-  const sb=getSupaClient();if(sb)await sb.auth.signOut();
-  currentUser=null;_profileLoadedFor=null;_myUid=null;stopMsgSub();
-  clearLocalIdentity();
-  try{['tmk_contact','tmk_uid','tmk_nav'].forEach(k=>localStorage.removeItem(k));}catch(e){}
-  hist=[];_loginReturn='home';
-  go('login');
-  note('Signed out successfully.','Done');
+  const sb=getSupaClient();if(sb){try{await sb.auth.signOut();}catch(e){}}   /* drops the Supabase session token */
+  currentUser=null;_profileLoadedFor=null;_myUid=null;_recoveryMode=false;
+  try{stopMsgSub();}catch(e){}
+  clearLocalIdentity();   /* IDENTITY_KEYS + followState/staffSet */
+  try{
+    /* every remaining per-account key (identity keys are handled above) */
+    ['tmk_uid','tmk_consent','tmk_contact','tmk_nav','tmk_callok','tmk_hidden_msgs','tmk_chat_cleared',
+     'tmk_notifprefs','tmk_notif_dismissed','tmk_news_seen','tmk_alert_seen','tmk_seen_stories','tmk_sess']
+      .forEach(k=>localStorage.removeItem(k));
+    /* prefixed caches: this user's chats, carts, saved prefs, stale-while-revalidate copies */
+    for(let i=localStorage.length-1;i>=0;i--){const k=localStorage.key(i);if(k&&/^tmk_(chat_|cart_|prefs_|swr_)/.test(k))localStorage.removeItem(k);}
+  }catch(e){}
+  try{sessionStorage.setItem('tmk_logged_out','1');}catch(e){}
+  /* Hard reset. The only reliable way to wipe EVERY in-memory copy (posts, feed, saved posts,
+     people, cart, following) so nothing from the previous account can linger. Boots to a clean
+     logged-out login screen (the flag at boot routes there). */
+  try{location.replace(location.pathname);}catch(e){location.reload();}
 }
 function getUserEmail(){return currentUser?currentUser.email||'':''}
 function getSavedName(){try{return localStorage.getItem('tmk_uname')||'';}catch(e){return'';}}
@@ -1853,6 +1863,62 @@ function openCropper(src){
     const url=blob?await uploadToStorage(blob,'avatars'):null;
     if(url){try{localStorage.setItem('tmk_uphoto',url);}catch(e){}repaint();}
     upsertProfile();          /* writes the URL (or base64 fallback) to profiles.photo */
+  };
+}
+/* ---- 16:9 cover cropper (host trip cover). Reuses the crop modal DOM but with a wide
+   stage + its own state (_cc), so it never touches the square profile cropper. Calls
+   onDone(blob, dataUrl) with a 1280×720 JPEG. ---- */
+let _cc=null;
+function drawCC(){if(!_cc)return;const{ctx,img,W,H,scale,x,y}=_cc;ctx.clearRect(0,0,W,H);ctx.drawImage(img,x,y,img.width*scale,img.height*scale);}
+function clampCC(){if(!_cc)return;const iw=_cc.img.width*_cc.scale,ih=_cc.img.height*_cc.scale;_cc.x=Math.min(0,Math.max(_cc.W-iw,_cc.x));_cc.y=Math.min(0,Math.max(_cc.H-ih,_cc.y));}
+function setCCScale(mult){if(!_cc)return;const ns=_cc.minScale*mult,iw=_cc.img.width,ih=_cc.img.height,cx=_cc.W/2,cy=_cc.H/2;const fx=(cx-_cc.x)/(iw*_cc.scale),fy=(cy-_cc.y)/(ih*_cc.scale);_cc.scale=ns;_cc.x=cx-fx*(iw*ns);_cc.y=cy-fy*(ih*ns);clampCC();drawCC();}
+function openCoverCropper(src,onDone){
+  const m=document.getElementById('cropModal'),cv=document.getElementById('cropCanvas'),
+        stage=document.getElementById('cropStage'),zoom=document.getElementById('cropZoom'),
+        ok=document.getElementById('cropOk'),cancel=document.getElementById('cropCancel');
+  if(!m||!cv){onDone&&onDone(null,src);return;}
+  const prevRow=m.querySelector('.crop-preview-row'),mask=m.querySelector('.crop-mask'),
+        title=m.querySelector('.crop-title');
+  const img=new Image();
+  img.onerror=()=>note('Could not read that image.','Error');
+  img.onload=()=>{
+    if(prevRow)prevRow.style.display='none';if(mask)mask.style.display='none';    /* hide avatar-only bits */
+    if(title)title.textContent='Adjust cover (16:9)';ok.textContent='Use cover';
+    m.classList.add('show');
+    const W=Math.round(stage.getBoundingClientRect().width)||300, H=Math.round(W*9/16);
+    stage.style.height=H+'px';
+    const dpr=Math.min(window.devicePixelRatio||1,3);
+    cv.width=W*dpr;cv.height=H*dpr;cv.style.height=H+'px';
+    const ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);
+    const minScale=Math.max(W/img.width,H/img.height);
+    _cc={img,W,H,ctx,minScale,scale:minScale,x:(W-img.width*minScale)/2,y:(H-img.height*minScale)/2};
+    zoom.value=1;drawCC();
+    const pts=new Map();let pinch0=0,scale0=1;
+    stage.onpointerdown=e=>{stage.setPointerCapture(e.pointerId);stage.classList.add('adjusting');pts.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pts.size===2){const[a,b]=[...pts.values()];pinch0=Math.hypot(a.x-b.x,a.y-b.y);scale0=+zoom.value;}};
+    stage.onpointermove=e=>{if(!pts.has(e.pointerId))return;const prev=pts.get(e.pointerId),cur={x:e.clientX,y:e.clientY};pts.set(e.pointerId,cur);
+      if(pts.size===2){const[a,b]=[...pts.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);if(pinch0>0){const mult=Math.min(4,Math.max(1,scale0*(d/pinch0)));zoom.value=mult;setCCScale(mult);}return;}
+      _cc.x+=cur.x-prev.x;_cc.y+=cur.y-prev.y;clampCC();drawCC();};
+    const end=e=>{pts.delete(e.pointerId);if(pts.size<2)pinch0=0;if(pts.size===0)stage.classList.remove('adjusting');};
+    stage.onpointerup=end;stage.onpointercancel=end;
+    zoom.oninput=()=>setCCScale(+zoom.value);
+  };
+  img.src=src;
+  function close(){
+    m.classList.remove('show');stage.classList.remove('adjusting');
+    stage.onpointerdown=stage.onpointermove=stage.onpointerup=stage.onpointercancel=null;zoom.oninput=null;ok.onclick=cancel.onclick=m.onclick=null;_cc=null;
+    stage.style.height='';cv.style.height='';                                      /* restore square styling */
+    if(prevRow)prevRow.style.display='';if(mask)mask.style.display='';
+    if(title)title.textContent='Adjust your photo';ok.textContent='Save photo';
+  }
+  cancel.onclick=close;m.onclick=e=>{if(e.target===m)close();};
+  ok.onclick=async()=>{
+    if(!_cc){close();return;}
+    const OW=1280,OH=720,out=document.createElement('canvas');out.width=OW;out.height=OH;
+    const octx=out.getContext('2d'),k=OW/_cc.W;
+    octx.drawImage(_cc.img,_cc.x*k,_cc.y*k,_cc.img.width*_cc.scale*k,_cc.img.height*_cc.scale*k);
+    let dataUrl='';try{dataUrl=out.toDataURL('image/jpeg',.85);}catch(e){note('Could not process that image.','Error');return;}
+    const blob=await new Promise(res=>{try{out.toBlob(res,'image/jpeg',.85);}catch(e){res(null);}});
+    close();onDone&&onDone(blob,dataUrl);
   };
 }
 
@@ -4343,7 +4409,7 @@ async function upsertProfile(){
   if(saved&&(g||cat||bio)){try{await sb.from('profiles').upsert({id:uid,updated_at:ts,gender:g||null,category:cat||null,bio:bio||null});}catch(e){}}
 }
 /* everything that identifies ONE person on this device */
-const IDENTITY_KEYS=['tmk_uname','tmk_uhandle','tmk_uphoto','tmk_ucover','tmk_socials','tmk_umobile','tmk_gender','tmk_category','tmk_bio','tmk_follows','tmk_posts','tmk_likes','tmk_comments','tmk_bookings','tmk_notif_seen','tmk_admin','tmk_admin_key','tmk_captain','tmk_plan'];
+const IDENTITY_KEYS=['tmk_uname','tmk_uhandle','tmk_uphoto','tmk_uphoto_src','tmk_ucover','tmk_socials','tmk_umobile','tmk_gender','tmk_category','tmk_bio','tmk_follows','tmk_followreqs','tmk_posts','tmk_savedposts','tmk_likes','tmk_comments','tmk_bookings','tmk_reviews','tmk_blocked','tmk_fitness','tmk_pledge','tmk_pledge_prompted','tmk_ref_count','tmk_ref_earn','tmk_notif_seen','tmk_admin','tmk_admin_key','tmk_captain','tmk_plan'];
 function clearLocalIdentity(){
   try{IDENTITY_KEYS.forEach(k=>localStorage.removeItem(k));}catch(e){}
   followState={};staffSet=new Set();_prefSkippedSession=false;
@@ -8258,7 +8324,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='462';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='464';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -10289,6 +10355,8 @@ Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDi
 applyTheme();   /* dark / light / system theme */
 loadSocial();   /* follows, likes, your posts & comments */
 loadCart();     /* adventure cart (per account) */
+/* just came back from a sign-out hard reset → show a clean, logged-out login screen */
+try{if(sessionStorage.getItem('tmk_logged_out')){sessionStorage.removeItem('tmk_logged_out');go('login');}}catch(e){}
 initAuth();     /* restore login session if user was previously signed in */
 /* plain background behind the photo collage (no full-bleed image) */
 renderSplashCollage();
@@ -11000,9 +11068,13 @@ function htPickImg(input){
   const f=input.files&&input.files[0];if(!f)return;
   input.value='';
   if(!/^image\//.test(f.type)){note('Please choose an image.','Not an image');return;}
-  _htFile=f;
   const r=new FileReader();
-  r.onload=e=>{_htImgData=e.target.result;renderHostTrip();};
+  r.onload=e=>openCoverCropper(e.target.result,(blob,dataUrl)=>{
+    if(!dataUrl)return;
+    _htImgData=dataUrl;                                          /* 16:9 cropped preview */
+    _htFile=blob?new File([blob],'cover.jpg',{type:'image/jpeg'}):f;  /* the cropped file to upload */
+    renderHostTrip();
+  });
   r.readAsDataURL(f);
 }
 /* ---- trek gallery: multiple photos + videos (incl. the host's own video) ---- */
