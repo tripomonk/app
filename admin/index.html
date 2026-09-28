@@ -102,6 +102,14 @@
   .btn2.danger{color:var(--bad);border-color:rgba(255,90,114,.4)}
   .muted{color:var(--muted)}.empty{padding:40px;text-align:center;color:var(--muted)}
   .row-acts{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+  .tk-hd{margin-bottom:6px}
+  .tabbar{display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid var(--line);margin:0 0 14px}
+  .tabbar .tab{flex:none;background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);font-size:12.5px;font-weight:600;padding:8px 11px;cursor:pointer;white-space:nowrap}
+  .tabbar .tab.on{color:var(--ink);border-bottom-color:var(--accent)}
+  .tabbar .tab:hover{color:var(--ink)}
+  .tk-body{max-height:56vh;overflow-y:auto;padding-right:4px}
+  .tk-body .fld2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:560px){.tk-body .fld2{grid-template-columns:1fr}}
   .skel{height:14px;border-radius:6px;background:linear-gradient(90deg,#12233c,#1a2f4e,#12233c);background-size:200% 100%;animation:sh 1.2s infinite}
   @keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
   .bars{display:flex;align-items:flex-end;gap:6px;height:180px;margin-top:8px}
@@ -491,50 +499,212 @@ async function renderPayments(){const bk=await getBookings(),paid=bk.filter(isPa
   $('#content').innerHTML=`<div class="kpis">${kpi('Collected',INR(rev),'💰','#1e8f5f','')}${kpi('Transactions',paid.length,'🔁','var(--accent)','')}${kpi('Refunded',INR(ref),'↩️','#c79a10','')}${kpi('Avg value',INR(paid.length?Math.round(rev/paid.length):0),'📈','#6a4bff','')}</div><div class="panel"><div class="tbar"><span class="muted">${paid.length} paid transactions</span><span class="spacer"></span><button class="btn2" onclick="exportCSV()">Export CSV</button></div>${bkTable(bk.slice().sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')),true)}</div>`;}
 /* TREKS */
 let _treks=null;
-async function renderTreks(){const {rows}=await qtbl('treks',b=>b.limit(600));_treks=rows.slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
+async function renderTreks(){const {rows}=await qtbl('treks',b=>b.limit(600));_treks=rows.slice();
   const regions=[...new Set(_treks.map(t=>t.region).filter(Boolean))].sort();
   $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Treks &amp; Tours</h2><span class="spacer"></span><button class="btn2 pri" onclick="trekEdit()">+ Add trek / tour</button></div>
-    <div class="tbar"><input class="grow" id="tq" placeholder="Search name or region…"/>
+    <div class="tbar"><input class="grow" id="tq" placeholder="Search name, region or state…"/>
       <select id="tType" class="btn2"><option value="all">All types</option><option value="trek">Treks</option><option value="tour">Tours</option></select>
       <select id="tReg" class="btn2"><option value="">All regions</option>${regions.map(r=>`<option>${esc(r)}</option>`).join('')}</select>
-      <select id="tLvl" class="btn2"><option value="">All levels</option><option>Easy</option><option>Moderate</option><option>Difficult</option></select>
-      <select id="tSt" class="btn2"><option value="">Live &amp; soon</option><option value="live">Live only</option><option value="soon">Coming soon</option></select>
+      <select id="tLvl" class="btn2"><option value="">All levels</option><option>Easy</option><option>Moderate</option><option>Difficult</option><option>Very Difficult</option><option>Extreme</option></select>
+      <select id="tSt" class="btn2"><option value="">All statuses</option><option value="published">Published</option><option value="draft">Draft</option><option value="archived">Archived</option><option value="soon">Coming soon</option></select>
+      <select id="tSort" class="btn2"><option value="name">Sort: Name</option><option value="updated">Sort: Updated</option><option value="price">Sort: Price</option></select>
     </div><div id="tCount" class="muted" style="margin:0 2px 8px"></div><div id="tT"></div></div>`;
-  const paint=()=>{const q=($('#tq').value||'').toLowerCase(),ty=$('#tType').value,rg=$('#tReg').value,lv=$('#tLvl').value,st=$('#tSt').value;
-    let r=_treks.filter(t=>((t.name||'')+' '+(t.region||'')).toLowerCase().includes(q));
+  const paint=()=>{const q=($('#tq').value||'').toLowerCase(),ty=$('#tType').value,rg=$('#tReg').value,lv=$('#tLvl').value,st=$('#tSt').value,so=$('#tSort').value;
+    let r=_treks.filter(t=>((t.name||'')+' '+(t.region||'')+' '+(t.state||'')).toLowerCase().includes(q));
     if(ty!=='all')r=r.filter(t=>(t.type||'trek')===ty);
     if(rg)r=r.filter(t=>t.region===rg); if(lv)r=r.filter(t=>(t.level||'')===lv);
-    if(st==='live')r=r.filter(t=>!t.soon); if(st==='soon')r=r.filter(t=>t.soon);
+    if(st==='soon')r=r.filter(t=>t.soon); else if(st)r=r.filter(t=>(t.status||'published')===st);
+    r.sort((a,b)=> so==='price'?(b.price||0)-(a.price||0) : so==='updated'?String(b.updated_at||'').localeCompare(String(a.updated_at||'')) : String(a.name||'').localeCompare(String(b.name||'')));
     $('#tCount').textContent=r.length+' of '+_treks.length+' in catalogue';
-    $('#tT').innerHTML=r.length?wrapTbl(`<table class="tbl"><thead><tr><th>Name</th><th>Region</th><th>Type</th><th>Price</th><th>Discount</th><th>Flags</th><th></th></tr></thead><tbody>${r.map(t=>`<tr><td><b>${esc(t.name)}</b>${t.soon?' <span class="tag warn">soon</span>':''}</td><td data-l="Region" class="muted">${esc(t.region||'')}</td><td data-l="Type">${esc(t.type||'trek')}</td><td data-l="Price">${INR(t.price)}</td><td data-l="Discount">${t.discount?('<span class="tag warn">'+t.discount+'% off</span>'):'<span class="muted">—</span>'}</td><td data-l="Flags">${t.featured?'<span class="tag ok">★ featured</span> ':''}${t.popular?'<span class="tag neutral">popular</span>':''}</td><td><div class="row-acts"><button class="btn2 sm" onclick="trekEdit('${jsv(t.id)}')">Edit</button><button class="btn2 sm danger" onclick="trekDel('${jsv(t.id)}')">Delete</button></div></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No treks match.</div>';};
-  ['tq','tType','tReg','tLvl','tSt'].forEach(id=>{const el=$('#'+id);el.oninput=paint;el.onchange=paint;});paint();}
-function trekEdit(id){const t=id?((_treks||[]).find(x=>String(x.id)===String(id))||{}):{};const isNew=!id;
-  const sel=(cur,opts)=>opts.map(o=>`<option ${String(cur||'')===o?'selected':''}>${o}</option>`).join('');
-  modal(`<h3>${isNew?'Add trek / tour':'Edit — '+esc(t.name)}</h3>
-    <div class="fld"><label>Name</label><input id="teN" value="${esc(t.name||'')}"/></div>
-    <div class="fld"><label>Region</label><input id="teR" value="${esc(t.region||'')}" placeholder="Uttarakhand"/></div>
-    <div class="fld"><label>Type</label><select id="teTy"><option value="trek" ${(t.type||'trek')==='trek'?'selected':''}>Trek</option><option value="tour" ${t.type==='tour'?'selected':''}>Tour / road trip</option></select></div>
-    <div class="fld"><label>Level</label><select id="teL">${sel(t.level||'Easy',['Easy','Moderate','Difficult'])}</select></div>
-    <div class="fld"><label>Days</label><input id="teDy" type="number" value="${esc(t.days||'')}"/></div>
-    <div class="fld"><label>Price (₹)</label><input id="teP" type="number" value="${esc(t.price||0)}"/></div>
-    <div class="fld"><label>Discount %</label><input id="teD" type="number" min="0" max="90" value="${esc(t.discount||0)}"/></div>
-    <div class="fld"><label>Offer text (yellow badge)</label><input id="teO" value="${esc(t.offer||'')}" placeholder="Early bird — save ₹1000"/></div>
-    <div class="fld"><label>Tag</label><input id="teT" value="${esc(t.tag||'')}" placeholder="Bestseller"/></div>
-    <div class="fld"><label>Altitude</label><input id="teA" value="${esc(t.altitude||'')}" placeholder="3,810 m"/></div>
-    <div class="fld"><label>Distance</label><input id="teDi" value="${esc(t.distance||'')}" placeholder="20 km"/></div>
-    <div class="fld"><label>Best time</label><input id="teB" value="${esc(t.best_time||'')}" placeholder="Dec – Apr"/></div>
-    <div class="fld"><label>Image URL</label><input id="teImg" value="${esc(t.img||'')}" placeholder="https://…"/></div>
-    <div class="fld"><label>Description</label><textarea id="teDesc">${esc(t.description||'')}</textarea></div>
-    <div class="fld"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="teSoon" ${t.soon?'checked':''} style="width:auto"/> Coming soon (hidden from booking)</label></div>
-    <div class="fld"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="teFeat" ${t.featured?'checked':''} style="width:auto"/> Featured hero on home</label></div>
-    <div class="fld"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="tePop" ${t.popular?'checked':''} style="width:auto"/> Show in Popular rail</label></div>
-    <div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="teGo">${isNew?'Add':'Save'}</button></div>`);
-  $('#teGo').onclick=async()=>{const name=($('#teN').value||'').trim();if(!name){toast('Name is required');return;}
-    const upd=Object.assign({},t,{name,region:$('#teR').value.trim(),type:$('#teTy').value,level:$('#teL').value,days:parseInt($('#teDy').value)||null,
-      price:parseInt($('#teP').value)||0,discount:Math.max(0,Math.min(90,parseInt($('#teD').value)||0)),offer:$('#teO').value.trim(),tag:$('#teT').value.trim(),
-      altitude:$('#teA').value.trim(),distance:$('#teDi').value.trim(),best_time:$('#teB').value.trim(),img:$('#teImg').value.trim(),description:$('#teDesc').value.trim(),
-      soon:$('#teSoon').checked,featured:$('#teFeat').checked,popular:$('#tePop').checked});
-    closeOv();const r=await adminCall('save_trek',{trek:upd});if(r&&r.error){toast('Failed: '+r.error);return;}toast(isNew?'Added ✓':'Trek updated ✓');renderTreks();};}
+    $('#tT').innerHTML=r.length?wrapTbl(`<table class="tbl"><thead><tr><th></th><th>Name</th><th>Destination</th><th>Difficulty</th><th>Duration</th><th>Price</th><th>Status</th><th>Updated</th><th></th></tr></thead><tbody>${r.map(trekRowHTML).join('')}</tbody></table>`):'<div class="empty">No treks match. <a onclick="trekEdit()" style="color:var(--accent2);cursor:pointer">Add one →</a></div>';};
+  ['tq','tType','tReg','tLvl','tSt','tSort'].forEach(id=>{const el=$('#'+id);el.oninput=paint;el.onchange=paint;});paint();}
+function trekStatusTag(t){if(t.soon)return '<span class="tag warn">Coming soon</span>';const s=t.status||'published';return s==='published'?'<span class="tag ok">Published</span>':s==='draft'?'<span class="tag neutral">Draft</span>':'<span class="tag bad">Archived</span>';}
+function trekRowHTML(t){
+  const thumb=t.img&&/^https?:/.test(t.img)?`<img src="${esc(t.img)}" style="width:52px;height:36px;border-radius:7px;object-fit:cover"/>`:`<div style="width:52px;height:36px;border-radius:7px;background:var(--panel2);display:grid;place-items:center;color:var(--muted2)">🏔️</div>`;
+  const pub=(t.status||'published')==='published';
+  return `<tr><td>${thumb}</td><td><b>${esc(t.name||'—')}</b>${t.featured?' <span class="tag ok" style="font-size:9px">★</span>':''}${t.popular?' <span class="tag neutral" style="font-size:9px">pop</span>':''}</td>
+    <td class="muted" data-l="Destination">${esc(t.region||'')}${t.state?', '+esc(t.state):''}</td>
+    <td data-l="Difficulty">${esc(t.level||'—')}</td><td class="muted" data-l="Duration">${t.days?t.days+'D':'—'}</td>
+    <td data-l="Price">${INR(t.price)}${t.discount?` <span class="muted" style="font-size:11px">-${t.discount}%</span>`:''}</td>
+    <td data-l="Status">${trekStatusTag(t)}</td><td class="muted" data-l="Updated" style="font-size:11px">${t.updated_at?dshort(t.updated_at):'—'}</td>
+    <td><div class="row-acts">
+      <button class="btn2 sm" onclick="trekEdit('${jsv(t.id)}')">Edit</button>
+      <button class="btn2 sm" onclick="trekDuplicate('${jsv(t.id)}')">Duplicate</button>
+      <button class="btn2 sm" onclick="trekPublish('${jsv(t.id)}',${pub?'false':'true'})">${pub?'Unpublish':'Publish'}</button>
+      <button class="btn2 sm" onclick="trekArchive('${jsv(t.id)}')">Archive</button>
+      <button class="btn2 sm danger" onclick="trekDel('${jsv(t.id)}')">Delete</button>
+    </div></td></tr>`;}
+async function trekSetStatus(id,status){const t=(_treks||[]).find(x=>String(x.id)===String(id));if(!t)return;const r=await adminCall('save_trek',{trek:Object.assign({},t,{status}),id:t.id});if(r&&r.error){toast('Failed: '+r.error);return;}toast('Status → '+status);renderTreks();}
+function trekPublish(id,pub){trekSetStatus(id,(pub==='true'||pub===true)?'published':'draft');}
+function trekArchive(id){confirmDo('Archive this trek? It stays in the database but is hidden from the app.',()=>trekSetStatus(id,'archived'));}
+function trekDuplicate(id){const t=(_treks||[]).find(x=>String(x.id)===String(id));if(!t)return;const copy=Object.assign({},t);delete copy.id;delete copy.slug;copy.name=(t.name||'Trek')+' (Copy)';copy.status='draft';copy.soon=false;copy.featured=false;copy.popular=false;copy.batches=null;trekEdit(null,copy);toast('Duplicated — edit and save as a new trek');}
+function trekEdit(id,preset){
+  const t=preset?preset:(id?((_treks||[]).find(x=>String(x.id)===String(id))||{}):{});
+  const isNew=!id;
+  const V=v=>esc(v==null?'':v);
+  const fld=(l,inner)=>`<div class="fld"><label>${l}</label>${inner}</div>`;
+  const txt=(i,val,ph)=>`<input id="${i}" value="${V(val)}" placeholder="${ph||''}"/>`;
+  const num=(i,val,ph)=>`<input id="${i}" type="number" value="${val==null||val===''?'':val}" placeholder="${ph||''}"/>`;
+  const ta=(i,val,ph)=>`<textarea id="${i}" placeholder="${ph||''}">${V(val)}</textarea>`;
+  const sel=(i,cur,opts)=>`<select id="${i}">${opts.map(o=>`<option ${String(cur||'')===o?'selected':''}>${o}</option>`).join('')}</select>`;
+  const two=(a,b)=>`<div class="fld2">${a}${b}</div>`;
+  const rq=(i,label,val)=>`<div class="fld"><label>${label} <span class="muted">${val==null||val===''?'0':val}</span></label><input id="${i}" type="range" min="0" max="100" value="${val==null||val===''?0:val}" oninput="this.previousElementSibling.querySelector('.muted').textContent=this.value" style="width:100%"/></div>`;
+  const sf=(t.safety&&typeof t.safety==='object')?t.safety:{};
+  const pk=(t.packing_tiers&&typeof t.packing_tiers==='object')?t.packing_tiers:{};
+  const seo=(t.seo&&typeof t.seo==='object')?t.seo:{};
+  const arrTxt=a=>Array.isArray(a)?a.join('\n'):'';
+  const pairTxt=a=>Array.isArray(a)?a.map(x=>((x&&x.label)||'')+' | '+((x&&x.amount)||'')).join('\n'):'';
+  const tabs=['basic|Basic','loc|Location','det|Details','diff|Difficulty','itin|Itinerary','media|Media','inc|Inclusions','pack|Packing','safe|Safety','price|Pricing','batch|Batches','seo|SEO','pub|Publish'];
+  modal(`<div class="tk-hd"><h3 style="margin:0">${isNew?'Add trek / tour':'Edit — '+esc(t.name||'')}</h3></div>
+    <div class="tabbar" id="tkTabs">${tabs.map((x,i)=>{const[k,l]=x.split('|');return `<button class="tab ${i===0?'on':''}" data-t="${k}">${l}</button>`;}).join('')}</div>
+    <div class="tk-body">
+      <div class="tabpane" data-p="basic">
+        ${fld('Name',txt('teN',t.name,'e.g. Kedarkantha'))}
+        ${fld('Slug <span class="muted">(URL, auto)</span>',txt('teSlug',t.slug,'kedarkantha'))}
+        ${fld('Short description',txt('teShort',t.short_description,'One line shown on cards'))}
+        ${fld('Full description',ta('teDesc',t.description,'Detailed overview'))}
+        ${two(fld('Type',`<select id="teTy"><option value="trek" ${(t.type||'trek')==='trek'?'selected':''}>Trek</option><option value="tour" ${t.type==='tour'?'selected':''}>Tour / road trip</option></select>`),fld('Region / Destination',txt('teR',t.region,'Uttarakhand')))}
+        ${two(fld('State',txt('teState',t.state,'Uttarakhand')),fld('Country',txt('teCountry',t.country||'India','India')))}
+        ${fld('Destination link ID <span class="muted">(tours only)</span>',txt('teDest',t.dest_id,'e.g. spiti'))}
+      </div>
+      <div class="tabpane" data-p="loc" hidden>
+        ${two(fld('Starting point',txt('teStart',t.start_point)),fld('Ending point',txt('teEnd',t.end_point)))}
+        ${two(fld('Basecamp',txt('teBase',t.basecamp)),fld('Meeting point',txt('teMeet',t.meeting_point)))}
+        ${two(fld('Pickup point',txt('tePickup',t.pickup)),fld('Drop-off point',txt('teDrop',t.dropoff)))}
+        ${fld('Pickup map link',txt('teMap',t.pickup_map,'https://maps.google.com/…'))}
+        ${two(fld('Latitude',txt('teLat',t.lat)),fld('Longitude',txt('teLng',t.lng)))}
+      </div>
+      <div class="tabpane" data-p="det" hidden>
+        ${two(fld('Duration (days)',num('teDy',t.days)),fld('Total distance',txt('teDi',t.distance,'72 km')))}
+        ${two(fld('Max altitude',txt('teA',t.altitude,'3,810 m')),fld('Min altitude',txt('teMinAlt',t.min_altitude,'1,900 m')))}
+        ${two(fld('Elevation gain',txt('teElev',t.elevation_gain,'1,900 m')),fld('Best season',txt('teB',t.best_time,'Dec – Apr')))}
+        ${two(fld('Min age',num('teMinAge',t.min_age)),fld('Max age',num('teMaxAge',t.max_age)))}
+        ${two(fld('Recommended group size',txt('teGroup',t.group_size,'8–15')),fld('Route type',txt('teRoute',t.route_type,'Loop / Out & back')))}
+        ${two(fld('Terrain',txt('teTerrain',t.terrain,'Forest, snow, ridge')),fld('Weather',txt('teWeather',t.weather,'Cold, -5°C nights')))}
+      </div>
+      <div class="tabpane" data-p="diff" hidden>
+        ${two(fld('Overall difficulty',sel('teL',t.level||'Moderate',['Easy','Moderate','Difficult','Very Difficult','Extreme'])),fld('Overall required score (0–100)',num('teReq',t.req_score)))}
+        <p class="desc" style="margin:6px 2px 10px">Structured requirements — used later by Trek Readiness / Personalised Trek Match.</p>
+        ${rq('teqFit','Fitness',t.req_fitness)}${rq('teqEnd','Endurance',t.req_endurance)}${rq('teqStr','Strength',t.req_strength)}
+        ${rq('teqExp','Trekking experience',t.req_experience)}${rq('teqAlt','Altitude tolerance',t.req_altitude)}${rq('teqRec','Recovery',t.req_recovery)}
+      </div>
+      <div class="tabpane" data-p="itin" hidden>
+        <div id="teItin"></div>
+        <button type="button" class="btn2 sm" onclick="itinAddRow()" style="margin-top:2px">+ Add day</button>
+        ${fld('Itinerary PDF / link <span class="muted">(optional)</span>',txt('teItinUrl',t.itinerary_url,'https://… PDF or web link'))}
+      </div>
+      <div class="tabpane" data-p="media" hidden>
+        ${fld('Cover image',`<input id="teImg" value="${V(t.img)}" placeholder="Paste a URL, or upload below"/>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:8px"><img id="teImgPrev" src="${V(t.img)}" alt="" style="width:70px;height:46px;border-radius:8px;object-fit:cover;background:var(--panel2);border:1px solid var(--line);${t.img?'':'display:none'}"/><label class="btn2 sm" style="cursor:pointer;margin:0">Upload image<input id="teImgFile" type="file" accept="image/*" hidden/></label><span class="muted" id="teImgMsg" style="font-size:12px"></span></div>`)}
+        <p class="desc">Multi-image gallery (reorder, captions, alt text) arrives in the next phase.</p>
+      </div>
+      <div class="tabpane" data-p="inc" hidden>
+        ${fld('Included <span class="muted">(one per line)</span>',ta('teInc',arrTxt(t.inclusions),'Accommodation\nMeals (veg)\nCertified guide\nPermits'))}
+        ${fld('Not included <span class="muted">(one per line)</span>',ta('teExc',arrTxt(t.exclusions),'Travel to basecamp\nPersonal gear\nInsurance'))}
+      </div>
+      <div class="tabpane" data-p="pack" hidden>
+        ${fld('Essential <span class="muted">(one per line)</span>',ta('tePkE',arrTxt(pk.essential),'Trekking shoes\nBackpack 50L\nWarm layers'))}
+        ${fld('Recommended <span class="muted">(one per line)</span>',ta('tePkR',arrTxt(pk.recommended),'Trekking poles\nSunglasses'))}
+        ${fld('Optional <span class="muted">(one per line)</span>',ta('tePkO',arrTxt(pk.optional),'Camera\nPower bank'))}
+      </div>
+      <div class="tabpane" data-p="safe" hidden>
+        ${fld('Safety instructions',ta('teSafInstr',sf.instructions))}
+        ${fld('Medical considerations',ta('teSafMed',sf.medical))}
+        ${two(fld('Altitude warning',ta('teSafAlt',sf.altitude)),fld('Weather warning',ta('teSafWx',sf.weather)))}
+        ${fld('Emergency information',ta('teSafEmg',sf.emergency))}
+        ${fld('Trek rules',ta('teSafRules',sf.rules))}
+      </div>
+      <div class="tabpane" data-p="price" hidden>
+        ${two(fld('Base price (₹)',num('tePBase',t.price_base)),fld('Selling price (₹)',num('teP',t.price)))}
+        ${two(fld('Discount %',num('teD',t.discount)),fld('Taxes (₹)',num('teTax',t.taxes)))}
+        ${two(fld('B2B price (₹)',num('tePB2B',t.price_b2b)),fld('Single occupancy (₹)',num('tePSingle',t.price_single)))}
+        ${two(fld('Offer text (badge)',txt('teO',t.offer,'Early bird — save ₹1000')),fld('Tag',txt('teT',t.tag,'Bestseller')))}
+        ${fld('Additional charges <span class="muted">(label | amount, per line)</span>',ta('teAddl',pairTxt(t.addl_charges),'Porter | 500\nMule | 800'))}
+        ${fld('Optional activities <span class="muted">(label | amount, per line)</span>',ta('teOpt',pairTxt(t.optional_activities),'River rafting | 1200'))}
+      </div>
+      <div class="tabpane" data-p="batch" hidden>
+        <p class="desc">Batches / departures are managed in the <b>Departures</b> section. A full batch manager (capacity, seats, status, assigned guide, duplicate / close / reopen) arrives in the next phase.</p>
+      </div>
+      <div class="tabpane" data-p="seo" hidden>
+        ${fld('Meta title',txt('teSeoT',seo.title))}
+        ${fld('Meta description',ta('teSeoD',seo.description))}
+        ${fld('Keywords <span class="muted">(comma separated)</span>',txt('teSeoK',seo.keywords))}
+      </div>
+      <div class="tabpane" data-p="pub" hidden>
+        ${fld('Status',sel('teStatus',t.status||'published',['draft','published','archived']))}
+        <div class="fld"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="teSoon" ${t.soon?'checked':''} style="width:auto"/> Coming soon (hidden from booking)</label></div>
+        <div class="fld"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="teFeat" ${t.featured?'checked':''} style="width:auto"/> Featured hero on home</label></div>
+        <div class="fld"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="tePop" ${t.popular?'checked':''} style="width:auto"/> Show in Popular rail</label></div>
+      </div>
+    </div>
+    <div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="teGo">${isNew?'Add trek':'Save changes'}</button></div>`);
+  document.querySelectorAll('#tkTabs .tab').forEach(b=>b.onclick=()=>{
+    document.querySelectorAll('#tkTabs .tab').forEach(x=>x.classList.toggle('on',x===b));
+    document.querySelectorAll('.tk-body .tabpane').forEach(p=>p.hidden=(p.dataset.p!==b.dataset.t));
+  });
+  const days=Array.isArray(t.itinerary)?t.itinerary:[];
+  if(days.length)days.forEach(d=>itinAddRow(Array.isArray(d)?d[0]:d,Array.isArray(d)?d[1]:'',Array.isArray(d)?d[2]:'',Array.isArray(d)?d[3]:''));
+  else itinAddRow();
+  const slugEl=$('#teSlug');
+  $('#teN').oninput=()=>{if(slugEl&&!slugEl.dataset.touched)slugEl.value=($('#teN').value||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');};
+  if(slugEl)slugEl.addEventListener('input',()=>{slugEl.dataset.touched='1';});
+  $('#teImgFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;$('#teImgMsg').textContent='Uploading…';const url=await uploadImg(f,'treks');if(url){$('#teImg').value=url;const p=$('#teImgPrev');p.src=url;p.style.display='';$('#teImgMsg').textContent='Uploaded ✓';}else{$('#teImgMsg').textContent='Upload failed';}e.target.value='';};
+  $('#teImg').oninput=()=>{const p=$('#teImgPrev'),v=$('#teImg').value.trim();if(v){p.src=v;p.style.display='';}else{p.style.display='none';}};
+  $('#teGo').onclick=async()=>{
+    const val=i=>{const el=$('#'+i);return el?(el.value||'').trim():'';};
+    const nOr=i=>{const v=val(i);return v===''?null:(parseInt(v.replace(/[^0-9-]/g,''),10)||0);};
+    const chk=i=>{const el=$('#'+i);return !!(el&&el.checked);};
+    const lines=i=>val(i).split('\n').map(s=>s.trim()).filter(Boolean);
+    const pairs=i=>lines(i).map(l=>{const p=l.split('|');return {label:(p[0]||'').trim(),amount:parseInt((p[1]||'').replace(/[^0-9]/g,''),10)||0};}).filter(x=>x.label);
+    const name=val('teN');if(!name){toast('Name is required');document.querySelector('#tkTabs .tab[data-t="basic"]').click();return;}
+    const upd=Object.assign({},t,{
+      name,slug:val('teSlug')||name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''),
+      short_description:val('teShort'),description:val('teDesc'),type:$('#teTy').value,region:val('teR'),state:val('teState'),country:val('teCountry'),dest_id:val('teDest'),
+      start_point:val('teStart'),end_point:val('teEnd'),basecamp:val('teBase'),meeting_point:val('teMeet'),pickup:val('tePickup'),dropoff:val('teDrop'),pickup_map:val('teMap'),lat:val('teLat'),lng:val('teLng'),
+      days:nOr('teDy'),distance:val('teDi'),altitude:val('teA'),min_altitude:val('teMinAlt'),elevation_gain:val('teElev'),best_time:val('teB'),min_age:nOr('teMinAge'),max_age:nOr('teMaxAge'),group_size:val('teGroup'),terrain:val('teTerrain'),weather:val('teWeather'),route_type:val('teRoute'),
+      level:$('#teL').value,req_score:nOr('teReq'),req_fitness:nOr('teqFit'),req_endurance:nOr('teqEnd'),req_strength:nOr('teqStr'),req_experience:nOr('teqExp'),req_altitude:nOr('teqAlt'),req_recovery:nOr('teqRec'),
+      itinerary:itinCollect(),itinerary_url:val('teItinUrl'),img:val('teImg'),
+      inclusions:lines('teInc'),exclusions:lines('teExc'),
+      packing_tiers:{essential:lines('tePkE'),recommended:lines('tePkR'),optional:lines('tePkO')},
+      safety:{instructions:val('teSafInstr'),medical:val('teSafMed'),altitude:val('teSafAlt'),weather:val('teSafWx'),emergency:val('teSafEmg'),rules:val('teSafRules')},
+      price_base:nOr('tePBase'),price:nOr('teP')||0,price_selling:nOr('teP'),discount:Math.max(0,Math.min(90,nOr('teD')||0)),taxes:nOr('teTax'),price_b2b:nOr('tePB2B'),price_single:nOr('tePSingle'),offer:val('teO'),tag:val('teT'),
+      addl_charges:pairs('teAddl'),optional_activities:pairs('teOpt'),
+      seo:{title:val('teSeoT'),description:val('teSeoD'),keywords:val('teSeoK')},
+      status:$('#teStatus').value,soon:chk('teSoon'),featured:chk('teFeat'),popular:chk('tePop')
+    });
+    const btn=$('#teGo');btn.disabled=true;btn.textContent='Saving…';
+    const r=await adminCall('save_trek',{trek:upd,id:t.id||undefined});
+    if(r&&r.error){toast('Failed: '+r.error);btn.disabled=false;btn.textContent=isNew?'Add trek':'Save changes';return;}
+    closeOv();toast(isNew?'Trek added ✓':'Trek saved ✓');renderTreks();
+  };
+}
+/* upload an image file to Supabase Storage (community bucket) → public URL */
+async function uploadImg(file,folder){
+  if(!file)return null;
+  const ext=((file.name||'').split('.').pop()||'jpg').toLowerCase();
+  const path=(folder||'treks')+'/'+Date.now()+'_'+Math.random().toString(36).slice(2)+'.'+ext;
+  const {error}=await sb.storage.from('community').upload(path,file,{cacheControl:'3600',upsert:false});
+  if(error){toast('Upload failed: '+error.message);return null;}
+  const {data}=sb.storage.from('community').getPublicUrl(path);
+  return data?data.publicUrl:null;
+}
+/* one itinerary day = [title, desc, distance, hours] */
+function itinAddRow(title,desc,dist,hrs){
+  const box=document.getElementById('teItin');if(!box)return;
+  const inp='background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px 10px;font-size:13px;width:100%;box-sizing:border-box';
+  const row=document.createElement('div');row.className='itin-row';
+  row.style.cssText='border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px;background:var(--panel2)';
+  const n=box.querySelectorAll('.itin-row').length+1;
+  row.innerHTML=`<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px"><b style="font-size:12px;color:var(--muted);min-width:44px">Day ${n}</b><input class="ir-title" placeholder="Day title (e.g. Base to Lake)" value="${esc(title||'')}" style="${inp};flex:1"/><button type="button" class="btn2 sm danger" title="Remove day" onclick="this.closest('.itin-row').remove();itinRenumber()">×</button></div>
+    <textarea class="ir-desc" placeholder="What happens this day…" style="${inp};min-height:44px;margin-bottom:6px">${esc(desc||'')}</textarea>
+    <div style="display:flex;gap:6px"><input class="ir-dist" placeholder="Distance (e.g. 6 km)" value="${esc(dist||'')}" style="${inp}"/><input class="ir-hrs" placeholder="Hours (e.g. 5–6 hrs)" value="${esc(hrs||'')}" style="${inp}"/></div>`;
+  box.appendChild(row);
+}
+function itinRenumber(){[...document.querySelectorAll('#teItin .itin-row')].forEach((r,i)=>{const b=r.querySelector('b');if(b)b.textContent='Day '+(i+1);});}
+function itinCollect(){return [...document.querySelectorAll('#teItin .itin-row')].map(r=>[
+    (r.querySelector('.ir-title').value||'').trim(),(r.querySelector('.ir-desc').value||'').trim(),
+    (r.querySelector('.ir-dist').value||'').trim(),(r.querySelector('.ir-hrs').value||'').trim()
+  ]).filter(d=>d[0]||d[1]);}
 function trekDel(id){const t=(_treks||[]).find(x=>String(x.id)===String(id));confirmDo('Delete "'+((t&&t.name)||'this trek')+'"? It’s removed from the app catalogue.',async()=>{const r=await adminCall('delete_trek',{id});if(r&&r.error){toast('Failed: '+r.error);return;}toast('Deleted');renderTreks();});}
 /* DESTINATIONS */
 let _dests=[];
