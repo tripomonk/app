@@ -4361,6 +4361,17 @@ async function loadProfileFromServer(){
     let dbConsent=null;try{const{data:cd}=await sb.from('profiles').select('consent').eq('id',currentUser.id).maybeSingle();if(cd)dbConsent=cd.consent;}catch(e){}
     /* gender + category fetched separately so a missing column never fails the whole read */
     try{const{data:gc}=await sb.from('profiles').select('gender,category,bio').eq('id',currentUser.id).maybeSingle();if(gc){if(gc.gender)localStorage.setItem('tmk_gender',gc.gender);if(gc.category)localStorage.setItem('tmk_category',gc.category);if(gc.bio)localStorage.setItem('tmk_bio',gc.bio);}}catch(e){}
+    /* restore the fitness/readiness assessment from the server so the Trek Match shows on
+       every device — the assessment SYNCS up (syncFitnessCloud) but was never read back, so a
+       new device / cleared storage wrongly showed "Check my Trek Match" for a done assessment */
+    try{const{data:fd}=await sb.from('profiles').select('fitness').eq('id',currentUser.id).maybeSingle();
+      if(fd&&fd.fitness&&fd.fitness.answers){
+        let local=null;try{local=JSON.parse(localStorage.getItem('tmk_fitness')||'null');}catch(e){}
+        const lc=(local&&local.answers)?Object.keys(local.answers).length:0;
+        const sc=Object.keys(fd.fitness.answers).length;
+        if(sc>lc){try{localStorage.setItem('tmk_fitness',JSON.stringify(fd.fitness));}catch(e){}_fitStoreCache=fd.fitness;_fitComputed=null;}
+      }
+    }catch(e){}
     if(data){
       if(data.name)try{localStorage.setItem('tmk_uname',data.name);}catch(e){}
       if(data.photo)try{localStorage.setItem('tmk_uphoto',data.photo);}catch(e){}
@@ -8244,7 +8255,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='459';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='460';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
