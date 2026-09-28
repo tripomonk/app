@@ -1021,11 +1021,15 @@ function hostProfile(id){
   const row=(l,v)=>v?`<div class="ua-ev"><span class="d"></span><div>${esc(String(v))}<small>${esc(l)}</small></div></div>`:'';
   const ans=a.answers||{};
   const trips=_hostTrips.filter(t=>t.host_id===a.user_id);
+  const ph=String(a.mobile||a.phone||'');
+  const telNum=ph.replace(/[^0-9+]/g,'');
+  let waDigits=ph.replace(/[^0-9]/g,'').replace(/^0+/,'');if(waDigits.length===10)waDigits='91'+waDigits;
   body.innerHTML=`<div class="dh">${avc(a.full_name||a.name)}<div><b style="font-size:16px">${esc(a.full_name||a.name||'Host')}</b><br><small class="muted">${esc(a.city||'')}${a.status?' · '+esc(a.status):''}</small></div><span class="spacer"></span><button class="btn2" onclick="closeOv()">Close</button></div>
     <div class="sec-t">Contact</div>${row('Mobile',a.mobile||a.phone)}${row('WhatsApp',a.whatsapp)}${row('Email',a.email)}
     <div class="sec-t">About</div>${row('Bio',a.bio||ans.bio)}${row('Hosting style',ans.hosting_style)}${row('Audience',ans.audience_size)}${row('DOB',a.dob)}${row('Instagram',a.instagram||ans.instagram)}
-    <div class="sec-t">Trips (${trips.length})</div>${trips.length?trips.map(t=>`<div class="ua-ev"><span class="d" style="background:var(--yellow)"></span><div>${esc(t.title||'')} · ${INR(t.price)}<small>${esc(t.status||'')} · ${esc(t.start_date||'')}</small></div></div>`).join(''):'<div class="muted" style="font-size:12.5px">No trips yet.</div>'}
-    <div style="margin-top:14px"><button class="btn2 pri" onclick="hostMsg('${jsv(a.id)}')">Message host</button></div>`;}
+    <div class="sec-t">Trips (${trips.length})</div>${trips.length?trips.map(t=>`<div style="border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span class="d" style="background:${/live/i.test(t.status)?'var(--ok)':'var(--yellow)'}"></span><div style="flex:1"><b style="font-size:13.5px">${esc(t.title||'')}</b> · ${INR(t.price)}<br><small class="muted">${esc(t.status||'')} · ${esc(t.start_date||'')}${t.end_date?' to '+esc(t.end_date):''}${t.days?' · '+t.days+'D':''}</small></div></div><div class="row-acts" style="justify-content:flex-start;margin-top:8px"><button class="btn2 sm" onclick="closeOv();hostTripEdit('${jsv(t.id)}')">Edit / complete</button>${/live/i.test(t.status)?`<button class="btn2 sm" onclick="hostTripStatus('${jsv(t.id)}','draft')">Unlist</button>`:`<button class="btn2 sm" onclick="hostTripStatus('${jsv(t.id)}','live')">Publish</button>`}</div></div>`).join(''):'<div class="muted" style="font-size:12.5px">No trips yet.</div>'}
+    <div class="sec-t">Contact host</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${telNum?`<a class="btn2" style="text-decoration:none" href="tel:${esc(telNum)}">Call</a><a class="btn2" style="text-decoration:none" href="https://wa.me/${esc(waDigits)}" target="_blank" rel="noopener">WhatsApp</a>`:''}<button class="btn2 pri" onclick="hostMsg('${jsv(a.id)}')">Message host</button></div>`;}
 function hostMsg(id){
   const a=_hostApps.find(x=>String(x.id)===String(id));if(!a){toast('Host not found');return;}
   if(!a.user_id){toast('This host has no linked app account to message.');return;}
