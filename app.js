@@ -887,6 +887,9 @@ async function initAuth(){
   if(!sb){_authResolved=true;return;}
   /* did we just come back from an OAuth (Google) redirect? */
   const fromOAuth=/[#&](access_token|code)=/.test(window.location.hash||'')||/[?&]code=/.test(window.location.search||'');
+  /* …or from a password-reset link? (implicit flow returns #…&type=recovery). Captured
+     BEFORE getSession(), which strips the hash while establishing the recovery session. */
+  const isRecovery=/type=recovery/.test(window.location.hash||'')||/type=recovery/.test(window.location.search||'');
   let session=null;
   try{({data:{session}}=await sb.auth.getSession());}catch(e){}
   currentUser=session?session.user:null;
@@ -900,7 +903,11 @@ async function initAuth(){
     loadStaff();loadSavedPostsFromServer();       /* role check + sync saved posts */
     _myUid=null;ensureMsgSub();loadAiCfg().then(registerSupportInbox);   /* messaging + support inbox */
     refreshAuthUI();   /* again, now that the name/photo are back */
-    if(fromOAuth){
+    if(isRecovery){
+      /* password-reset link: clean the token out of the URL and let them set a new password */
+      try{history.replaceState(null,'',window.location.pathname);}catch(e){}
+      promptNewPassword();
+    } else if(fromOAuth){
       /* clean the token hash out of the URL and land on home */
       try{history.replaceState(null,'',window.location.pathname);}catch(e){}
       go('home');
@@ -908,7 +915,11 @@ async function initAuth(){
       const ret=_loginReturn;_loginReturn=null;
       go(ret||'home');
     }
-    setTimeout(maybeOnboard,600);  /* first-time users pick their preferences */
+    if(!isRecovery)setTimeout(maybeOnboard,600);  /* first-time users pick their preferences */
+  } else if(isRecovery){
+    /* recovery token didn't resolve to a session — expired or already used */
+    note('This password-reset link has expired or was already used. Please request a new one.','Link expired');
+    go('login');
   }
   sb.auth.onAuthStateChange(async(evt,session)=>{
     currentUser=session?session.user:null;
@@ -8198,7 +8209,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='456';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='457';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
