@@ -2284,7 +2284,7 @@ function renderCompare(){
       ['Max altitude',t=>t.alt||'—'],
       ['Difficulty',t=>t.lvl||'—'],
       ['Required score',t=>trekReqScore(t)],
-      ['Your readiness',t=>{const req=trekReqScore(t);if(!hasFitness())return '—';const rd=readiness(computeFitness().score,req);return `<span class="cmp-fit fit-${rd.k}"><span class="fit-dot"></span>${rd.label}</span>`;}],
+      ['Your Trek Match',t=>{const req=trekReqScore(t);if(!hasFitness())return '—';const rd=readiness(computeFitness().score,req);return `<span class="cmp-fit fit-${rd.k}"><span class="fit-dot"></span>${rd.pct}% match</span>`;}],
       ['Fitness needed',t=>fitnessOf(t.lvl)],
       ['Best season',t=>t.best||'—'],
       ['Region',t=>t.region||'—'],
@@ -3050,7 +3050,7 @@ function bookingFitnessHTML(t){
   }
   const you=computeFitness().score,rd=readiness(you,req);
   return `<div class="fit-check fit-b-${rd.k}"><div class="fit-check-h"><span class="msr">bolt</span> Fitness check</div>
-    <div class="fit-check-row"><div><small>Your score</small><b class="fit-${rd.k}">${you}</b></div><div><small>Required</small><b>${req}</b></div><div class="fit-check-st fit-${rd.k}"><span class="fit-dot"></span>${rd.label}</div></div>
+    <div class="fit-check-row"><div><small>Your score</small><b class="fit-${rd.k}">${you}</b></div><div><small>Trek needs</small><b>${req}</b></div><div class="fit-check-st fit-${rd.k}"><span class="fit-dot"></span>${rd.pct}% match</div></div>
     ${rd.k==='green'?'<p class="fit-check-p">You\'re ready for this trek. Continue below.</p>':`<p class="fit-check-p">${rd.msg}</p><div class="fit-check-cta"><button class="btn ghost sm" onclick="openTrainingPlan('${jsq(t.n)}')"><span class="msr">calendar_month</span> Prep plan</button><button class="btn ghost sm" onclick="go('home')"><span class="msr">landscape</span> Easier trek</button></div>`}</div>`;
 }
 /* gear rental = the items ticked on the trek page, priced per-day × trek length */
@@ -8209,7 +8209,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='457';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='458';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -9759,27 +9759,41 @@ function computeFitness(d){
 }
 
 /* ---- readiness = user score vs required trek score (Green / Yellow / Red) ---- */
+/* Personalised Trek Match — how doable THIS trek is for THIS user, as a %.
+   The same trek scores differently for every user: it compares the user's overall
+   readiness (fitness + endurance + experience) against the trek's required score
+   (which already blends difficulty, altitude and duration). Returns { pct, k, label, msg }. */
 function readiness(user,req){
-  const diff=user-req;
-  if(diff>=0)return{k:'green',label:'Recommended',msg:"Your fitness meets this trek. You're good to go."};
-  if(req-user<=10)return{k:'yellow',label:'Prepare a little',msg:'You can do this trek — we recommend training for 2–4 weeks first.'};
-  return{k:'red',label:'Not ready yet',msg:'Not recommended right now. Build your score first with a short plan.'};
+  const deficit=req-user;                                   /* how far short the user is */
+  let pct=deficit<=0?100:Math.round(100-deficit*2);         /* meet it → 100%; each point short ≈ -2% */
+  pct=Math.max(5,Math.min(100,pct));
+  let k,label,msg;
+  if(pct>=80){k='green';label='Good match';
+    msg=pct>=95?'You are well prepared — your readiness matches this trek. You are good to go.'
+               :'Your readiness matches most of the physical demands of this trek. You are ready — a little endurance work beforehand still helps.';}
+  else if(pct>=55){k='yellow';label='Moderate match';
+    msg='A moderate match. A few weeks of targeted preparation (endurance + hill walks) will make this trek comfortable for you.';}
+  else{k='red';label='Challenging for you';
+    msg='This trek currently demands more endurance and altitude tolerance than your readiness shows. Build up with a short plan before attempting it.';}
+  return {k,label,msg,pct};
 }
 
 /* ---- the readiness card shown on the trek detail + booking review ---- */
 function readinessCardHTML(t){
   const req=trekReqScore(t);
   if(!hasFitness()){
-    return `<div class="fit-card"><div class="fit-card-h"><span class="msr">bolt</span> Adventure Readiness</div>
-      <div class="fit-req-row"><div><small>Difficulty</small><b>${esc(t.lvl||reqBand(req))}</b></div><div><small>Required score</small><b>${req}</b></div><div><small>Your score</small><b>—</b></div></div>
-      <button class="btn fit-cta" onclick="go('fitness')"><span class="msr">fitness_center</span> Check my readiness</button></div>`;
+    return `<div class="fit-card"><div class="fit-card-h"><span class="msr">bolt</span> Your Trek Match</div>
+      <p class="fit-msg" style="margin-top:8px">See how well this trek matches <b>your</b> fitness, experience and the trek's demands — take the 2-minute readiness check.</p>
+      <div class="fit-req-row"><div><small>Difficulty</small><b>${esc(t.lvl||reqBand(req))}</b></div><div><small>Trek needs</small><b>${req}</b></div><div><small>Your match</small><b>—</b></div></div>
+      <button class="btn fit-cta" onclick="go('fitness')"><span class="msr">fitness_center</span> Check my Trek Match</button></div>`;
   }
   const you=computeFitness().score,rd=readiness(you,req);
-  return `<div class="fit-card fit-b-${rd.k}"><div class="fit-card-h"><span class="msr">bolt</span> Adventure Readiness</div>
-    <div class="fit-req-row"><div><small>Difficulty</small><b>${esc(t.lvl||reqBand(req))}</b></div><div><small>Required</small><b>${req}</b></div><div><small>Your score</small><b class="fit-you fit-${rd.k}">${you}</b></div></div>
-    <div class="fit-status fit-${rd.k}"><span class="fit-dot"></span>${rd.label}</div>
+  return `<div class="fit-card fit-b-${rd.k}"><div class="fit-card-h"><span class="msr">bolt</span> Your Trek Match</div>
+    <div class="fit-match"><div class="fit-match-top"><div class="fit-match-num fit-${rd.k}">${rd.pct}%</div><div class="fit-match-lbl fit-${rd.k}"><span class="fit-dot"></span>${rd.label}</div></div>
+      <div class="fit-match-bar"><div class="fit-match-fill fit-bg-${rd.k}" style="width:${rd.pct}%"></div></div></div>
     <p class="fit-msg">${rd.msg}</p>
-    ${rd.k!=='green'?`<button class="btn ghost fit-plan" onclick="openTrainingPlan('${jsq(t.n)}')"><span class="msr">calendar_month</span> View ${req-you>10?'30-day':'2–4 week'} prep plan</button>`:''}</div>`;
+    <div class="fit-req-row"><div><small>Difficulty</small><b>${esc(t.lvl||reqBand(req))}</b></div><div><small>Trek needs</small><b>${req}</b></div><div><small>Your score</small><b class="fit-you fit-${rd.k}">${you}</b></div></div>
+    ${rd.k!=='green'?`<button class="btn ghost fit-plan" onclick="openTrainingPlan('${jsq(t.n)}')"><span class="msr">calendar_month</span> View ${rd.pct<55?'30-day':'2–4 week'} prep plan</button>`:''}</div>`;
 }
 /* difficulty-band colour for a required trek score */
 function bandColor(s){return s<50?'#2fbf8f':s<65?'#2f6bff':s<80?'#e0952a':s<90?'#ff7a5c':'#a06bff';}
@@ -9829,8 +9843,7 @@ function animateTrekScores(){
 function readinessChip(t){
   if(!hasFitness())return '';
   const rd=readiness(computeFitness().score,trekReqScore(t));
-  const lbl=rd.k==='green'?'Ready':rd.k==='yellow'?'Prep':'Not ready';
-  return `<span class="tag fit-chip fit-b-${rd.k}"><span class="fit-dot"></span>${lbl}</span>`;
+  return `<span class="tag fit-chip fit-b-${rd.k}"><span class="fit-dot"></span>${rd.pct}% match</span>`;
 }
 /* profile entry */
 function fitnessProfileCard(){
