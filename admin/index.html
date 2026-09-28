@@ -420,17 +420,18 @@ function select(sec){if(!allowedFor(sec))sec='dashboard';const S=SEC[sec];if(!S)
 document.querySelectorAll('.nav-i').forEach(n=>n.addEventListener('click',()=>select(n.dataset.sec)));
 /* ---- Notifications: new bookings / host requests / vendor requests / support / permits / reports ---- */
 const NOTIF_CATS=[
-  {cat:'bookings',  sec:'bookings',  ic:'🧾', label:'new booking'},
-  {cat:'hosts',     sec:'hosts',     table:'host_applications',   ic:'🧗', label:'host request'},
-  {cat:'vendors',   sec:'vendors',   table:'vendors',             ic:'🏪', label:'vendor request'},
-  {cat:'support',   sec:'support',   table:'support_tickets',     ic:'💬', label:'support ticket'},
-  {cat:'permits',   sec:'permits',   table:'permit_applications', ic:'📄', label:'permit request'},
-  {cat:'community', sec:'community',  table:'post_reports',        ic:'🚩', label:'reported post'},
+  {cat:'bookings',   sec:'bookings',  ic:'🧾', label:'new booking'},
+  {cat:'hosts',      sec:'hosts',     table:'host_applications',   ic:'🧗', label:'host request'},
+  {cat:'host_trips', sec:'hosts',     table:'host_trips',          ic:'🗺️', label:'new trip listing'},
+  {cat:'vendors',    sec:'vendors',   table:'vendors',             ic:'🏪', label:'vendor request'},
+  {cat:'support',    sec:'support',   table:'support_tickets',     ic:'💬', label:'support ticket'},
+  {cat:'permits',    sec:'permits',   table:'permit_applications', ic:'📄', label:'permit request'},
+  {cat:'community',  sec:'community',  table:'post_reports',        ic:'🚩', label:'reported post'},
 ];
 let _notifs={}, _notifTimer=null;
 function admSeen(){try{return JSON.parse(localStorage.getItem('tmk_adm_seen')||'{}');}catch(e){return{};}}
 function admSetSeen(cat){const s=admSeen();s[cat]=new Date().toISOString();try{localStorage.setItem('tmk_adm_seen',JSON.stringify(s));}catch(e){}}
-function admMarkSeenFor(sec){const n=NOTIF_CATS.find(x=>x.sec===sec);if(n&&(_notifs[n.cat]||0)>0){admSetSeen(n.cat);_notifs[n.cat]=0;paintBell();}}
+function admMarkSeenFor(sec){let any=false;NOTIF_CATS.filter(n=>n.sec===sec).forEach(n=>{if((_notifs[n.cat]||0)>0){admSetSeen(n.cat);_notifs[n.cat]=0;any=true;}});if(any)paintBell();}
 async function loadNotifs(){
   if(typeof ME==='undefined'||!ME)return;
   const seen=admSeen(),since=c=>seen[c]||'2000-01-01T00:00:00Z',out={};
