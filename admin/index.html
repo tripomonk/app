@@ -994,9 +994,16 @@ async function renderPledges(){const {rows,error}=await qtbl('pledges',b=>b.orde
   $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Mountain Promise</h2><span class="spacer"></span><span class="muted">${rows.length} trekker${rows.length!==1?'s':''} pledged</span></div><p class="desc">Everyone who has taken the Mountain Promise.</p>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>#</th><th>Name</th><th>Taken</th></tr></thead><tbody>${rows.map((p,i)=>`<tr><td class="muted">${i+1}</td><td><div class="u">${avc(p.name)}<b>${esc(p.name||'Trekker')}</b></div></td><td data-l="Taken" class="muted">${timeAgo(p.created_at)}</td></tr>`).join('')}</tbody></table>`):'<div class="empty">No one has taken the promise yet.</div>'}</div>`;}
 let _hostApps=[],_hostTrips=[];
 async function _ownerUid(){if(typeof ME!=='undefined'&&ME&&ME.id)return ME.id;try{const {data}=await sb.auth.getUser();return data&&data.user?data.user.id:null;}catch(e){return null;}}
+/* read host apps/trips via the admin edge fn (service-role → sees DRAFT trips the host just
+   submitted, which RLS hides); fall back to a direct RLS read if the fn isn't redeployed yet */
+async function hostList(action,table){
+  try{const r=await adminCall(action,{});if(r&&Array.isArray(r.rows))return r.rows;}catch(e){}
+  const q=await qtbl(table,b=>b.order('created_at',{ascending:false}).limit(500));
+  return q.rows||[];
+}
 async function renderHosts(){
-  const [apps,trips]=await Promise.all([qtbl('host_applications',b=>b.order('created_at',{ascending:false}).limit(300)),qtbl('host_trips',b=>b.order('created_at',{ascending:false}).limit(400))]);
-  _hostApps=apps.rows;_hostTrips=trips.rows;
+  const [apps,trips]=await Promise.all([hostList('list_host_apps','host_applications'),hostList('list_host_trips','host_trips')]);
+  _hostApps=apps;_hostTrips=trips;
   const hostActs=a=>{const s=(a.status||'pending').toLowerCase(),id=jsv(a.id);
     const appr=`<button class="btn2 sm" onclick="hostSet('${id}','approved')">Approve</button>`;
     const rej=`<button class="btn2 sm danger" onclick="hostSet('${id}','rejected')">Reject</button>`;
