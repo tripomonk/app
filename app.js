@@ -6483,6 +6483,83 @@ function doSearch(q){const inp=document.getElementById('searchInput');if(inp&&q&
      matches everything incl. tours, so someone typing "Ladakh"/"Spiti" still finds the tour */
   const f=treks.filter(t=>q?(t.n.toLowerCase().includes(q)||t.region.toLowerCase().includes(q)||t.lvl.toLowerCase().includes(q)):!isTour(t));
   const el=document.getElementById('searchResults');el.innerHTML=(f.length?f:treks.filter(t=>!isTour(t))).map(trekCard).join('');hydrate(el);}
+/* ===== AI Trip Planner — conversational search grounded in the real catalogue ===== */
+let _planMsgs=[], _planBusy=false;
+function renderPlanner(){
+  if(!_planMsgs.length){
+    _planMsgs=[{role:'assistant',content:"Hi! I'm your Tripomonk trip planner. Tell me your budget, dates, who's coming, or the vibe — and I'll find the right trek or tour for you.",
+      followups:["Easy trek for beginners","3-day trip under ₹8,000 from Delhi","Adventure + camping with friends","5 days, ₹20,000 — suggest something","Like Kedarkantha but easier"]}];
+  }
+  paintPlanner();
+  const inp=document.getElementById('plannerInput');if(inp)setTimeout(()=>{try{inp.focus();}catch(e){}},120);
+}
+function plannerCard(t){
+  const price=t.price?('₹'+Number(t.price).toLocaleString('en-IN')):'';
+  return `<div class="pl-card" onclick="openDetailByName('${jsq(t.n)}')">
+    <div class="pl-card-img" style="background-image:url('${esc((t.img||'').split('?')[0])}')"></div>
+    <div class="pl-card-bd"><b>${esc(t.n)}</b><small>${esc(t.region||'')}${t.days?' · '+t.days+'D':''}${t.lvl?' · '+esc(t.lvl):''}</small><span class="pl-card-price">${price}${t.soon?' · coming soon':''}</span></div>
+  </div>`;
+}
+function paintPlanner(){
+  const chat=document.getElementById('plannerChat');if(!chat)return;
+  let html=_planMsgs.map(m=>{
+    const bubble=`<div class="pl-row pl-row-${m.role}"><div class="pl-msg pl-${m.role}">${esc(m.content)}</div></div>`;
+    let cards='';
+    if(m.treks&&m.treks.length){
+      const cs=m.treks.map(nm=>{const t=treks.find(x=>x.n===nm)||treks.find(x=>String(x.n).toLowerCase()===String(nm).toLowerCase());return t?plannerCard(t):'';}).filter(Boolean).join('');
+      if(cs)cards=`<div class="pl-cards">${cs}</div>`;
+    }
+    return bubble+cards;
+  }).join('');
+  if(_planBusy)html+=`<div class="pl-row pl-row-assistant"><div class="pl-msg pl-assistant pl-typing"><span></span><span></span><span></span></div></div>`;
+  chat.innerHTML=html;hydrate(chat);
+  const last=_planMsgs[_planMsgs.length-1];
+  const chips=document.getElementById('plannerChips');
+  if(chips){const fu=(!_planBusy&&last&&last.role==='assistant'&&last.followups)||[];chips.innerHTML=fu.map(f=>`<button class="pl-chip" onclick="plannerChip('${jsq(f)}')">${esc(f)}</button>`).join('');}
+  chat.scrollTop=chat.scrollHeight;
+}
+function plannerChip(text){const inp=document.getElementById('plannerInput');if(inp)inp.value=text;sendPlan();}
+async function sendPlan(text){
+  const inp=document.getElementById('plannerInput');
+  const q=(text||(inp&&inp.value)||'').trim();if(!q||_planBusy)return;
+  if(inp)inp.value='';
+  try{logEvent('plan_query',{q:q.slice(0,80)});}catch(e){}
+  _planMsgs.push({role:'user',content:q});_planBusy=true;paintPlanner();
+  let res=null;
+  try{
+    const sb=getSupaClient();
+    if(sb){
+      const catalog=treks.map(t=>({n:t.n,region:t.region,price:t.price,days:t.days,lvl:t.lvl,type:isTour(t)?'tour':'trek',tag:t.tag||'',soon:!!t.soon}));
+      const messages=_planMsgs.filter(m=>m.role==='user'||m.role==='assistant').slice(-12).map(m=>({role:m.role,content:m.content}));
+      const r=await sb.functions.invoke('plan',{body:{messages,catalog}});
+      if(r&&r.data&&r.data.ok)res=r.data;
+    }
+  }catch(e){/* fall through to the local fallback */}
+  _planBusy=false;
+  if(res){_planMsgs.push({role:'assistant',content:res.reply||'Here are some options:',treks:res.treks||[],followups:res.followups||[]});}
+  else{const fb=plannerFallback(q);_planMsgs.push({role:'assistant',content:fb.reply,treks:fb.treks,followups:fb.followups});}
+  paintPlanner();
+}
+/* local fallback so the planner still helps if the AI is unavailable: parse budget,
+   duration, difficulty and region, then filter the real catalogue */
+function plannerFallback(q){
+  const ql=(q||'').toLowerCase();
+  let budget=0;const bm=ql.match(/(?:₹|rs\.?|inr|under|below|budget|upto|up to)?\s*([0-9][0-9,]{1,})\s*(k)?/i);
+  if(bm){budget=parseInt(bm[1].replace(/[^0-9]/g,''),10)||0;if((bm[2]||/\b\d+\s*k\b/.test(ql))&&budget<1000)budget*=1000;}
+  const dm=ql.match(/(\d+)\s*[- ]?\s*day/);const days=dm?parseInt(dm[1],10):0;
+  let lvl='';if(/beginner|easy|parents|family|first[- ]?time|senior/.test(ql))lvl='Easy';else if(/very difficult|hard|tough|challeng|extreme/.test(ql))lvl='Difficult';else if(/moderate/.test(ql))lvl='Moderate';
+  let region='';['uttarakhand','himachal','kashmir','ladakh','sikkim','spiti'].forEach(r=>{if(ql.includes(r))region=r;});
+  let list=treks.filter(t=>!t.soon);
+  if(budget)list=list.filter(t=>(t.price||0)<=budget*1.05);
+  if(days)list=list.filter(t=>Math.abs((t.days||0)-days)<=1);
+  if(lvl)list=list.filter(t=>(t.lvl||'')===lvl);
+  if(region)list=list.filter(t=>((t.region||'')+' '+(t.n||'')).toLowerCase().includes(region));
+  list=list.sort((a,b)=>(a.price||0)-(b.price||0)).slice(0,4);
+  let reply;
+  if(list.length){reply='Here are some good matches'+(budget?` under ₹${budget.toLocaleString('en-IN')}`:'')+(lvl?` · ${lvl}`:'')+(days?` · ~${days} days`:'')+':';}
+  else{reply="I couldn't find an exact match — try a higher budget or different dates. Meanwhile, here are some popular picks:";list=treks.filter(t=>!t.soon&&t.pop).slice(0,4);}
+  return {reply,treks:list.map(t=>t.n),followups:list.length?['Cheaper options','Easier treks','Longer trips']:['Easy treks','Under ₹10,000','Show all treks']};
+}
 async function renderNotifications(){
   const box=document.getElementById('notiList');
   const lastSeen=+(localStorage.getItem('tmk_notif_seen')||0);
@@ -8324,7 +8401,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='465';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='466';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -10243,6 +10320,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='community')renderFeed();
   if(id==='person')renderPerson();
   if(id==='search')renderSearch();
+  if(id==='planner')renderPlanner();
   if(id==='messages')renderMessages();
   if(id==='chat')renderChat();
   if(id==='notifications')renderNotifications();
@@ -10349,7 +10427,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,submitNewPassword,toggleResetPw,cancelReset,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections,addStaff,removeStaff,setStaffRole,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab,openReviewModal,closeReviewModal,submitReview,setRevStars,adminAddReview,adminDelReview,toggleSavePost,renderEmergency,renderSavedPosts,followAction,requestCall,declineCall,allowCallMsg,togglePrivateAccount,renderFollowRequests,acceptFollowReq,declineFollowReq,admToggleHl,filterAdminHub,admAssignCaptain,admChangeBatch,admRefund,admCancelBooking,admInvoice,renderAdminUsers,paintUsers,admNotifyUser,renderAdminPayments,admPayFilter,admExportCSV,admRevenueCSV,renderAdminGear,gearAdj,gearAddItem,gearDelItem,gearSeed,renderAdminCommunity,admDeletePost,admFeaturePost,renderAdminPermits,permSet,renderAdminSupport,ticketReply,ticketResolve,raiseTicket,renderAdminCRM,crmSearch,crmOpen,renderAdminAI,saveAiCfg,renderAdminVendors,vendorSet,openVendorDash,renderVendorDash,applyVendor,vendorAddListing,vendorToggleListing,vendorDelListing});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,renderPlanner,sendPlan,plannerChip,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,submitNewPassword,toggleResetPw,cancelReset,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections,addStaff,removeStaff,setStaffRole,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab,openReviewModal,closeReviewModal,submitReview,setRevStars,adminAddReview,adminDelReview,toggleSavePost,renderEmergency,renderSavedPosts,followAction,requestCall,declineCall,allowCallMsg,togglePrivateAccount,renderFollowRequests,acceptFollowReq,declineFollowReq,admToggleHl,filterAdminHub,admAssignCaptain,admChangeBatch,admRefund,admCancelBooking,admInvoice,renderAdminUsers,paintUsers,admNotifyUser,renderAdminPayments,admPayFilter,admExportCSV,admRevenueCSV,renderAdminGear,gearAdj,gearAddItem,gearDelItem,gearSeed,renderAdminCommunity,admDeletePost,admFeaturePost,renderAdminPermits,permSet,renderAdminSupport,ticketReply,ticketResolve,raiseTicket,renderAdminCRM,crmSearch,crmOpen,renderAdminAI,saveAiCfg,renderAdminVendors,vendorSet,openVendorDash,renderVendorDash,applyVendor,vendorAddListing,vendorToggleListing,vendorDelListing});
 
 /* init */
 applyTheme();   /* dark / light / system theme */
