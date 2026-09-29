@@ -341,7 +341,7 @@ function validateStep(){
   if(cur===1){const yb=!String($('years').value).trim();markErr('f-years',yb);ok=ok&&!yb;}
   if(cur===2){
     const pb=!photoUrl;markErr('f-photo',pb);ok=ok&&!pb;
-    const db=!docs.some(d=>d.url);markErr('f-docs',db);ok=ok&&!db;
+    const db=!docs.some(d=>d.path);markErr('f-docs',db);ok=ok&&!db;
   }
   if(cur===3){const cb=!$('consent').checked;markErr('f-consent',cb);ok=ok&&!cb;}
   return ok;
@@ -352,30 +352,31 @@ async function next(){
   await submit();
 }
 
-/* uploads */
-async function upload(file){
+/* uploads — profile photo to the PUBLIC bucket (it's the display picture), documents to the
+   PRIVATE bucket (only a path is kept; admins view them via signed URLs). */
+async function uploadTo(bucket,file){
   const ext=(file.name.split('.').pop()||'bin').toLowerCase().replace(/[^a-z0-9]/g,'');
   const path='apps/'+Date.now()+'-'+Math.random().toString(36).slice(2,9)+'.'+ext;
-  const {error}=await sb.storage.from('guide-docs').upload(path,file,{cacheControl:'3600',upsert:false});
+  const {error}=await sb.storage.from(bucket).upload(path,file,{cacheControl:'3600',upsert:false});
   if(error)throw error;
-  return sb.storage.from('guide-docs').getPublicUrl(path).data.publicUrl;
+  return {path, publicUrl: sb.storage.from(bucket).getPublicUrl(path).data.publicUrl};
 }
 async function pickPhoto(inp){
   const f=inp.files[0];if(!f)return;
   $('photoMsg').textContent='Uploading…';
-  try{photoUrl=await upload(f);$('photoPrev').style.backgroundImage=`url('${photoUrl}')`;$('photoPrev').innerHTML='';$('photoMsg').textContent='Photo added ✓';}
+  try{const r=await uploadTo('guide-photos',f);photoUrl=r.publicUrl;$('photoPrev').style.backgroundImage=`url('${photoUrl}')`;$('photoPrev').innerHTML='';$('photoMsg').textContent='Photo added ✓';}
   catch(e){$('photoMsg').textContent='Upload failed — try again';}
   inp.value='';
 }
 function renderDocs(){
-  $('docList').innerHTML=docs.map((d,i)=>`<div class="fileitem${d.url?'':' up'}"><span class="msr">${d.url?'description':'progress_activity'}</span><span class="nm">${d.name}</span>${d.url?`<span class="msr rm" onclick="rmDoc(${i})">close</span>`:''}</div>`).join('');
+  $('docList').innerHTML=docs.map((d,i)=>`<div class="fileitem${d.path?'':' up'}"><span class="msr">${d.path?'description':'progress_activity'}</span><span class="nm">${d.name}</span>${d.path?`<span class="msr rm" onclick="rmDoc(${i})">close</span>`:''}</div>`).join('');
 }
 function rmDoc(i){docs.splice(i,1);renderDocs();}
 async function pickDocs(inp){
   const files=[...inp.files];inp.value='';
   for(const f of files){
-    const item={name:f.name,url:''};docs.push(item);renderDocs();
-    try{item.url=await upload(f);}catch(e){item.name=f.name+' (failed)';}
+    const item={name:f.name,path:''};docs.push(item);renderDocs();
+    try{const r=await uploadTo('guide-docs',f);item.path=r.path;}catch(e){item.name=f.name+' (failed)';}
     renderDocs();
   }
 }
@@ -393,7 +394,7 @@ async function submit(){
     regions:v('regions')||null,max_altitude:v('maxalt')||null,languages:v('languages')||null,
     international:$('intlSw').classList.contains('on'),countries:v('countries')||null,passport:$('passportSw').classList.contains('on'),
     certifications:v('certs').slice(0,800)||null,first_aid:$('firstaidSw').classList.contains('on'),fitness:v('fitness')||null,
-    profile_photo:photoUrl||null,documents:docs.filter(d=>d.url).map(d=>({name:d.name,url:d.url})),
+    profile_photo:photoUrl||null,documents:docs.filter(d=>d.path).map(d=>({name:d.name,path:d.path})),
     about:v('about').slice(0,900)||null,why_guide:v('why').slice(0,900)||null,
     availability:v('availability')||null,day_rate:nInt('dayrate'),website:v('website')||null,
     reference_name:v('refname')||null,reference_phone:v('refphone')||null
