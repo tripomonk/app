@@ -257,7 +257,16 @@ const treks=[
   {n:"Kotagiri Longwood",region:"Tamil Nadu",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Longwood_Shola_Reserve_Forest%2C_Kotagiri%2C_Tamil_Nadu.jpg/1280px-Longwood_Shola_Reserve_Forest%2C_Kotagiri%2C_Tamil_Nadu.jpg",credit:"SeethaG · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:1,alt:"6,000 ft",dist:"—",best:"Oct – Mar",price:4000,soon:true,dep:"Kotagiri",desc:"A 1-day easy trek in Tamil Nadu, topping out at 6,000 ft. Best time to go: Oct – Mar."},
   {n:"Thalaiyar Falls",region:"Tamil Nadu",img:"https://upload.wikimedia.org/wikipedia/commons/6/6a/Thalaiyar_Falls.jpg",credit:"Barbara Gail Block · CC BY-SA 2.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Difficult",days:2,alt:"5,900 ft",dist:"—",best:"Oct – Mar",price:5500,soon:true,dep:"Kodaikanal",desc:"A 2-day difficult trek in Tamil Nadu, topping out at 5,900 ft. Best time to go: Oct – Mar."},
 ];
+/* A Wikimedia Commons *file-page* URL (…/wiki/File:Name.jpg) is an HTML page, not an image,
+   so it renders blank as a cover. Convert it to a real image via Special:FilePath (which 302s
+   to the actual file). Leaves direct upload.wikimedia.org URLs and everything else untouched. */
+function wikiFix(u){
+  if(!u)return u;
+  const m=String(u).match(/\/\/(?:[a-z0-9.-]+\.)?(?:wikimedia|wikipedia)\.org\/wiki\/(?:[^/]*?:)?File:([^?#]+)/i);
+  return m?('https://commons.wikimedia.org/wiki/Special:FilePath/'+m[1]+'?width=1600'):u;
+}
 function deriveTreks(){treks.forEach((t,i)=>{t.idx=i;
+  if(t.img)t.img=wikiFix(t.img);                       // repair Wikimedia file-page URLs → real image
   if(t.img && t.img.indexOf('?')<0)t.img=t.img+Q;     // append sizing only if not already present
   t.hl=(Array.isArray(t.highlights)&&t.highlights.length)?t.highlights:HL;   /* admin-picked highlights, else the default set */
   t.dur=t.days+(t.days>1?' Days':' Day');
