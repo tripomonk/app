@@ -266,6 +266,7 @@
 <div id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* Tripomonk Admin Console — reuses the SAME Supabase backend (tables, RLS, `admin` edge fn). */
 const CFG={ URL:"https://pdenkohcsjnagcfvwbfi.supabase.co", ANON:"sb_publishable_nC4q3VEA4nfWQaZeBSoZsQ__e5OC-X2" };
@@ -522,7 +523,7 @@ async function renderPayments(){const bk=await getBookings(),paid=bk.filter(isPa
 let _treks=null;
 async function renderTreks(){const {rows}=await qtbl('treks',b=>b.limit(600));_treks=rows.slice();
   const regions=[...new Set(_treks.map(t=>t.region).filter(Boolean))].sort();
-  $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Treks &amp; Tours</h2><span class="spacer"></span><button class="btn2 pri" onclick="trekEdit()">+ Add trek / tour</button></div>
+  $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Treks &amp; Tours</h2><span class="spacer"></span><button class="btn2" onclick="bulkOpen('treks')">⬆ Bulk upload</button><button class="btn2 pri" onclick="trekEdit()">+ Add trek / tour</button></div>
     <div class="tbar"><input class="grow" id="tq" placeholder="Search name, region or state…"/>
       <select id="tType" class="btn2"><option value="all">All types</option><option value="trek">Treks</option><option value="tour">Tours</option></select>
       <select id="tReg" class="btn2"><option value="">All regions</option>${regions.map(r=>`<option>${esc(r)}</option>`).join('')}</select>
@@ -1148,7 +1149,7 @@ function guideDetail(which){
   if(which==='apps'){
     $('#content').innerHTML=`<div class="panel"><div class="tbar">${back}<h2 style="margin:0 0 0 10px">Guide applications</h2><span class="spacer"></span><span class="tag">${_guideApps.length}</span></div><p class="desc">Tap <b>View</b> to read the full application, then approve or reject.</p>${_guideApps.length?wrapTbl(`<table class="tbl"><thead><tr><th>Name</th><th>City</th><th>Experience</th><th>Status</th><th></th></tr></thead><tbody>${_guideApps.map(a=>`<tr><td><b>${esc(a.full_name||'-')}</b><br><small class="muted">${esc(a.regions||'')}</small></td><td data-l="City" class="muted">${esc(a.city||'')}${a.state?', '+esc(a.state):''}</td><td data-l="Experience" class="muted">${esc(((a.experience_years!=null?a.experience_years+' yrs':'')+(a.treks_led?' · '+a.treks_led:''))||'-')}</td><td data-l="Status">${guideStTag(a.status)}</td><td>${guideAppActs(a)}</td></tr>`).join('')}</tbody></table>`):'<div class="empty">No applications yet.</div>'}</div>`;
   }else{
-    $('#content').innerHTML=`<div class="panel"><div class="tbar">${back}<h2 style="margin:0 0 0 10px">Trek leaders</h2><span class="spacer"></span><button class="btn2 pri" onclick="guideAdd()">+ Add guide</button></div><p class="desc">Assignable roster. Approved applicants are added here automatically. Tap a guide to see number, email, location &amp; full details.</p>${_guideRoster.length?wrapTbl(`<table class="tbl"><thead><tr><th>Name</th><th>Location</th><th>Experience</th><th></th></tr></thead><tbody>${_guideRoster.map(g=>`<tr style="cursor:pointer" onclick="guideRosterView('${jsv(g.id)}')"><td><div class="u">${avc(g.name,g.photo)}<b>${esc(g.name)}</b>${g.verified?' <span class="tag ok" style="margin-left:4px">✓</span>':''}</div></td><td data-l="Location" class="muted">${esc(gLoc(g))||'-'}</td><td data-l="Experience" class="muted">${esc(gExp(g))||'-'}</td><td onclick="event.stopPropagation()"><div class="row-acts"><button class="btn2 sm" onclick="guideRosterView('${jsv(g.id)}')">View</button><button class="btn2 sm danger" onclick="guideDel('${jsv(g.id)}')">Remove</button></div></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No guides yet.</div>'}</div>`;
+    $('#content').innerHTML=`<div class="panel"><div class="tbar">${back}<h2 style="margin:0 0 0 10px">Trek leaders</h2><span class="spacer"></span><button class="btn2" onclick="bulkOpen('guides')">⬆ Bulk upload</button><button class="btn2 pri" onclick="guideAdd()">+ Add guide</button></div><p class="desc">Assignable roster. Approved applicants are added here automatically. Tap a guide to see number, email, location &amp; full details.</p>${_guideRoster.length?wrapTbl(`<table class="tbl"><thead><tr><th>Name</th><th>Location</th><th>Experience</th><th></th></tr></thead><tbody>${_guideRoster.map(g=>`<tr style="cursor:pointer" onclick="guideRosterView('${jsv(g.id)}')"><td><div class="u">${avc(g.name,g.photo)}<b>${esc(g.name)}</b>${g.verified?' <span class="tag ok" style="margin-left:4px">✓</span>':''}</div></td><td data-l="Location" class="muted">${esc(gLoc(g))||'-'}</td><td data-l="Experience" class="muted">${esc(gExp(g))||'-'}</td><td onclick="event.stopPropagation()"><div class="row-acts"><button class="btn2 sm" onclick="guideRosterView('${jsv(g.id)}')">View</button><button class="btn2 sm danger" onclick="guideDel('${jsv(g.id)}')">Remove</button></div></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No guides yet.</div>'}</div>`;
   }}
 function gExp(g){return [g.years?(/[a-z]/i.test(String(g.years))?g.years:g.years+' yrs'):'', g.treks_led?g.treks_led+' treks':''].filter(Boolean).join(' · ')||g.experience||'';}
 function gLoc(g){return [g.city,g.state].filter(Boolean).join(', ')||g.region||'';}
@@ -1248,9 +1249,119 @@ async function postStatus(id,status){const r=await adminCall('set_post_status',{
 function postDel(id){confirmDo('Delete this post permanently?',async()=>{const r=await adminCall('delete_post',{id});toast(r&&r.error?('Failed: '+r.error):'Deleted');if(!(r&&r.error))renderCommunity();});}
 /* REVIEWS */
 async function renderReviews(){const {rows,error}=await qtbl('reviews',b=>b.order('created_at',{ascending:false}).limit(200));if(error){$('#content').innerHTML='<div class="panel"><div class="empty">Reviews table not deployed — run <b>SQL-add-reviews.sql</b>.</div></div>';return;}
-  $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Reviews</h2><span class="spacer"></span><button class="btn2 pri" onclick="reviewAdd()">+ Add review</button></div>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Author</th><th>Trek</th><th>Rating</th><th>Review</th><th></th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${esc(r.author)}</b></td><td class="muted">${esc(r.trek||'')}</td><td style="color:var(--yellow)">${'★'.repeat(r.rating||5)}</td><td class="muted">${esc((r.body||'').slice(0,90))}</td><td><button class="btn2 sm danger" onclick="reviewDel('${jsv(r.id)}')">Delete</button></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No reviews yet.</div>'}</div>`;}
+  $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Reviews</h2><span class="spacer"></span><button class="btn2" onclick="bulkOpen('reviews')">⬆ Bulk upload</button><button class="btn2 pri" onclick="reviewAdd()">+ Add review</button></div>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Author</th><th>Trek</th><th>Rating</th><th>Review</th><th></th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${esc(r.author)}</b></td><td class="muted">${esc(r.trek||'')}</td><td style="color:var(--yellow)">${'★'.repeat(r.rating||5)}</td><td class="muted">${esc((r.body||'').slice(0,90))}</td><td><button class="btn2 sm danger" onclick="reviewDel('${jsv(r.id)}')">Delete</button></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No reviews yet.</div>'}</div>`;}
 function reviewAdd(){modal(`<h3>Add a review</h3><div class="fld"><label>Author</label><input id="rvA"/></div><div class="fld"><label>Trek</label><input id="rvT"/></div><div class="fld"><label>Rating (1–5)</label><input id="rvR" type="number" min="1" max="5" value="5"/></div><div class="fld"><label>Review</label><textarea id="rvB"></textarea></div><div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="rvGo">Publish</button></div>`);$('#rvGo').onclick=async()=>{const author=$('#rvA').value.trim(),body=$('#rvB').value.trim();if(!author||!body)return;const {data:{session}}=await sb.auth.getSession();closeOv();const {error}=await sb.from('reviews').insert({author,trek:$('#rvT').value.trim(),rating:Math.max(1,Math.min(5,parseInt($('#rvR').value)||5)),body,user_id:session?session.user.id:null});toast(error?('Failed: '+error.message):'Published');if(!error)renderReviews();};}
 function reviewDel(id){confirmDo('Delete this review?',async()=>{const {error}=await sb.from('reviews').delete().eq('id',id);toast(error?('Failed: '+error.message):'Deleted');if(!error)renderReviews();});}
+/* ===== Bulk upload (Excel / CSV) — Treks · Guides · Reviews ===== */
+const BULK={
+  treks:{label:'Treks & Tours',word:'trek',refresh:()=>renderTreks(),cols:[
+    {k:'name',label:'Name',req:1,ex:'Kedarkantha'},
+    {k:'type',label:'Type',ex:'trek'},
+    {k:'region',label:'Region',ex:'Uttarakhand'},
+    {k:'state',label:'State',ex:'Uttarakhand'},
+    {k:'level',label:'Level',ex:'Moderate'},
+    {k:'days',label:'Days',type:'int',ex:6},
+    {k:'price',label:'Price',type:'int',req:1,ex:8999},
+    {k:'altitude',label:'Altitude',ex:'12,500 ft'},
+    {k:'distance',label:'Distance',ex:'20 km'},
+    {k:'best_time',label:'Best time',ex:'Dec - Apr'},
+    {k:'img',label:'Cover image URL',ex:'https://example.com/cover.jpg'},
+    {k:'description',label:'Description',ex:'A classic Himalayan snow trek.'},
+    {k:'status',label:'Status',ex:'published'}
+  ]},
+  guides:{label:'Trek leaders',word:'guide',refresh:()=>renderGuides(),cols:[
+    {k:'name',label:'Name',req:1,ex:'Ravi Negi'},
+    {k:'years',label:'Years guiding',ex:'8'},
+    {k:'treks_led',label:'Treks led',ex:'200+'},
+    {k:'city',label:'City',ex:'Rishikesh'},
+    {k:'state',label:'State',ex:'Uttarakhand'},
+    {k:'region',label:'Regions',ex:'Uttarakhand, Himachal'},
+    {k:'languages',label:'Languages',ex:'Hindi, English, Garhwali'},
+    {k:'certifications',label:'Certifications',ex:'NIM, WFR'},
+    {k:'bio',label:'Bio',ex:'A decade in the Garhwal Himalaya.'},
+    {k:'instagram',label:'Instagram',ex:'@ravitreks'}
+  ]},
+  reviews:{label:'Reviews',word:'review',refresh:()=>renderReviews(),cols:[
+    {k:'author',label:'Author',req:1,ex:'Aarti Sharma'},
+    {k:'trek',label:'Trek',ex:'Kedarkantha'},
+    {k:'rating',label:'Rating',type:'int',ex:5},
+    {k:'body',label:'Review',req:1,ex:'Beautifully organised, safe and fun!'}
+  ]}
+};
+let _bulkKind=null,_bulkRows=[];
+function bulkOpen(kind){
+  const cfg=BULK[kind];if(!cfg)return;_bulkKind=kind;_bulkRows=[];
+  const note=(typeof XLSX==='undefined')?'<p class="desc" style="color:var(--yellow)">Excel engine didn’t load — the CSV template still works (opens in Excel).</p>':'';
+  modal(`<h3>Bulk upload — ${cfg.label}</h3>
+    <p class="desc" style="margin-top:0">1) Download the template. 2) Fill one row per record, keeping the header row. 3) Upload it back — we validate and import the valid rows.</p>${note}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 4px">
+      <button class="btn2" onclick="bulkTemplate('${kind}')">⬇ Download template</button>
+      <label class="btn2 pri" style="cursor:pointer;margin:0">Choose file (.xlsx / .csv)<input id="bulkFile" type="file" accept=".xlsx,.xls,.csv" hidden></label>
+    </div>
+    <div id="bulkPrev" style="max-height:44vh;overflow:auto"></div>
+    <div class="actions"><button class="btn2" onclick="closeOv()">Close</button><button class="btn2 pri" id="bulkGo" style="display:none" onclick="bulkImport()">Import</button></div>`);
+  const fi=$('#bulkFile');if(fi)fi.onchange=e=>{const f=e.target.files[0];if(f)bulkParse(f);e.target.value='';};
+}
+function csvCell(v){v=v==null?'':String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+function dlBlob(content,type,name){const b=new Blob([content],{type});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500);}
+function bulkTemplate(kind){
+  const cfg=BULK[kind];const headers=cfg.cols.map(c=>c.k);const example=cfg.cols.map(c=>c.ex!=null?c.ex:'');
+  if(typeof XLSX!=='undefined'){
+    const ws=XLSX.utils.aoa_to_sheet([headers,example]);ws['!cols']=headers.map(h=>({wch:Math.max(12,h.length+3)}));
+    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,cfg.label.slice(0,28));
+    XLSX.writeFile(wb,'tripomonk-'+kind+'-template.xlsx');
+  }else{dlBlob([headers.join(','),example.map(csvCell).join(',')].join('\n'),'text/csv;charset=utf-8','tripomonk-'+kind+'-template.csv');}
+  toast('Template downloaded');
+}
+function csvToObjects(text){
+  const rows=[];let i=0,f='',cur=[],q=false;
+  const push=()=>{cur.push(f);f='';};const line=()=>{push();rows.push(cur);cur=[];};
+  while(i<text.length){const c=text[i];
+    if(q){if(c==='"'){if(text[i+1]==='"'){f+='"';i++;}else q=false;}else f+=c;}
+    else{if(c==='"')q=true;else if(c===',')push();else if(c==='\n')line();else if(c==='\r'){}else f+=c;}
+    i++;}
+  if(f!==''||cur.length)line();
+  const heads=(rows.shift()||[]).map(h=>String(h).trim());
+  return rows.filter(r=>r.some(v=>String(v).trim()!=='')).map(r=>{const o={};heads.forEach((h,idx)=>o[h]=r[idx]!=null?r[idx]:'');return o;});
+}
+async function bulkParse(file){
+  const cfg=BULK[_bulkKind];let raw=[];
+  try{
+    if(/\.csv$/i.test(file.name)||typeof XLSX==='undefined'){raw=csvToObjects(await file.text());}
+    else{const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];raw=XLSX.utils.sheet_to_json(ws,{defval:''});}
+  }catch(e){$('#bulkPrev').innerHTML='<div class="empty">Could not read that file: '+esc(String(e&&e.message||e))+'</div>';return;}
+  const items=[];
+  raw.forEach((row,idx)=>{
+    const norm={};Object.keys(row).forEach(k=>norm[String(k).toLowerCase().trim()]=row[k]);
+    const rec={},errs=[];
+    cfg.cols.forEach(c=>{
+      let v=row[c.k];if(v==null||v==='')v=norm[c.k.toLowerCase()];if(v==null||v==='')v=norm[c.label.toLowerCase()];
+      v=(v==null?'':String(v).trim());
+      if(c.type==='int'){if(v!==''){const n=parseInt(v.replace(/[^0-9]/g,''),10);if(!isFinite(n))errs.push(c.label+' must be a number');else rec[c.k]=n;}}
+      else rec[c.k]=v;
+      if(c.req&&(rec[c.k]===''||rec[c.k]==null))errs.push(c.label+' is required');
+    });
+    if(_bulkKind==='reviews'&&rec.rating!=null&&(rec.rating<1||rec.rating>5))errs.push('Rating must be 1–5');
+    if(Object.values(rec).some(v=>v!==''&&v!=null))items.push({row:idx+2,rec,errs});
+  });
+  _bulkRows=items;
+  const valid=items.filter(x=>!x.errs.length),bad=items.filter(x=>x.errs.length),keyCol=cfg.cols[0].k;
+  const rowsHtml=items.map(x=>`<tr><td class="muted">${x.row}</td><td><b>${esc(String(x.rec[keyCol]||'—'))}</b></td><td>${x.errs.length?('<span class="tag bad">'+esc(x.errs.join('; '))+'</span>'):'<span class="tag ok">Ready</span>'}</td></tr>`).join('');
+  $('#bulkPrev').innerHTML=items.length?
+    `<div class="muted" style="margin:6px 2px"><b>${valid.length}</b> ready · <b>${bad.length}</b> with errors · ${items.length} rows total</div>`+wrapTbl(`<table class="tbl"><thead><tr><th>Row</th><th>${esc(cfg.cols[0].label)}</th><th>Status</th></tr></thead><tbody>${rowsHtml}</tbody></table>`)
+    :'<div class="empty">No data rows found — keep the header row and add records below it.</div>';
+  const go=$('#bulkGo');if(go){go.style.display=valid.length?'':'none';go.disabled=false;go.textContent='Import '+valid.length+' valid row'+(valid.length===1?'':'s');}
+}
+async function bulkImport(){
+  const cfg=BULK[_bulkKind];const rows=_bulkRows.filter(x=>!x.errs.length).map(x=>x.rec);
+  if(!rows.length){toast('No valid rows to import');return;}
+  const go=$('#bulkGo');if(go){go.disabled=true;go.textContent='Importing…';}
+  const r=await adminCall('bulk_import',{kind:_bulkKind,rows});
+  if(r&&r.error){toast('Failed: '+r.error);if(go){go.disabled=false;go.textContent='Import '+rows.length+' valid rows';}return;}
+  const ins=r.inserted||0,failed=r.failed||0;
+  toast('Imported '+ins+' '+cfg.word+(ins===1?'':'s')+(failed?(' · '+failed+' failed'):''));
+  closeOv();if(cfg.refresh)cfg.refresh();
+}
 /* HOME & FEATURES — live editor. Star = the single Featured hero. Tick = Popular rail.
    Saves through the SAME admin edge function the app uses (save_home, by trek name), so
    the change lands in the treks.featured / treks.popular columns and shows on the app home. */
