@@ -9874,32 +9874,49 @@ async function renderGuideDash(){
   const box=document.getElementById('guideDashBody');if(!box)return;
   if(!isLoggedIn()){box.innerHTML=`<div class="empty" style="padding:26px 0;text-align:center"><p>Sign in to open your guide dashboard.</p><div style="display:flex;justify-content:center;margin-top:14px"><button class="btn sm" style="min-width:150px" onclick="_loginReturn='guideDash';go('login')">Sign in</button></div></div>`;return;}
   box.innerHTML='<div class="note2" style="margin:14px 2px">Loading…</div>';
-  await loadMyGuide();
-  if(!_myGuide){
-    /* authoritative check — also links guides who applied via the public link (by email) */
-    try{const sb=getSupaClient();if(sb){const rr=await sb.functions.invoke('guide',{body:{action:'me'}});if(rr&&rr.data&&rr.data.ok&&rr.data.guide){await loadGuides(true);await loadMyGuide();if(!_myGuide)_myGuide=guideById(rr.data.guide.id)||rr.data.guide;}}}catch(e){}
-  }
-  const g=_myGuide;
+  /* one authoritative call: identity + assigned treks + booking stats + earnings (connected data) */
+  let data=null;
+  try{const sb=getSupaClient();if(sb){const rr=await sb.functions.invoke('guide',{body:{action:'dashboard'}});if(rr&&rr.data&&rr.data.ok)data=rr.data;}}catch(e){}
+  if(data&&data.guide){_myGuide=guideById(data.guide.id)||data.guide;} else {await loadMyGuide();}
+  const g=(data&&data.guide)||_myGuide;
   if(!g){box.innerHTML=`<div class="empty" style="padding:24px 0;text-align:center"><p>You're not a registered Tripomonk trek leader yet.</p><div style="display:flex;justify-content:center;margin-top:14px"><button class="btn sm" style="min-width:170px" onclick="go('becomeGuide')">Apply as a guide</button></div></div>`;return;}
-  const mine=guideTreks(g.id);
-  const yrs=g.years?(/[a-z]/i.test(String(g.years))?g.years:g.years+' yrs'):'—';
+  const noStats=!data;   /* guide edge fn not deployed → show profile-only view */
+  const mine=(data&&data.treks&&data.treks.length)?data.treks.map(t=>({n:t.name,region:t.region,days:t.days,lvl:t.level,img:t.img})):guideTreks(g.id).map(t=>({n:t.n,region:t.region,days:t.days,lvl:t.lvl,img:t.img}));
+  const bookings=(data&&data.bookings)||[];
+  const strip=n=>String(n||'').replace(' (Activity)','');
+  const bkFor=nm=>bookings.filter(b=>strip(b.trek)===nm);
+  const trekkers=bookings.reduce((s,b)=>s+(Number(b.pax)||1),0);
+  const earned=(data&&data.totalEarned)||0, pending=(data&&data.pendingEarned)||0, payments=(data&&data.payments)||[];
+  /* reviews on my treks — from the SAME shared reviews data */
+  try{if(typeof loadReviews==='function'&&(!reviewsData||!reviewsData.length))await loadReviews();}catch(e){}
+  const names=mine.map(t=>t.n);
+  const rv=(typeof reviewsData!=='undefined'?reviewsData:[]).filter(r=>names.includes(r.trek));
+  const rAvg=rv.length?(rv.reduce((s,r)=>s+(Number(r.rating)||5),0)/rv.length):0;
   const av=g.photo?`<div class="gd-av" style="background-image:url('${esc(g.photo)}')"></div>`:`<div class="gd-av gd-av-i">${esc((g.name||'G').slice(0,1).toUpperCase())}</div>`;
   box.innerHTML=`
     <div class="gd-card">${av}<div style="min-width:0"><b>${esc(g.name||'Guide')}</b>${g.verified?' <span class="gd-verified"><span class="msr">verified</span></span>':''}<br><small>${esc([g.city,g.state].filter(Boolean).join(', ')||'Trek Leader')}</small></div></div>
-    <div class="gd-stats"><div><b>${mine.length}</b><small>My treks</small></div><div><b>${g.verified?'Yes':'—'}</b><small>Verified</small></div><div><b>${esc(yrs)}</b><small>Experience</small></div></div>
+    <div class="gd-stats gd-stats-4"><div><b>${mine.length}</b><small>Treks</small></div><div><b>${noStats?'—':trekkers}</b><small>Trekkers</small></div><div><b>${noStats?'—':('₹'+Number(earned).toLocaleString('en-IN'))}</b><small>Earned</small></div><div><b>${rv.length?rAvg.toFixed(1)+'★':'—'}</b><small>Rating</small></div></div>
     <div class="gd-scan" onclick="guideScan()"><div class="ch-ic"><span class="msr">qr_code_scanner</span></div><b>Scan trekker tickets</b><small>Check in trekkers on your treks — works from your phone.</small><span class="ch-go">Open scanner</span></div>
     <div id="gCam" style="display:none;margin:12px 0"><video id="gVideo" playsinline muted style="width:100%;border-radius:16px;background:#000;aspect-ratio:1/1;object-fit:cover"></video><button class="btn ghost sm" style="margin-top:8px;width:100%" onclick="guideStopScan()">Stop scanning</button></div>
     <div class="cap-or"><span>or enter the ticket code</span></div>
     <div class="field"><label>Ticket code</label><div class="inp"><span class="ic" data-i="ticket"></span><input id="gInput" placeholder="TMK2|…"/></div></div>
     <button class="btn" onclick="guideVerify(document.getElementById('gInput').value)">Verify &amp; check in</button>
     <div id="gResult" style="margin-top:16px"></div>
-    <div class="sec-h" style="margin:24px 4px 10px"><b>My treks</b></div>
-    ${mine.length?mine.map(t=>guideTrekRow(t)).join(''):'<div class="note2">No treks assigned yet — our team assigns treks to you from the admin panel.</div>'}
+    <div class="sec-h" style="margin:24px 4px 10px"><b>My treks &amp; trekkers</b></div>
+    ${mine.length?mine.map(t=>{const bs=bkFor(t.n);const pax=bs.reduce((s,b)=>s+(Number(b.pax)||1),0);const ci=bs.filter(b=>b.checked_in).reduce((s,b)=>s+(Number(b.pax)||1),0);return guideTrekRow(t,noStats?'':(pax+' booked · '+ci+' checked in'));}).join(''):'<div class="note2">No treks assigned yet — our team assigns treks to you from the admin panel.</div>'}
+    <div class="sec-h" style="margin:24px 4px 10px"><b>Earnings &amp; payments</b></div>
+    ${noStats?'<div class="note2">Deploy the guide portal to see your earnings &amp; payment history.</div>':`
+      <div class="gd-earn"><div><small>Paid out</small><b>₹${Number(earned).toLocaleString('en-IN')}</b></div>${pending?`<div><small>Pending</small><b>₹${Number(pending).toLocaleString('en-IN')}</b></div>`:''}</div>
+      ${payments.length?payments.map(p=>guidePayRow(p)).join(''):'<div class="note2">No payments recorded yet — your payout history from Tripomonk appears here.</div>'}`}
+    <div class="sec-h" style="margin:24px 4px 10px"><b>Reviews &amp; ratings</b></div>
+    ${rv.length?`<div class="gd-rev-head"><b style="font-size:22px">${rAvg.toFixed(1)}</b> <span style="color:var(--yellow)">${'★'.repeat(Math.round(rAvg))}</span> <small class="muted">(${rv.length} on your treks)</small></div>${rv.slice(0,6).map(r=>guideRevRow(r)).join('')}`:'<div class="note2">No reviews on your treks yet.</div>'}
     <div style="text-align:center;margin:18px 0 6px"><button class="btn ghost sm" onclick="openGuideProfile('${jsq(g.id)}')"><span class="msr">badge</span> View my public profile</button></div>
     <div style="height:calc(var(--safe-bottom) + 20px)"></div>`;
   hydrate(box);
 }
-function guideTrekRow(t){return `<div class="gd-trek" onclick="openDetailByName('${jsq(t.n)}')"><div class="gd-trek-img" style="background-image:url('${esc((t.img||'').split('?')[0])}')"></div><div style="flex:1;min-width:0"><b>${esc(t.n)}</b><br><small>${esc(t.region||'')}${t.days?' · '+t.days+'D':''}${t.lvl?' · '+esc(t.lvl):''}</small></div><span class="msr" style="color:var(--muted)">chevron_right</span></div>`;}
+function guideTrekRow(t,stats){return `<div class="gd-trek" onclick="openDetailByName('${jsq(t.n)}')"><div class="gd-trek-img" style="background-image:url('${esc((t.img||'').split('?')[0])}')"></div><div style="flex:1;min-width:0"><b>${esc(t.n)}</b><br><small>${esc(t.region||'')}${t.days?' · '+t.days+'D':''}${t.lvl?' · '+esc(t.lvl):''}${stats?' · '+esc(stats):''}</small></div><span class="msr" style="color:var(--muted)">chevron_right</span></div>`;}
+function guidePayRow(p){const pend=/pending/i.test(p.status||'');const d=p.created_at?new Date(p.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'';return `<div class="gd-pay"><div style="flex:1;min-width:0"><b>₹${Number(p.amount||0).toLocaleString('en-IN')}</b> <span class="gd-tag ${pend?'warn':'ok'}">${pend?'pending':'paid'}</span><br><small>${esc(p.trek||p.period||'Payout')}${d?' · '+d:''}${p.note?' · '+esc(p.note):''}</small></div></div>`;}
+function guideRevRow(r){return `<div class="gd-rev"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>${esc(r.author||'Trekker')}</b><span style="color:var(--yellow);font-size:12px;white-space:nowrap">${'★'.repeat(Number(r.rating)||5)}</span></div><small class="muted">${esc(r.trek||'')}</small><p style="margin:4px 0 0;font-size:12.5px;line-height:1.5;color:var(--muted-strong)">${esc((r.body||'').slice(0,220))}</p></div>`;}
 async function guideScan(){
   if(!('BarcodeDetector' in window)){note('Live QR scanning needs Chrome on Android. Paste the code below instead.','Not supported here');return;}
   try{
@@ -9937,16 +9954,21 @@ async function renderGuidePublic(){
   if(!g){box.innerHTML='<div class="empty" style="padding:24px 0;text-align:center"><p>Trek leader not found.</p></div>';return;}
   const mine=guideTreks(g.id);
   const yrs=g.years?(/[a-z]/i.test(String(g.years))?g.years:g.years+' yrs'):'';
+  try{if(typeof loadReviews==='function'&&(!reviewsData||!reviewsData.length))await loadReviews();}catch(e){}
+  const names=mine.map(t=>t.n);
+  const rv=(typeof reviewsData!=='undefined'?reviewsData:[]).filter(r=>names.includes(r.trek));
+  const rAvg=rv.length?(rv.reduce((s,r)=>s+(Number(r.rating)||5),0)/rv.length):0;
   const av=g.photo?`<div class="gp-av" style="background-image:url('${esc(g.photo)}')"></div>`:`<div class="gp-av gp-av-i">${esc((g.name||'G').slice(0,1).toUpperCase())}</div>`;
   const chip=(l,v)=>v?`<div class="gp-chip"><b>${esc(v)}</b><small>${esc(l)}</small></div>`:'';
   const first=String(g.name||'').split(' ')[0]||'this guide';
   box.innerHTML=`
     <div class="gp-hero">${av}<h2 style="margin:12px 0 2px">${esc(g.name||'Trek Leader')}${g.verified?' <span class="gd-verified"><span class="msr">verified</span></span>':''}</h2><small class="muted">${esc([g.city,g.state].filter(Boolean).join(', ')||g.region||'Tripomonk Trek Leader')}</small></div>
-    <div class="gp-chips">${chip('Experience',yrs)}${chip('Treks led',g.treks_led)}${chip('Leads',mine.length+' trek'+(mine.length===1?'':'s'))}</div>
+    <div class="gp-chips">${chip('Experience',yrs)}${chip('Treks led',g.treks_led)}${rv.length?chip('Rating',rAvg.toFixed(1)+'★'):chip('Leads',mine.length+' trek'+(mine.length===1?'':'s'))}</div>
     ${g.bio?`<div class="sec-h" style="margin:20px 4px 8px"><b>About</b></div><p class="note2" style="line-height:1.6;margin:0 2px">${esc(g.bio)}</p>`:''}
     ${g.certifications?`<div class="sec-h" style="margin:18px 4px 8px"><b>Certifications</b></div><p class="note2" style="margin:0 2px">${esc(g.certifications)}</p>`:''}
     ${g.languages?`<div class="sec-h" style="margin:18px 4px 8px"><b>Languages</b></div><p class="note2" style="margin:0 2px">${esc(g.languages)}</p>`:''}
     ${mine.length?`<div class="sec-h" style="margin:20px 4px 8px"><b>Treks led by ${esc(first)}</b></div>${mine.map(t=>guideTrekRow(t)).join('')}`:''}
+    ${rv.length?`<div class="sec-h" style="margin:22px 4px 8px"><b>Reviews</b> <span class="muted" style="font-size:12px">${rAvg.toFixed(1)}★ · ${rv.length}</span></div>${rv.slice(0,6).map(r=>guideRevRow(r)).join('')}`:''}
     <div style="height:calc(var(--safe-bottom) + 20px)"></div>`;
   hydrate(box);
 }
