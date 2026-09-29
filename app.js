@@ -6503,12 +6503,15 @@ function renderPlanner(){
   paintPlanner();
   const inp=document.getElementById('plannerInput');if(inp)setTimeout(()=>{try{inp.focus();}catch(e){}},120);
 }
-function plannerCard(t,why){
+function plMatchCls(label){return /strong/i.test(label)?'ok':/good/i.test(label)?'good':/partial/i.test(label)?'warn':'dim';}
+function plannerCard(t,rec){
+  rec=(typeof rec==='string')?{why:rec}:(rec||{});
   const price=t.price?('₹'+Number(t.price).toLocaleString('en-IN')):'';
-  const w=why?`<span class="pl-card-why"><span class="msr">check_circle</span>${esc(why)}</span>`:'';
+  const badge=rec.match?`<span class="pl-match ${plMatchCls(rec.match)}">${esc(rec.match)}</span>`:'';
+  const w=rec.why?`<span class="pl-card-why">${esc(rec.why)}</span>`:'';
   return `<div class="pl-card" onclick="openDetailByName('${jsq(t.n)}')">
     <div class="pl-card-img" style="background-image:url('${esc((t.img||'').split('?')[0])}')"></div>
-    <div class="pl-card-bd"><b>${esc(t.n)}</b><small>${esc(t.region||'')}${t.days?' · '+t.days+'D':''}${t.lvl?' · '+esc(t.lvl):''}</small>${w}<span class="pl-card-price">${price}${t.soon?' · coming soon':''}</span></div>
+    <div class="pl-card-bd"><div class="pl-card-top"><b>${esc(t.n)}</b>${badge}</div><small>${esc(t.region||'')}${t.days?' · '+t.days+'D':''}${t.lvl?' · '+esc(t.lvl):''} · ${price}${t.soon?' · coming soon':''}</small>${w}</div>
   </div>`;
 }
 function paintPlanner(){
@@ -6521,7 +6524,7 @@ function paintPlanner(){
       if(m.brief)extra+=`<div class="pl-brief"><span class="msr">tune</span>${esc(m.brief)}</div>`;
       const recs=(m.recs&&m.recs.length)?m.recs:((m.treks||[]).map(n=>({name:n,why:''})));
       if(recs.length){
-        const cs=recs.map(r=>{const t=findTrek(r.name);return t?plannerCard(t,r.why):'';}).filter(Boolean).join('');
+        const cs=recs.map(r=>{const t=findTrek(r.name);return t?plannerCard(t,r):'';}).filter(Boolean).join('');
         if(cs)extra+=`<div class="pl-cards">${cs}</div>`;
       }
     }
@@ -6551,8 +6554,8 @@ async function typePlanner(msg,full,recs,brief){
 }
 function plNormalizeRecs(res){
   let arr=[];
-  if(Array.isArray(res.recommendations))arr=res.recommendations.map(r=>({name:(r&&(r.name||r.n))||'',why:(r&&(r.why||r.reason))||''}));
-  else if(Array.isArray(res.treks))arr=res.treks.map(n=>typeof n==='string'?{name:n,why:''}:{name:(n&&n.name)||'',why:(n&&n.why)||''});
+  if(Array.isArray(res.recommendations))arr=res.recommendations.map(r=>({name:(r&&(r.name||r.n))||'',match:(r&&r.match)||'',why:(r&&(r.why||r.reason))||''}));
+  else if(Array.isArray(res.treks))arr=res.treks.map(n=>typeof n==='string'?{name:n,why:''}:{name:(n&&n.name)||'',match:(n&&n.match)||'',why:(n&&n.why)||''});
   const seen=new Set();
   return arr.filter(r=>r.name&&!seen.has(r.name)&&seen.add(r.name)).slice(0,4);
 }
@@ -6571,7 +6574,7 @@ async function sendPlan(text){
     try{
       const sb=getSupaClient();
       if(sb){
-        const catalog=treks.map(t=>({n:t.n,region:t.region,price:t.price,days:t.days,lvl:t.lvl,best:t.best||'',type:isTour(t)?'tour':'trek',tag:t.tag||'',soon:!!t.soon}));
+        const catalog=treks.map(t=>({n:t.n,region:t.region,price:t.price,days:t.days,lvl:t.lvl,best:t.best||'',from:t.dep||'',alt:t.alt||'',type:isTour(t)?'tour':'trek',tag:t.tag||'',soon:!!t.soon}));
         const messages=_planMsgs.filter(m=>m.role==='user'||m.role==='assistant').slice(-12).map(m=>({role:m.role,content:m.content}));
         const r=await sb.functions.invoke('plan',{body:{messages,catalog,context:_tripCtx}});
         if(r&&r.data&&r.data.ok)res=r.data;
@@ -6666,19 +6669,39 @@ function plExtract(ql,ctx){
   else if(/\bfamily|parents|mom|dad|mother|father|kids|children|elderly\b/.test(ql))ctx.group='family';
   else if(/\bfriends|buddies|gang|colleagues\b/.test(ql))ctx.group='friends';
   const gp=ql.match(/\b(\d+)\s*(people|persons?|pax|of us|members|friends)\b/);if(gp)ctx.groupSize=parseInt(gp[1],10);
+  if(/\bwe\b|\bus\b|\bfriends|\bgroup\b/.test(ql)&&!ctx.groupSize&&!ctx.group)ctx.group='friends';
+  /* budget basis: per-person vs total */
+  if(/\bper ?(person|head|pax)|each\b|\bpp\b|a head\b/.test(ql))ctx.budgetBasis='per';
+  else if(/\btotal\b|altogether|combined|for (all|everyone|the group|us all|all of us)/.test(ql))ctx.budgetBasis='total';
+  /* difficulty: explicit level, or a "not too hard" cap */
   if(/beginner|easy|first[- ]?time|no experience|not fit|low fitness|senior|parents|elderly/.test(ql))ctx.lvl='Easy';
-  else if(/very (difficult|hard|tough)|hard\b|tough|challeng|strenuous|extreme|expert|experienced|fit\b/.test(ql))ctx.lvl='Difficult';
+  else if(/very (difficult|hard|tough)|really hard|super hard|hardcore|strenuous|extreme|expert|experienced/.test(ql))ctx.lvl='Difficult';
+  else if(/\b(crazy|wild|epic|proper) adventure|thrill|adrenaline|challenge me\b/.test(ql))ctx.lvl='Difficult';
   else if(/moderate|medium|intermediate/.test(ql))ctx.lvl='Moderate';
+  if(/(don'?t|do not|not|no) (want|too|a)?\s*(a )?(very )?(difficult|hard|tough|strenuous) (trek|one|trip)?|nothing too (hard|tough|difficult)|not too hard|avoid (hard|difficult|tough)/.test(ql))ctx.maxLvl='Moderate';
+  /* vague vibe → interests + mood */
+  if(/\b(peaceful|calm|quiet|relax|serene|slow|chill|unwind)\b/.test(ql)){ctx.mood='calm';['offbeat'].forEach(k=>{if(!ctx.interests.includes(k))ctx.interests.push(k);});if(!ctx.maxLvl&&!ctx.lvl)ctx.maxLvl='Moderate';}
+  if(/\b(less crowd|not crowded|uncrowded|hidden|secluded|remote|off ?beat|off the beaten)\b/.test(ql)&&!ctx.interests.includes('offbeat'))ctx.interests.push('offbeat');
+  if(/\b(surprise|romantic|honeymoon|girlfriend|boyfriend|wife|husband|partner)\b/.test(ql)){ctx.group=ctx.group||'couple';['lake'].forEach(k=>{if(!ctx.interests.includes(k))ctx.interests.push(k);});}
   Object.keys(_REGION_MAP).forEach(k=>{if(ql.includes(k))ctx.region=_REGION_MAP[k];});
   Object.keys(_MON_NUM).forEach(m=>{if(m.length>3&&ql.includes(m))ctx.month=_MON_NUM[m];});
   const sm=ql.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/);if(sm)ctx.month=_MON_NUM[sm[1]];
   if(/\bwinter\b/.test(ql))ctx.season='winter';else if(/\bsummer\b/.test(ql))ctx.season='summer';
   else if(/\bmonsoon|rainy\b/.test(ql))ctx.season='monsoon';else if(/\bspring\b/.test(ql))ctx.season='spring';
   else if(/\bautumn|fall\b/.test(ql))ctx.season='autumn';
-  [['snow',/snow|winter trek/],['lake',/lake|tal\b/],['flowers',/flower/],['spiritual',/spiritual|monaster|temple|kedarnath|char dham/],['camping',/camp(ing|site)?/],['photography',/photo/],['offbeat',/offbeat|remote|less crowd|hidden/],['beach',/beach/],['wildlife',/wildlife|forest|birds/],['adventure',/adventure|thrill|adrenaline/]].forEach(([k,re])=>{if(re.test(ql)&&!ctx.interests.includes(k))ctx.interests.push(k);});
-  const fc=ql.match(/\bfrom\s+([a-z]{3,})/);if(fc)ctx.fromCity=fc[1];
+  [['snow',/snow|winter trek/],['lake',/lake|tal\b/],['flowers',/flower/],['spiritual',/spiritual|monaster|temple|kedarnath|char dham/],['camping',/camp(ing|site)?/],['photography',/photo/],['offbeat',/offbeat|remote|less crowd|hidden/],['beach',/beach/],['wildlife',/wildlife|forest|birds/],['adventure',/adventur|thrill|adrenaline|exciting|epic|rush\b/]].forEach(([k,re])=>{if(re.test(ql)&&!ctx.interests.includes(k))ctx.interests.push(k);});
+  const fc=ql.match(/\bfrom\s+([a-z]{3,})/);if(fc&&!/\bfrom\s+(delhi|home)?\s*$/.test(fc[0]))ctx.fromCity=fc[1];
   if(/road ?trip|self ?drive|bike trip|\btour\b|by road/.test(ql))ctx.ptype='tour';
   else if(/\btrek(king)?\b/.test(ql))ctx.ptype='trek';
+  /* "like Kedarkantha but different/easier/cheaper" → borrow its profile, exclude it */
+  const sim=ql.match(/(?:like|similar to|such as)\s+([a-z0-9 '()/&.-]{3,40}?)\s+(?:but|except|only)\b/);
+  if(sim){const nm=sim[1].trim();const t=treks.find(x=>{const n=String(x.n||'').toLowerCase();return n===nm||n.includes(nm)||(nm.length>4&&nm.includes(n));});
+    if(t){ctx.simTo=t.n;
+      if(!ctx.region)ctx.region=String(t.region||'').toLowerCase().split(/[ ,]/)[0]||ctx.region;
+      if(!ctx.days)ctx.days=t.days;
+      plTrekTags(t).forEach(k=>{if(['snow','lake','flowers','spiritual','offbeat'].includes(k)&&!ctx.interests.includes(k))ctx.interests.push(k);});
+      if(/\beasier\b/.test(ql))ctx.maxLvl='Easy';
+    }}
   return ctx;
 }
 /* refinement verbs adjust the running context ("cheaper", "easier", "shorter", …) */
@@ -6695,8 +6718,11 @@ function plScore(t,ctx){
   let s=0;const why=[],price=t.price||0;
   if(ctx.budget){if(price<=ctx.budget){s+=2.2;why.push('within your ₹'+ctx.budget.toLocaleString('en-IN'));}else if(price<=ctx.budget*1.12){s+=0.5;why.push('a touch over budget');}else s-=3;}
   if(ctx.days){const d=Math.abs((t.days||0)-ctx.days);if(d===0){s+=2;why.push(t.days+'-day trip');}else if(d===1)s+=1.2;else if(d<=2)s+=0.4;else s-=0.5*(d-2);}
-  if(ctx.lvl){const u=_PL_LVL[ctx.lvl.toLowerCase()]||2,tv=_PL_LVL[(t.lvl||'moderate').toLowerCase()]||2;if(u===tv){s+=2;why.push(t.lvl+' — suits you');}else if(tv>u)s-=1.6*(tv-u);else s-=0.4*(u-tv);}
+  const tv=_PL_LVL[(t.lvl||'moderate').toLowerCase()]||2;
+  if(ctx.lvl){const u=_PL_LVL[ctx.lvl.toLowerCase()]||2;if(u===tv){s+=2;why.push(t.lvl+' — suits you');}else if(tv>u)s-=1.6*(tv-u);else s-=0.4*(u-tv);}
+  if(ctx.maxLvl){const cap=_PL_LVL[ctx.maxLvl.toLowerCase()]||2;if(tv>cap)s-=1.8*(tv-cap);else s+=0.4;}
   if(ctx.region){const inR=((t.region||'')+' '+(t.n||'')).toLowerCase().includes(ctx.region);if(inR){s+=3;why.push('in '+ctx.region.replace(/\b\w/g,c=>c.toUpperCase()));}else s-=1.6;}
+  if(ctx.simTo){if(t.n===ctx.simTo)s-=10;else{const st=treks.find(x=>x.n===ctx.simTo);if(st){if((st.region||'')===(t.region||''))s+=1;if((st.lvl||'')===(t.lvl||''))s+=0.6;}}}
   const tags=plTrekTags(t);
   (ctx.interests||[]).forEach(k=>{if(tags.has(k)){s+=1.4;why.push(k+' trip');}});
   if(ctx.month){const cov=plMonthsCovered(t.best);if(cov.has(ctx.month)){s+=1.6;why.push('in season in '+_MON_NAME[ctx.month]);}else if(cov.size)s-=0.9;}
@@ -6726,6 +6752,40 @@ function plFollowup(ctx){
   if(!ctx.month&&!ctx.season)return "Which month are you thinking? That changes what's in season.";
   return "";
 }
+const _plCap=s=>String(s||'').replace(/\b\w/g,c=>c.toUpperCase());
+function plList(a){a=a.filter(Boolean);if(!a.length)return'';if(a.length===1)return a[0];if(a.length===2)return a[0]+' and '+a[1];return a.slice(0,-1).join(', ')+' and '+a[a.length-1];}
+function plMatchLabel(score){return score>=5?'Strong match':score>=3?'Good match':score>=1.2?'Partial match':'Stretch';}
+/* a natural, personalised explanation of WHY this trip fits — and its main trade-off */
+function plExplain(t,ctx){
+  const fits=[];
+  if(ctx.budget&&(t.price||0)<=ctx.budget)fits.push('your ₹'+ctx.budget.toLocaleString('en-IN')+' budget');
+  if(ctx.days&&t.days&&Math.abs(t.days-ctx.days)<=1)fits.push('your '+ctx.days+'-day window');
+  if(ctx.lvl&&(t.lvl||'').toLowerCase()===ctx.lvl.toLowerCase())fits.push('the '+ctx.lvl.toLowerCase()+' level you want');
+  else if(ctx.maxLvl&&(_PL_LVL[(t.lvl||'moderate').toLowerCase()]||2)<=(_PL_LVL[ctx.maxLvl.toLowerCase()]||2))fits.push('a manageable '+(t.lvl||'moderate').toLowerCase()+' grade');
+  if(ctx.region&&((t.region||'')+' '+(t.n||'')).toLowerCase().includes(ctx.region))fits.push(_plCap(ctx.region));
+  if(ctx.month&&plMonthsCovered(t.best).has(ctx.month))fits.push('being in season in '+_MON_NAME[ctx.month]);
+  (ctx.interests||[]).forEach(k=>{if(plTrekTags(t).has(k)&&fits.length<4)fits.push(k);});
+  const trade=[];
+  if(ctx.days&&t.days){const d=t.days-ctx.days;if(d>=2)trade.push('it runs '+t.days+' days vs the '+ctx.days+' you mentioned');else if(d<=-2)trade.push('it’s shorter at '+t.days+' days');}
+  if(ctx.budget&&(t.price||0)>ctx.budget)trade.push('it’s about ₹'+((t.price||0)-ctx.budget).toLocaleString('en-IN')+' over budget');
+  const tv=_PL_LVL[(t.lvl||'moderate').toLowerCase()]||2;
+  if(ctx.lvl&&tv>_PL_LVL[ctx.lvl.toLowerCase()])trade.push('it’s a bit tougher than '+ctx.lvl.toLowerCase());
+  else if(ctx.maxLvl&&tv>_PL_LVL[ctx.maxLvl.toLowerCase()])trade.push('it’s tougher than you wanted');
+  let s=fits.length?('Fits '+plList(fits)):(( t.lvl||'Moderate')+' · '+(t.days||'?')+'-day '+(isTour(t)?'road trip':'trek'));
+  s+=trade.length?('. Trade-off: '+trade[0]+'.'):'.';
+  return s;
+}
+/* honest feasibility / transport reasoning — challenge the ask when the combo is strained */
+function plFeasNote(ctx){
+  if(!ctx.budget||!ctx.days)return '';
+  const metro=ctx.fromCity&&/delhi|mumbai|bombay|bangalore|bengaluru|kolkata|chennai|hyderabad|pune|ahmedabad/.test(ctx.fromCity);
+  const perDay=ctx.budget/ctx.days;
+  if(ctx.days>=5&&perDay<2400){
+    const from=ctx.fromCity?_plCap(ctx.fromCity):'a metro';
+    return ' One honest note: ₹'+ctx.budget.toLocaleString('en-IN')+' for '+ctx.days+' days'+(metro?(' from '+from):'')+' is tight once transport is counted — the drive to the trailhead eats a big chunk. If that’s your all-in budget, a 3-day trip fits comfortably; if it’s the trip cost excluding travel, I can open up more.';
+  }
+  return '';
+}
 /* the planner brain: understand → score → recommend, with realistic alternatives */
 function plRecommend(ql,ctx){
   const cap=s=>String(s||'').replace(/\b\w/g,c=>c.toUpperCase());
@@ -6738,33 +6798,42 @@ function plRecommend(ql,ctx){
     return {reply:"I'm your Tripomonk trek & tour planner. Tell me a couple of things — your budget (₹), how many days, who's coming, a region, or the vibe (snow, lakes, first-timer, road trip) — and I'll build a shortlist and explain why each fits. What are you thinking?",recs:[],brief:''};
   }
   const pool=treks.filter(t=>!t.soon);
-  let scored=pool.map(t=>{const r=plScore(t,ctx);return {t,score:r.score,why:r.why};});
-  if(other)scored=scored.filter(x=>!_planShown.has(x.t.n));
+  let scored=pool.map(t=>{const r=plScore(t,ctx);return {t,score:r.score};});
+  if(other||ctx.simTo)scored=scored.filter(x=>!_planShown.has(x.t.n)&&x.t.n!==ctx.simTo);
   scored.sort((a,b)=>b.score-a.score);
   const brief=plBrief(ctx).join(' · ');
   const phrase=plBrief(ctx).join(', ')||'your trip';
   let recsArr,reply,mode='ok';
   if(ctx.budget&&!scored.some(x=>(x.t.price||0)<=ctx.budget)){
-    /* nothing within budget → closest value picks, honestly flagged */
+    /* nothing within budget → challenge the ask honestly + closest value picks */
     const cheapest=[...scored].sort((a,b)=>(a.t.price||0)-(b.t.price||0)).slice(0,3);
     const c0=cheapest[0];const over=c0?Math.max(0,(c0.t.price||0)-ctx.budget):0;
     recsArr=cheapest;mode='alt';
-    reply=`Nothing sits right under ₹${ctx.budget.toLocaleString('en-IN')}${ctx.days?` for ${ctx.days} days`:''} at the moment — the closest is ${c0?c0.t.n:'this one'} at ₹${c0?Number(c0.t.price).toLocaleString('en-IN'):''} (about ₹${over.toLocaleString('en-IN')} more). If you can stretch a little, these give the best value:`;
+    reply=`Being straight with you — nothing sits under ₹${ctx.budget.toLocaleString('en-IN')}${ctx.days?` for ${ctx.days} days`:''} right now. The closest is ${c0?c0.t.n:'this one'} at ₹${c0?Number(c0.t.price).toLocaleString('en-IN'):''} — about ₹${over.toLocaleString('en-IN')} more. Either nudge the budget a little, or trim a day or two; here's the best value I'd point you to:`;
   }else if(ctx.region&&scored[0]&&scored[0].score<=0){
-    /* region we don't serve → recommend the best fit elsewhere instead of a dead end */
-    const alt=pool.map(t=>{const r=plScore(t,Object.assign({},ctx,{region:null}));return {t,score:r.score,why:r.why};}).sort((a,b)=>b.score-a.score).slice(0,3);
+    /* region we don't serve → best fit elsewhere, no dead end */
+    const alt=pool.map(t=>({t,score:plScore(t,Object.assign({},ctx,{region:null})).score})).sort((a,b)=>b.score-a.score).slice(0,3);
     recsArr=alt;mode='alt';
-    reply=`We don't run trips in ${cap(ctx.region)} yet — but going by the rest of what you want, here's what I'd recommend instead:`;
+    reply=`We don't run trips in ${_plCap(ctx.region)} yet — but going on the rest of what you want, here's what I'd genuinely recommend instead:`;
   }else if(!anyKnown){
-    recsArr=pool.filter(t=>t.pop).slice(0,3).map(t=>({t,why:[]}));
-    reply="Here are a few of our most-loved trips to start with — tell me your budget or dates and I'll tailor it:";
+    recsArr=pool.filter(t=>t.pop).slice(0,3).map(t=>({t,score:0}));
+    reply="Here are a few of our most-loved trips to start with — tell me your budget or dates and I'll tailor these to you:";
   }else{
     recsArr=scored.slice(0,3);
-    reply=`For ${phrase}, here ${recsArr.length>1?'are':'is'} my top ${recsArr.length>1?'picks':'pick'}:`;
+    const lead=ctx.simTo?`Something in the spirit of ${ctx.simTo}${ctx.maxLvl?', a notch easier':''} — here's what I'd swap to`
+      :`With ${phrase}, here's what actually works`;
+    reply=`${lead}${recsArr.length>1?'. Best first:':':'}`;
   }
-  const recs=(recsArr||[]).slice(0,3).map(x=>({name:x.t.n,why:(x.why||[]).slice(0,2).join(' · ')}));
-  if(mode==='ok'&&anyKnown&&big<2){const fu=plFollowup(ctx);if(fu)reply+=' '+fu;}
-  if(!recs.length)reply="I couldn't find a good match for that. Tell me your budget and rough dates and I'll pull the closest options.";
+  const recs=(recsArr||[]).slice(0,3).map(x=>({name:x.t.n,match:plMatchLabel(x.score||0),why:plExplain(x.t,ctx)}));
+  /* one smart move: ask per-person vs total, else a feasibility note, else one follow-up */
+  if(ctx.budget&&!ctx.budgetBasis&&!ctx._askedBasis&&(ctx.groupSize>1||ctx.group==='friends'||ctx.group==='family')){
+    ctx._askedBasis=true;reply+=` Quick check so I price it right: is ₹${ctx.budget.toLocaleString('en-IN')} per person, or total for the ${ctx.groupSize||'group'}?`;
+  }else{
+    const feas=plFeasNote(ctx);
+    if(feas)reply+=feas;
+    else if(mode==='ok'&&big<2){const fu=plFollowup(ctx);if(fu)reply+=' '+fu;}
+  }
+  if(!recs.length)reply="I couldn't find a good match for that yet. Tell me your budget and rough dates and I'll pull the closest options with the trade-offs.";
   _planLastMin=recs.reduce((m,r)=>{const t=treks.find(x=>x.n===r.name);return (t&&t.price&&(!m||t.price<m))?t.price:m;},0);
   return {reply,recs,brief};
 }
