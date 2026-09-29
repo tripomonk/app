@@ -2547,6 +2547,35 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .cap-or{display:flex;align-items:center;gap:12px;margin:18px 2px}
   .cap-or::before,.cap-or::after{content:'';flex:1;height:1px;background:var(--stroke)}
   .cap-or span{font-size:11.5px;color:var(--muted2)}
+  /* guide dashboard + public profile */
+  .gd-scan{position:relative;overflow:hidden;border-radius:22px;padding:24px 20px;text-align:center;cursor:pointer;margin:16px 0;
+    background:linear-gradient(160deg,rgba(47,107,255,.24),rgba(47,107,255,.06));border:1px solid rgba(47,107,255,.3);transition:transform .14s}
+  .gd-scan:active{transform:scale(.98)}
+  .gd-scan .ch-ic{width:60px;height:60px;margin:0 auto 12px;border-radius:20px;display:grid;place-items:center;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 14px 30px -12px rgba(47,107,255,.8)}
+  .gd-scan .ch-ic .msr{font-size:32px}
+  .gd-scan b{display:block;font-size:16px;margin-bottom:6px}
+  .gd-scan small{display:block;font-size:12px;color:var(--muted-strong);line-height:1.5;max-width:90%;margin:0 auto 14px}
+  .gd-scan .ch-go{display:inline-flex;align-items:center;min-height:38px;padding:0 18px;border-radius:999px;background:var(--accent);color:#fff;font-size:12.5px;font-weight:700}
+  .gd-card{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--stroke);border-radius:18px;padding:14px;margin:14px 0}
+  .gd-av,.gp-av{background:var(--bg) center/cover no-repeat;flex:none}
+  .gd-av{width:54px;height:54px;border-radius:15px}
+  .gd-av-i,.gp-av-i{display:grid;place-items:center;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .gd-av-i{width:54px;height:54px;border-radius:15px;font-size:22px}
+  .gd-card b{font-size:15.5px}.gd-card small{font-size:12px;color:var(--muted)}
+  .gd-verified{display:inline-flex;color:#5fe0a0;vertical-align:-3px}.gd-verified .msr{font-size:17px}
+  .gd-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:4px}
+  .gd-stats>div{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:12px 8px;text-align:center}
+  .gd-stats b{display:block;font-size:18px;font-weight:800}.gd-stats small{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .gd-trek{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:10px;margin-bottom:8px;cursor:pointer}
+  .gd-trek:active{transform:scale(.99)}
+  .gd-trek-img{width:52px;height:52px;border-radius:11px;background:var(--bg) center/cover no-repeat;flex:none}
+  .gd-trek b{font-size:14px}.gd-trek small{font-size:11.5px;color:var(--muted)}
+  .gp-hero{text-align:center;padding:16px 0 6px}
+  .gp-av,.gp-av-i{width:96px;height:96px;border-radius:28px;margin:0 auto}
+  .gp-av-i{font-size:38px}
+  .gp-chips{display:flex;gap:10px;justify-content:center;margin:14px 0 4px;flex-wrap:wrap}
+  .gp-chip{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:10px 16px;text-align:center;min-width:84px}
+  .gp-chip b{display:block;font-size:16px;font-weight:800}.gp-chip small{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
   /* verify result — icon-led card */
   .verify b .msr,.verify b .ic{flex:none}
   .verify.good b{color:#0f9d58}
@@ -4220,6 +4249,18 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
     <div class="field"><label>Ticket code</label><div class="inp"><span class="ic" data-i="ticket"></span><input id="capInput" placeholder="TMK2|..."/></div></div>
     <div style="display:flex;gap:10px"><button class="btn" style="flex:1" onclick="captainVerify(document.getElementById('capInput').value)">Verify ticket</button><button class="btn ghost" style="flex:1" onclick="captainTestLast()">Test last</button></div>
     <div id="capResult" style="margin-top:18px"></div>
+  </section>
+
+  <!-- GUIDE DASHBOARD (approved trek leaders) -->
+  <section class="view flow" id="guideDash" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Guide Dashboard</h1></div>
+    <div id="guideDashBody" style="padding:0 16px"></div>
+  </section>
+
+  <!-- PUBLIC GUIDE PROFILE -->
+  <section class="view flow" id="guidePub" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Trek Leader</h1></div>
+    <div id="guidePubBody" style="padding:0 16px"></div>
   </section>
 
   <!-- NAV -->

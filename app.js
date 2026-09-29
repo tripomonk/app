@@ -5207,7 +5207,9 @@ function accountMenuGroups(){
     : [['hiking','Become a Host','becomeHost']];
   groups.push(['Hosting',host]);
   groups.push(['Partner with us',[['storefront','List your hotel / transport / gear','vendorDash']]]);
-  groups.push(['Work with us',[['flag','Become a Trek Leader / Guide','becomeGuide']]]);
+  if(typeof loadMyGuide==='function'&&isLoggedIn()){const before=_myGuide;loadMyGuide().then(()=>{if(_myGuide!==before&&typeof renderAccountMenu==='function')renderAccountMenu();});}
+  const guideEntry=(typeof myGuide==='function'&&myGuide())?[['verified','Guide Dashboard','guideDash']]:[['flag','Become a Trek Leader / Guide','becomeGuide']];
+  groups.push(['Work with us',guideEntry]);
   groups.push(['Support & legal',[
     ['help','Help & Support','help'],
     ['emergency','Emergency Contacts','emergency'],
@@ -9858,6 +9860,97 @@ async function capScan(){
 function capStopScan(){if(_capRAF)cancelAnimationFrame(_capRAF);_capRAF=null;if(_capStream){_capStream.getTracks().forEach(t=>t.stop());_capStream=null;}const c=document.getElementById('capCam');if(c)c.style.display='none';}
 function captainTestLast(){const b=getBookings()[0];if(!b){note('Make a booking first, then test.');return;}const code=ticketPayload(b);document.getElementById('capInput').value=code;captainVerify(code);}
 
+/* ===== Guide portal — approved trek leaders get a dashboard, QR check-in & a public profile ===== */
+let _myGuide=null, _guidePubId=null, _gStream=null, _gRAF=null;
+function myGuide(){return _myGuide;}
+function guideTreks(gid){return (typeof treks!=='undefined'?treks:[]).filter(t=>String(t.guide_id||'')===String(gid));}
+async function loadMyGuide(){
+  if(!isLoggedIn()){_myGuide=null;return null;}
+  try{ if(!_guidesLoaded)await loadGuides(); const uid=await authUid(); _myGuide=(guides||[]).find(g=>g.user_id&&String(g.user_id)===String(uid))||null; }
+  catch(e){_myGuide=null;}
+  return _myGuide;
+}
+async function renderGuideDash(){
+  const box=document.getElementById('guideDashBody');if(!box)return;
+  if(!isLoggedIn()){box.innerHTML=`<div class="empty" style="padding:26px 0;text-align:center"><p>Sign in to open your guide dashboard.</p><div style="display:flex;justify-content:center;margin-top:14px"><button class="btn sm" style="min-width:150px" onclick="_loginReturn='guideDash';go('login')">Sign in</button></div></div>`;return;}
+  box.innerHTML='<div class="note2" style="margin:14px 2px">Loading…</div>';
+  await loadMyGuide();
+  if(!_myGuide){
+    /* authoritative check — also links guides who applied via the public link (by email) */
+    try{const sb=getSupaClient();if(sb){const rr=await sb.functions.invoke('guide',{body:{action:'me'}});if(rr&&rr.data&&rr.data.ok&&rr.data.guide){await loadGuides(true);await loadMyGuide();if(!_myGuide)_myGuide=guideById(rr.data.guide.id)||rr.data.guide;}}}catch(e){}
+  }
+  const g=_myGuide;
+  if(!g){box.innerHTML=`<div class="empty" style="padding:24px 0;text-align:center"><p>You're not a registered Tripomonk trek leader yet.</p><div style="display:flex;justify-content:center;margin-top:14px"><button class="btn sm" style="min-width:170px" onclick="go('becomeGuide')">Apply as a guide</button></div></div>`;return;}
+  const mine=guideTreks(g.id);
+  const yrs=g.years?(/[a-z]/i.test(String(g.years))?g.years:g.years+' yrs'):'—';
+  const av=g.photo?`<div class="gd-av" style="background-image:url('${esc(g.photo)}')"></div>`:`<div class="gd-av gd-av-i">${esc((g.name||'G').slice(0,1).toUpperCase())}</div>`;
+  box.innerHTML=`
+    <div class="gd-card">${av}<div style="min-width:0"><b>${esc(g.name||'Guide')}</b>${g.verified?' <span class="gd-verified"><span class="msr">verified</span></span>':''}<br><small>${esc([g.city,g.state].filter(Boolean).join(', ')||'Trek Leader')}</small></div></div>
+    <div class="gd-stats"><div><b>${mine.length}</b><small>My treks</small></div><div><b>${g.verified?'Yes':'—'}</b><small>Verified</small></div><div><b>${esc(yrs)}</b><small>Experience</small></div></div>
+    <div class="gd-scan" onclick="guideScan()"><div class="ch-ic"><span class="msr">qr_code_scanner</span></div><b>Scan trekker tickets</b><small>Check in trekkers on your treks — works from your phone.</small><span class="ch-go">Open scanner</span></div>
+    <div id="gCam" style="display:none;margin:12px 0"><video id="gVideo" playsinline muted style="width:100%;border-radius:16px;background:#000;aspect-ratio:1/1;object-fit:cover"></video><button class="btn ghost sm" style="margin-top:8px;width:100%" onclick="guideStopScan()">Stop scanning</button></div>
+    <div class="cap-or"><span>or enter the ticket code</span></div>
+    <div class="field"><label>Ticket code</label><div class="inp"><span class="ic" data-i="ticket"></span><input id="gInput" placeholder="TMK2|…"/></div></div>
+    <button class="btn" onclick="guideVerify(document.getElementById('gInput').value)">Verify &amp; check in</button>
+    <div id="gResult" style="margin-top:16px"></div>
+    <div class="sec-h" style="margin:24px 4px 10px"><b>My treks</b></div>
+    ${mine.length?mine.map(t=>guideTrekRow(t)).join(''):'<div class="note2">No treks assigned yet — our team assigns treks to you from the admin panel.</div>'}
+    <div style="text-align:center;margin:18px 0 6px"><button class="btn ghost sm" onclick="openGuideProfile('${jsq(g.id)}')"><span class="msr">badge</span> View my public profile</button></div>
+    <div style="height:calc(var(--safe-bottom) + 20px)"></div>`;
+  hydrate(box);
+}
+function guideTrekRow(t){return `<div class="gd-trek" onclick="openDetailByName('${jsq(t.n)}')"><div class="gd-trek-img" style="background-image:url('${esc((t.img||'').split('?')[0])}')"></div><div style="flex:1;min-width:0"><b>${esc(t.n)}</b><br><small>${esc(t.region||'')}${t.days?' · '+t.days+'D':''}${t.lvl?' · '+esc(t.lvl):''}</small></div><span class="msr" style="color:var(--muted)">chevron_right</span></div>`;}
+async function guideScan(){
+  if(!('BarcodeDetector' in window)){note('Live QR scanning needs Chrome on Android. Paste the code below instead.','Not supported here');return;}
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    _gStream=stream;const v=document.getElementById('gVideo');v.srcObject=stream;await v.play();
+    document.getElementById('gCam').style.display='';
+    const det=new window.BarcodeDetector({formats:['qr_code']});
+    const tick=async()=>{ if(!_gStream)return; try{const codes=await det.detect(v);if(codes&&codes.length){const val=codes[0].rawValue;guideStopScan();guideVerify(val);return;}}catch(e){} _gRAF=requestAnimationFrame(tick); };
+    tick();
+  }catch(e){note('Could not access the camera. Allow camera permission and try again.','Camera error');}
+}
+function guideStopScan(){if(_gRAF)cancelAnimationFrame(_gRAF);_gRAF=null;if(_gStream){_gStream.getTracks().forEach(t=>t.stop());_gStream=null;}const c=document.getElementById('gCam');if(c)c.style.display='none';}
+async function guideVerify(txt){
+  const t=parseTicket(txt),r=document.getElementById('gResult');if(!r)return;
+  if(!t.ok){r.innerHTML=`<div class="verify bad"><b>${ic('alert',20)} Not a Tripomonk ticket</b><div style="font-size:13px;color:var(--muted)">This QR isn't a Tripomonk booking code.</div></div>`;hydrate(r);return;}
+  r.innerHTML='<div class="verify"><b>Checking booking…</b></div>';
+  let res=null;
+  try{const sb=getSupaClient();if(sb){const rr=await sb.functions.invoke('guide',{body:{action:'verify_booking',id:t.id}});res=rr&&rr.data;}}catch(e){}
+  if(!res||!res.ok){r.innerHTML=`<div class="verify bad"><b>${ic('alert',20)} Not verified</b><div style="font-size:13px;color:var(--muted)">${esc((res&&res.error)||'Could not verify — the guide portal may not be deployed yet.')}</div></div>`;hydrate(r);return;}
+  const b=res.booking||{};
+  if(res.scoped===false){r.innerHTML=`<div class="verify warn"><b>${ic('alert',20)} Not one of your treks</b><div style="font-size:13px;color:var(--muted)">${esc(b.name||'This trekker')} is booked on “${esc(b.trek||'')}”, which isn't assigned to you.</div></div>`;hydrate(r);return;}
+  try{sfx('like');}catch(e){}
+  r.innerHTML=`<div class="verify good"><b>${ic('check',20)} Checked in ✓</b>
+    <div class="vrow"><span>Trekker</span><b>${esc(b.name)}</b></div><div class="vrow"><span>Trek</span><b>${esc(b.trek)}</b></div>
+    <div class="vrow"><span>Date</span><b>${esc(b.date)}</b></div><div class="vrow"><span>Trekkers</span><b>${esc(b.pax)}</b></div>
+    <div class="vrow"><span>Booking</span><b>${esc(b.id)}</b></div></div>`;
+  hydrate(r);
+}
+function openGuideProfile(id){_guidePubId=id;go('guidePub');}
+async function renderGuidePublic(){
+  const box=document.getElementById('guidePubBody');if(!box)return;
+  box.innerHTML='<div class="note2" style="margin:14px 2px">Loading…</div>';
+  if(!_guidesLoaded)await loadGuides();
+  const g=guideById(_guidePubId);
+  if(!g){box.innerHTML='<div class="empty" style="padding:24px 0;text-align:center"><p>Trek leader not found.</p></div>';return;}
+  const mine=guideTreks(g.id);
+  const yrs=g.years?(/[a-z]/i.test(String(g.years))?g.years:g.years+' yrs'):'';
+  const av=g.photo?`<div class="gp-av" style="background-image:url('${esc(g.photo)}')"></div>`:`<div class="gp-av gp-av-i">${esc((g.name||'G').slice(0,1).toUpperCase())}</div>`;
+  const chip=(l,v)=>v?`<div class="gp-chip"><b>${esc(v)}</b><small>${esc(l)}</small></div>`:'';
+  const first=String(g.name||'').split(' ')[0]||'this guide';
+  box.innerHTML=`
+    <div class="gp-hero">${av}<h2 style="margin:12px 0 2px">${esc(g.name||'Trek Leader')}${g.verified?' <span class="gd-verified"><span class="msr">verified</span></span>':''}</h2><small class="muted">${esc([g.city,g.state].filter(Boolean).join(', ')||g.region||'Tripomonk Trek Leader')}</small></div>
+    <div class="gp-chips">${chip('Experience',yrs)}${chip('Treks led',g.treks_led)}${chip('Leads',mine.length+' trek'+(mine.length===1?'':'s'))}</div>
+    ${g.bio?`<div class="sec-h" style="margin:20px 4px 8px"><b>About</b></div><p class="note2" style="line-height:1.6;margin:0 2px">${esc(g.bio)}</p>`:''}
+    ${g.certifications?`<div class="sec-h" style="margin:18px 4px 8px"><b>Certifications</b></div><p class="note2" style="margin:0 2px">${esc(g.certifications)}</p>`:''}
+    ${g.languages?`<div class="sec-h" style="margin:18px 4px 8px"><b>Languages</b></div><p class="note2" style="margin:0 2px">${esc(g.languages)}</p>`:''}
+    ${mine.length?`<div class="sec-h" style="margin:20px 4px 8px"><b>Treks led by ${esc(first)}</b></div>${mine.map(t=>guideTrekRow(t)).join('')}`:''}
+    <div style="height:calc(var(--safe-bottom) + 20px)"></div>`;
+  hydrate(box);
+}
+
 /* itinerary PDF (your uploaded PDF, else fallback message) */
 function itinSlug(t){return t.n.toLowerCase().replace(/[^a-z0-9]+/g,'-');}
 /* the itinerary the admin attached in Admin → Treks (an uploaded PDF or a pasted link) */
@@ -10606,6 +10699,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='health')renderHealth(); else stopHealth();
   if(id==='navmap')renderNav(); else stopNav();
   if(id!=='captain')capStopScan();
+  if(id!=='guideDash')guideStopScan();
   if(id==='admin'){_admHub=true;renderAdmin();}   /* always land on the section grid */
   if(id==='gear')renderGear();
   if(id==='permits')renderPermits();
@@ -10617,6 +10711,8 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='cart')renderCart();
   if(id==='becomeHost')renderBecomeHost();
   if(id==='becomeGuide')renderBecomeGuide();
+  if(id==='guideDash')renderGuideDash();
+  if(id==='guidePub')renderGuidePublic();
   if(id==='hostTrip')renderHostTrip();
   if(id==='hostDash')renderHostDash();
   if(id==='hostProfile')renderHostProfile();
@@ -10705,7 +10801,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,renderPlanner,sendPlan,plannerChip,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,submitNewPassword,toggleResetPw,cancelReset,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections,addStaff,removeStaff,setStaffRole,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab,openReviewModal,closeReviewModal,submitReview,setRevStars,adminAddReview,adminDelReview,toggleSavePost,renderEmergency,renderSavedPosts,followAction,requestCall,declineCall,allowCallMsg,togglePrivateAccount,renderFollowRequests,acceptFollowReq,declineFollowReq,admToggleHl,filterAdminHub,admAssignCaptain,admChangeBatch,admRefund,admCancelBooking,admInvoice,renderAdminUsers,paintUsers,admNotifyUser,renderAdminPayments,admPayFilter,admExportCSV,admRevenueCSV,renderAdminGear,gearAdj,gearAddItem,gearDelItem,gearSeed,renderAdminCommunity,admDeletePost,admFeaturePost,renderAdminPermits,permSet,renderAdminSupport,ticketReply,ticketResolve,raiseTicket,renderAdminCRM,crmSearch,crmOpen,renderAdminAI,saveAiCfg,renderAdminVendors,vendorSet,openVendorDash,renderVendorDash,applyVendor,vendorAddListing,vendorToggleListing,vendorDelListing,renderBecomeGuide,submitGuideApplication});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,renderPlanner,sendPlan,plannerChip,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,submitNewPassword,toggleResetPw,cancelReset,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,filterByCity,getDirections,addStaff,removeStaff,setStaffRole,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab,openReviewModal,closeReviewModal,submitReview,setRevStars,adminAddReview,adminDelReview,toggleSavePost,renderEmergency,renderSavedPosts,followAction,requestCall,declineCall,allowCallMsg,togglePrivateAccount,renderFollowRequests,acceptFollowReq,declineFollowReq,admToggleHl,filterAdminHub,admAssignCaptain,admChangeBatch,admRefund,admCancelBooking,admInvoice,renderAdminUsers,paintUsers,admNotifyUser,renderAdminPayments,admPayFilter,admExportCSV,admRevenueCSV,renderAdminGear,gearAdj,gearAddItem,gearDelItem,gearSeed,renderAdminCommunity,admDeletePost,admFeaturePost,renderAdminPermits,permSet,renderAdminSupport,ticketReply,ticketResolve,raiseTicket,renderAdminCRM,crmSearch,crmOpen,renderAdminAI,saveAiCfg,renderAdminVendors,vendorSet,openVendorDash,renderVendorDash,applyVendor,vendorAddListing,vendorToggleListing,vendorDelListing,renderBecomeGuide,submitGuideApplication,renderGuideDash,renderGuidePublic,guideScan,guideStopScan,guideVerify,openGuideProfile});
 
 /* init */
 applyTheme();   /* dark / light / system theme */
