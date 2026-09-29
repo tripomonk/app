@@ -694,7 +694,7 @@ function trekEdit(id,preset){
       start_point:val('teStart'),end_point:val('teEnd'),basecamp:val('teBase'),meeting_point:val('teMeet'),pickup:val('tePickup'),dropoff:val('teDrop'),pickup_map:val('teMap'),lat:val('teLat'),lng:val('teLng'),
       days:nOr('teDy'),distance:val('teDi'),altitude:val('teA'),min_altitude:val('teMinAlt'),elevation_gain:val('teElev'),best_time:val('teB'),min_age:nOr('teMinAge'),max_age:nOr('teMaxAge'),group_size:val('teGroup'),terrain:val('teTerrain'),weather:val('teWeather'),route_type:val('teRoute'),
       level:$('#teL').value,req_score:nOr('teReq')||(_d?_d.overall:null),req_fitness:_d?_d.fitness:nOr('teqFit'),req_endurance:_d?_d.endurance:nOr('teqEnd'),req_strength:_d?_d.strength:nOr('teqStr'),req_experience:_d?_d.experience:nOr('teqExp'),req_altitude:_d?_d.altitude:nOr('teqAlt'),req_recovery:_d?_d.recovery:nOr('teqRec'),
-      itinerary:itinCollect(),itinerary_url:val('teItinUrl'),img:val('teImg'),
+      itinerary:itinCollect(),itinerary_url:val('teItinUrl'),img:wikiFix(val('teImg')),
       inclusions:lines('teInc'),exclusions:lines('teExc'),
       packing_tiers:{essential:lines('tePkE'),recommended:lines('tePkR'),optional:lines('tePkO')},
       safety:{instructions:val('teSafInstr'),medical:val('teSafMed'),altitude:val('teSafAlt'),weather:val('teSafWx'),emergency:val('teSafEmg'),rules:val('teSafRules')},
@@ -720,6 +720,13 @@ async function uploadImg(file,folder){
   return data?data.publicUrl:null;
 }
 /* search Wikimedia Commons for a cover image (anonymous CORS; returns ~1024px thumbnails) */
+/* A Wikimedia file-PAGE URL (…/wiki/File:Name.jpg) is an HTML page, not an image, so it
+   renders blank as a cover. Normalise it to a real image via Special:FilePath before saving. */
+function wikiFix(u){
+  if(!u)return u;
+  const m=String(u).match(/\/\/(?:[a-z0-9.-]+\.)?(?:wikimedia|wikipedia)\.org\/wiki\/(?:[^/]*?:)?File:([^?#]+)/i);
+  return m?('https://commons.wikimedia.org/wiki/Special:FilePath/'+m[1]+'?width=1600'):u;
+}
 async function wikiSearch(){
   const q=($('#teWiki').value||'').trim(),grid=$('#teWikiGrid'),msg=$('#teWikiMsg');
   if(!q){msg.textContent='Type what to search for.';return;}
