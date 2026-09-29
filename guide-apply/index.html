@@ -230,22 +230,24 @@
       <div class="field"><div class="toggle"><span>First-aid / medically trained</span><div class="sw" id="firstaidSw" onclick="tgl(this)"></div></div></div>
       <div class="field"><label>How do you stay trek-fit?</label><input id="fitness" placeholder="e.g. Run 10k, regular high-altitude treks"/></div>
 
-      <div class="field">
-        <label>Profile photo</label>
+      <div class="field" id="f-photo">
+        <label>Profile photo <span class="req">*</span></label>
         <div class="photo-row">
           <div class="photo-prev" id="photoPrev"><span class="msr">person</span></div>
           <div style="flex:1">
-            <label class="drop" style="margin:0;padding:12px" for="photoInput"><span class="msr">add_a_photo</span><b>Add a clear photo</b><small id="photoMsg">JPG or PNG, a friendly headshot</small></label>
+            <label class="drop" style="margin:0;padding:12px" for="photoInput"><span class="msr">add_a_photo</span><b>Add a clear photo</b><small id="photoMsg">A friendly headshot · JPG or PNG</small></label>
             <input id="photoInput" type="file" accept="image/*" hidden onchange="pickPhoto(this)"/>
           </div>
         </div>
+        <div class="err-msg">Please add a clear profile photo.</div>
       </div>
 
-      <div class="field">
-        <label>Certificates &amp; documents</label>
-        <label class="drop" for="docInput"><span class="msr">upload_file</span><b>Upload certificates / ID</b><small>PDF or images · you can add several</small></label>
+      <div class="field" id="f-docs">
+        <label>Government ID &amp; certificates <span class="req">*</span></label>
+        <label class="drop" for="docInput"><span class="msr">upload_file</span><b>Upload your ID + certificates</b><small>A government photo ID is required · PDF or images · add several</small></label>
         <input id="docInput" type="file" accept="image/*,application/pdf" multiple hidden onchange="pickDocs(this)"/>
         <div class="filelist" id="docList"></div>
+        <div class="err-msg">Please upload at least your government photo ID.</div>
       </div>
     </div>
 
@@ -337,6 +339,10 @@ function validateStep(){
     const eb=!validEmail($('email').value.trim());markErr('f-email',eb);ok=ok&&!eb;
   }
   if(cur===1){const yb=!String($('years').value).trim();markErr('f-years',yb);ok=ok&&!yb;}
+  if(cur===2){
+    const pb=!photoUrl;markErr('f-photo',pb);ok=ok&&!pb;
+    const db=!docs.some(d=>d.url);markErr('f-docs',db);ok=ok&&!db;
+  }
   if(cur===3){const cb=!$('consent').checked;markErr('f-consent',cb);ok=ok&&!cb;}
   return ok;
 }
