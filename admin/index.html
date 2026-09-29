@@ -1194,6 +1194,8 @@ function guideRosterView(id){
   let waDigits=ph.replace(/[^0-9]/g,'').replace(/^0+/,'');if(waDigits.length===10)waDigits='91'+waDigits;
   body.innerHTML=`<div class="dh">${avc(g.name,g.photo)}<div><b style="font-size:16px">${esc(g.name||'Guide')}</b>${g.verified?' <span class="tag ok">✓ verified</span>':''}<br><small class="muted">${esc(loc||'Trek leader')}</small></div><span class="spacer"></span><button class="btn2" onclick="closeOv()">Close</button></div>
     <div class="sec-t">Contact</div>${row('Phone / number',phone)}${row('Email',email)}${row('Location',loc)}${(!phone&&!email)?'<div class="muted" style="font-size:12.5px;margin:2px 0 8px">No contact on file — added manually. To capture number &amp; email, approve them from a Guide application.</div>':''}
+    <div class="sec-t">Dashboard access</div>${g.user_id?`<div class="ua-ev"><span class="d" style="background:var(--ok)"></span><div>Linked to an app account ✓<small>They can open the Guide Dashboard from their Tripomonk profile</small></div></div>`:`<div class="ua-ev"><span class="d" style="background:var(--yellow)"></span><div>Not linked yet<small>Link their app email so they can open their dashboard</small></div></div>`}
+    <div class="row-acts" style="justify-content:flex-start;margin:6px 0 2px"><button class="btn2 sm" onclick="guideLinkAccount('${jsv(g.id)}')">${g.user_id?'Re-link account':'Link app account'}</button>${g.user_id?`<button class="btn2 sm danger" onclick="guideUnlinkAccount('${jsv(g.id)}')">Unlink</button>`:''}</div>
     <div class="sec-t">Experience</div>${row('Years guiding',g.years)}${row('Treks led',g.treks_led)}${row('Regions',g.region||(app&&app.regions))}${row('Languages',g.languages||(app&&app.languages))}${row('Day rate',g.day_rate?('₹'+g.day_rate):(app&&app.day_rate?'₹'+app.day_rate:''))}
     <div class="sec-t">Skills &amp; safety</div>${row('Certifications',g.certifications||(app&&app.certifications))}${app?row('First-aid trained',app.first_aid?'Yes':'No'):''}${row('Highest altitude',app&&app.max_altitude)}
     <div class="sec-t">About</div>${row('Bio',g.bio||(app&&app.about))}${row('Instagram',g.instagram||(app&&app.instagram))}${row('Website',app&&app.website)}
@@ -1227,6 +1229,17 @@ function guidePayAdd(gid){
     <div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="gpGo">Save</button></div>`);
   $('#gpGo').onclick=async()=>{const amt=parseFloat($('#gpAmt').value)||0;if(amt<=0){toast('Enter an amount');return;}closeOv();const r=await adminCall('save_guide_payment',{payment:{guide_id:gid,amount:amt,trek:$('#gpTrek').value.trim(),status:$('#gpSt').value,note:$('#gpNote').value.trim()}});toast(r&&r.error?('Failed: '+r.error+(/relation|column/i.test(r.error)?' — run SQL-guide-earnings.sql':'')):'Payment recorded ✓');if(!(r&&r.error))guideRosterFull(gid);};}
 function guidePayDel(id,gid){confirmDo('Delete this payment?',async()=>{const r=await adminCall('delete_guide_payment',{id});toast(r&&r.error?('Failed: '+r.error):'Deleted');if(!(r&&r.error))guideRosterFull(gid);});}
+function guideLinkAccount(gid){
+  const g=(_guideRoster||[]).find(x=>String(x.id)===String(gid))||{};
+  modal(`<h3>Link app account</h3>
+    <p class="desc" style="margin-top:0">Enter the email this guide uses to sign in to the Tripomonk app. It lets them open their <b>Guide Dashboard</b> from their profile. If they haven't created an account yet, we'll link it automatically the first time they sign in with this email.</p>
+    <div class="fld"><label>Guide's app email</label><input id="glEmail" type="email" placeholder="guide@email.com" value="${esc(g.email||'')}"/></div>
+    <div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="glGo">Link</button></div>`);
+  $('#glGo').onclick=async()=>{const email=($('#glEmail').value||'').trim();if(!/.+@.+\..+/.test(email)){toast('Enter a valid email');return;}closeOv();const r=await adminCall('link_guide_account',{guide_id:gid,email});
+    if(r&&r.error){toast('Failed: '+r.error+(/relation|column|listUsers/i.test(r.error)?' — deploy the updated admin function':''));return;}
+    toast(r&&r.linked?'Linked ✓ — they can open the Guide Dashboard now':'Saved — they\'ll be linked on their next sign-in with this email');
+    guideReload();};}
+function guideUnlinkAccount(gid){confirmDo('Unlink this guide from their app account?',async()=>{const r=await adminCall('unlink_guide_account',{guide_id:gid});toast(r&&r.error?('Failed: '+r.error):'Unlinked');if(!(r&&r.error))guideReload();});}
 async function guideSet(id,st){
   const r=await adminCall('set_guide_app_status',{id,status:st});
   if(r&&r.error){toast('Failed: '+r.error+(/relation|column/i.test(r.error)?' — run SQL-add-guide-applications.sql':''));return;}
