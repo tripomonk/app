@@ -362,8 +362,12 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .pcard .p-bd p{font-size:12px;color:var(--muted);margin:4px 0 0;line-height:1.5}
   .pcard .p-ft{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:13px;flex-wrap:wrap}
   .pcard .p-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);background:var(--card2);border:1px solid var(--stroke);border-radius:999px;padding:5px 11px}
-  .pcard .p-apply{background:var(--accent);color:#fff;border:0;font-size:12.5px;font-weight:700;padding:9px 18px;border-radius:11px;cursor:pointer;transition:transform .1s}
-  .pcard .p-apply:active{transform:scale(.96)}
+  .pcard .p-btns{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .pcard .p-apply,.pcard .p-web{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;padding:9px 15px;border-radius:11px;cursor:pointer;transition:transform .1s}
+  .pcard .p-apply .msr,.pcard .p-web .msr{font-size:15px}
+  .pcard .p-apply{background:var(--accent);color:#fff;border:0}
+  .pcard .p-web{background:var(--card2);color:var(--text);border:1px solid var(--stroke)}
+  .pcard .p-apply:active,.pcard .p-web:active{transform:scale(.96)}
   /* --- Activities: card polish --- */
   .atile{box-shadow:0 8px 22px -18px rgba(0,0,0,.6)}
   .atile .bk{padding:7px 15px;transition:transform .1s}
@@ -4355,7 +4359,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   <!-- PERMITS -->
   <section class="view flow" id="permits" data-nonav>
     <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Permits</h1></div>
-    <div class="panel" style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:14px">Assisted service: tell us your trek and we process the forest / eco-zone permit and ID, then send the approved copy in-app.</div>
+    <div class="panel" style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:14px">Apply yourself on the official government site, or let us handle it — tell us your trek on WhatsApp and we process the forest / eco-zone permit and ID, then send the approved copy in-app.</div>
     <div class="search" style="margin-bottom:16px"><span class="msr" style="font-size:20px;color:var(--muted)">search</span><input id="permitSearch" type="text" placeholder="Search permits…" autocomplete="off" oninput="renderPermits(this.value)" style="all:unset;flex:1;font-size:14px;color:var(--text)"/></div>
     <div id="permitList"></div>
   </section>
