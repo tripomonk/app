@@ -5157,6 +5157,16 @@ function staffHubCard(){
   }
   return h;
 }
+/* Prominent Guide Dashboard card on the profile, for approved trek leaders (guides.user_id
+   = this account). Async-gated: empty until loadMyGuide() confirms, then the container refills. */
+function guideHubCard(){
+  if(!isLoggedIn()||typeof myGuide!=='function'||!myGuide())return '';
+  const chev='<span class="ch">'+ic('back',16)+'</span>';
+  return '<div class="host-hub verified" onclick="go(\'guideDash\')">'
+    +'<div class="hh-ic"><span class="msr" style="font-size:22px">hiking</span></div>'
+    +'<div class="hh-tx"><b>Guide Dashboard <span class="hh-badge">Trek Leader</span></b>'
+    +'<small>Your treks, trekkers, earnings &amp; QR check-in</small></div>'+chev+'</div>';
+}
 /* The full admin panel now lives OUTSIDE the app as a standalone console at
    app.tripomonk.com/admin/. The app no longer renders admin screens — it just
    launches the console in a new tab for the owner / assigned team roles. */
@@ -5173,6 +5183,7 @@ function menuGo(t){
   if(t==='signout'){signOut();return;}
   if(t==='hostDash'){openHostDash();return;}
   if(t==='vendorDash'){openVendorDash();return;}
+  if(t.indexOf('url:')===0){const u=t.slice(4);try{window.open(u,'_blank','noopener');}catch(e){location.href=u;}return;}
   if(t.indexOf('soon:')===0){note(t.slice(5)+' is coming soon — we\'re building it into Tripomonk.','Coming soon');return;}
   go(t);
 }
@@ -5202,14 +5213,13 @@ function accountMenuGroups(){
       ['star','My Reviews','reviews']
     ]]
   ];
-  const host=(typeof isVerifiedHost==='function'&&isVerifiedHost())
-    ? [['dashboard','Host Dashboard','hostDash']]
-    : [['hiking','Become a Host','becomeHost']];
-  groups.push(['Hosting',host]);
-  groups.push(['Partner with us',[['storefront','List your hotel / transport / gear','vendorDash']]]);
+  // "Work with us" holds BOTH the host and guide paths together. Approved → Dashboard; else → apply.
   if(typeof loadMyGuide==='function'&&isLoggedIn()){const before=_myGuide;loadMyGuide().then(()=>{if(_myGuide!==before&&typeof renderAccountMenu==='function')renderAccountMenu();});}
-  const guideEntry=(typeof myGuide==='function'&&myGuide())?[['verified','Guide Dashboard','guideDash']]:[['flag','Become a Trek Leader / Guide','becomeGuide']];
-  groups.push(['Work with us',guideEntry]);
+  const work=[];
+  work.push((typeof isVerifiedHost==='function'&&isVerifiedHost())?['dashboard','Host Dashboard','hostDash']:['hiking','Become a Host','becomeHost']);
+  work.push((typeof myGuide==='function'&&myGuide())?['verified','Guide Dashboard','guideDash']:['flag','Become a Guide','url:/guide-apply/']);
+  groups.push(['Work with us',work]);
+  groups.push(['Partner with us',[['storefront','List your hotel / transport / gear','vendorDash']]]);
   groups.push(['Support & legal',[
     ['help','Help & Support','help'],
     ['emergency','Emergency Contacts','emergency'],
@@ -5782,10 +5792,13 @@ function renderProfile(){document.getElementById('pCover').style.backgroundImage
   if(pb){const bio=(_hostApp&&_hostApp.bio)||'';pb.textContent=bio;pb.style.display=bio?'':'none';}
   let rows=socialLinks(getSavedSocials())+fitnessProfileCard()
     +'<div id="hostHub">'+hostHubCard()+'</div>'
+    +'<div id="guideHub">'+guideHubCard()+'</div>'   /* trek-leader dashboard, guides only */
     +'<div id="staffHub">'+staffHubCard()+'</div>';   /* admin / trip-captain, staff only */
   if(isLoggedIn()&&!isPrefsDone())rows+=`<div class="pref-prompt" onclick="go('onboarding')"><span class="msr">interests</span><div><b>Complete your preferences</b><small>Help us connect you with like-minded trekkers</small></div><span class="msr" style="margin-left:auto">chevron_right</span></div>`;
   if(!isLoggedIn())rows+=`<div class="mrow" onclick="go('login')"><span class="ic">${ic('user',20)}</span><span class="t" style="color:var(--accent2)">Sign in / Create account</span><span class="ch">${ic('back',16)}</span></div>`;
   document.getElementById('menu').innerHTML=rows;
+  /* guide status is async (needs guides + auth) — refill the card once it resolves */
+  if(isLoggedIn()&&typeof loadMyGuide==='function'){loadMyGuide().then(()=>{const h=document.getElementById('guideHub');if(h)h.innerHTML=guideHubCard();}).catch(()=>{});}
   const cover=document.getElementById('pCover');cover.querySelectorAll('.ch').forEach(c=>c.style.transform='rotate(180deg)');
   document.querySelectorAll('#menu .ch svg').forEach(s=>s.style.transform='scaleX(-1)');
   hydrate(document.getElementById('profile'));
@@ -9879,7 +9892,7 @@ async function renderGuideDash(){
   try{const sb=getSupaClient();if(sb){const rr=await sb.functions.invoke('guide',{body:{action:'dashboard'}});if(rr&&rr.data&&rr.data.ok)data=rr.data;}}catch(e){}
   if(data&&data.guide){_myGuide=guideById(data.guide.id)||data.guide;} else {await loadMyGuide();}
   const g=(data&&data.guide)||_myGuide;
-  if(!g){box.innerHTML=`<div class="empty" style="padding:24px 0;text-align:center"><p>You're not a registered Tripomonk trek leader yet.</p><div style="display:flex;justify-content:center;margin-top:14px"><button class="btn sm" style="min-width:170px" onclick="go('becomeGuide')">Apply as a guide</button></div></div>`;return;}
+  if(!g){box.innerHTML=`<div class="empty" style="padding:24px 0;text-align:center"><p>You're not a registered Tripomonk trek leader yet.</p><div style="display:flex;justify-content:center;margin-top:14px"><button class="btn sm" style="min-width:170px" onclick="window.open('/guide-apply/','_blank','noopener')">Apply as a guide</button></div></div>`;return;}
   const noStats=!data;   /* guide edge fn not deployed → show profile-only view */
   const mine=(data&&data.treks&&data.treks.length)?data.treks.map(t=>({n:t.name,region:t.region,days:t.days,lvl:t.level,img:t.img})):guideTreks(g.id).map(t=>({n:t.n,region:t.region,days:t.days,lvl:t.lvl,img:t.img}));
   const bookings=(data&&data.bookings)||[];
