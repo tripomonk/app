@@ -1165,8 +1165,10 @@ function guideProfile(id){
     :`<button class="btn2 pri sm" onclick="guideSet('${jsv(a.id)}','approved')">Approve</button><button class="btn2 sm danger" onclick="guideSet('${jsv(a.id)}','rejected')">Reject</button>`;
   const avatar=a.profile_photo?`<div style="width:44px;height:44px;border-radius:12px;flex:none;background:url('${esc(a.profile_photo)}') center/cover;border:1px solid var(--line)"></div>`:avc(a.full_name);
   const docs=Array.isArray(a.documents)?a.documents:[];
-  const docBtn=(url,label)=>`<a class="btn2 sm" style="text-decoration:none;margin:0 6px 6px 0" href="${esc(url)}" target="_blank" rel="noopener"><span class="msr" style="font-size:14px;vertical-align:-2px">description</span> ${esc(label)}</a>`;
-  const docsHtml=(a.profile_photo||docs.length)?`<div class="sec-t">Documents</div><div style="display:flex;flex-wrap:wrap">${a.profile_photo?docBtn(a.profile_photo,'Profile photo'):''}${docs.map(d=>docBtn(d.url,(d.name||'Document').slice(0,26))).join('')}</div>`:'';
+  const linkBtn=(url,label)=>`<a class="btn2 sm" style="text-decoration:none;margin:0 6px 6px 0" href="${esc(url)}" target="_blank" rel="noopener"><span class="msr" style="font-size:14px;vertical-align:-2px">description</span> ${esc(label)}</a>`;
+  const signBtn=(path,label)=>`<button class="btn2 sm" style="margin:0 6px 6px 0" onclick="guideOpenDoc('${jsv(path)}')"><span class="msr" style="font-size:14px;vertical-align:-2px">lock</span> ${esc(label)}</button>`;
+  const docItem=(d)=>{const label=(d.name||'Document').slice(0,26);return d.path?signBtn(d.path,label):(d.url?linkBtn(d.url,label):'');};
+  const docsHtml=(a.profile_photo||docs.length)?`<div class="sec-t">Documents</div><div style="display:flex;flex-wrap:wrap">${a.profile_photo?linkBtn(a.profile_photo,'Profile photo'):''}${docs.map(docItem).join('')}</div>`:'';
   const src=a.source==='link'?' <span class="tag">via link</span>':'';
   body.innerHTML=`<div class="dh">${avatar}<div><b style="font-size:16px">${esc(a.full_name||'Guide')}</b><br><small class="muted">${esc(a.city||'')}${a.city&&a.state?', ':''}${esc(a.state||'')} · ${esc(s)}${src}</small></div><span class="spacer"></span><button class="btn2" onclick="closeOv()">Close</button></div>
     <div class="sec-t">Contact</div>${row('Phone',a.phone)}${row('WhatsApp',a.whatsapp)}${row('Email',a.email)}${row('Gender',a.gender)}${row('DOB',a.dob)}
@@ -1240,6 +1242,8 @@ function guideLinkAccount(gid){
     toast(r&&r.linked?'Linked ✓ — they can open the Guide Dashboard now':'Saved — they\'ll be linked on their next sign-in with this email');
     guideReload();};}
 function guideUnlinkAccount(gid){confirmDo('Unlink this guide from their app account?',async()=>{const r=await adminCall('unlink_guide_account',{guide_id:gid});toast(r&&r.error?('Failed: '+r.error):'Unlinked');if(!(r&&r.error))guideReload();});}
+/* open a PRIVATE guide document via a short-lived signed URL */
+async function guideOpenDoc(path){const r=await adminCall('sign_doc',{path});if(r&&r.url){window.open(r.url,'_blank','noopener');}else{toast('Could not open document'+((r&&r.error)?(': '+r.error):''));}}
 async function guideSet(id,st){
   const r=await adminCall('set_guide_app_status',{id,status:st});
   if(r&&r.error){toast('Failed: '+r.error+(/relation|column/i.test(r.error)?' — run SQL-add-guide-applications.sql':''));return;}
