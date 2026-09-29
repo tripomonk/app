@@ -1163,14 +1163,20 @@ function guideProfile(id){
   const dec=/approv/.test(s)?`<button class="btn2 sm danger" onclick="guideSet('${jsv(a.id)}','rejected')">Revoke</button>`
     :/reject/.test(s)?`<button class="btn2 pri sm" onclick="guideSet('${jsv(a.id)}','approved')">Approve</button>`
     :`<button class="btn2 pri sm" onclick="guideSet('${jsv(a.id)}','approved')">Approve</button><button class="btn2 sm danger" onclick="guideSet('${jsv(a.id)}','rejected')">Reject</button>`;
-  body.innerHTML=`<div class="dh">${avc(a.full_name)}<div><b style="font-size:16px">${esc(a.full_name||'Guide')}</b><br><small class="muted">${esc(a.city||'')}${a.city&&a.state?', ':''}${esc(a.state||'')} · ${esc(s)}</small></div><span class="spacer"></span><button class="btn2" onclick="closeOv()">Close</button></div>
+  const avatar=a.profile_photo?`<div style="width:44px;height:44px;border-radius:12px;flex:none;background:url('${esc(a.profile_photo)}') center/cover;border:1px solid var(--line)"></div>`:avc(a.full_name);
+  const docs=Array.isArray(a.documents)?a.documents:[];
+  const docBtn=(url,label)=>`<a class="btn2 sm" style="text-decoration:none;margin:0 6px 6px 0" href="${esc(url)}" target="_blank" rel="noopener"><span class="msr" style="font-size:14px;vertical-align:-2px">description</span> ${esc(label)}</a>`;
+  const docsHtml=(a.profile_photo||docs.length)?`<div class="sec-t">Documents</div><div style="display:flex;flex-wrap:wrap">${a.profile_photo?docBtn(a.profile_photo,'Profile photo'):''}${docs.map(d=>docBtn(d.url,(d.name||'Document').slice(0,26))).join('')}</div>`:'';
+  const src=a.source==='link'?' <span class="tag">via link</span>':'';
+  body.innerHTML=`<div class="dh">${avatar}<div><b style="font-size:16px">${esc(a.full_name||'Guide')}</b><br><small class="muted">${esc(a.city||'')}${a.city&&a.state?', ':''}${esc(a.state||'')} · ${esc(s)}${src}</small></div><span class="spacer"></span><button class="btn2" onclick="closeOv()">Close</button></div>
     <div class="sec-t">Contact</div>${row('Phone',a.phone)}${row('WhatsApp',a.whatsapp)}${row('Email',a.email)}${row('Gender',a.gender)}${row('DOB',a.dob)}
-    <div class="sec-t">Experience</div>${row('Years guiding',a.experience_years)}${row('Treks led',a.treks_led)}${row('Highest altitude',a.max_altitude)}${row('Regions',a.regions)}${row('Languages',a.languages)}
+    <div class="sec-t">Experience</div>${row('Years guiding',a.experience_years)}${row('Treks led',a.treks_led)}${row('Highest altitude',a.max_altitude)}${row('Regions',a.regions)}${row('Languages',a.languages)}${a.international?row('International treks',a.passport?'Open to treks abroad · has passport':'Open to treks abroad'):''}${row('Countries abroad',a.countries)}
     <div class="sec-t">Skills &amp; safety</div>${row('Certifications',a.certifications)}${row('First-aid trained',a.first_aid?'Yes':'No')}${row('Fitness',a.fitness)}
     <div class="sec-t">Track record</div>${row('Notable treks',a.notable_treks)}${row('Availability',a.availability)}${row('Day rate',a.day_rate?('₹'+a.day_rate):'')}
     <div class="sec-t">Links</div>${row('Instagram',a.instagram)}${row('Website',a.website)}
     <div class="sec-t">About</div>${row('About',a.about)}${row('Why guide with Tripomonk',a.why_guide)}
     <div class="sec-t">References</div>${row('Reference name',a.reference_name)}${row('Reference phone',a.reference_phone)}${row('Consent given',a.consent?'Yes':'No')}
+    ${docsHtml}
     <div class="sec-t">Decision</div><div class="row-acts" style="justify-content:flex-start;margin-bottom:10px">${dec}</div>
     ${telNum?`<div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn2" style="text-decoration:none" href="tel:${esc(telNum)}">Call</a><a class="btn2" style="text-decoration:none" href="https://wa.me/${esc(waDigits)}" target="_blank" rel="noopener">WhatsApp</a></div>`:''}`;}
 function guideRosterView(id){
