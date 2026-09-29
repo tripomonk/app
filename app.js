@@ -6494,31 +6494,38 @@ function doSearch(q){const inp=document.getElementById('searchInput');if(inp&&q&
   const f=treks.filter(t=>q?(t.n.toLowerCase().includes(q)||t.region.toLowerCase().includes(q)||t.lvl.toLowerCase().includes(q)):!isTour(t));
   const el=document.getElementById('searchResults');el.innerHTML=(f.length?f:treks.filter(t=>!isTour(t))).map(trekCard).join('');hydrate(el);}
 /* ===== AI Trip Planner — conversational search grounded in the real catalogue ===== */
-let _planMsgs=[], _planBusy=false;
+let _planMsgs=[], _planBusy=false, _tripCtx={}, _planShown=new Set(), _planLastMin=0;
 function renderPlanner(){
   if(!_planMsgs.length){
-    _planMsgs=[{role:'assistant',content:"Hi! I'm your Tripomonk trip planner. Tell me your budget, dates, who's coming, or the vibe — and I'll find the right trek or tour for you."}];
+    _tripCtx={};_planShown=new Set();_planLastMin=0;
+    _planMsgs=[{role:'assistant',content:"Hi — I'm your Tripomonk trip planner. Tell me what you're after: your budget, how many days you have, who's coming, a region, or the vibe (snow, lakes, first-timer, road trip). I'll build you a shortlist from our real trips, and ask if I need one more detail."}];
   }
   paintPlanner();
   const inp=document.getElementById('plannerInput');if(inp)setTimeout(()=>{try{inp.focus();}catch(e){}},120);
 }
-function plannerCard(t){
+function plannerCard(t,why){
   const price=t.price?('₹'+Number(t.price).toLocaleString('en-IN')):'';
+  const w=why?`<span class="pl-card-why"><span class="msr">check_circle</span>${esc(why)}</span>`:'';
   return `<div class="pl-card" onclick="openDetailByName('${jsq(t.n)}')">
     <div class="pl-card-img" style="background-image:url('${esc((t.img||'').split('?')[0])}')"></div>
-    <div class="pl-card-bd"><b>${esc(t.n)}</b><small>${esc(t.region||'')}${t.days?' · '+t.days+'D':''}${t.lvl?' · '+esc(t.lvl):''}</small><span class="pl-card-price">${price}${t.soon?' · coming soon':''}</span></div>
+    <div class="pl-card-bd"><b>${esc(t.n)}</b><small>${esc(t.region||'')}${t.days?' · '+t.days+'D':''}${t.lvl?' · '+esc(t.lvl):''}</small>${w}<span class="pl-card-price">${price}${t.soon?' · coming soon':''}</span></div>
   </div>`;
 }
 function paintPlanner(){
   const chat=document.getElementById('plannerChat');if(!chat)return;
+  const findTrek=nm=>treks.find(x=>x.n===nm)||treks.find(x=>String(x.n).toLowerCase()===String(nm).toLowerCase());
   let html=_planMsgs.map(m=>{
     const bubble=`<div class="pl-row pl-row-${m.role}"><div class="pl-msg pl-${m.role}">${esc(m.content)}${m._typing?'<span class="pl-caret"></span>':''}</div></div>`;
-    let cards='';
-    if(m.treks&&m.treks.length){
-      const cs=m.treks.map(nm=>{const t=treks.find(x=>x.n===nm)||treks.find(x=>String(x.n).toLowerCase()===String(nm).toLowerCase());return t?plannerCard(t):'';}).filter(Boolean).join('');
-      if(cs)cards=`<div class="pl-cards">${cs}</div>`;
+    let extra='';
+    if(!m._typing){
+      if(m.brief)extra+=`<div class="pl-brief"><span class="msr">tune</span>${esc(m.brief)}</div>`;
+      const recs=(m.recs&&m.recs.length)?m.recs:((m.treks||[]).map(n=>({name:n,why:''})));
+      if(recs.length){
+        const cs=recs.map(r=>{const t=findTrek(r.name);return t?plannerCard(t,r.why):'';}).filter(Boolean).join('');
+        if(cs)extra+=`<div class="pl-cards">${cs}</div>`;
+      }
     }
-    return bubble+cards;
+    return bubble+extra;
   }).join('');
   if(_planBusy)html+=`<div class="pl-row pl-row-assistant"><div class="pl-msg pl-assistant pl-typing"><span></span><span></span><span></span></div></div>`;
   chat.innerHTML=html;hydrate(chat);
@@ -6529,7 +6536,7 @@ let _planTyping=false;
 const _plSleep=ms=>new Promise(r=>setTimeout(r,ms));
 /* reveal the assistant reply word-by-word (with a blinking caret) so it reads like a
    real AI answering; the trek cards pop in only after the text finishes. */
-async function typePlanner(msg,full,trekNames){
+async function typePlanner(msg,full,recs,brief){
   _planTyping=true;msg._typing=true;msg.content='';
   const parts=String(full||'').split(/(\s+)/);   /* keep whitespace tokens */
   let i=0;
@@ -6537,10 +6544,17 @@ async function typePlanner(msg,full,trekNames){
     i=Math.min(parts.length,i+2);                /* ~2 words per tick */
     msg.content=parts.slice(0,i).join('');
     paintPlanner();
-    await _plSleep(24+Math.random()*36);         /* uneven cadence feels human */
+    await _plSleep(22+Math.random()*34);         /* uneven cadence feels human */
   }
-  msg.content=full||'';msg.treks=trekNames||[];msg._typing=false;
+  msg.content=full||'';msg.recs=recs||[];msg.brief=brief||'';msg._typing=false;
   _planTyping=false;paintPlanner();
+}
+function plNormalizeRecs(res){
+  let arr=[];
+  if(Array.isArray(res.recommendations))arr=res.recommendations.map(r=>({name:(r&&(r.name||r.n))||'',why:(r&&(r.why||r.reason))||''}));
+  else if(Array.isArray(res.treks))arr=res.treks.map(n=>typeof n==='string'?{name:n,why:''}:{name:(n&&n.name)||'',why:(n&&n.why)||''});
+  const seen=new Set();
+  return arr.filter(r=>r.name&&!seen.has(r.name)&&seen.add(r.name)).slice(0,4);
 }
 async function sendPlan(text){
   const inp=document.getElementById('plannerInput');
@@ -6548,82 +6562,211 @@ async function sendPlan(text){
   if(inp)inp.value='';
   try{logEvent('plan_query',{q:q.slice(0,80)});}catch(e){}
   _planMsgs.push({role:'user',content:q});_planBusy=true;paintPlanner();
+  const ql=q.toLowerCase();
+  const chit=plChitchat(ql);                 /* greetings / thanks / "what can you do" — answer locally */
+  plExtract(ql,_tripCtx);plRefine(ql,_tripCtx);   /* remember what they told us this turn */
   const t0=Date.now();
   let res=null;
-  try{
-    const sb=getSupaClient();
-    if(sb){
-      const catalog=treks.map(t=>({n:t.n,region:t.region,price:t.price,days:t.days,lvl:t.lvl,type:isTour(t)?'tour':'trek',tag:t.tag||'',soon:!!t.soon}));
-      const messages=_planMsgs.filter(m=>m.role==='user'||m.role==='assistant').slice(-12).map(m=>({role:m.role,content:m.content}));
-      const r=await sb.functions.invoke('plan',{body:{messages,catalog}});
-      if(r&&r.data&&r.data.ok)res=r.data;
-    }
-  }catch(e){/* fall through to the local fallback */}
+  if(!chit){
+    try{
+      const sb=getSupaClient();
+      if(sb){
+        const catalog=treks.map(t=>({n:t.n,region:t.region,price:t.price,days:t.days,lvl:t.lvl,best:t.best||'',type:isTour(t)?'tour':'trek',tag:t.tag||'',soon:!!t.soon}));
+        const messages=_planMsgs.filter(m=>m.role==='user'||m.role==='assistant').slice(-12).map(m=>({role:m.role,content:m.content}));
+        const r=await sb.functions.invoke('plan',{body:{messages,catalog,context:_tripCtx}});
+        if(r&&r.data&&r.data.ok)res=r.data;
+      }
+    }catch(e){/* fall through to the local engine */}
+  }
   /* keep the three-dots "thinking" indicator up for a natural beat before replying */
-  const think=(res?450:900)+Math.random()*550;
+  const think=(res?450:820)+Math.random()*520;
   const waited=Date.now()-t0;if(waited<think)await _plSleep(think-waited);
   _planBusy=false;
-  let full,trekNames;
-  if(res){full=res.reply||'Here are some options:';trekNames=res.treks||[];}
-  else{const fb=plannerFallback(q);full=fb.reply;trekNames=fb.treks;}
-  const msg={role:'assistant',content:'',treks:[]};_planMsgs.push(msg);
-  await typePlanner(msg,full,trekNames);
+  let full,recs=[],brief='';
+  if(chit){full=chit;}
+  else if(res){full=res.reply||'Here are some options:';recs=plNormalizeRecs(res);brief=res.brief||plBrief(_tripCtx).join(' · ');}
+  else{const tf=plTravelFaq(ql);if(tf){full=tf;}else{const out=plRecommend(ql,_tripCtx);full=out.reply;recs=out.recs;brief=out.brief;}}
+  recs.forEach(r=>_planShown.add(r.name));
+  const msg={role:'assistant',content:'',recs:[],brief:''};_planMsgs.push(msg);
+  await typePlanner(msg,full,recs,brief);
 }
 /* local fallback so the planner still helps if the AI is unavailable: parse budget,
    duration, difficulty and region, then filter the real catalogue */
-/* Offline answers to common questions so the planner is still useful when the AI edge fn
-   isn't deployed. Returns a reply string, or null to fall through to trek search. */
-function plannerFaq(ql){
+/* Small talk that should always be answered instantly & locally (never worth an AI round-trip). */
+function plChitchat(ql){
   if(!ql)return null;
   const has=re=>re.test(ql);
-  if(has(/^(hi|hey|hello|yo|hola|namaste|namaskar|sup)\b/)||/^good\s*(morning|afternoon|evening|day)\b/.test(ql))
+  if((has(/^(hi|hey|hello|yo|hola|namaste|namaskar|sup)\b/)||/^good\s*(morning|afternoon|evening|day)\b/.test(ql))&&ql.length<=24)
     return "Hey! I'm your Tripomonk trip planner. Tell me your budget, how many days you have, who's coming, or the kind of trek you want — and I'll suggest the right ones.";
-  if(has(/\b(thanks|thank you|thankyou|thx|ty|great|awesome|cool|nice|ok(ay)?)\b/)&&ql.length<=18)
-    return "You're welcome! Want me to suggest a trek by your budget, dates or difficulty?";
+  if(has(/\b(thanks|thank you|thankyou|thx|ty|great|awesome|cool|nice|perfect|ok(ay)?)\b/)&&ql.length<=18)
+    return "You're welcome! Want me to refine these by budget, dates or difficulty — or shortlist something new?";
   if(has(/what can you do|who are you|how (do|does) (you|this|it) work|what do you do|^help\b|help me|what is this/))
-    return "I help you find the right Himalayan trek or tour. Tell me things like your budget (₹), number of days, group (solo/friends/family), fitness or difficulty, region, or a trek you already like — and I'll match real Tripomonk trips. You can also ask me about the best season, permits, fitness or packing.";
-  if(!/\b(recommend|suggest|show|find|book|which trek|best trek)\b/.test(ql)&&has(/best time|when (to|should|is best|is the best)|which (month|season)|good season|weather|climate|temperature|how cold|snowfall/))
-    return "Broadly, spring (Mar–Jun) and autumn (Sep–Nov) are the prime trekking windows; snow treks like Kedarkantha and Brahmatal shine Dec–Apr, and the monsoon (Jul–Aug) is mostly avoided in the Garhwal Himalaya. Tell me a trek and I'll be specific.";
+    return "I help you find the right Himalayan trek or tour. Tell me things like your budget (₹), number of days, group (solo/friends/family), fitness or difficulty, region, or a trek you already like — and I'll match real Tripomonk trips and explain why each fits. You can also ask me about the best season, permits, fitness or packing.";
+  if(has(/contact|call you|phone number|whatsapp|reach you|customer (care|support)|talk to (someone|human|team)/))
+    return "You can reach the Tripomonk team from Profile → Help & Support in the app. Meanwhile I can help you plan — what kind of trip are you after?";
+  return null;
+}
+/* Travel Q&A used only when the AI edge fn is unavailable (the AI handles these better when live). */
+function plTravelFaq(ql){
+  if(!ql)return null;
+  const has=re=>re.test(ql);
+  if(!/\b(recommend|suggest|show|find|book|which trek|best trek|pick|shortlist)\b/.test(ql)&&has(/best time|when (to|should|is best|is the best)|which (month|season)|good season|weather|climate|temperature|how cold|snowfall/))
+    return "Broadly, spring (Mar–Jun) and autumn (Sep–Nov) are the prime trekking windows; snow treks like Kedarkantha and Brahmatal shine Dec–Apr, and the monsoon (Jul–Aug) is mostly avoided in the Garhwal Himalaya. Tell me a month and I'll pick what's in season.";
   if(has(/permit|forest (fee|entry)|id proof|documents?|aadhaar|aadhar/))
     return "Most Uttarakhand treks need a forest entry permit and a valid government photo ID — Tripomonk arranges the permits as part of the trip. Ask me about a specific trek for its exact requirements.";
-  if(has(/how fit|fitness|training|prepare|acclimat|altitude sickness|how hard|difficulty|difficult|challenging/))
-    return "Fitness depends on the trek: easy ones suit first-timers with basic cardio, while moderate/difficult ones want a few weeks of walking or jogging beforehand. Open any trek to see your personal Trek Match %, or tell me your fitness and I'll suggest suitable options.";
+  if(has(/how fit|fitness|training|prepare|acclimat|altitude sickness|how hard|difficulty|difficult|challenging/)&&!/\b(recommend|suggest|show|find|which)\b/.test(ql))
+    return "Fitness depends on the trek: easy ones suit first-timers with basic cardio, while moderate/difficult ones want a few weeks of walking or jogging beforehand. Open any trek to see your personal Trek Match %, or tell me your fitness level and I'll suggest suitable options.";
   if(has(/what (to|should i) (pack|bring|carry)|packing|gear|equipment|shoes|clothes/))
     return "Essentials: sturdy trekking shoes, warm layers, a rain layer, headlamp, water bottle, sunscreen and a small daypack. Every Tripomonk trek page has a full packing list — tell me the trek for specifics.";
   if(has(/how (do i|to) book|booking|payment|pay\b|upi|refund|cancel|price includes|what.s included|inclusion/))
     return "You can book right in the app — pick a batch, add travellers and pay securely (UPI or card). Tell me a budget or dates and I'll shortlist treks you can book now.";
-  if(has(/contact|call you|phone|whatsapp|reach you|customer (care|support)|talk to (someone|human|team)/))
-    return "You can reach the Tripomonk team from Profile → Help & Support in the app. Meanwhile I can help you plan — what kind of trip are you after?";
-  if(has(/\b(solo|alone|safe|safety|women|woman|female|girls?)\b/)&&!/\d|₹|budget|day/.test(ql))
-    return "Tripomonk treks run in guided groups, which makes them well-suited to solo and first-time trekkers, including women. Share your dates or budget and I'll suggest good options.";
   return null;
 }
-function plannerFallback(q){
-  const ql=(q||'').toLowerCase().trim();
-  const faq=plannerFaq(ql);
-  if(faq)return {reply:faq,treks:[],followups:[]};
-  let budget=0;const bm=ql.match(/(?:₹|rs\.?|inr|under|below|budget|upto|up to)?\s*([0-9][0-9,]{1,})\s*(k)?/i);
-  if(bm){budget=parseInt(bm[1].replace(/[^0-9]/g,''),10)||0;if((bm[2]||/\b\d+\s*k\b/.test(ql))&&budget<1000)budget*=1000;}
-  const dm=ql.match(/(\d+)\s*[- ]?\s*day/);const days=dm?parseInt(dm[1],10):0;
-  let lvl='';if(/beginner|easy|parents|family|first[- ]?time|senior/.test(ql))lvl='Easy';else if(/very difficult|hard|tough|challeng|extreme/.test(ql))lvl='Difficult';else if(/moderate/.test(ql))lvl='Moderate';
-  let region='';['uttarakhand','himachal','kashmir','ladakh','sikkim','spiti'].forEach(r=>{if(ql.includes(r))region=r;});
-  /* Don't dump treks for greetings / small talk. Only search when there's real trip intent. */
-  const hasCriteria=!!(budget||days||lvl||region);
-  const intentWords=/(trek|tour|trip|travel|mountain|himalaya|camp|budget|cheap|expensive|price|₹|rs\b|inr|day|week|weekend|month|easy|hard|moder|difficult|beginner|family|parents|friend|solo|couple|honeymoon|group|adventure|snow|winter|summer|monsoon|autumn|spring|suggest|recommend|show|plan|option|match|valley|flower|glacier|lake|pass|peak|summit|manali|leh|rishikesh|dehradun|delhi|from\b)/i;
+/* ---- offline planner engine: understands requirements, scores fit, explains why ---- */
+const _PL_LVL={easy:1,moderate:2,difficult:3};
+const _MON_NAME={1:'January',2:'February',3:'March',4:'April',5:'May',6:'June',7:'July',8:'August',9:'September',10:'October',11:'November',12:'December'};
+const _MON_NUM={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12,january:1,february:2,march:3,april:4,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
+const _SEASON_MONTHS={winter:[12,1,2],summer:[4,5,6],monsoon:[7,8],spring:[3,4],autumn:[9,10,11]};
+const _REGION_MAP={uttarakhand:'uttarakhand',garhwal:'uttarakhand',kumaon:'uttarakhand',rishikesh:'uttarakhand',dehradun:'uttarakhand',himachal:'himachal',manali:'himachal',kasol:'himachal',dharamshala:'himachal',spiti:'spiti',kashmir:'kashmir',ladakh:'ladakh',leh:'ladakh',sikkim:'sikkim',kerala:'kerala',karnataka:'karnataka','tamil nadu':'tamil nadu',meghalaya:'meghalaya',goa:'goa'};
+/* which months a "best time" string covers, e.g. "Dec – Apr" or "Feb – May, Sep – Nov" */
+function plMonthsCovered(best){
+  const s=String(best||'').toLowerCase(),out=new Set();
+  s.split(/[,/]/).forEach(part=>{
+    const ms=[...part.matchAll(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/g)].map(m=>_MON_NUM[m[1]]);
+    if(ms.length===1)out.add(ms[0]);
+    else if(ms.length>=2){let i=ms[0];for(let k=0;k<12;k++){out.add(i);if(i===ms[1])break;i=i%12+1;}}
+  });
+  return out;
+}
+/* infer experience tags from a trip's name/region/season */
+function plTrekTags(t){
+  const s=((t.n||'')+' '+(t.region||'')+' '+(t.tag||'')).toLowerCase(),tags=new Set(),cov=plMonthsCovered(t.best);
+  if(/snow|winter|kedarkantha|brahmatal|kuari|chopta|dayara/.test(s)||cov.has(12)||cov.has(1)||cov.has(2))tags.add('snow');
+  if(/lake|tal\b|roopkund|kanda|prashar|deoria|pangong/.test(s))tags.add('lake');
+  if(/flower|valley of flowers/.test(s))tags.add('flowers');
+  if(/ladakh|spiti|monaster|kaza|leh|nubra|lamayuru/.test(s)){tags.add('spiritual');tags.add('offbeat');}
+  if(/kedarnath|temple|char dham|yamunotri|gangotri|badrinath|hemkund/.test(s))tags.add('spiritual');
+  if(/beach|goa|gokarna/.test(s))tags.add('beach');
+  if(/forest|shola|wildlife|national park|meghamalai|hornbill/.test(s))tags.add('wildlife');
+  tags.add(isTour(t)?'tour':'trek');
+  return tags;
+}
+/* pull structured requirements out of a message and MERGE into the running context */
+function plExtract(ql,ctx){
+  ctx.interests=ctx.interests||[];
+  const bm=ql.match(/(?:₹|rs\.?|inr|under|below|around|about|upto|up ?to|budget(?:\s*of)?)?\s*([0-9][0-9,]{2,})\s*(k)?/);
+  if(bm){let b=parseInt(bm[1].replace(/[^0-9]/g,''),10)||0;if((bm[2])&&b<1000)b*=1000;if(b>=1000)ctx.budget=b;}
+  const km=ql.match(/\b(\d{1,3})\s*k\b/);if(km){const k=parseInt(km[1],10);if(k>=1&&k<=500)ctx.budget=k*1000;}
+  if(/\b(cheap|budget|affordable|low[- ]?cost|inexpensive|tight budget)\b/.test(ql)&&!ctx.budget)ctx.budget=8000;
+  const dm=ql.match(/(\d+)\s*[- ]?\s*(days?|nights?|din)/);
+  if(dm){let d=parseInt(dm[1],10);if(/night/.test(dm[2]))d+=1;if(d>0&&d<40)ctx.days=d;}
+  else if(/\bweekend\b/.test(ql))ctx.days=2;else if(/\b(a|one)\s*week\b/.test(ql))ctx.days=7;
+  if(/\bsolo|alone|myself|by ?myself\b/.test(ql))ctx.group='solo';
+  else if(/\bcouple|partner|girlfriend|boyfriend|wife|husband|honeymoon\b/.test(ql))ctx.group='couple';
+  else if(/\bfamily|parents|mom|dad|mother|father|kids|children|elderly\b/.test(ql))ctx.group='family';
+  else if(/\bfriends|buddies|gang|colleagues\b/.test(ql))ctx.group='friends';
+  const gp=ql.match(/\b(\d+)\s*(people|persons?|pax|of us|members|friends)\b/);if(gp)ctx.groupSize=parseInt(gp[1],10);
+  if(/beginner|easy|first[- ]?time|no experience|not fit|low fitness|senior|parents|elderly/.test(ql))ctx.lvl='Easy';
+  else if(/very (difficult|hard|tough)|hard\b|tough|challeng|strenuous|extreme|expert|experienced|fit\b/.test(ql))ctx.lvl='Difficult';
+  else if(/moderate|medium|intermediate/.test(ql))ctx.lvl='Moderate';
+  Object.keys(_REGION_MAP).forEach(k=>{if(ql.includes(k))ctx.region=_REGION_MAP[k];});
+  Object.keys(_MON_NUM).forEach(m=>{if(m.length>3&&ql.includes(m))ctx.month=_MON_NUM[m];});
+  const sm=ql.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/);if(sm)ctx.month=_MON_NUM[sm[1]];
+  if(/\bwinter\b/.test(ql))ctx.season='winter';else if(/\bsummer\b/.test(ql))ctx.season='summer';
+  else if(/\bmonsoon|rainy\b/.test(ql))ctx.season='monsoon';else if(/\bspring\b/.test(ql))ctx.season='spring';
+  else if(/\bautumn|fall\b/.test(ql))ctx.season='autumn';
+  [['snow',/snow|winter trek/],['lake',/lake|tal\b/],['flowers',/flower/],['spiritual',/spiritual|monaster|temple|kedarnath|char dham/],['camping',/camp(ing|site)?/],['photography',/photo/],['offbeat',/offbeat|remote|less crowd|hidden/],['beach',/beach/],['wildlife',/wildlife|forest|birds/],['adventure',/adventure|thrill|adrenaline/]].forEach(([k,re])=>{if(re.test(ql)&&!ctx.interests.includes(k))ctx.interests.push(k);});
+  const fc=ql.match(/\bfrom\s+([a-z]{3,})/);if(fc)ctx.fromCity=fc[1];
+  if(/road ?trip|self ?drive|bike trip|\btour\b|by road/.test(ql))ctx.ptype='tour';
+  else if(/\btrek(king)?\b/.test(ql))ctx.ptype='trek';
+  return ctx;
+}
+/* refinement verbs adjust the running context ("cheaper", "easier", "shorter", …) */
+function plRefine(ql,ctx){
+  if(/\b(cheaper|less expensive|lower budget|too expensive|more affordable)\b/.test(ql)){const base=ctx.budget||_planLastMin||12000;ctx.budget=Math.max(3000,Math.round(base*0.8));}
+  if(/\b(easier|too hard|less difficult|simpler)\b/.test(ql))ctx.lvl='Easy';
+  if(/\b(harder|more challeng|tougher|more difficult)\b/.test(ql))ctx.lvl='Difficult';
+  if(/\b(shorter|fewer days|quick(er)?)\b/.test(ql)&&ctx.days)ctx.days=Math.max(1,ctx.days-2);
+  if(/\b(longer|more days|extend)\b/.test(ql)&&ctx.days)ctx.days=ctx.days+2;
+  return ctx;
+}
+/* score a trip's fit against the context, returning the score + human "why it fits" reasons */
+function plScore(t,ctx){
+  let s=0;const why=[],price=t.price||0;
+  if(ctx.budget){if(price<=ctx.budget){s+=2.2;why.push('within your ₹'+ctx.budget.toLocaleString('en-IN'));}else if(price<=ctx.budget*1.12){s+=0.5;why.push('a touch over budget');}else s-=3;}
+  if(ctx.days){const d=Math.abs((t.days||0)-ctx.days);if(d===0){s+=2;why.push(t.days+'-day trip');}else if(d===1)s+=1.2;else if(d<=2)s+=0.4;else s-=0.5*(d-2);}
+  if(ctx.lvl){const u=_PL_LVL[ctx.lvl.toLowerCase()]||2,tv=_PL_LVL[(t.lvl||'moderate').toLowerCase()]||2;if(u===tv){s+=2;why.push(t.lvl+' — suits you');}else if(tv>u)s-=1.6*(tv-u);else s-=0.4*(u-tv);}
+  if(ctx.region){const inR=((t.region||'')+' '+(t.n||'')).toLowerCase().includes(ctx.region);if(inR){s+=3;why.push('in '+ctx.region.replace(/\b\w/g,c=>c.toUpperCase()));}else s-=1.6;}
+  const tags=plTrekTags(t);
+  (ctx.interests||[]).forEach(k=>{if(tags.has(k)){s+=1.4;why.push(k+' trip');}});
+  if(ctx.month){const cov=plMonthsCovered(t.best);if(cov.has(ctx.month)){s+=1.6;why.push('in season in '+_MON_NAME[ctx.month]);}else if(cov.size)s-=0.9;}
+  else if(ctx.season){const cov=plMonthsCovered(t.best);if((_SEASON_MONTHS[ctx.season]||[]).some(m=>cov.has(m))){s+=1;why.push('good in '+ctx.season);}}
+  if(ctx.ptype==='tour'){if(tags.has('tour'))s+=1.5;else s-=1.4;}
+  else if(ctx.ptype==='trek'&&tags.has('trek'))s+=0.6;
+  if(ctx.group==='family'&&!ctx.lvl){const tv=_PL_LVL[(t.lvl||'moderate').toLowerCase()]||2;if(tv>=3)s-=1.2;else if(tv===1)s+=0.6;}
+  if(t.pop)s+=0.3;if(t.feat)s+=0.2;
+  return {score:s,why};
+}
+/* short summary of what we understood, shown as a chip above the picks */
+function plBrief(ctx){
+  const p=[];
+  if(ctx.days)p.push(ctx.days+(ctx.days>1?' days':' day'));
+  if(ctx.budget)p.push('~₹'+ctx.budget.toLocaleString('en-IN'));
+  if(ctx.lvl)p.push(ctx.lvl.toLowerCase());
+  if(ctx.group)p.push(ctx.group);
+  if(ctx.region)p.push(ctx.region.replace(/\b\w/g,c=>c.toUpperCase()));
+  if(ctx.month)p.push(_MON_NAME[ctx.month]);else if(ctx.season)p.push(ctx.season);
+  (ctx.interests||[]).forEach(k=>{if(!p.includes(k))p.push(k);});
+  return p;
+}
+function plFollowup(ctx){
+  if(!ctx.budget)return "What's your rough budget per person?";
+  if(!ctx.days)return "How many days do you have?";
+  if(!ctx.group)return "And who's coming — solo, a couple, friends or family?";
+  if(!ctx.month&&!ctx.season)return "Which month are you thinking? That changes what's in season.";
+  return "";
+}
+/* the planner brain: understand → score → recommend, with realistic alternatives */
+function plRecommend(ql,ctx){
+  const cap=s=>String(s||'').replace(/\b\w/g,c=>c.toUpperCase());
+  const other=/\b(other|another|different|something else|more options|anything else|next|else)\b/.test(ql);
   const nameHit=treks.some(t=>{const n=String(t.n||'').toLowerCase();return n.length>3&&ql.includes(n);});
-  if(!hasCriteria && !nameHit && !intentWords.test(ql)){
-    return {reply:"I'm your Tripomonk trek & tour planner, so that's a little outside what I can answer here — but I can suggest trips by budget, days, difficulty, region or group, and answer things like best season, permits, fitness and packing. What would you like to plan?",treks:[],followups:[]};
+  const intent=nameHit||/(trek|tour|trip|travel|mountain|himalaya|camp|suggest|recommend|show|find|plan|option|which|snow|lake|flower|adventure|budget|day|week|₹|region|manali|leh|rishikesh|ladakh|spiti|honeymoon)/i.test(ql);
+  const big=['budget','days','group','region'].filter(k=>ctx[k]!=null).length+((ctx.month||ctx.season)?1:0);
+  const anyKnown=big>0||(ctx.interests&&ctx.interests.length)||!!ctx.ptype||!!ctx.lvl;
+  if(!anyKnown&&!intent){
+    return {reply:"I'm your Tripomonk trek & tour planner. Tell me a couple of things — your budget (₹), how many days, who's coming, a region, or the vibe (snow, lakes, first-timer, road trip) — and I'll build a shortlist and explain why each fits. What are you thinking?",recs:[],brief:''};
   }
-  let list=treks.filter(t=>!t.soon);
-  if(budget)list=list.filter(t=>(t.price||0)<=budget*1.05);
-  if(days)list=list.filter(t=>Math.abs((t.days||0)-days)<=1);
-  if(lvl)list=list.filter(t=>(t.lvl||'')===lvl);
-  if(region)list=list.filter(t=>((t.region||'')+' '+(t.n||'')).toLowerCase().includes(region));
-  list=list.sort((a,b)=>(a.price||0)-(b.price||0)).slice(0,4);
-  let reply;
-  if(list.length){reply='Here are some good matches'+(budget?` under ₹${budget.toLocaleString('en-IN')}`:'')+(lvl?` · ${lvl}`:'')+(days?` · ~${days} days`:'')+':';}
-  else{reply="I couldn't find an exact match — try a higher budget or different dates. Meanwhile, here are some popular picks:";list=treks.filter(t=>!t.soon&&t.pop).slice(0,4);}
-  return {reply,treks:list.map(t=>t.n),followups:list.length?['Cheaper options','Easier treks','Longer trips']:['Easy treks','Under ₹10,000','Show all treks']};
+  const pool=treks.filter(t=>!t.soon);
+  let scored=pool.map(t=>{const r=plScore(t,ctx);return {t,score:r.score,why:r.why};});
+  if(other)scored=scored.filter(x=>!_planShown.has(x.t.n));
+  scored.sort((a,b)=>b.score-a.score);
+  const brief=plBrief(ctx).join(' · ');
+  const phrase=plBrief(ctx).join(', ')||'your trip';
+  let recsArr,reply,mode='ok';
+  if(ctx.budget&&!scored.some(x=>(x.t.price||0)<=ctx.budget)){
+    /* nothing within budget → closest value picks, honestly flagged */
+    const cheapest=[...scored].sort((a,b)=>(a.t.price||0)-(b.t.price||0)).slice(0,3);
+    const c0=cheapest[0];const over=c0?Math.max(0,(c0.t.price||0)-ctx.budget):0;
+    recsArr=cheapest;mode='alt';
+    reply=`Nothing sits right under ₹${ctx.budget.toLocaleString('en-IN')}${ctx.days?` for ${ctx.days} days`:''} at the moment — the closest is ${c0?c0.t.n:'this one'} at ₹${c0?Number(c0.t.price).toLocaleString('en-IN'):''} (about ₹${over.toLocaleString('en-IN')} more). If you can stretch a little, these give the best value:`;
+  }else if(ctx.region&&scored[0]&&scored[0].score<=0){
+    /* region we don't serve → recommend the best fit elsewhere instead of a dead end */
+    const alt=pool.map(t=>{const r=plScore(t,Object.assign({},ctx,{region:null}));return {t,score:r.score,why:r.why};}).sort((a,b)=>b.score-a.score).slice(0,3);
+    recsArr=alt;mode='alt';
+    reply=`We don't run trips in ${cap(ctx.region)} yet — but going by the rest of what you want, here's what I'd recommend instead:`;
+  }else if(!anyKnown){
+    recsArr=pool.filter(t=>t.pop).slice(0,3).map(t=>({t,why:[]}));
+    reply="Here are a few of our most-loved trips to start with — tell me your budget or dates and I'll tailor it:";
+  }else{
+    recsArr=scored.slice(0,3);
+    reply=`For ${phrase}, here ${recsArr.length>1?'are':'is'} my top ${recsArr.length>1?'picks':'pick'}:`;
+  }
+  const recs=(recsArr||[]).slice(0,3).map(x=>({name:x.t.n,why:(x.why||[]).slice(0,2).join(' · ')}));
+  if(mode==='ok'&&anyKnown&&big<2){const fu=plFollowup(ctx);if(fu)reply+=' '+fu;}
+  if(!recs.length)reply="I couldn't find a good match for that. Tell me your budget and rough dates and I'll pull the closest options.";
+  _planLastMin=recs.reduce((m,r)=>{const t=treks.find(x=>x.n===r.name);return (t&&t.price&&(!m||t.price<m))?t.price:m;},0);
+  return {reply,recs,brief};
 }
 async function renderNotifications(){
   const box=document.getElementById('notiList');
