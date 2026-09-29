@@ -27,7 +27,7 @@
     background:radial-gradient(1200px 700px at 78% -10%, #123163 0%, transparent 55%),
                radial-gradient(900px 600px at 10% 8%, #10254a 0%, transparent 50%),
                linear-gradient(180deg,#0b1830 0%, #0a1526 60%, #081120 100%);
-    min-height:100vh;min-height:100dvh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+    height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;-webkit-font-smoothing:antialiased}
   .msr{font-family:'Material Symbols Rounded';font-weight:400;font-style:normal;line-height:1;letter-spacing:normal;display:inline-block;vertical-align:middle;-webkit-font-feature-settings:'liga';font-feature-settings:'liga'}
   /* faded mountain silhouette at the base */
   .peaks{position:fixed;left:0;right:0;bottom:0;width:100%;height:38vh;pointer-events:none;z-index:0;opacity:.5;
@@ -37,17 +37,19 @@
     animation:fall linear infinite}
   @keyframes fall{0%{opacity:0;transform:translate(0,-16px) rotate(0)}10%{opacity:.5}90%{opacity:.5}100%{opacity:0;transform:translate(24px,102vh) rotate(300deg)}}
 
-  .wrap{position:relative;z-index:2;max-width:560px;margin:0 auto;padding:22px 18px calc(28px + env(safe-area-inset-bottom))}
-  .brand{display:flex;align-items:center;gap:11px;justify-content:center;margin:8px 0 20px}
+  .wrap{position:relative;z-index:2;width:100%;max-width:560px;margin:0 auto;flex:1;min-height:0;display:flex;flex-direction:column;padding:18px 16px 0}
+  .brand{flex:none;display:flex;align-items:center;gap:11px;justify-content:center;margin:6px 0 16px}
   .mark{width:40px;height:40px;border-radius:11px;display:block;box-shadow:0 8px 22px -10px #2f6bffcc}
   .brand b{font-size:19px;font-weight:800;letter-spacing:-.01em}
   .brand small{display:block;font-size:10.5px;color:var(--yellow);font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin-top:1px}
 
-  .card{background:var(--card);border:1px solid var(--stroke);border-radius:24px;padding:22px 20px 20px;backdrop-filter:blur(18px);
+  .card{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;background:var(--card);border:1px solid var(--stroke);border-radius:24px 24px 0 0;backdrop-filter:blur(18px);
     box-shadow:0 40px 90px -50px #000, inset 0 1px 0 rgba(255,255,255,.05)}
+  .card-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 20px 8px}
+  .card-body::-webkit-scrollbar{width:0}
 
   /* progress */
-  .prog{margin:2px 2px 18px}
+  .prog{flex:none;padding:18px 20px 0}
   .prog-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px}
   .prog-step{font-size:12px;font-weight:700;color:var(--muted)}
   .prog-lbl{font-size:12px;font-weight:600;color:var(--blue)}
@@ -116,7 +118,7 @@
   .perks b{font-size:14px;font-weight:700;display:block}
   .perks small{font-size:12px;color:var(--muted)}
 
-  .nav{display:flex;gap:10px;margin-top:20px}
+  .nav{flex:none;display:flex;gap:10px;padding:13px 18px calc(13px + env(safe-area-inset-bottom));border-top:1px solid var(--stroke);background:rgba(10,20,36,.55)}
   .btn{flex:1;border:0;border-radius:14px;padding:15px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .12s,filter .16s,opacity .16s}
   .btn:active{transform:scale(.985)}
   .btn.primary{background:linear-gradient(135deg,#2f6bff,#1246d8);color:#fff;box-shadow:0 14px 30px -14px #2f6bffcc}
@@ -163,6 +165,7 @@
       <div class="prog-bar"><div class="prog-fill" id="pFill"></div></div>
     </div>
 
+    <div class="card-body">
     <!-- INTRO -->
     <div class="step on" id="intro">
       <p class="eyebrow">Join the community</p>
@@ -173,7 +176,6 @@
         <li><div class="pi"><span class="msr">verified</span></div><div><b>Get a verified profile</b><small>Approved leaders are featured as the trusted face of their treks.</small></div></li>
         <li><div class="pi"><span class="msr">payments</span></div><div><b>Earn doing what you love</b><small>Fair pay per departure, with more trips as you build your track record.</small></div></li>
       </ul>
-      <div class="nav"><button class="btn primary" onclick="start()">Start application <span class="msr">arrow_forward</span></button></div>
       <p class="foot"><span class="msr">schedule</span> Takes about 4 minutes · Your details stay private</p>
     </div>
 
@@ -268,12 +270,6 @@
       </div>
     </div>
 
-    <!-- NAV (hidden on intro & done) -->
-    <div class="nav" id="nav" hidden>
-      <button class="btn ghost" id="backBtn" onclick="prev()"><span class="msr">arrow_back</span> Back</button>
-      <button class="btn primary" id="nextBtn" onclick="next()">Continue <span class="msr">arrow_forward</span></button>
-    </div>
-
     <!-- DONE -->
     <div class="step" id="done">
       <div class="done-badge"><span class="msr">check</span></div>
@@ -288,9 +284,9 @@
     </div>
 
     <div id="submitErr" class="err-msg" style="text-align:center;margin-top:12px"></div>
+    </div><!-- /.card-body -->
+    <div class="nav" id="nav" hidden></div>
   </div>
-
-  <p class="foot" style="margin-top:16px">© Tripomonk · Guided Himalayan treks</p>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -307,19 +303,27 @@ const LABELS=['About you','Your experience','Credentials','A little more'];
 let cur=-1; // -1 = intro
 let photoUrl='', docs=[];
 
-function show(id){document.querySelectorAll('.step').forEach(e=>e.classList.remove('on'));$(id).classList.add('on');window.scrollTo({top:0,behavior:'smooth'});}
+function show(id){document.querySelectorAll('.step').forEach(e=>e.classList.remove('on'));$(id).classList.add('on');const cb=document.querySelector('.card-body');if(cb)cb.scrollTo({top:0,behavior:'smooth'});}
+/* the action bar is pinned to the bottom; its buttons change per state */
+function setFooter(mode){
+  const nav=$('nav');
+  if(mode==='done'){nav.hidden=true;return;}
+  nav.hidden=false;
+  if(mode==='intro'){nav.innerHTML='<button class="btn primary" onclick="start()">Start application <span class="msr">arrow_forward</span></button>';return;}
+  const last=cur===STEPS.length-1;
+  nav.innerHTML='<button class="btn ghost" id="backBtn" onclick="prev()"><span class="msr">arrow_back</span> '+(cur===0?'Intro':'Back')+'</button>'
+    +'<button class="btn primary" id="nextBtn" onclick="next()">'+(last?'Submit application <span class="msr">send</span>':'Continue <span class="msr">arrow_forward</span>')+'</button>';
+}
 function start(){cur=0;paint();}
 function paint(){
   show(STEPS[cur]);
-  $('prog').hidden=false;$('nav').hidden=false;
+  $('prog').hidden=false;
   $('pStep').textContent='Step '+(cur+1)+' of '+STEPS.length;
   $('pLbl').textContent=LABELS[cur];
   $('pFill').style.width=((cur+1)/STEPS.length*100)+'%';
-  $('backBtn').innerHTML=cur===0?'<span class="msr">arrow_back</span> Intro':'<span class="msr">arrow_back</span> Back';
-  const last=cur===STEPS.length-1;
-  $('nextBtn').innerHTML=last?'Submit application <span class="msr">send</span>':'Continue <span class="msr">arrow_forward</span>';
+  setFooter('step');
 }
-function prev(){if(cur>0){cur--;paint();}else{cur=-1;$('prog').hidden=true;$('nav').hidden=true;show('intro');}}
+function prev(){if(cur>0){cur--;paint();}else{cur=-1;$('prog').hidden=true;show('intro');setFooter('intro');}}
 function tgl(el){el.classList.toggle('on');}
 function tglIntl(el){el.classList.toggle('on');$('intlBox').hidden=!el.classList.contains('on');}
 
@@ -391,12 +395,13 @@ async function submit(){
   try{
     const {error}=await sb.from('guide_applications').insert(row);
     if(error)throw error;
-    $('prog').hidden=true;$('nav').hidden=true;show('done');
+    $('prog').hidden=true;show('done');setFooter('done');
   }catch(e){
     btn.disabled=false;btn.innerHTML='Submit application <span class="msr">send</span>';
     const em=$('submitErr');em.textContent='Could not submit: '+(e.message||e)+(/(relation|column|policy|permission)/i.test(e.message||'')?' — run SQL-guide-apply-link.sql':'');em.style.display='block';
   }
 }
+setFooter('intro');   /* pin the Start button to the bottom bar on load */
 </script>
 </body>
 </html>
