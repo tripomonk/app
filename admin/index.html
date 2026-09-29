@@ -1197,8 +1197,36 @@ function guideRosterView(id){
     <div class="sec-t">Experience</div>${row('Years guiding',g.years)}${row('Treks led',g.treks_led)}${row('Regions',g.region||(app&&app.regions))}${row('Languages',g.languages||(app&&app.languages))}${row('Day rate',g.day_rate?('₹'+g.day_rate):(app&&app.day_rate?'₹'+app.day_rate:''))}
     <div class="sec-t">Skills &amp; safety</div>${row('Certifications',g.certifications||(app&&app.certifications))}${app?row('First-aid trained',app.first_aid?'Yes':'No'):''}${row('Highest altitude',app&&app.max_altitude)}
     <div class="sec-t">About</div>${row('Bio',g.bio||(app&&app.about))}${row('Instagram',g.instagram||(app&&app.instagram))}${row('Website',app&&app.website)}
+    <div class="sec-t">Trips, earnings &amp; reviews</div><div id="gvFull" class="muted" style="font-size:12.5px;margin:2px 0 8px">Loading…</div>
     <div class="sec-t">Actions</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">${telNum?`<a class="btn2" style="text-decoration:none" href="tel:${esc(telNum)}">Call</a><a class="btn2" style="text-decoration:none" href="https://wa.me/${esc(waDigits)}" target="_blank" rel="noopener">WhatsApp</a>`:''}${email?`<a class="btn2" style="text-decoration:none" href="mailto:${esc(email)}">Email</a>`:''}<button class="btn2 danger" onclick="guideDel('${jsv(g.id)}')">Remove guide</button></div>`;}
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${telNum?`<a class="btn2" style="text-decoration:none" href="tel:${esc(telNum)}">Call</a><a class="btn2" style="text-decoration:none" href="https://wa.me/${esc(waDigits)}" target="_blank" rel="noopener">WhatsApp</a>`:''}${email?`<a class="btn2" style="text-decoration:none" href="mailto:${esc(email)}">Email</a>`:''}<button class="btn2 danger" onclick="guideDel('${jsv(g.id)}')">Remove guide</button></div>`;
+  guideRosterFull(g.id);}
+async function guideRosterFull(gid){
+  const el=$('#gvFull');if(!el)return;
+  let d=null;try{const r=await adminCall('guide_full',{guide_id:gid});if(r&&r.treks!==undefined)d=r;}catch(e){}
+  if(!d){el.innerHTML='Deploy the updated <b>admin</b> edge function to see trips &amp; earnings.';return;}
+  const treks=d.treks||[],bookings=d.bookings||[],payments=d.payments||[],earned=d.totalEarned||0;
+  const strip=n=>String(n||'').replace(' (Activity)','');
+  const bkFor=nm=>bookings.filter(b=>strip(b.trek)===nm);
+  let reviews=[];try{const names=treks.map(t=>t.name).filter(Boolean);if(names.length){const q=await qtbl('reviews',b=>b.in('trek',names).limit(200));reviews=q.rows||[];}}catch(e){}
+  const rAvg=reviews.length?(reviews.reduce((s,r)=>s+(Number(r.rating)||5),0)/reviews.length):0;
+  const ev=(t,s)=>`<div class="ua-ev"><span class="d"></span><div>${t}<small>${s}</small></div></div>`;
+  const trips=treks.length?treks.map(t=>{const bs=bkFor(t.name);const pax=bs.reduce((s,b)=>s+(Number(b.pax)||1),0);const ci=bs.filter(b=>b.checked_in).reduce((s,b)=>s+(Number(b.pax)||1),0);return ev(esc(t.name),esc(t.region||'')+' · '+pax+' booked · '+ci+' checked in');}).join(''):'<div class="muted" style="font-size:12px">No treks assigned. Assign one in Treks → edit → Guide.</div>';
+  const pays=payments.length?payments.map(p=>ev('₹'+Number(p.amount||0).toLocaleString('en-IN')+' <span class="tag '+(/pending/i.test(p.status||'')?'warn':'ok')+'">'+esc(p.status||'paid')+'</span> <span class="rm-x" onclick="guidePayDel(\''+jsv(p.id)+'\',\''+jsv(gid)+'\')">×</span>',esc(p.trek||p.period||'Payout')+(p.created_at?' · '+new Date(p.created_at).toLocaleDateString('en-IN'):'')+(p.note?' · '+esc(p.note):''))).join(''):'<div class="muted" style="font-size:12px">No payments recorded.</div>';
+  el.innerHTML=`<div style="font-weight:700;color:var(--ink);margin:6px 0 4px">Assigned trips (${treks.length})</div>${trips}
+    <div style="font-weight:700;color:var(--ink);margin:12px 0 4px">Earnings — paid ₹${Number(earned).toLocaleString('en-IN')}</div>${pays}
+    <button class="btn2 sm pri" style="margin:8px 0" onclick="guidePayAdd('${jsv(gid)}')">+ Record payment</button>
+    <div style="font-weight:700;color:var(--ink);margin:12px 0 4px">Reviews (${reviews.length}${reviews.length?' · '+rAvg.toFixed(1)+'★':''})</div>${reviews.length?reviews.slice(0,5).map(r=>ev(esc(r.author||'Trekker')+' — '+'★'.repeat(r.rating||5),esc(r.trek||'')+' · '+esc((r.body||'').slice(0,80)))).join(''):'<div class="muted" style="font-size:12px">No reviews on their treks yet.</div>'}`;
+}
+function guidePayAdd(gid){
+  modal(`<h3>Record guide payment</h3>
+    <div class="fld"><label>Amount (₹) *</label><input id="gpAmt" type="number" placeholder="e.g. 8000"/></div>
+    <div class="fld"><label>For (trek / period)</label><input id="gpTrek" placeholder="e.g. Kedarkantha · May batch"/></div>
+    <div class="fld"><label>Status</label><select id="gpSt"><option value="paid">paid</option><option value="pending">pending</option></select></div>
+    <div class="fld"><label>Note</label><input id="gpNote" placeholder="optional"/></div>
+    <div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="gpGo">Save</button></div>`);
+  $('#gpGo').onclick=async()=>{const amt=parseFloat($('#gpAmt').value)||0;if(amt<=0){toast('Enter an amount');return;}closeOv();const r=await adminCall('save_guide_payment',{payment:{guide_id:gid,amount:amt,trek:$('#gpTrek').value.trim(),status:$('#gpSt').value,note:$('#gpNote').value.trim()}});toast(r&&r.error?('Failed: '+r.error+(/relation|column/i.test(r.error)?' — run SQL-guide-earnings.sql':'')):'Payment recorded ✓');if(!(r&&r.error))guideRosterFull(gid);};}
+function guidePayDel(id,gid){confirmDo('Delete this payment?',async()=>{const r=await adminCall('delete_guide_payment',{id});toast(r&&r.error?('Failed: '+r.error):'Deleted');if(!(r&&r.error))guideRosterFull(gid);});}
 async function guideSet(id,st){
   const r=await adminCall('set_guide_app_status',{id,status:st});
   if(r&&r.error){toast('Failed: '+r.error+(/relation|column/i.test(r.error)?' — run SQL-add-guide-applications.sql':''));return;}
