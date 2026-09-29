@@ -1104,7 +1104,10 @@ async function guideAppList(){
   const q=await qtbl('guide_applications',b=>b.order('created_at',{ascending:false}).limit(500));
   return q.rows||[];
 }
-async function guideRosterList(){const q=await qtbl('guides',b=>b.limit(200));return q.rows||[];}
+async function guideRosterList(){
+  try{const r=await adminCall('list_guides',{});if(r&&Array.isArray(r.rows))return r.rows;}catch(e){}
+  const q=await qtbl('guides',b=>b.limit(200));return q.rows||[];   /* fallback: no private contact */
+}
 async function renderGuides(){
   _guideApps=await guideAppList();
   _guideRoster=await guideRosterList();
@@ -1170,8 +1173,8 @@ function guideRosterView(id){
     ||_guideApps.find(a=>String(a.full_name||'').toLowerCase()===String(g.name||'').toLowerCase());
   const d=$('#drawer'),body=$('#drawerBody');if(!d||!body)return;d.classList.add('show');
   const row=(l,v)=>(v||v===0)?`<div class="ua-ev"><span class="d"></span><div>${esc(String(v))}<small>${esc(l)}</small></div></div>`:'';
-  const phone=(app&&(app.phone||app.whatsapp))||'';
-  const email=(app&&app.email)||'';
+  const phone=(app&&(app.phone||app.whatsapp))||g.phone||'';
+  const email=(app&&app.email)||g.email||'';
   const loc=gLoc(g)||(app?[app.city,app.state].filter(Boolean).join(', '):'');
   const ph=String(phone);const telNum=ph.replace(/[^0-9+]/g,'');
   let waDigits=ph.replace(/[^0-9]/g,'').replace(/^0+/,'');if(waDigits.length===10)waDigits='91'+waDigits;
@@ -1190,13 +1193,14 @@ async function guideSet(id,st){
 }
 function guideAdd(){modal(`<h3>Add guide</h3>
   <div class="fld"><label>Name *</label><input id="gdN"/></div>
+  <div class="fld two"><div><label>Phone / number</label><input id="gdPhone" placeholder="10-digit mobile"/></div><div><label>Email</label><input id="gdEmail" placeholder="name@email.com"/></div></div>
   <div class="fld two"><div><label>Years guiding</label><input id="gdY" placeholder="8"/></div><div><label>Treks led</label><input id="gdT" placeholder="200+"/></div></div>
   <div class="fld two"><div><label>City</label><input id="gdCity"/></div><div><label>State</label><input id="gdState" placeholder="Uttarakhand"/></div></div>
   <div class="fld"><label>Languages</label><input id="gdLang" placeholder="Hindi, English, Garhwali"/></div>
   <div class="fld"><label>Certifications</label><input id="gdCert" placeholder="NIM Basic Mountaineering, WFR"/></div>
-  <p class="desc" style="margin:2px 0 0">Number &amp; email are captured only when a guide applies and you approve them (they're kept private, not on the public roster).</p>
+  <p class="desc" style="margin:2px 0 0">Contact details are kept <b>private</b> — stored separately and shown only here in the admin panel, never on the public trek pages.</p>
   <div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="gdGo">Add</button></div>`);
-  $('#gdGo').onclick=async()=>{const name=$('#gdN').value.trim();if(!name){toast('Name required');return;}const years=$('#gdY').value.trim(),treks=$('#gdT').value.trim();closeOv();const r=await adminCall('save_guide',{guide:{name,years,treks_led:treks,city:$('#gdCity').value.trim(),state:$('#gdState').value.trim(),languages:$('#gdLang').value.trim(),certifications:$('#gdCert').value.trim(),experience:[years?years+' yrs':'',treks?treks+' treks':''].filter(Boolean).join(', ')}});toast(r&&r.error?('Failed: '+r.error):'Guide added');if(!(r&&r.error))guideReload();};}
+  $('#gdGo').onclick=async()=>{const name=$('#gdN').value.trim();if(!name){toast('Name required');return;}const years=$('#gdY').value.trim(),treks=$('#gdT').value.trim();closeOv();const r=await adminCall('save_guide',{guide:{name,phone:$('#gdPhone').value.trim(),email:$('#gdEmail').value.trim(),years,treks_led:treks,city:$('#gdCity').value.trim(),state:$('#gdState').value.trim(),languages:$('#gdLang').value.trim(),certifications:$('#gdCert').value.trim(),experience:[years?years+' yrs':'',treks?treks+' treks':''].filter(Boolean).join(', ')}});toast(r&&r.error?('Failed: '+r.error):'Guide added');if(!(r&&r.error))guideReload();};}
 function guideDel(id){confirmDo('Remove this guide?',async()=>{const r=await adminCall('delete_guide',{id});toast(r&&r.error?('Failed: '+r.error):'Removed');if(!(r&&r.error)){closeOv();guideReload();}});}
 /* STAFF */
 async function renderStaff(){const {rows,error}=await qtbl('staff',b=>b.limit(200));
