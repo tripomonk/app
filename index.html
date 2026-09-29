@@ -3343,6 +3343,8 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .pl-typing span{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:plt 1s infinite}
   .pl-typing span:nth-child(2){animation-delay:.15s}.pl-typing span:nth-child(3){animation-delay:.3s}
   @keyframes plt{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+  .pl-caret{display:inline-block;width:2px;height:1.05em;background:currentColor;margin-left:2px;vertical-align:-2px;opacity:.85;animation:plcaret 1s steps(1) infinite}
+  @keyframes plcaret{50%{opacity:0}}
   .pl-cards{display:flex;flex-direction:column;gap:8px}
   .pl-card{display:flex;gap:11px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:9px;cursor:pointer;align-items:center}
   .pl-card:active{transform:scale(.99)}

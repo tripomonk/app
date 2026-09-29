@@ -6503,7 +6503,7 @@ function plannerCard(t){
 function paintPlanner(){
   const chat=document.getElementById('plannerChat');if(!chat)return;
   let html=_planMsgs.map(m=>{
-    const bubble=`<div class="pl-row pl-row-${m.role}"><div class="pl-msg pl-${m.role}">${esc(m.content)}</div></div>`;
+    const bubble=`<div class="pl-row pl-row-${m.role}"><div class="pl-msg pl-${m.role}">${esc(m.content)}${m._typing?'<span class="pl-caret"></span>':''}</div></div>`;
     let cards='';
     if(m.treks&&m.treks.length){
       const cs=m.treks.map(nm=>{const t=treks.find(x=>x.n===nm)||treks.find(x=>String(x.n).toLowerCase()===String(nm).toLowerCase());return t?plannerCard(t):'';}).filter(Boolean).join('');
@@ -6516,12 +6516,30 @@ function paintPlanner(){
   chat.scrollTop=chat.scrollHeight;
 }
 function plannerChip(text){const inp=document.getElementById('plannerInput');if(inp)inp.value=text;sendPlan();}
+let _planTyping=false;
+const _plSleep=ms=>new Promise(r=>setTimeout(r,ms));
+/* reveal the assistant reply word-by-word (with a blinking caret) so it reads like a
+   real AI answering; the trek cards pop in only after the text finishes. */
+async function typePlanner(msg,full,trekNames){
+  _planTyping=true;msg._typing=true;msg.content='';
+  const parts=String(full||'').split(/(\s+)/);   /* keep whitespace tokens */
+  let i=0;
+  while(i<parts.length){
+    i=Math.min(parts.length,i+2);                /* ~2 words per tick */
+    msg.content=parts.slice(0,i).join('');
+    paintPlanner();
+    await _plSleep(24+Math.random()*36);         /* uneven cadence feels human */
+  }
+  msg.content=full||'';msg.treks=trekNames||[];msg._typing=false;
+  _planTyping=false;paintPlanner();
+}
 async function sendPlan(text){
   const inp=document.getElementById('plannerInput');
-  const q=(text||(inp&&inp.value)||'').trim();if(!q||_planBusy)return;
+  const q=(text||(inp&&inp.value)||'').trim();if(!q||_planBusy||_planTyping)return;
   if(inp)inp.value='';
   try{logEvent('plan_query',{q:q.slice(0,80)});}catch(e){}
   _planMsgs.push({role:'user',content:q});_planBusy=true;paintPlanner();
+  const t0=Date.now();
   let res=null;
   try{
     const sb=getSupaClient();
@@ -6532,10 +6550,15 @@ async function sendPlan(text){
       if(r&&r.data&&r.data.ok)res=r.data;
     }
   }catch(e){/* fall through to the local fallback */}
+  /* keep the three-dots "thinking" indicator up for a natural beat before replying */
+  const think=(res?450:900)+Math.random()*550;
+  const waited=Date.now()-t0;if(waited<think)await _plSleep(think-waited);
   _planBusy=false;
-  if(res){_planMsgs.push({role:'assistant',content:res.reply||'Here are some options:',treks:res.treks||[],followups:res.followups||[]});}
-  else{const fb=plannerFallback(q);_planMsgs.push({role:'assistant',content:fb.reply,treks:fb.treks,followups:fb.followups});}
-  paintPlanner();
+  let full,trekNames;
+  if(res){full=res.reply||'Here are some options:';trekNames=res.treks||[];}
+  else{const fb=plannerFallback(q);full=fb.reply;trekNames=fb.treks;}
+  const msg={role:'assistant',content:'',treks:[]};_planMsgs.push(msg);
+  await typePlanner(msg,full,trekNames);
 }
 /* local fallback so the planner still helps if the AI is unavailable: parse budget,
    duration, difficulty and region, then filter the real catalogue */
@@ -6550,7 +6573,7 @@ function plannerFaq(ql){
     return "You're welcome! Want me to suggest a trek by your budget, dates or difficulty?";
   if(has(/what can you do|who are you|how (do|does) (you|this|it) work|what do you do|^help\b|help me|what is this/))
     return "I help you find the right Himalayan trek or tour. Tell me things like your budget (₹), number of days, group (solo/friends/family), fitness or difficulty, region, or a trek you already like — and I'll match real Tripomonk trips. You can also ask me about the best season, permits, fitness or packing.";
-  if(has(/best time|when (to|should|is best)|which (month|season)|good season|weather|climate|temperature|snow(fall)?( in| during)?/))
+  if(!/\b(recommend|suggest|show|find|book|which trek|best trek)\b/.test(ql)&&has(/best time|when (to|should|is best|is the best)|which (month|season)|good season|weather|climate|temperature|how cold|snowfall/))
     return "Broadly, spring (Mar–Jun) and autumn (Sep–Nov) are the prime trekking windows; snow treks like Kedarkantha and Brahmatal shine Dec–Apr, and the monsoon (Jul–Aug) is mostly avoided in the Garhwal Himalaya. Tell me a trek and I'll be specific.";
   if(has(/permit|forest (fee|entry)|id proof|documents?|aadhaar|aadhar/))
     return "Most Uttarakhand treks need a forest entry permit and a valid government photo ID — Tripomonk arranges the permits as part of the trip. Ask me about a specific trek for its exact requirements.";
