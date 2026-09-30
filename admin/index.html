@@ -154,6 +154,27 @@
   .ua-ev{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
   .ua-ev .d{width:8px;height:8px;border-radius:50%;background:var(--accent);margin-top:5px;flex:none}
   .ua-ev small{color:var(--muted);font-size:11.5px;display:block}
+  /* Guide application — centered detail modal */
+  .gp-head{display:flex;align-items:flex-start;gap:14px;margin-bottom:12px}
+  .gp-av{width:64px;height:64px;border-radius:16px;flex:none;background-size:cover;background-position:center;border:1px solid var(--line);display:grid;place-items:center;font-size:22px;font-weight:700;color:var(--ink);background-color:var(--panel2)}
+  .gp-head h3{margin:0;font-size:20px;line-height:1.2}
+  .gp-head .sub{color:var(--muted);font-size:12.5px;margin-top:5px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .gp-badge{display:inline-flex;align-items:center;font-size:11px;font-weight:700;padding:3px 11px;border-radius:999px;text-transform:capitalize}
+  .gp-actions-top{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px}
+  .gp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;align-items:start}
+  .gp-card{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:13px 15px}
+  .gp-card.wide{grid-column:1/-1}
+  .gp-ct{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:9px;padding-left:9px;border-left:3px solid var(--accent);line-height:1.15}
+  .gp-item{padding:8px 0;border-top:1px solid var(--line)}
+  .gp-item:first-of-type{border-top:0;padding-top:1px}
+  .gp-item small{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
+  .gp-item span,.gp-item p{font-size:13.5px;color:var(--ink);line-height:1.5}
+  .gp-item p{margin:0;white-space:pre-wrap}
+  .gp-docs{display:flex;flex-wrap:wrap;gap:0;margin-top:-2px}
+  .gp-foot{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;align-items:center;margin-top:18px;position:sticky;bottom:-24px;background:var(--panel);padding:14px 0 4px;border-top:1px solid var(--line)}
+  @media(max-width:560px){.gp-foot{bottom:-18px}}
+  .ck{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--ink);margin:8px 0}
+  .ck input{width:17px;height:17px;accent-color:var(--accent);flex:none}
   #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--accent);color:#fff;padding:12px 20px;border-radius:12px;font-size:13.5px;font-weight:600;opacity:0;transition:.25s;z-index:90;pointer-events:none}
   #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .menu-btn{display:none;width:38px;height:38px;border:1px solid var(--line);border-radius:10px;place-items:center;background:var(--panel2);color:var(--ink);cursor:pointer;font-size:18px}
@@ -295,6 +316,7 @@ function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');cl
 function closeOv(){$('#drawer').classList.remove('show');$('#modalOv').classList.remove('show');}
 document.querySelectorAll('[data-close]').forEach(e=>e.addEventListener('click',closeOv));
 function modal(html){$('#modalBox').classList.remove('modal-wide');$('#modalBox').innerHTML=html;$('#modalOv').classList.add('show');}
+function modalW(html){$('#modalBox').classList.add('modal-wide');$('#modalBox').innerHTML=html;$('#modalOv').classList.add('show');}
 function confirmDo(msg,cb){modal(`<h3>Please confirm</h3><p class="muted" style="font-size:13.5px">${esc(msg)}</p><div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="cfDo">Confirm</button></div>`);$('#cfDo').onclick=()=>{closeOv();cb();};}
 
 async function adminCall(action,data){
@@ -1155,32 +1177,97 @@ function gExp(g){return [g.years?(/[a-z]/i.test(String(g.years))?g.years:g.years
 function gLoc(g){return [g.city,g.state].filter(Boolean).join(', ')||g.region||'';}
 function guideProfile(id){
   const a=_guideApps.find(x=>String(x.id)===String(id));if(!a)return;
-  const d=$('#drawer'),body=$('#drawerBody');if(!d||!body)return;d.classList.add('show');
-  const row=(l,v)=>(v||v===0)?`<div class="ua-ev"><span class="d"></span><div>${esc(String(v))}<small>${esc(l)}</small></div></div>`:'';
+  const s=(a.status||'pending').toLowerCase();
+  const badge=/approv/.test(s)?'background:rgba(34,197,94,.16);color:#22c55e'
+    :/reject/.test(s)?'background:rgba(239,68,68,.16);color:#ef4444'
+    :'background:rgba(245,158,11,.18);color:#f59e0b';
   const ph=String(a.whatsapp||a.phone||'');const telNum=ph.replace(/[^0-9+]/g,'');
   let waDigits=ph.replace(/[^0-9]/g,'').replace(/^0+/,'');if(waDigits.length===10)waDigits='91'+waDigits;
-  const s=(a.status||'pending').toLowerCase();
-  const dec=/approv/.test(s)?`<button class="btn2 sm danger" onclick="guideSet('${jsv(a.id)}','rejected')">Revoke</button>`
-    :/reject/.test(s)?`<button class="btn2 pri sm" onclick="guideSet('${jsv(a.id)}','approved')">Approve</button>`
-    :`<button class="btn2 pri sm" onclick="guideSet('${jsv(a.id)}','approved')">Approve</button><button class="btn2 sm danger" onclick="guideSet('${jsv(a.id)}','rejected')">Reject</button>`;
-  const avatar=a.profile_photo?`<div style="width:44px;height:44px;border-radius:12px;flex:none;background:url('${esc(a.profile_photo)}') center/cover;border:1px solid var(--line)"></div>`:avc(a.full_name);
+  const dec=/approv/.test(s)?`<button class="btn2 danger" onclick="guideSet('${jsv(a.id)}','rejected')">Revoke approval</button>`
+    :/reject/.test(s)?`<button class="btn2 pri" onclick="guideSet('${jsv(a.id)}','approved')">Approve</button>`
+    :`<button class="btn2 danger" onclick="guideSet('${jsv(a.id)}','rejected')">Reject</button><button class="btn2 pri" onclick="guideSet('${jsv(a.id)}','approved')">Approve application</button>`;
+  const avatar=a.profile_photo?`<div class="gp-av" style="background-image:url('${esc(a.profile_photo)}')"></div>`:`<div class="gp-av">${esc(ini(a.full_name))}</div>`;
   const docs=Array.isArray(a.documents)?a.documents:[];
-  const linkBtn=(url,label)=>`<a class="btn2 sm" style="text-decoration:none;margin:0 6px 6px 0" href="${esc(url)}" target="_blank" rel="noopener"><span class="msr" style="font-size:14px;vertical-align:-2px">description</span> ${esc(label)}</a>`;
-  const signBtn=(path,label)=>`<button class="btn2 sm" style="margin:0 6px 6px 0" onclick="guideOpenDoc('${jsv(path)}')"><span class="msr" style="font-size:14px;vertical-align:-2px">lock</span> ${esc(label)}</button>`;
+  const linkBtn=(url,label)=>`<a class="btn2 sm" style="text-decoration:none;margin:0 8px 8px 0" href="${esc(url)}" target="_blank" rel="noopener">📄 ${esc(label)}</a>`;
+  const signBtn=(path,label)=>`<button class="btn2 sm" style="margin:0 8px 8px 0" onclick="guideOpenDoc('${jsv(path)}')">🔒 ${esc(label)}</button>`;
   const docItem=(d)=>{const label=(d.name||'Document').slice(0,26);return d.path?signBtn(d.path,label):(d.url?linkBtn(d.url,label):'');};
-  const docsHtml=(a.profile_photo||docs.length)?`<div class="sec-t">Documents</div><div style="display:flex;flex-wrap:wrap">${a.profile_photo?linkBtn(a.profile_photo,'Profile photo'):''}${docs.map(docItem).join('')}</div>`:'';
-  const src=a.source==='link'?' <span class="tag">via link</span>':'';
-  body.innerHTML=`<div class="dh">${avatar}<div><b style="font-size:16px">${esc(a.full_name||'Guide')}</b><br><small class="muted">${esc(a.city||'')}${a.city&&a.state?', ':''}${esc(a.state||'')} · ${esc(s)}${src}</small></div><span class="spacer"></span><button class="btn2" onclick="closeOv()">Close</button></div>
-    <div class="sec-t">Contact</div>${row('Phone',a.phone)}${row('WhatsApp',a.whatsapp)}${row('Email',a.email)}${row('Gender',a.gender)}${row('DOB',a.dob)}
-    <div class="sec-t">Experience</div>${row('Years guiding',a.experience_years)}${row('Treks led',a.treks_led)}${row('Highest altitude',a.max_altitude)}${row('Regions',a.regions)}${row('Languages',a.languages)}${a.international?row('International treks',a.passport?'Open to treks abroad · has passport':'Open to treks abroad'):''}${row('Countries abroad',a.countries)}
-    <div class="sec-t">Skills &amp; safety</div>${row('Certifications',a.certifications)}${row('First-aid trained',a.first_aid?'Yes':'No')}${row('Fitness',a.fitness)}
-    <div class="sec-t">Track record</div>${row('Notable treks',a.notable_treks)}${row('Availability',a.availability)}${row('Day rate',a.day_rate?('₹'+a.day_rate):'')}
-    <div class="sec-t">Links</div>${row('Instagram',a.instagram)}${row('Website',a.website)}
-    <div class="sec-t">About</div>${row('About',a.about)}${row('Why guide with Tripomonk',a.why_guide)}
-    <div class="sec-t">References</div>${row('Reference name',a.reference_name)}${row('Reference phone',a.reference_phone)}${row('Consent given',a.consent?'Yes':'No')}
-    ${docsHtml}
-    <div class="sec-t">Decision</div><div class="row-acts" style="justify-content:flex-start;margin-bottom:10px">${dec}</div>
-    ${telNum?`<div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn2" style="text-decoration:none" href="tel:${esc(telNum)}">Call</a><a class="btn2" style="text-decoration:none" href="https://wa.me/${esc(waDigits)}" target="_blank" rel="noopener">WhatsApp</a></div>`:''}`;}
+  const kv=(l,v)=>(v||v===0)?`<div class="gp-item"><small>${esc(l)}</small><span>${esc(String(v))}</span></div>`:'';
+  const kvp=(l,v)=>(v||v===0)?`<div class="gp-item"><small>${esc(l)}</small><p>${esc(String(v))}</p></div>`:'';
+  const card=(t,items,wide)=>{const inner=items.filter(Boolean).join('');return inner?`<div class="gp-card${wide?' wide':''}"><div class="gp-ct">${t}</div>${inner}</div>`:'';};
+  const src=a.source==='link'?'<span class="tag">via link</span>':'';
+  const intl=a.international?(a.passport?'Open to treks abroad · has passport':'Open to treks abroad'):'';
+  const loc=[a.city,a.state].filter(Boolean).join(', ');
+  const docsCard=(a.profile_photo||docs.length)?`<div class="gp-card wide"><div class="gp-ct">Documents</div><div class="gp-docs">${a.profile_photo?linkBtn(a.profile_photo,'Profile photo'):''}${docs.map(docItem).join('')}</div></div>`:'';
+  modalW(`
+    <div class="gp-head">${avatar}<div style="flex:1;min-width:0"><h3>${esc(a.full_name||'Guide')}</h3><div class="sub">${loc?`<span>📍 ${esc(loc)}</span>`:''}<span class="gp-badge" style="${badge}">${esc(s)}</span>${src}</div></div><div style="display:flex;gap:8px;flex:none"><button class="btn2 sm" onclick="guideAppEdit('${jsv(a.id)}')">✏️ Edit</button><button class="btn2" onclick="closeOv()">Close</button></div></div>
+    ${telNum?`<div class="gp-actions-top"><a class="btn2 sm" style="text-decoration:none" href="tel:${esc(telNum)}">📞 Call</a><a class="btn2 sm" style="text-decoration:none" href="https://wa.me/${esc(waDigits)}" target="_blank" rel="noopener">💬 WhatsApp</a></div>`:''}
+    <div class="gp-grid">
+      ${card('Contact',[kv('Phone',a.phone),kv('WhatsApp',a.whatsapp),kv('Email',a.email),kv('Gender',a.gender)])}
+      ${card('Experience',[kv('Years guiding',a.experience_years),kv('Treks led',a.treks_led),kv('Highest altitude',a.max_altitude),kv('Regions',a.regions),kv('Languages',a.languages),kv('International treks',intl),kv('Countries abroad',a.countries)])}
+      ${card('Skills & safety',[kvp('Certifications',a.certifications),kv('First-aid trained',a.first_aid?'Yes':'No'),kv('Fitness',a.fitness)])}
+      ${card('Track record',[kvp('Notable treks',a.notable_treks),kv('Availability',a.availability),kv('Day rate',a.day_rate?('₹'+a.day_rate):'')])}
+      ${card('Links',[kv('Instagram',a.instagram),kv('Website',a.website)])}
+      ${card('References',[kv('Reference name',a.reference_name),kv('Reference phone',a.reference_phone),kv('Consent given',a.consent?'Yes':'No')])}
+      ${card('About',[kvp('About',a.about),kvp('Why guide with Tripomonk',a.why_guide)],true)}
+      ${docsCard}
+    </div>
+    <div class="gp-foot">${dec}</div>
+  `);}
+/* Admin edits a guide application in place (centered form). Saves via the admin edge fn
+   (service role), keeps the linked public roster row in sync, then reopens the profile. */
+function guideAppEdit(id){
+  const a=_guideApps.find(x=>String(x.id)===String(id));if(!a)return;
+  const val=v=>esc(v==null?'':String(v));const chk=b=>b?'checked':'';
+  modalW(`<h3 style="margin:0 0 4px">Edit application</h3><p class="desc" style="margin:0 0 14px">${esc(a.full_name||'Guide')} · changes are saved to their application${/approv/i.test(a.status||'')?' and synced to the public roster':''}.</p>
+    <div class="gp-ct">Identity</div>
+    <div class="fld"><label>Full name *</label><input id="ge_name" value="${val(a.full_name)}"/></div>
+    <div class="fld two"><div><label>City</label><input id="ge_city" value="${val(a.city)}"/></div><div><label>State</label><input id="ge_state" value="${val(a.state)}"/></div></div>
+    <div class="fld"><label>Gender</label><input id="ge_gender" value="${val(a.gender)}"/></div>
+    <div class="gp-ct" style="margin-top:14px">Contact</div>
+    <div class="fld two"><div><label>Phone</label><input id="ge_phone" value="${val(a.phone)}"/></div><div><label>WhatsApp</label><input id="ge_whatsapp" value="${val(a.whatsapp)}"/></div></div>
+    <div class="fld"><label>Email</label><input id="ge_email" value="${val(a.email)}"/></div>
+    <div class="gp-ct" style="margin-top:14px">Experience</div>
+    <div class="fld two"><div><label>Years guiding</label><input id="ge_years" value="${val(a.experience_years)}"/></div><div><label>Treks led</label><input id="ge_treks" value="${val(a.treks_led)}"/></div></div>
+    <div class="fld two"><div><label>Highest altitude</label><input id="ge_alt" value="${val(a.max_altitude)}"/></div><div><label>Languages</label><input id="ge_lang" value="${val(a.languages)}"/></div></div>
+    <div class="fld"><label>Regions</label><input id="ge_regions" value="${val(a.regions)}"/></div>
+    <label class="ck"><input type="checkbox" id="ge_intl" ${chk(a.international)}/> Open to international treks</label>
+    <label class="ck"><input type="checkbox" id="ge_pass" ${chk(a.passport)}/> Has a valid passport</label>
+    <div class="fld"><label>Countries (abroad)</label><input id="ge_countries" value="${val(a.countries)}"/></div>
+    <div class="gp-ct" style="margin-top:14px">Skills &amp; safety</div>
+    <div class="fld"><label>Certifications</label><textarea id="ge_certs">${val(a.certifications)}</textarea></div>
+    <label class="ck"><input type="checkbox" id="ge_faid" ${chk(a.first_aid)}/> First-aid trained</label>
+    <div class="fld"><label>Fitness</label><input id="ge_fit" value="${val(a.fitness)}"/></div>
+    <div class="gp-ct" style="margin-top:14px">Track record</div>
+    <div class="fld"><label>Notable treks</label><textarea id="ge_notable">${val(a.notable_treks)}</textarea></div>
+    <div class="fld two"><div><label>Availability</label><input id="ge_avail" value="${val(a.availability)}"/></div><div><label>Day rate (₹)</label><input id="ge_rate" value="${val(a.day_rate)}"/></div></div>
+    <div class="gp-ct" style="margin-top:14px">Links</div>
+    <div class="fld two"><div><label>Instagram</label><input id="ge_ig" value="${val(a.instagram)}"/></div><div><label>Website</label><input id="ge_web" value="${val(a.website)}"/></div></div>
+    <div class="gp-ct" style="margin-top:14px">About</div>
+    <div class="fld"><label>About</label><textarea id="ge_about">${val(a.about)}</textarea></div>
+    <div class="fld"><label>Why guide with Tripomonk</label><textarea id="ge_why">${val(a.why_guide)}</textarea></div>
+    <div class="gp-ct" style="margin-top:14px">References</div>
+    <div class="fld two"><div><label>Reference name</label><input id="ge_refn" value="${val(a.reference_name)}"/></div><div><label>Reference phone</label><input id="ge_refp" value="${val(a.reference_phone)}"/></div></div>
+    <div class="actions"><button class="btn2" onclick="guideProfile('${jsv(a.id)}')">Cancel</button><button class="btn2 pri" id="ge_go">Save changes</button></div>`);
+  $('#ge_go').onclick=async()=>{
+    const gv=k=>($('#'+k)?$('#'+k).value.trim():'');
+    const name=gv('ge_name');if(!name){toast('Name is required');return;}
+    const app={full_name:name,city:gv('ge_city'),state:gv('ge_state'),gender:gv('ge_gender'),
+      phone:gv('ge_phone'),whatsapp:gv('ge_whatsapp'),email:gv('ge_email'),
+      experience_years:gv('ge_years'),treks_led:gv('ge_treks'),max_altitude:gv('ge_alt'),languages:gv('ge_lang'),regions:gv('ge_regions'),
+      international:$('#ge_intl').checked,passport:$('#ge_pass').checked,countries:gv('ge_countries'),
+      certifications:gv('ge_certs'),first_aid:$('#ge_faid').checked,fitness:gv('ge_fit'),
+      notable_treks:gv('ge_notable'),availability:gv('ge_avail'),day_rate:gv('ge_rate'),
+      instagram:gv('ge_ig'),website:gv('ge_web'),about:gv('ge_about'),why_guide:gv('ge_why'),
+      reference_name:gv('ge_refn'),reference_phone:gv('ge_refp')};
+    const btn=$('#ge_go');btn.disabled=true;btn.textContent='Saving…';
+    const r=await adminCall('save_guide_app',{id:a.id,app});
+    if(r&&r.error){btn.disabled=false;btn.textContent='Save changes';toast('Failed: '+r.error+(/relation|column/i.test(r.error)?' — check guide_applications schema':''));return;}
+    const idx=_guideApps.findIndex(x=>String(x.id)===String(a.id));if(idx>=0&&r.app)_guideApps[idx]=r.app;
+    toast('Application updated ✓');
+    guideProfile(a.id);            /* reopen the detail with fresh data */
+    guideReload();                 /* refresh the list behind, from server */
+  };
+}
 function guideRosterView(id){
   const g=_guideRoster.find(x=>String(x.id)===String(id));if(!g)return;
   // private contact (phone/email) is NOT stored on the public guides table — pull it from
