@@ -8965,11 +8965,38 @@ const GEAR_CATS=[
   {cat:'Winter Sports',icon:'downhill_skiing',items:[['Ski Set',1000],['Snowboard',1200],['Ski Helmet',200]]}
 ];
 function gearAllItems(){const out=[];GEAR_CATS.forEach(c=>c.items.forEach(it=>out.push({cat:c.cat,icon:c.icon,name:it[0],price:it[1]})));return out;}
-/* [name, desc, time, price, officialUrl]. officialUrl = the government portal the "Official site"
-   button opens; leave '' for WhatsApp-only (no reliable online portal). EDIT the URLs here if you
-   have a more specific application link — they're one-liners. Foreigner permits are handled by us
-   directly, so no site link. */
-const permitTypes=[['Forest Entry Permit','Required for most Uttarakhand treks (Sankri, Govindghat).','1–2 days','₹350','https://uttarakhandtourism.gov.in'],['National Park Permit','Valley of Flowers & Hemkund route entry.','1 day','₹400','https://uttarakhandtourism.gov.in'],['Eco-Zone / Camping','Designated camping & eco-sensitive-zone clearance.','2 days','₹300','https://uttarakhandtourism.gov.in'],['Foreigner Permit','Extra documentation for non-Indian trekkers.','3–4 days','₹900','']];
+/* [name, desc, time, price, officialUrl, region]. officialUrl = the government portal the
+   "Official site" button opens; '' → WhatsApp-only (no self-serve online portal — issued at a
+   counter or through a registered agency). All URLs below are official government / authorised
+   portals verified for India & Nepal treks — edit here if a portal changes. region groups the
+   list into India / Nepal sections. */
+const permitTypes=[
+  /* ---------- India ---------- */
+  ['Forest / Trek Permit — Uttarakhand','Most Uttarakhand treks: Kedarkantha, Har Ki Dun, Brahmatal (Govind & Kedarnath sanctuaries).','At entry / online','Govt fee','https://forest.uk.gov.in/online-services','India'],
+  ['National Park & Sanctuary Entry — Uttarakhand','Valley of Flowers, Nanda Devi, Rajaji, Corbett & Govind entry booking.','Online','Govt fee','https://forest.uk.gov.in/online-services','India'],
+  ['Ladakh Inner Line Permit / Environment Fee','Nubra, Pangong, Tso Moriri, Hanle, Umling La. Indians: environment fee; foreigners: PAP via agent.','Instant online','₹590 / 7 days','https://www.lahdclehpermit.in','India'],
+  ['Arunachal Pradesh Inner Line Permit (eILP)','Mandatory for every non-resident Indian entering Arunachal Pradesh.','24–48 hrs','₹100','https://eilp.arunachal.gov.in','India'],
+  ['Foreigner Protected / Restricted Area Permit (India)','Foreign nationals for Sikkim, Ladakh, Arunachal, Nubra & other border zones — via e-FRRO.','Apply 15–30 days ahead','e-FRRO','https://indianfrro.gov.in/efrro/home','India'],
+  ['Border-Zone Inner Line Permit — Uttarakhand','Adi Kailash, Om Parvat, Nelong / Gartang Gali, Niti–Mana valleys. Issued by the local SDM / DM.','At district office','Assisted','','India'],
+  /* ---------- Nepal ---------- */
+  ['TIMS Card — Nepal','Trekkers’ Information card for most Nepal treks. Now issued only through a registered trekking agency.','Via agency','NPR ~2,000','https://tims.ntb.gov.np','Nepal'],
+  ['Conservation Area Permit (ACAP / MCAP)','Annapurna Circuit, ABC, Mardi Himal & Manaslu — NTNC conservation areas.','Instant online','NPR 3,000','https://epermit.ntnc.org.np','Nepal'],
+  ['National Park Entry — Nepal','Everest (Sagarmatha), Langtang, Makalu-Barun & other national parks.','Online / counter','NPR 3,000','https://dnpwc.gov.np/en','Nepal'],
+  ['Restricted Area Permit — Nepal','Upper Mustang, Manaslu, Dolpo, Nar Phu, Kanchenjunga & Tsum — registered agency + guide only.','2–4 weeks','USD 50–100','','Nepal'],
+  ['Everest Region Local Permit','Khumbu Pasang Lhamu Rural Municipality entry fee (Everest region), collected at Lukla / Monjo.','At counter','NPR ~3,000','','Nepal'],
+  /* ---------- Bhutan ---------- */
+  ['Bhutan Visa & SDF (foreign nationals)','e-Visa (US$40) + Sustainable Development Fee of US$100 / night. Booked through a licensed Bhutan operator.','~5 working days','US$40 + SDF','https://immi.gov.bt','Bhutan'],
+  ['Bhutan Entry Permit (Indian nationals)','Indians need no visa — an entry permit + concessional SDF (₹1,200 / night). Apply online or at Phuentsholing.','Online / at border','₹1,200 / night','https://immi.gov.bt','Bhutan'],
+  ['Trek Route Permit & Park Fee — Bhutan','Jomolhari, Druk Path & Snowman treks — licensed guide, route permit & national-park fees, arranged by the operator.','Via operator','Assisted','','Bhutan']
+];
+/* Country landing metadata (icon = Material Symbol, tagline = key regions). Countries are otherwise
+   derived from permitTypes[].region, so adding a permit for a new country needs only an entry here. */
+const PERMIT_COUNTRIES={
+  India:{icon:'terrain',tag:'Uttarakhand · Ladakh · NE · Sikkim'},
+  Nepal:{icon:'landscape',tag:'Everest · Annapurna · Manaslu'},
+  Bhutan:{icon:'temple_buddhist',tag:'Jomolhari · Druk Path · Snowman'}
+};
+let _permitCountry='';   /* '' = show country boxes; else drill into that country */
 const activitiesData=[['raft','River Rafting','Rishikesh · Grade III','₹1,200'],['para','Paragliding','Mussoorie / Tehri','₹2,500'],['bungee','Bungee Jump','Rishikesh · 83 m','₹3,700'],['ski','Skiing','Auli · with gear','₹2,200'],['camp','Camping','Lakeside · per night','₹999'],['kayak','Kayaking','Tehri Lake','₹1,500']];
 
 /* ============================================================
@@ -9701,17 +9728,38 @@ function gearEnquire(){
   wa('Hi Tripomonk, I want to rent:\n'+lines.join('\n')+'\n\nTotal: ₹'+total+'/day. Please confirm availability and delivery / pickup.');
 }
 function permitIcon(name){name=String(name||'').toLowerCase();
-  if(name.includes('forest'))return 'pine';
-  if(name.includes('national'))return 'altitude';
+  if(name.includes('foreign')||name.includes('restricted')||name.includes('protected'))return 'globe';
+  if(name.includes('forest')||name.includes('conservation'))return 'pine';
+  if(name.includes('national')||name.includes('ladakh'))return 'altitude';
   if(name.includes('eco')||name.includes('camp'))return 'tent';
-  if(name.includes('foreign'))return 'globe';
+  if(name.includes('inner line')||name.includes('ilp'))return 'globe';
   return 'permits';}
+function permitCard(p){
+  return `<div class="pcard"><div class="p-ic">${ic(permitIcon(p[0]),22)}</div><div class="p-bd"><b>${esc(p[0])}</b><p>${esc(p[1])}</p><div class="p-ft"><span class="p-badge">${ic('clock',12)} ${esc(p[2])} · ${esc(p[3])}</span><div class="p-btns">${p[4]?`<button class="p-web" onclick="permitWebsite('${jsq(p[4])}')"><span class="msr">open_in_new</span>Official site</button>`:''}<button class="p-apply" onclick="applyPermit('${jsq(p[0])}')"><span class="msr">forum</span>WhatsApp us</button></div></div></div></div>`;
+}
+const _PERMIT_ORDER=['India','Nepal','Bhutan'];
+function permitCountries(){return [...new Set(permitTypes.map(p=>p[5]||'Other'))].sort((a,b)=>{const ia=_PERMIT_ORDER.indexOf(a),ib=_PERMIT_ORDER.indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib);});}
+function permitCountryBox(c){
+  const n=permitTypes.filter(p=>(p[5]||'Other')===c).length;const meta=PERMIT_COUNTRIES[c]||{};
+  return `<button class="p-cbox" onclick="openPermitCountry('${jsq(c)}')"><span class="p-cic"><span class="msr">${meta.icon||'public'}</span></span><b>${esc(c)}</b><small>${n} permit${n!==1?'s':''}</small>${meta.tag?`<span class="p-ctag">${esc(meta.tag)}</span>`:''}<span class="p-carrow msr">chevron_right</span></button>`;
+}
 function renderPermits(q){const lq=(q||'').toLowerCase().trim();
-  const list=lq?permitTypes.filter(p=>(p[0]+' '+p[1]).toLowerCase().includes(lq)):permitTypes;
-  document.getElementById('permitList').innerHTML=list.length?list.map(p=>
-    `<div class="pcard"><div class="p-ic">${ic(permitIcon(p[0]),22)}</div><div class="p-bd"><b>${esc(p[0])}</b><p>${esc(p[1])}</p><div class="p-ft"><span class="p-badge">${ic('clock',12)} ${esc(p[2])} · ${esc(p[3])}</span><div class="p-btns">${p[4]?`<button class="p-web" onclick="permitWebsite('${jsq(p[4])}')"><span class="msr">open_in_new</span>Official site</button>`:''}<button class="p-apply" onclick="applyPermit('${jsq(p[0])}')"><span class="msr">forum</span>WhatsApp us</button></div></div></div></div>`
-  ).join(''):'<div class="empty"><p>No permits match your search.</p></div>';
+  const host=document.getElementById('permitList');if(!host)return;
+  let html='';
+  if(lq){                                   /* search → flat results across every country */
+    const list=permitTypes.filter(p=>(p[0]+' '+p[1]+' '+(p[5]||'')).toLowerCase().includes(lq));
+    html=list.length?list.map(permitCard).join(''):'<div class="empty"><p>No permits match your search.</p></div>';
+  }else if(_permitCountry){                  /* drilled into a country → its permit cards */
+    const list=permitTypes.filter(p=>(p[5]||'Other')===_permitCountry);
+    const meta=PERMIT_COUNTRIES[_permitCountry]||{};
+    html=`<div class="p-cthead"><button class="p-back" onclick="permitBackToCountries()"><span class="msr">arrow_back</span></button><div><b>${esc(_permitCountry)}</b><small>${list.length} permit${list.length!==1?'s':''}${meta.tag?' · '+esc(meta.tag):''}</small></div></div>`+list.map(permitCard).join('');
+  }else{                                     /* landing → country boxes */
+    html='<div class="p-cgrid">'+permitCountries().map(permitCountryBox).join('')+'</div>';
+  }
+  host.innerHTML=html;
   hydrate(document.getElementById('permits'));}
+function openPermitCountry(c){_permitCountry=c;renderPermits();try{window.scrollTo(0,0);}catch(e){}}
+function permitBackToCountries(){_permitCountry='';renderPermits();}
 /* Apply for a permit -> collect details in a form, THEN send a complete request to
    WhatsApp (instead of a bare "I need X" message). */
 let _pmPermit='';
@@ -10747,7 +10795,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id!=='guideDash')guideStopScan();
   if(id==='admin'){_admHub=true;renderAdmin();}   /* always land on the section grid */
   if(id==='gear')renderGear();
-  if(id==='permits')renderPermits();
+  if(id==='permits'){_permitCountry='';const _ps=document.getElementById('permitSearch');if(_ps)_ps.value='';renderPermits();}
   if(id==='activities')renderActivities();
   if(id==='dests'){renderDests();loadDestinations(true).then(()=>renderDests()).catch(()=>{});}
   if(id==='tours')renderTours();
@@ -10846,7 +10894,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,renderPlanner,sendPlan,plannerChip,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,submitNewPassword,toggleResetPw,cancelReset,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,permitWebsite,applyPermit,filterByCity,getDirections,addStaff,removeStaff,setStaffRole,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab,openReviewModal,closeReviewModal,submitReview,setRevStars,adminAddReview,adminDelReview,toggleSavePost,renderEmergency,renderSavedPosts,followAction,requestCall,declineCall,allowCallMsg,togglePrivateAccount,renderFollowRequests,acceptFollowReq,declineFollowReq,admToggleHl,filterAdminHub,admAssignCaptain,admChangeBatch,admRefund,admCancelBooking,admInvoice,renderAdminUsers,paintUsers,admNotifyUser,renderAdminPayments,admPayFilter,admExportCSV,admRevenueCSV,renderAdminGear,gearAdj,gearAddItem,gearDelItem,gearSeed,renderAdminCommunity,admDeletePost,admFeaturePost,renderAdminPermits,permSet,renderAdminSupport,ticketReply,ticketResolve,raiseTicket,renderAdminCRM,crmSearch,crmOpen,renderAdminAI,saveAiCfg,renderAdminVendors,vendorSet,openVendorDash,renderVendorDash,applyVendor,vendorAddListing,vendorToggleListing,vendorDelListing,renderBecomeGuide,submitGuideApplication,renderGuideDash,renderGuidePublic,guideScan,guideStopScan,guideVerify,openGuideProfile});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,renderPlanner,sendPlan,plannerChip,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,submitNewPassword,toggleResetPw,cancelReset,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,permitWebsite,applyPermit,openPermitCountry,permitBackToCountries,filterByCity,getDirections,addStaff,removeStaff,setStaffRole,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab,openReviewModal,closeReviewModal,submitReview,setRevStars,adminAddReview,adminDelReview,toggleSavePost,renderEmergency,renderSavedPosts,followAction,requestCall,declineCall,allowCallMsg,togglePrivateAccount,renderFollowRequests,acceptFollowReq,declineFollowReq,admToggleHl,filterAdminHub,admAssignCaptain,admChangeBatch,admRefund,admCancelBooking,admInvoice,renderAdminUsers,paintUsers,admNotifyUser,renderAdminPayments,admPayFilter,admExportCSV,admRevenueCSV,renderAdminGear,gearAdj,gearAddItem,gearDelItem,gearSeed,renderAdminCommunity,admDeletePost,admFeaturePost,renderAdminPermits,permSet,renderAdminSupport,ticketReply,ticketResolve,raiseTicket,renderAdminCRM,crmSearch,crmOpen,renderAdminAI,saveAiCfg,renderAdminVendors,vendorSet,openVendorDash,renderVendorDash,applyVendor,vendorAddListing,vendorToggleListing,vendorDelListing,renderBecomeGuide,submitGuideApplication,renderGuideDash,renderGuidePublic,guideScan,guideStopScan,guideVerify,openGuideProfile});
 
 /* init */
 applyTheme();   /* dark / light / system theme */
