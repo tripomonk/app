@@ -282,7 +282,8 @@
         <li><div class="pi">2</div><div><b>We reach out</b><br><small style="color:var(--muted)">By phone or email if it's a good fit.</small></div></li>
         <li><div class="pi">3</div><div><b>You start leading</b><br><small style="color:var(--muted)">We'll match you with upcoming departures.</small></div></li>
       </ul>
-      <p class="foot" style="margin-top:18px"><span class="msr">favorite</span> Welcome to the Tripomonk community</p>
+      <p class="sub" style="text-align:center;margin-top:16px">We're setting up your explorer profile — taking you into the app to discover treks, trips &amp; the community while we review your application.</p>
+      <p class="foot" style="margin-top:14px"><span class="msr">favorite</span> Welcome to the Tripomonk community</p>
     </div>
 
     <div id="submitErr" class="err-msg" style="text-align:center;margin-top:12px"></div>
@@ -309,12 +310,20 @@ function show(id){document.querySelectorAll('.step').forEach(e=>e.classList.remo
 /* the action bar is pinned to the bottom; its buttons change per state */
 function setFooter(mode){
   const nav=$('nav');
-  if(mode==='done'){nav.hidden=true;return;}
+  if(mode==='done'){nav.hidden=false;nav.innerHTML='<button class="btn primary" onclick="goToApp()">Explore the Tripomonk app <span class="msr">arrow_forward</span></button>';return;}
   nav.hidden=false;
   if(mode==='intro'){nav.innerHTML='<button class="btn primary" onclick="start()">Start application <span class="msr">arrow_forward</span></button>';return;}
   const last=cur===STEPS.length-1;
   nav.innerHTML='<button class="btn ghost" id="backBtn" onclick="prev()"><span class="msr">arrow_back</span> '+(cur===0?'Intro':'Back')+'</button>'
     +'<button class="btn primary" id="nextBtn" onclick="next()">'+(last?'Submit application <span class="msr">send</span>':'Continue <span class="msr">arrow_forward</span>')+'</button>';
+}
+/* after a successful application, take them into the main app to explore (same origin → "/") */
+let _redir=null;
+function goToApp(){if(_redir){clearTimeout(_redir);_redir=null;}location.href='/';}
+function startAppCountdown(){
+  let n=7;const btn=()=>document.querySelector('#nav .btn.primary');
+  const tick=()=>{const b=btn();if(b)b.innerHTML='Explore the Tripomonk app'+(n>0?' · '+n:'')+' <span class="msr">arrow_forward</span>';if(n<=0){goToApp();return;}n--;_redir=setTimeout(tick,1000);};
+  tick();
 }
 function start(){cur=0;paint();}
 function paint(){
@@ -402,7 +411,10 @@ async function submit(){
   try{
     const {error}=await sb.from('guide_applications').insert(row);
     if(error)throw error;
-    $('prog').hidden=true;show('done');setFooter('done');
+    /* Hand the applicant's basics to the main app (same origin) so it can auto-create a
+       ready-to-use explorer profile and welcome them in. */
+    try{localStorage.setItem('tmk_guide_signup',JSON.stringify({name:v('name'),phone,email:v('email'),photo:photoUrl||'',ts:Date.now()}));}catch(e){}
+    $('prog').hidden=true;show('done');setFooter('done');startAppCountdown();
   }catch(e){
     btn.disabled=false;btn.innerHTML='Submit application <span class="msr">send</span>';
     const em=$('submitErr');em.textContent='Could not submit: '+(e.message||e)+(/(relation|column|policy|permission)/i.test(e.message||'')?' — run SQL-guide-apply-link.sql':'');em.style.display='block';
