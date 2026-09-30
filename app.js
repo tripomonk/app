@@ -5761,13 +5761,13 @@ function renderProfile(){document.getElementById('pCover').style.backgroundImage
     else if(hasCam)hasCam.remove();
     hydrate(pav);
   }
-  const pname=document.getElementById('profileName');if(pname)pname.textContent=isLoggedIn()?uname:'Guest';
+  const pname=document.getElementById('profileName');if(pname)pname.textContent=isLoggedIn()?uname:(getSavedName()||'Guest');
   /* the Hosting hub card adapts to host status once the application loads */
   if(isLoggedIn())loadHostApp().then(()=>{const h=document.getElementById('hostHub');if(h)h.innerHTML=hostHubCard();}).catch(()=>{});
   const psub=document.getElementById('profileSub');
   if(psub){
     const un=getSavedUsername();
-    psub.textContent=isLoggedIn()?(un?'@'+un:(getUserEmail()||'Trekker')):'Sign in to track your treks';
+    psub.textContent=isLoggedIn()?(un?'@'+un:(getUserEmail()||'Trekker')):(getSavedName()?'Sign in to save your profile':'Sign in to track your treks');
   }
   const pbEl=document.getElementById('profileBio');
   if(pbEl){const cat=getSavedCategory(),bio=getSavedBio();
@@ -11026,6 +11026,29 @@ async function refreshCurrent(){
 
 /* deep link: someone opened a shared promise link — take them straight to the pledge */
 document.addEventListener('DOMContentLoaded',()=>{try{if(/take-promise/.test(location.hash||'')){setTimeout(()=>{try{go('pledge');}catch(e){}},600);}}catch(e){}});
+
+/* A guide just finished the /guide-apply/ form → it stashed their basics (same origin).
+   Auto-create a ready-to-use explorer profile from those details and welcome them into the
+   app so they can explore while we review the application. When they later sign in with the
+   same email/phone, the guide edge fn links guides.user_id to unlock their Guide Dashboard. */
+document.addEventListener('DOMContentLoaded',()=>{try{
+  const raw=localStorage.getItem('tmk_guide_signup');if(!raw)return;
+  let g=null;try{g=JSON.parse(raw);}catch(e){}
+  localStorage.removeItem('tmk_guide_signup');
+  if(!g)return;
+  setTimeout(()=>{try{
+    if(!isLoggedIn()){        /* guest → build their profile locally, then land on home */
+      if(g.name){try{localStorage.setItem('tmk_uname',String(g.name).slice(0,120));}catch(e){}}
+      if(g.phone){try{localStorage.setItem('tmk_umobile',String(g.phone).replace(/\D/g,''));}catch(e){}}
+      if(g.email){try{localStorage.setItem('tmk_uemail',String(g.email).slice(0,140));}catch(e){}}
+      if(g.photo&&/^https?:\/\//i.test(g.photo)){try{localStorage.setItem('tmk_uphoto',g.photo);}catch(e){}}
+      try{refreshAuthUI();}catch(e){}
+      try{go('home');}catch(e){}
+    }
+    const nm=g.name?String(g.name).trim().split(/\s+/)[0]:'';
+    try{toast('Welcome'+(nm?', '+nm:'')+'! Your trek-leader application is in — explore Tripomonk while we review it.',5200);}catch(e){}
+  }catch(e){}},900);
+}catch(e){}});
 
 /* ---------- update prompt ---------- */
 let _updateReady=false;
