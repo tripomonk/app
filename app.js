@@ -10914,8 +10914,25 @@ function go(id){const el=document.getElementById(id);if(!el)return;
 function back(){history.back();}
 /* actually move the app to the previous screen (called by device/browser back) */
 function _showPrev(){stopAllMedia();const p=hist.pop();if(p){cur=p;document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));const el=document.getElementById(p);el.classList.add('active');document.getElementById('nav').classList.toggle('hide',el.hasAttribute('data-nonav'));if(el.dataset.tab){lastTab=el.dataset.tab;document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===el.dataset.tab));}staggerActive();saveNav();}else{cur='__root';go(lastTab||'home');}}
+/* close the top open modal / bottom-sheet / story viewer (returns true if one was closed).
+   Lets device/browser Back dismiss an overlay instead of navigating the screen underneath away. */
+function closeTopOverlay(){
+  const open=[...document.querySelectorAll('.modal.show,.sheet-wrap.show,.story-viewer.show,#svViewers.show')];
+  if(!open.length)return false;
+  const top=open[open.length-1];                 /* innermost / last-opened overlay */
+  top.classList.remove('show');
+  try{if(top.id==='storyViewer'&&typeof closeStory==='function')closeStory();}catch(e){}
+  try{stopAllMedia();}catch(e){}
+  return true;
+}
 /* device/browser back button handling */
-window.addEventListener('popstate',function(){_showPrev();});
+window.addEventListener('popstate',function(){
+  /* Back with an overlay open → just close it, and re-buffer a history entry so the screen
+     stack depth (and the next Back) stays correct. Overlays don't push history on open, so the
+     entry Back consumed belongs to the current screen — restore it. */
+  if(closeTopOverlay()){try{history.pushState({s:cur},'');}catch(e){}return;}
+  _showPrev();
+});
 /* keep this device's photo/cover/name in sync when it returns to the foreground —
    so a change made on another device shows up without needing a re-login */
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')refreshMyProfile();});
