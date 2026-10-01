@@ -4879,7 +4879,9 @@ function unsubscribeComments(){
 }
 /* ---------- person profile ---------- */
 let curPerson=null;
-function openPerson(n){
+let _personMode='public';   /* 'public' = community profile, 'host' = host-trips view */
+function openPerson(n,mode){
+  _personMode=(mode==='host')?'host':'public';
   /* tapping yourself (e.g. the host of your own trip) opens YOUR real profile,
      not the stripped public person page */
   if(isLoggedIn()&&(n==='You'||n===myName())){go('profile');return;}
@@ -4908,6 +4910,9 @@ function gridCell(p){
 }
 async function renderPerson(){if(!curPerson){go('community');return;}const p=getPerson(curPerson);if(!p)return;
   const me=p.n==='You'||p.n===myName();
+  if(!_guidesLoaded){try{await loadGuides();}catch(e){}}            /* so we can show the Trek-Leader role */
+  if(!_guideAcctDone){_guideAcctDone=true;try{await resolveGuideAccounts();}catch(e){}}
+  const pGuide=guideForName(p.n);
   const body=document.getElementById('personBody');
   body.innerHTML=`<div class="prof-top">${avatar(p.n,84)}<h2>${esc(properName(p.n))}</h2><div class="handle">${esc(p.h)}</div></div><div class="skel skel-card" style="height:120px;margin:16px 0"></div>`;
   const posts=await loadUserPosts(p.n);
@@ -4930,7 +4935,7 @@ async function renderPerson(){if(!curPerson){go('community');return;}const p=get
   const flwr=base+(isFollowing(p.n)?1:0);
   body.innerHTML=`
     <div class="prof-top">${avatar(p.n,84)}
-      <h2>${esc(properName(p.n))}${hostBadge(p.n)}</h2>${at?`<div class="handle">${esc(at)}</div>`:''}
+      <h2>${esc(properName(p.n))}${verifiedTickFor(p.n,pGuide)}</h2>${at?`<div class="handle">${esc(at)}</div>`:''}
       ${(me?getSavedCategory():(categoryByName[p.n]||''))?`<div class="pcat"><span class="msr">hiking</span>${esc(me?getSavedCategory():categoryByName[p.n])}</div>`:''}
       ${(me?getSavedBio():(bioByName[p.n]||''))?`<p class="pbio">${esc(me?getSavedBio():bioByName[p.n])}</p>`:''}
       <div class="pstats"><div><b>${posts.length}</b><small>Posts</small></div><div onclick="openFollowList('followers','${jsq(p.n)}')"><b id="pFlwr" data-person="${esc(p.n)}" data-base="${base}">${flwr.toLocaleString()}</b><small>Followers</small></div><div onclick="openFollowList('following','${jsq(p.n)}')"><b>${Number(following).toLocaleString()}</b><small>Following</small></div></div>
@@ -4938,6 +4943,8 @@ async function renderPerson(){if(!curPerson){go('community');return;}const p=get
       <div style="text-align:center;margin-top:10px"><button onclick="toggleBlock('${jsq(p.n)}')" style="background:none;border:0;color:${isBlocked(p.n)?'var(--accent2)':'#ff6b6b'};font-size:12.5px;font-weight:700;cursor:pointer">${isBlocked(p.n)?'Unblock':'Block'} ${esc(properName(p.n))}</button></div>`}
       <div style="margin-top:12px">${socialLinks(me?getSavedSocials():socialsByName[p.n])}</div>
     </div>
+    ${(_personMode==='host')?'<div class="pmode-chip"><span class="msr">cottage</span> Host profile</div>':''}
+    ${profileLinksHTML(p.n,pGuide,_personMode,{host:(hostByName[p.n]||_personMode==='host')})}
     <div id="personTrips"></div>
     <div class="sec-h" style="margin:18px 4px 8px"><b>Posts</b>${(!me&&isPrivatePerson(p.n))?' <span class="msr" style="font-size:14px;color:var(--muted2);vertical-align:-2px">lock</span>':''}</div>
     ${(!me&&isBlocked(p.n))
@@ -10021,25 +10028,36 @@ async function renderGuidePublic(){
   const box=document.getElementById('guidePubBody');if(!box)return;
   box.innerHTML='<div class="note2" style="margin:14px 2px">Loading…</div>';
   if(!_guidesLoaded)await loadGuides();
+  if(!_guideAcctDone){_guideAcctDone=true;try{await resolveGuideAccounts();}catch(e){}}
   const g=guideById(_guidePubId);
   if(!g){box.innerHTML='<div class="empty" style="padding:24px 0;text-align:center"><p>Trek leader not found.</p></div>';return;}
+  /* merged identity: if this guide is a main user/host, show that account's name + photo */
+  const acct=_guideAcct[g.id]||null;
+  const pname=(acct&&acct.name)||g.name||'Trek Leader';
+  const pphoto=(acct&&acct.photo)||g.photo||photoFor(pname)||'';
   const mine=guideTreks(g.id);
   const yrs=g.years?(/[a-z]/i.test(String(g.years))?g.years:g.years+' yrs'):'';
   try{if(typeof loadReviews==='function'&&(!reviewsData||!reviewsData.length))await loadReviews();}catch(e){}
   const names=mine.map(t=>t.n);
   const rv=(typeof reviewsData!=='undefined'?reviewsData:[]).filter(r=>names.includes(r.trek));
   const rAvg=rv.length?(rv.reduce((s,r)=>s+(Number(r.rating)||5),0)/rv.length):0;
-  const av=g.photo?`<div class="gp-av" style="background-image:url('${esc(g.photo)}')"></div>`:`<div class="gp-av gp-av-i">${esc((g.name||'G').slice(0,1).toUpperCase())}</div>`;
+  const av=pphoto?`<div class="gp-av" style="background-image:url('${esc(pphoto)}')"></div>`:`<div class="gp-av gp-av-i">${esc(initials(pname))}</div>`;
   const chip=(l,v)=>v?`<div class="gp-chip"><b>${esc(v)}</b><small>${esc(l)}</small></div>`:'';
-  const first=String(g.name||'').split(' ')[0]||'this guide';
+  const first=String(pname).split(' ')[0]||'this guide';
+  const roleLinks=profileLinksHTML(pname,g,'guide');   /* every guide gets a Public profile link */
   box.innerHTML=`
-    <div class="gp-hero">${av}<h2 style="margin:12px 0 2px">${esc(g.name||'Trek Leader')}${g.verified?' <span class="gd-verified"><span class="msr">verified</span></span>':''}</h2><small class="muted">${esc([g.city,g.state].filter(Boolean).join(', ')||g.region||'Tripomonk Trek Leader')}</small></div>
-    <div class="gp-chips">${chip('Experience',yrs)}${chip('Treks led',g.treks_led)}${rv.length?chip('Rating',rAvg.toFixed(1)+'★'):chip('Leads',mine.length+' trek'+(mine.length===1?'':'s'))}</div>
+    <div class="gp-hero">${av}<h2 style="margin:12px 0 2px">${esc(pname)}${g.verified?' <span class="gd-verified"><span class="msr">verified</span></span>':''}</h2><small class="muted">${esc([g.city,g.state].filter(Boolean).join(', ')||g.region||'Tripomonk Trek Leader')}</small></div>
+    <div class="gp-chips">${chip('Experience',yrs)}${chip('Treks led',g.treks_led)}${
+      rv.length?chip('Rating',rAvg.toFixed(1)+'★')
+      :mine.length?chip('Leads',mine.length+' trek'+(mine.length===1?'':'s'))
+      :(function(){const lc=(g.languages||'').split(/[,/;]+/).map(s=>s.trim()).filter(Boolean).length;return lc?chip('Languages',String(lc)):'';})()
+    }</div>
     ${g.bio?`<div class="sec-h" style="margin:20px 4px 8px"><b>About</b></div><p class="note2" style="line-height:1.6;margin:0 2px">${esc(g.bio)}</p>`:''}
     ${g.certifications?`<div class="sec-h" style="margin:18px 4px 8px"><b>Certifications</b></div><p class="note2" style="margin:0 2px">${esc(g.certifications)}</p>`:''}
     ${g.languages?`<div class="sec-h" style="margin:18px 4px 8px"><b>Languages</b></div><p class="note2" style="margin:0 2px">${esc(g.languages)}</p>`:''}
     ${mine.length?`<div class="sec-h" style="margin:20px 4px 8px"><b>Treks led by ${esc(first)}</b></div>${mine.map(t=>guideTrekRow(t)).join('')}`:''}
     ${rv.length?`<div class="sec-h" style="margin:22px 4px 8px"><b>Reviews</b> <span class="muted" style="font-size:12px">${rAvg.toFixed(1)}★ · ${rv.length}</span></div>${rv.slice(0,6).map(r=>guideRevRow(r)).join('')}`:''}
+    ${roleLinks?('<div class="sec-h" style="margin:22px 4px 8px"><b>More from '+esc(first)+'</b></div>'+roleLinks):''}
     <div style="height:calc(var(--safe-bottom) + 20px)"></div>`;
   hydrate(box);
 }
@@ -10894,7 +10912,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,renderPlanner,sendPlan,plannerChip,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,submitNewPassword,toggleResetPw,cancelReset,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,permitWebsite,applyPermit,openPermitCountry,permitBackToCountries,filterByCity,getDirections,addStaff,removeStaff,setStaffRole,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab,openReviewModal,closeReviewModal,submitReview,setRevStars,adminAddReview,adminDelReview,toggleSavePost,renderEmergency,renderSavedPosts,followAction,requestCall,declineCall,allowCallMsg,togglePrivateAccount,renderFollowRequests,acceptFollowReq,declineFollowReq,admToggleHl,filterAdminHub,admAssignCaptain,admChangeBatch,admRefund,admCancelBooking,admInvoice,renderAdminUsers,paintUsers,admNotifyUser,renderAdminPayments,admPayFilter,admExportCSV,admRevenueCSV,renderAdminGear,gearAdj,gearAddItem,gearDelItem,gearSeed,renderAdminCommunity,admDeletePost,admFeaturePost,renderAdminPermits,permSet,renderAdminSupport,ticketReply,ticketResolve,raiseTicket,renderAdminCRM,crmSearch,crmOpen,renderAdminAI,saveAiCfg,renderAdminVendors,vendorSet,openVendorDash,renderVendorDash,applyVendor,vendorAddListing,vendorToggleListing,vendorDelListing,renderBecomeGuide,submitGuideApplication,renderGuideDash,renderGuidePublic,guideScan,guideStopScan,guideVerify,openGuideProfile});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,renderPlanner,sendPlan,plannerChip,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,submitNewPassword,toggleResetPw,cancelReset,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,permitWebsite,applyPermit,openPermitCountry,permitBackToCountries,filterByCity,getDirections,addStaff,removeStaff,setStaffRole,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab,openReviewModal,closeReviewModal,submitReview,setRevStars,adminAddReview,adminDelReview,toggleSavePost,renderEmergency,renderSavedPosts,followAction,requestCall,declineCall,allowCallMsg,togglePrivateAccount,renderFollowRequests,acceptFollowReq,declineFollowReq,admToggleHl,filterAdminHub,admAssignCaptain,admChangeBatch,admRefund,admCancelBooking,admInvoice,renderAdminUsers,paintUsers,admNotifyUser,renderAdminPayments,admPayFilter,admExportCSV,admRevenueCSV,renderAdminGear,gearAdj,gearAddItem,gearDelItem,gearSeed,renderAdminCommunity,admDeletePost,admFeaturePost,renderAdminPermits,permSet,renderAdminSupport,ticketReply,ticketResolve,raiseTicket,renderAdminCRM,crmSearch,crmOpen,renderAdminAI,saveAiCfg,renderAdminVendors,vendorSet,openVendorDash,renderVendorDash,applyVendor,vendorAddListing,vendorToggleListing,vendorDelListing,renderBecomeGuide,submitGuideApplication,renderGuideDash,renderGuidePublic,guideScan,guideStopScan,guideVerify,openGuideProfile,openGuideApply});
 
 /* init */
 applyTheme();   /* dark / light / system theme */
@@ -12114,17 +12132,16 @@ async function openHosts(){
   try{await loadAuthorPhotos(allHosts.map(h=>h.name));}catch(e){}
   renderHostsList();
 }
+/* compact bounded card for the 3-col Verified Hosts grid: small avatar + name + @ + trip status */
 function hostListCard(h){
   const n=h.name,trips=(_tripsByHost&&_tripsByHost[n])||0;
   const un=unameByName[n]||h.username||'';
-  /* plain circular avatar — no gradient ring — to match the clean Find Trekkers rows.
-     The ✓ badge beside the name already signals "verified", so the ring was redundant. */
-  return '<div class="hostcard" onclick="openPerson(\''+jsq(n)+'\')">'
-    +'<div class="hostcard-av">'+avatar(n,52)+'</div>'
-    +'<div class="hostcard-bd"><b><span class="hostcard-name">'+esc(properName(n))+'</span><span class="vbadge"><span class="msr">check</span></span></b>'
-    +(un?'<small>@'+esc(un)+'</small>':'')
-    +'<span class="hostcard-trips">'+(trips?trips+' live trip'+(trips>1?'s':''):'No live trips yet')+'</span></div>'
-    +'<span class="ch">'+ic('back',16)+'</span></div>';
+  return '<div class="hcard3" onclick="openPerson(\''+jsq(n)+'\',\'host\')">'
+    +'<div class="hcard3-av">'+avatar(n,46)+'<span class="hcard3-tick"><span class="msr">check</span></span></div>'
+    +'<b class="hcard3-name">'+esc(properName(n))+'</b>'
+    +(un?'<small class="hcard3-un">@'+esc(un)+'</small>':'')
+    +'<span class="hcard3-trips'+(trips?'':' none')+'">'+(trips?trips+' live trip'+(trips>1?'s':''):'No live trips')+'</span>'
+  +'</div>';
 }
 function renderHostsList(){
   const box=document.getElementById('hostsBody');if(!box)return;
@@ -12138,42 +12155,158 @@ function renderHostsList(){
     hydrate(box);return;
   }
   box.innerHTML='<div class="adm-count">'+list.length+' verified host'+(list.length!==1?'s':'')+'</div>'
-    +'<div class="hostlist">'+list.map(hostListCard).join('')+'</div>';
+    +'<div class="hostgrid">'+list.map(hostListCard).join('')+'</div>';
   hydrate(box);
+}
+/* Resolve a Trek Guide to their MAIN user account so a guide and the same person's host/user profile
+   are ONE profile — same photo, same name, same tap target. Match by guides.user_id (set server-side
+   when an email/mobile matched at approval / "link account"), else by exact name. When matched we
+   register the account photo so avatar() shows it, and the home tile opens the unified person profile. */
+let _guideAcct={}, _guideAcctDone=false;
+async function resolveGuideAccounts(){
+  const sb=getSupaClient();if(!sb)return;
+  const gl=(guides||[]);
+  const ids=[...new Set(gl.map(g=>g.user_id).filter(Boolean))];
+  const names=[...new Set(gl.map(g=>String(g.name||'').trim()).filter(Boolean))];
+  const byUid={}, byName={};
+  try{
+    const qs=[];
+    if(ids.length)qs.push(sb.from('profiles').select('id,name,username,photo,is_host').in('id',ids));
+    if(names.length)qs.push(sb.from('profiles').select('id,name,username,photo,is_host').in('name',names));
+    const res=await Promise.all(qs);
+    res.forEach(r=>{((r&&r.data)||[]).forEach(p=>{byUid[p.id]=p;const k=String(p.name||'').trim().toLowerCase();if(k&&!byName[k])byName[k]=p;if(p.is_host&&p.name)hostByName[p.name]=true;});});
+  }catch(e){}
+  const map={};
+  gl.forEach(g=>{
+    const p=(g.user_id&&byUid[g.user_id])||byName[String(g.name||'').trim().toLowerCase()];
+    if(p&&(p.name||p.photo)){
+      map[g.id]={id:p.id,name:p.name||g.name,photo:p.photo||'',username:p.username||''};
+      if(p.name){if(p.photo)photoByName[p.name]=p.photo;if(p.username)unameByName[p.name]=p.username;}
+    }
+    /* guide-only people (no linked user account): still register their guide photo so their
+       public profile + tiles show a face, not just initials. */
+    if(g.name&&g.photo&&!photoByName[g.name])photoByName[g.name]=g.photo;
+  });
+  _guideAcct=map;
+}
+/* the guide roster row for a given person name (so a person profile can show their Trek-Leader role) */
+function guideForName(name){
+  const n=String(name||'').trim().toLowerCase();if(!n)return null;
+  return (guides||[]).find(g=>{const a=_guideAcct[g.id];return (a&&String(a.name||'').trim().toLowerCase()===n)||String(g.name||'').trim().toLowerCase()===n;})||null;
+}
+/* opens the standalone Trek-Leader eligibility / application page (same origin) */
+function openGuideApply(){try{window.open('/guide-apply/','_blank','noopener');}catch(e){location.href='/guide-apply/';}}
+/* one profile cell in a 3-col grid: ringed avatar + verified tick + full name */
+function hostGridCell(h){
+  return '<div class="hg-cell" title="'+esc(properName(h.name))+'" onclick="openPerson(\''+jsq(h.name)+'\',\'host\')">'
+    +'<div class="hg-av hav">'+avatar(h.name,42)+'<span class="hg-tick"><span class="msr">check</span></span></div>'
+  +'</div>';
+}
+function guideGridCell(g){
+  const acct=_guideAcct[g.id];
+  if(acct){
+    /* same person as a main user/host → ONE unified profile: identical avatar (same photo source as
+       the host tile) + opens the person profile. Green ring/tick still marks the trek-guide role. */
+    return '<div class="hg-cell" title="'+esc(properName(acct.name))+'" onclick="openGuideProfile(\''+jsq(g.id)+'\')">'
+      +'<div class="hg-av gav">'+avatar(acct.name,42)+(g.verified?'<span class="hg-tick gtick"><span class="msr">check</span></span>':'')+'</div>'
+    +'</div>';
+  }
+  const nm=g.name||'Guide';const photo=(g.photo||'').trim();
+  const inner=photo
+    ? '<div class="av-i" style="width:42px;height:42px;border-radius:50%;overflow:hidden;background-image:url(\''+esc(photo)+'\');background-size:cover;background-position:center"></div>'
+    : '<div class="av-i" style="width:42px;height:42px;border-radius:50%;overflow:hidden;display:grid;place-items:center;font-size:16px;color:#fff;background:linear-gradient(135deg,#2f6bff,#0f9d58)">'+esc(initials(nm))+'</div>';
+  return '<div class="hg-cell" title="'+esc(properName(nm))+'" onclick="openGuideProfile(\''+jsq(g.id)+'\')">'
+    +'<div class="hg-av gav">'+inner+(g.verified?'<span class="hg-tick gtick"><span class="msr">check</span></span>':'')+'</div>'
+  +'</div>';
+}
+/* "Trek Leader" card on a person's unified profile — shown when that person is also a guide */
+function personGuideCard(g){
+  const facts=[];
+  if(g.years)facts.push(esc(g.years)+(/[a-z]/i.test(String(g.years))?'':' yrs')+' leading');
+  if(g.treks_led)facts.push(esc(g.treks_led)+(/trek/i.test(String(g.treks_led))?'':' treks led'));
+  if(g.languages)facts.push(esc(g.languages));
+  const certs=guideCerts(g).slice(0,4).map(c=>'<span class="gd-cert">'+esc(c)+'</span>').join('');
+  return '<div class="pguide-card">'
+    +'<div class="pguide-h"><span class="msr">verified</span> Trek Leader at Tripomonk</div>'
+    +(facts.length?'<p class="pguide-facts">'+facts.join(' · ')+'</p>':'')
+    +(certs?'<div class="gd-certs">'+certs+'</div>':'')
+    +'<button class="pguide-btn" onclick="openGuideProfile(\''+jsq(g.id)+'\')">View trek-leader profile <span class="msr">arrow_forward</span></button>'
+  +'</div>';
+}
+/* blue verified tick for an approved account (host or verified trek leader) on their public profile */
+function verifiedTickFor(name,g){
+  const host=!!hostByName[name], guide=!!(g&&g.verified);
+  if(!host&&!guide)return '';
+  return '<span class="vbadge" title="'+(host?'Verified Host':'Verified Trek Leader')+'"><span class="msr">check</span></span>';
+}
+/* Role cards on a person's unified profile — Host + Trek Leader shown SIDE BY SIDE as compact,
+   whole-card-tappable tiles. Renders 1 or 2 depending on which roles the person holds. */
+function personRoleCard(kind,icon,title,sub,go,tap){
+  return '<button class="prole '+kind+'" onclick="'+tap+'">'
+    +'<span class="prole-ic"><span class="msr">'+icon+'</span></span>'
+    +'<span class="prole-body"><b class="prole-t">'+esc(title)+'</b>'+(sub?'<small class="prole-sub">'+esc(sub)+'</small>':'')+'</span>'
+    +'<span class="prole-ch msr">chevron_right</span>'
+  +'</button>';
+}
+/* the spec for one profile-link card (public / host / trek-leader) */
+function profileCardSpec(kind,name,g){
+  if(kind==='public')return {kind:'public',icon:'account_circle',title:'Public profile',sub:'Posts & community',go:'Open',tap:"openPerson('"+jsq(name)+"','public')"};
+  if(kind==='host'){const trips=(_tripsByHost&&_tripsByHost[name])||0;return {kind:'host',icon:'cottage',title:'Host',sub:trips?(trips+' live trip'+(trips>1?'s':'')):'Hosted trips',go:'View trips',tap:"openPerson('"+jsq(name)+"','host')"};}
+  const facts=[];
+  if(g&&g.years)facts.push(esc(g.years)+(/[a-z]/i.test(String(g.years))?'':' yrs'));
+  if(g&&g.treks_led)facts.push(esc(g.treks_led)+(/trek/i.test(String(g.treks_led))?'':' treks'));
+  return {kind:'guide',icon:'hiking',title:'Trek Leader',sub:facts.join(' · ')||'Guide profile',go:'View profile',tap:"openGuideProfile('"+jsq((g&&g.id)||'')+"')"};
+}
+/* Context-aware cross-links: side-by-side cards to the person's OTHER profiles (not the current one).
+   current ∈ 'public' | 'host' | 'guide'. From Our Hosts you land on 'host' (→ Public + Trek Leader),
+   from Our Trek Guides on 'guide' (→ Public + Host), from community on 'public' (→ Host + Trek Leader). */
+function profileLinksHTML(name,g,current,opts){
+  opts=opts||{};
+  const avail=[];
+  if(opts.public!==false)avail.push('public');   /* public link only for real users */
+  const isHost=(opts.host!=null)?opts.host:!!hostByName[name];
+  if(isHost)avail.push('host');
+  if(g)avail.push('guide');
+  const show=avail.filter(k=>k!==current);
+  if(!show.length)return '';
+  return '<div class="prole-wrap">'+show.map(k=>{const s=profileCardSpec(k,name,g);return personRoleCard(s.kind,s.icon,s.title,s.sub,s.go,s.tap);}).join('')+'</div>';
+}
+/* box: Our Hosts — 3-col grid of host profiles (from the main user DB) + "Become a Host" CTA */
+function hostsHomeBox(){
+  const list=verifiedHosts.slice(0,6);
+  const grid=list.length
+    ? '<div class="hg-grid">'+list.map(hostGridCell).join('')+'</div>'
+    : '<p class="homebox-empty">Be one of the first hosts.</p>';
+  return '<div class="homebox">'
+    +'<div class="homebox-h"><h3>Our Hosts</h3>'+(verifiedHosts.length>6?'<a onclick="openHosts()">See all</a>':'')+'</div>'
+    +grid
+    +'<button class="homebox-cta" onclick="go(\'becomeHost\')"><span class="msr">add_home</span><span>Become a Host</span></button>'
+  +'</div>';
+}
+/* box: Our Trek Guides — 3-col grid of guide profiles + "Check Eligibility" CTA */
+function guidesHomeBox(){
+  const gl=(guides||[]).filter(g=>g&&(g.name||_guideAcct[g.id])).slice(0,6);
+  const grid=gl.length
+    ? '<div class="hg-grid">'+gl.map(guideGridCell).join('')+'</div>'
+    : '<p class="homebox-empty">'+(_guidesLoaded?'Verified trek leaders coming soon.':'Loading…')+'</p>';
+  return '<div class="homebox">'
+    +'<div class="homebox-h"><h3>Our Trek Guides</h3></div>'
+    +grid
+    +'<button class="homebox-cta alt" onclick="go(\'guideEligibility\')"><span class="msr">verified</span><span>Check Eligibility</span></button>'
+  +'</div>';
 }
 function renderHomeHosts(){
   const box=document.getElementById('homeHosts');if(!box)return;
-  const hostsRail=renderVerifiedHostsRail();
+  let html='<div class="hg-wrap">'+hostsHomeBox()+guidesHomeBox()+'</div>';
   if(liveHostTrips.length){
-    box.innerHTML=hostsRail
-      +'<div class="sec" style="margin-top:20px"><h2>Hosted Trips</h2>'
+    html+='<div class="sec" style="margin-top:20px"><h2>Hosted Trips</h2>'
       +'<a onclick="go(\'becomeHost\')">Host one</a></div>'
       +'<div class="hostrail">'+liveHostTrips.map(hostTripCard).join('')+'</div>';
-  }else if(hostsRail){
-    /* hosts exist but none have a live trip yet — show the faces, still recruit */
-    box.innerHTML=hostsRail
-      +'<div class="sec" style="margin-top:20px"><h2>Host a Trip</h2></div>'
-      +'<div class="hostcta" onclick="go(\'becomeHost\')">'
-        +'<div class="hcglow"></div>'
-        +'<b>Bring your community.<br>We run the mountain.</b>'
-        +'<p>Creators, clubs and experienced trekkers host under Tripomonk — we handle stays, transport, guides and permits.</p>'
-        +'<span class="hcgo">Become a host '+ic('back',13)+'</span>'
-      +'</div>';
-    const g=box.querySelector('.hcgo .msr,.hcgo .ic');if(g)g.style.transform='scaleX(-1)';
-    hydrate(box);return;
-  }else{
-    /* no live trips yet — recruit instead of showing an empty shelf */
-    box.innerHTML='<div class="sec" style="margin-top:20px"><h2>Host a Trip</h2></div>'
-      +'<div class="hostcta" onclick="go(\'becomeHost\')">'
-        +'<div class="hcglow"></div>'
-        +'<b>Bring your community.<br>We run the mountain.</b>'
-        +'<p>Creators, clubs and experienced trekkers host under Tripomonk — we handle stays, transport, guides and permits.</p>'
-        +'<span class="hcgo">Become a host '+ic('back',13)+'</span>'
-      +'</div>';
-    const go2=box.querySelector('.hcgo .msr,.hcgo .ic');
-    if(go2)go2.style.transform='scaleX(-1)';   /* reuse the back chevron, flipped */
   }
+  box.innerHTML=html;
   hydrate(box);
+  if(!_guidesLoaded){loadGuides().then(()=>renderHomeHosts());return;}   /* fill guides when they load */
+  if(!_guideAcctDone){_guideAcctDone=true;resolveGuideAccounts().then(()=>renderHomeHosts());}  /* then link to main accounts */
 }
 /* green WhatsApp button — reused on every booking screen so doubts get answered fast */
 function waButton(msg,label){
