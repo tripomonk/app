@@ -5000,6 +5000,46 @@ async function renderPersonTrips(name){
     +'<div class="hostrail">'+trips.map(hostTripCard).join('')+'</div>';
   hydrate(box);
 }
+/* ALL trips for a host (past + upcoming), for the dedicated Host trips screen */
+async function loadHostTripsAll(name){
+  const sb=getSupaClient();if(!sb||!name)return [];
+  try{
+    const key=String(name).trim().toLowerCase();
+    const uid=await uidForName(name);
+    const r=await sb.from('host_trips').select('*').limit(300);
+    const raw=r.data||[];
+    const orig=raw.map(t=>t.host_name);
+    const resolved=await resolveHostNames(raw);
+    const seen=new Set(),trips=[];
+    resolved.forEach((t,i)=>{
+      const names=[t.host_name,orig[i]].filter(Boolean).map(s=>String(s).trim().toLowerCase());
+      const match=names.includes(key)||(uid&&t.host_id===uid);
+      const bad=['draft','cancelled','rejected'].includes(String(t.status||'').toLowerCase());
+      if(match&&!bad&&!seen.has(t.id)){seen.add(t.id);trips.push(t);}
+    });
+    return trips;
+  }catch(e){return [];}
+}
+let _hostTripsName='';
+function openHostTrips(name){_hostTripsName=name||'';go('hostTrips');}
+async function renderHostTrips(){
+  const box=document.getElementById('hostTripsBody');if(!box)return;
+  const name=_hostTripsName;
+  const titleEl=document.getElementById('hostTripsTitle');if(titleEl)titleEl.textContent=name?('Trips by '+properName(name)):'Hosted Trips';
+  box.innerHTML='<div class="skel skel-card"></div><div class="skel skel-card"></div>';
+  const all=await loadHostTripsAll(name);
+  if(!document.getElementById('hostTripsBody'))return;   /* navigated away */
+  if(!all.length){box.innerHTML='<div class="empty" style="padding:24px 0;text-align:center"><p>No hosted trips yet.</p></div>';hydrate(box);return;}
+  const upcoming=all.filter(t=>!hostTripEnded(t)).sort((a,b)=>String(a.start_date||'').localeCompare(String(b.start_date||'')));
+  const past=all.filter(t=>hostTripEnded(t)).sort((a,b)=>String(b.start_date||'').localeCompare(String(a.start_date||'')));
+  let html='';
+  if(upcoming.length)html+='<div class="sec-h" style="margin:2px 4px 10px"><b>Upcoming &amp; ongoing</b><span class="sec-count">'+upcoming.length+'</span></div>'
+    +'<div class="httstack">'+upcoming.map(hostTripCard).join('')+'</div>';
+  if(past.length)html+='<div class="sec-h" style="margin:'+(upcoming.length?'22px':'2px')+' 4px 10px"><b>Past trips</b><span class="sec-count">'+past.length+'</span></div>'
+    +'<div class="httstack past">'+past.map(hostTripCard).join('')+'</div>';
+  box.innerHTML=html;
+  hydrate(box);
+}
 let pkTab='Essentials',pkDone={},pkTrek='';
 /* per-trek packing: a trek's custom list (stored on the trek) or the default */
 function getPacking(trekName){
@@ -10831,6 +10871,8 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   /* restoreNav() can land here directly on a reload, so load on demand */
   if(id==='hosts'){if(_hostsLoaded)renderHostsList();
     else Promise.all([loadAllHosts(),loadTripCountsByHost()]).then(renderHostsList).catch(()=>{});}
+  if(id==='guides'){if(_guidesLoaded)renderGuidesList();else loadGuides().then(()=>{if(!_guideAcctDone){_guideAcctDone=true;return resolveGuideAccounts();}}).then(renderGuidesList).catch(()=>{});}
+  if(id==='hostTrips')renderHostTrips();
   if(id==='community')renderFeed();
   if(id==='peopleSearch'){_peoplePool=null;setTimeout(()=>{const i=document.getElementById('peopleSearchInput');if(i){i.value='';i.focus();}searchPeople('');},80);}
   if(id==='news')renderNews();
@@ -10912,7 +10954,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,renderPlanner,sendPlan,plannerChip,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,submitNewPassword,toggleResetPw,cancelReset,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,permitWebsite,applyPermit,openPermitCountry,permitBackToCountries,filterByCity,getDirections,addStaff,removeStaff,setStaffRole,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab,openReviewModal,closeReviewModal,submitReview,setRevStars,adminAddReview,adminDelReview,toggleSavePost,renderEmergency,renderSavedPosts,followAction,requestCall,declineCall,allowCallMsg,togglePrivateAccount,renderFollowRequests,acceptFollowReq,declineFollowReq,admToggleHl,filterAdminHub,admAssignCaptain,admChangeBatch,admRefund,admCancelBooking,admInvoice,renderAdminUsers,paintUsers,admNotifyUser,renderAdminPayments,admPayFilter,admExportCSV,admRevenueCSV,renderAdminGear,gearAdj,gearAddItem,gearDelItem,gearSeed,renderAdminCommunity,admDeletePost,admFeaturePost,renderAdminPermits,permSet,renderAdminSupport,ticketReply,ticketResolve,raiseTicket,renderAdminCRM,crmSearch,crmOpen,renderAdminAI,saveAiCfg,renderAdminVendors,vendorSet,openVendorDash,renderVendorDash,applyVendor,vendorAddListing,vendorToggleListing,vendorDelListing,renderBecomeGuide,submitGuideApplication,renderGuideDash,renderGuidePublic,guideScan,guideStopScan,guideVerify,openGuideProfile,openGuideApply});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,renderPlanner,sendPlan,plannerChip,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,submitNewPassword,toggleResetPw,cancelReset,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,permitWebsite,applyPermit,openPermitCountry,permitBackToCountries,filterByCity,getDirections,addStaff,removeStaff,setStaffRole,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab,openReviewModal,closeReviewModal,submitReview,setRevStars,adminAddReview,adminDelReview,toggleSavePost,renderEmergency,renderSavedPosts,followAction,requestCall,declineCall,allowCallMsg,togglePrivateAccount,renderFollowRequests,acceptFollowReq,declineFollowReq,admToggleHl,filterAdminHub,admAssignCaptain,admChangeBatch,admRefund,admCancelBooking,admInvoice,renderAdminUsers,paintUsers,admNotifyUser,renderAdminPayments,admPayFilter,admExportCSV,admRevenueCSV,renderAdminGear,gearAdj,gearAddItem,gearDelItem,gearSeed,renderAdminCommunity,admDeletePost,admFeaturePost,renderAdminPermits,permSet,renderAdminSupport,ticketReply,ticketResolve,raiseTicket,renderAdminCRM,crmSearch,crmOpen,renderAdminAI,saveAiCfg,renderAdminVendors,vendorSet,openVendorDash,renderVendorDash,applyVendor,vendorAddListing,vendorToggleListing,vendorDelListing,renderBecomeGuide,submitGuideApplication,renderGuideDash,renderGuidePublic,guideScan,guideStopScan,guideVerify,openGuideProfile,openGuideApply,openGuides,renderGuidesList,openHostTrips});
 
 /* init */
 applyTheme();   /* dark / light / system theme */
@@ -12143,6 +12185,44 @@ function hostListCard(h){
     +'<span class="hcard3-trips'+(trips?'':' none')+'">'+(trips?trips+' live trip'+(trips>1?'s':''):'No live trips')+'</span>'
   +'</div>';
 }
+/* ---- browse all Trek Guides (parallel to the hosts list) ---- */
+let _guidesQ='';
+async function openGuides(){
+  go('guides');
+  const box=document.getElementById('guidesBody');
+  if(box&&!(guides&&guides.length))box.innerHTML='<div class="skel skel-card"></div><div class="skel skel-card"></div>';
+  if(!_guidesLoaded)await loadGuides();
+  if(!_guideAcctDone){_guideAcctDone=true;try{await resolveGuideAccounts();}catch(e){}}
+  renderGuidesList();
+}
+function guideListCard(g){
+  const acct=_guideAcct[g.id];
+  const nm=(acct&&acct.name)||g.name||'Guide';
+  const photo=((acct&&acct.photo)||g.photo||photoFor(nm)||'').trim();
+  const inner=photo
+    ? '<div class="av-i" style="width:46px;height:46px;border-radius:50%;overflow:hidden;background-image:url(\''+esc(photo)+'\');background-size:cover;background-position:center"></div>'
+    : '<div class="av-i" style="width:46px;height:46px;border-radius:50%;overflow:hidden;display:grid;place-items:center;font-size:17px;color:#fff;background:linear-gradient(135deg,#2f6bff,#0f9d58)">'+esc(initials(nm))+'</div>';
+  const sub=g.treks_led?(/trek/i.test(String(g.treks_led))?esc(g.treks_led):esc(g.treks_led)+' treks')
+    :(g.years?esc(g.years)+(/[a-z]/i.test(String(g.years))?'':' yrs'):'Trek leader');
+  return '<div class="hcard3" onclick="openGuideProfile(\''+jsq(g.id)+'\')">'
+    +'<div class="hcard3-av">'+inner+(g.verified?'<span class="hcard3-tick gtick"><span class="msr">check</span></span>':'')+'</div>'
+    +'<b class="hcard3-name">'+esc(properName(nm))+'</b>'
+    +'<span class="hcard3-trips">'+sub+'</span>'
+  +'</div>';
+}
+function renderGuidesList(){
+  const box=document.getElementById('guidesBody');if(!box)return;
+  const q=(_guidesQ||'').trim().toLowerCase();
+  const all=(guides||[]).filter(g=>g&&(g.name||_guideAcct[g.id]));
+  const list=all.filter(g=>{const nm=((_guideAcct[g.id]&&_guideAcct[g.id].name)||g.name||'');return !q||nm.toLowerCase().includes(q)||String(g.regions||'').toLowerCase().includes(q);});
+  if(!list.length){
+    box.innerHTML=_guidesLoaded?'<div class="empty"><p>'+(q?'No guides match your search.':'No trek guides yet.')+'</p></div>':'<div class="skel skel-card"></div>';
+    hydrate(box);return;
+  }
+  box.innerHTML='<div class="adm-count">'+list.length+' trek guide'+(list.length!==1?'s':'')+'</div>'
+    +'<div class="hostgrid">'+list.map(guideListCard).join('')+'</div>';
+  hydrate(box);
+}
 function renderHostsList(){
   const box=document.getElementById('hostsBody');if(!box)return;
   const q=_hostsQ.trim().toLowerCase();
@@ -12199,7 +12279,7 @@ function openGuideApply(){try{window.open('/guide-apply/','_blank','noopener');}
 /* one profile cell in a 3-col grid: ringed avatar + verified tick + full name */
 function hostGridCell(h){
   return '<div class="hg-cell" title="'+esc(properName(h.name))+'" onclick="openPerson(\''+jsq(h.name)+'\',\'host\')">'
-    +'<div class="hg-av hav">'+avatar(h.name,42)+'<span class="hg-tick"><span class="msr">check</span></span></div>'
+    +'<div class="hg-av">'+avatar(h.name,46)+'<span class="hg-tick"><span class="msr">check</span></span></div>'
   +'</div>';
 }
 function guideGridCell(g){
@@ -12208,15 +12288,15 @@ function guideGridCell(g){
     /* same person as a main user/host → ONE unified profile: identical avatar (same photo source as
        the host tile) + opens the person profile. Green ring/tick still marks the trek-guide role. */
     return '<div class="hg-cell" title="'+esc(properName(acct.name))+'" onclick="openGuideProfile(\''+jsq(g.id)+'\')">'
-      +'<div class="hg-av gav">'+avatar(acct.name,42)+(g.verified?'<span class="hg-tick gtick"><span class="msr">check</span></span>':'')+'</div>'
+      +'<div class="hg-av">'+avatar(acct.name,46)+(g.verified?'<span class="hg-tick gtick"><span class="msr">check</span></span>':'')+'</div>'
     +'</div>';
   }
   const nm=g.name||'Guide';const photo=(g.photo||'').trim();
   const inner=photo
-    ? '<div class="av-i" style="width:42px;height:42px;border-radius:50%;overflow:hidden;background-image:url(\''+esc(photo)+'\');background-size:cover;background-position:center"></div>'
-    : '<div class="av-i" style="width:42px;height:42px;border-radius:50%;overflow:hidden;display:grid;place-items:center;font-size:16px;color:#fff;background:linear-gradient(135deg,#2f6bff,#0f9d58)">'+esc(initials(nm))+'</div>';
+    ? '<div class="av-i" style="width:46px;height:46px;border-radius:50%;overflow:hidden;background-image:url(\''+esc(photo)+'\');background-size:cover;background-position:center"></div>'
+    : '<div class="av-i" style="width:46px;height:46px;border-radius:50%;overflow:hidden;display:grid;place-items:center;font-size:17px;color:#fff;background:linear-gradient(135deg,#2f6bff,#0f9d58)">'+esc(initials(nm))+'</div>';
   return '<div class="hg-cell" title="'+esc(properName(nm))+'" onclick="openGuideProfile(\''+jsq(g.id)+'\')">'
-    +'<div class="hg-av gav">'+inner+(g.verified?'<span class="hg-tick gtick"><span class="msr">check</span></span>':'')+'</div>'
+    +'<div class="hg-av">'+inner+(g.verified?'<span class="hg-tick gtick"><span class="msr">check</span></span>':'')+'</div>'
   +'</div>';
 }
 /* "Trek Leader" card on a person's unified profile — shown when that person is also a guide */
@@ -12251,7 +12331,7 @@ function personRoleCard(kind,icon,title,sub,go,tap){
 /* the spec for one profile-link card (public / host / trek-leader) */
 function profileCardSpec(kind,name,g){
   if(kind==='public')return {kind:'public',icon:'account_circle',title:'Public profile',sub:'Posts & community',go:'Open',tap:"openPerson('"+jsq(name)+"','public')"};
-  if(kind==='host'){const trips=(_tripsByHost&&_tripsByHost[name])||0;return {kind:'host',icon:'cottage',title:'Host',sub:trips?(trips+' live trip'+(trips>1?'s':'')):'Hosted trips',go:'View trips',tap:"openPerson('"+jsq(name)+"','host')"};}
+  if(kind==='host'){const trips=(_tripsByHost&&_tripsByHost[name])||0;return {kind:'host',icon:'cottage',title:'Host',sub:trips?(trips+' live trip'+(trips>1?'s':'')):'Hosted trips',go:'View trips',tap:"openHostTrips('"+jsq(name)+"')"};}
   const facts=[];
   if(g&&g.years)facts.push(esc(g.years)+(/[a-z]/i.test(String(g.years))?'':' yrs'));
   if(g&&g.treks_led)facts.push(esc(g.treks_led)+(/trek/i.test(String(g.treks_led))?'':' treks'));
@@ -12289,10 +12369,11 @@ function guidesHomeBox(){
   const grid=gl.length
     ? '<div class="hg-grid">'+gl.map(guideGridCell).join('')+'</div>'
     : '<p class="homebox-empty">'+(_guidesLoaded?'Verified trek leaders coming soon.':'Loading…')+'</p>';
+  const total=(guides||[]).filter(g=>g&&(g.name||_guideAcct[g.id])).length;
   return '<div class="homebox">'
-    +'<div class="homebox-h"><h3>Our Trek Guides</h3></div>'
+    +'<div class="homebox-h"><h3>Our Trek Guides</h3>'+(total?'<a onclick="openGuides()">See all</a>':'')+'</div>'
     +grid
-    +'<button class="homebox-cta alt" onclick="go(\'guideEligibility\')"><span class="msr">verified</span><span>Check Eligibility</span></button>'
+    +'<button class="homebox-cta alt" onclick="go(\'guideEligibility\')"><span class="msr">verified</span><span>Guide With Us</span></button>'
   +'</div>';
 }
 function renderHomeHosts(){

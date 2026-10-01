@@ -2714,12 +2714,17 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .hcard3-tick{position:absolute;bottom:-1px;right:-1px;width:16px;height:16px;border-radius:50%;background:var(--accent);
     border:2px solid var(--card);display:grid;place-items:center;color:#fff}
   .hcard3-tick .msr{font-size:9px}
+  .hcard3-tick.gtick{background:#0f9d58}
   .hcard3-name{font-size:11.5px;font-weight:700;line-height:1.2;color:var(--text);
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
   .hcard3-un{display:block;font-size:9.5px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .hcard3-trips{display:inline-block;margin-top:7px;font-size:9px;font-weight:700;padding:3px 7px;border-radius:7px;
     background:rgba(47,107,255,.14);color:var(--accent2);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .hcard3-trips.none{background:var(--card2);color:var(--muted)}
+  /* a host's dedicated trips screen: fluid grid of trip cards */
+  .httstack{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+  .httstack .htcard{width:auto}
+  .httstack.past .htcard{opacity:.72}
   .hostlist{display:flex;flex-direction:column;gap:9px}
   .hostcard{display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--stroke);
     border-radius:16px;padding:12px 13px;cursor:pointer;transition:transform .12s;min-height:86px;box-sizing:border-box}
@@ -2784,15 +2789,12 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .homebox-h h3{font-size:14.5px;margin:0;font-weight:800;line-height:1.15}
   .homebox-h a{font-size:12px;color:var(--accent2);cursor:pointer;font-weight:600;white-space:nowrap}
   .homebox-empty{padding:0 12px;margin:2px 0 6px;font-size:12px;color:var(--muted);line-height:1.5}
-  .hg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 3px;padding:2px 9px}
+  .hg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px 8px;padding:8px 10px 4px}
   .hg-cell{text-align:center;cursor:pointer;min-width:0;transition:transform .12s}
-  .hg-cell:active{transform:scale(.94)}
-  .hg-av{position:relative;width:46px;height:46px;margin:0 auto;border-radius:50%;padding:2px;
-    display:grid;place-items:center;box-sizing:border-box}
-  .hg-av.hav{background:conic-gradient(from 90deg,var(--accent),var(--accent2),var(--yellow),var(--accent2),var(--accent))}
-  .hg-av.gav{background:conic-gradient(from 90deg,#0f9d58,var(--accent2),#0f9d58)}
-  .hg-av .av-i{box-shadow:0 0 0 2px var(--card)}
-  .hg-tick{position:absolute;bottom:-1px;right:-1px;width:15px;height:15px;border-radius:50%;background:var(--accent);
+  .hg-cell:active{transform:scale(.92)}
+  .hg-av{position:relative;width:46px;height:46px;margin:0 auto}
+  .hg-av .av-i{box-shadow:0 0 0 1px var(--stroke)}
+  .hg-tick{position:absolute;bottom:0;right:0;width:15px;height:15px;border-radius:50%;background:var(--accent);
     border:2px solid var(--card);display:grid;place-items:center;color:#fff}
   .hg-tick .msr{font-size:9px}
   .hg-tick.gtick{background:#0f9d58}
@@ -2812,22 +2814,25 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .elig-badge .msr{font-size:30px}
   .elig-hero h2{margin:0 0 6px;font-size:20px}
   .elig-hero p{margin:0 auto;font-size:13px;color:var(--muted);line-height:1.55;max-width:300px}
-  .elig-list{display:flex;flex-direction:column;gap:10px}
-  .elig-item{display:flex;gap:12px;align-items:flex-start;background:var(--card);border:1px solid var(--stroke);
-    border-radius:14px;padding:13px 14px}
-  .elig-item .elig-ic{width:38px;height:38px;flex:none;border-radius:11px;display:grid;place-items:center;
-    background:rgba(47,107,255,.14);color:var(--accent2)}
-  .elig-item .elig-ic .msr{font-size:20px}
+  .elig-list{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .elig-item{display:flex;flex-direction:column;align-items:flex-start;background:var(--card);border:1px solid var(--stroke);
+    border-radius:14px;padding:12px 11px;min-width:0}
+  .elig-item>div{min-width:0}
+  .elig-item .elig-ic{width:34px;height:34px;flex:none;border-radius:10px;display:grid;place-items:center;
+    background:rgba(47,107,255,.14);color:var(--accent2);margin-bottom:8px}
+  .elig-item .elig-ic .msr{font-size:18px}
   .elig-item.pref .elig-ic{background:rgba(245,158,11,.16);color:#f59e0b}
-  .elig-item b{font-size:14px;display:block;line-height:1.25}
-  .elig-item b i{font-style:normal;font-weight:600;font-size:11px;color:var(--muted)}
-  .elig-item small{display:block;font-size:12px;color:var(--muted);line-height:1.5;margin-top:3px}
-  .elig-cta{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:18px;padding:15px;
+  .elig-item b{font-size:12.5px;display:block;line-height:1.22}
+  .elig-item b i{font-style:normal;font-weight:600;font-size:10px;color:var(--muted)}
+  .elig-item small{display:block;font-size:10.5px;color:var(--muted);line-height:1.4;margin-top:4px}
+  .elig-footer{position:sticky;bottom:0;z-index:40;margin:0 -16px;padding:14px 16px calc(var(--safe-bottom) + 14px);
+    background:var(--bg);border-top:1px solid var(--stroke);box-shadow:0 -12px 26px rgba(6,16,28,.6)}
+  .elig-cta{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:15px;
     border:0;border-radius:15px;background:#0f9d58;color:#fff;font-size:15px;font-weight:700;cursor:pointer;
     font-family:inherit;transition:transform .12s}
   .elig-cta:active{transform:scale(.98)}
   .elig-cta .msr{font-size:19px}
-  .elig-foot{text-align:center;font-size:11.5px;color:var(--muted);margin:12px 0 0;line-height:1.5}
+  .elig-foot{text-align:center;font-size:11.5px;color:var(--muted);margin:9px 0 0;line-height:1.5}
 
   /* ---- Cross-link cards (Public / Host / Trek Leader) — compact single-row tiles, side by side ---- */
   .prole-wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0 0}
@@ -4406,9 +4411,11 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
         <div class="elig-item"><span class="elig-ic"><span class="msr">groups</span></span><div><b>Group leadership</b><small>Able to handle and lead a group confidently in outdoor environments.</small></div></div>
         <div class="elig-item pref"><span class="elig-ic"><span class="msr">star</span></span><div><b>Leader experience <i>· preferred</i></b><small>Prior experience as a Trek Leader, Guide or Outdoor Instructor is a plus.</small></div></div>
       </div>
-      <button class="elig-cta" onclick="openGuideApply()"><span class="msr">send</span> Apply as a Trek Leader</button>
-      <p class="elig-foot">Takes about 5 minutes — our team personally reviews every application.</p>
-      <div style="height:calc(var(--safe-bottom) + 20px)"></div>
+      <div style="height:14px"></div>
+      <div class="elig-footer">
+        <button class="elig-cta" onclick="openGuideApply()"><span class="msr">send</span> Apply as a Trek Leader</button>
+        <p class="elig-foot">Takes about 5 minutes — our team personally reviews every application.</p>
+      </div>
     </div>
   </section>
 
@@ -4628,6 +4635,21 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
     <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Verified Hosts</h1></div>
     <div class="adm-search" style="margin:0 0 12px"><span class="msr">search</span><input id="hostsSearch" placeholder="Search hosts by name or username…" oninput="_hostsQ=this.value;renderHostsList()"></div>
     <div id="hostsBody"></div>
+    <div style="height:calc(var(--safe-bottom) + 20px)"></div>
+  </section>
+
+  <!-- ALL TREK GUIDES -->
+  <section class="view flow" id="guides" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Trek Guides</h1></div>
+    <div class="adm-search" style="margin:0 0 12px"><span class="msr">search</span><input id="guidesSearch" placeholder="Search guides by name or region…" oninput="_guidesQ=this.value;renderGuidesList()"></div>
+    <div id="guidesBody"></div>
+    <div style="height:calc(var(--safe-bottom) + 20px)"></div>
+  </section>
+
+  <!-- A HOST'S TRIPS (past + upcoming) -->
+  <section class="view flow" id="hostTrips" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1 id="hostTripsTitle">Hosted Trips</h1></div>
+    <div id="hostTripsBody" style="padding:0 16px"></div>
     <div style="height:calc(var(--safe-bottom) + 20px)"></div>
   </section>
 
