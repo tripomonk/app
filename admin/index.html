@@ -94,6 +94,22 @@
   .av-s{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700;flex:none;background-size:cover;background-position:center}
   .tag{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
   .tag.ok{background:rgba(61,220,151,.15);color:var(--ok)}.tag.warn{background:rgba(255,206,31,.16);color:var(--yellow)}.tag.bad{background:rgba(255,90,114,.16);color:var(--bad)}.tag.neutral{background:rgba(255,255,255,.08);color:var(--muted)}
+  /* guide roster: filters, availability chips, basic rate */
+  .gr-filters{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end;margin:4px 0 14px}
+  .gr-f{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted)}
+  .gr-f input,.gr-q{border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:9px;padding:8px 10px;font-size:13px;outline:none;font-family:inherit}
+  .gr-rate{display:flex;gap:6px}.gr-rate input{width:72px}
+  .gr-chk{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--ink);cursor:pointer}
+  .gr-chk input{width:16px;height:16px;accent-color:var(--accent)}
+  .gr-q{flex:1;min-width:150px}
+  .av-chip{display:inline-block;padding:4px 9px;border-radius:999px;font-size:11.5px;font-weight:700;white-space:nowrap;background:rgba(255,255,255,.07);color:var(--muted)}
+  .av-chip.ok{background:rgba(61,220,151,.16);color:var(--ok)}
+  .av-chip.warn{background:rgba(255,206,31,.16);color:var(--yellow)}
+  .av-chip.bad{background:rgba(255,90,114,.16);color:var(--bad)}
+  .rate-cell{white-space:nowrap}.rate-big{font-size:16px;font-weight:800;color:var(--ink)}.rate-cell small{color:var(--muted);font-size:11px;margin-left:2px}
+  .gv-top{display:flex;align-items:center;gap:12px;margin:12px 0 2px;padding:13px 15px;border-radius:14px;background:linear-gradient(135deg,rgba(61,220,151,.14),rgba(47,107,255,.08));border:1px solid rgba(61,220,151,.3)}
+  .gv-rate{flex:1;min-width:0}.gv-rate small{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .gv-rate b{display:block;font-size:19px;font-weight:800;color:var(--ink);margin-top:2px}.gv-rate b i{font-style:normal;font-size:12px;font-weight:600;color:var(--muted)}
   .tbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
   .tbar input,.tbar select{height:38px;border:1px solid var(--line);border-radius:10px;padding:0 12px;font-size:13px;outline:none;background:var(--panel2);color:var(--ink)}
   .tbar input.grow{flex:1;min-width:180px}
@@ -1171,10 +1187,56 @@ function guideDetail(which){
   if(which==='apps'){
     $('#content').innerHTML=`<div class="panel"><div class="tbar">${back}<h2 style="margin:0 0 0 10px">Guide applications</h2><span class="spacer"></span><span class="tag">${_guideApps.length}</span></div><p class="desc">Tap <b>View</b> to read the full application, then approve or reject.</p>${_guideApps.length?wrapTbl(`<table class="tbl"><thead><tr><th>Name</th><th>City</th><th>Experience</th><th>Status</th><th></th></tr></thead><tbody>${_guideApps.map(a=>`<tr><td><div class="u">${avc(a.full_name,a.profile_photo)}<div><b>${esc(a.full_name||'-')}</b><br><small class="muted">${esc(a.regions||'')}</small></div></div></td><td data-l="City" class="muted">${esc(a.city||'')}${a.state?', '+esc(a.state):''}</td><td data-l="Experience" class="muted">${esc(((a.experience_years!=null?a.experience_years+' yrs':'')+(a.treks_led?' · '+a.treks_led:''))||'-')}</td><td data-l="Status">${guideStTag(a.status)}</td><td>${guideAppActs(a)}</td></tr>`).join('')}</tbody></table>`):'<div class="empty">No applications yet.</div>'}</div>`;
   }else{
-    $('#content').innerHTML=`<div class="panel"><div class="tbar">${back}<h2 style="margin:0 0 0 10px">Trek leaders</h2><span class="spacer"></span><button class="btn2" onclick="bulkOpen('guides')">⬆ Bulk upload</button><button class="btn2 pri" onclick="guideAdd()">+ Add guide</button></div><p class="desc">Assignable roster. Approved applicants are added here automatically. Tap a guide to see number, email, location &amp; full details.</p>${_guideRoster.length?wrapTbl(`<table class="tbl"><thead><tr><th>Name</th><th>Location</th><th>Experience</th><th></th></tr></thead><tbody>${_guideRoster.map(g=>`<tr style="cursor:pointer" onclick="guideRosterView('${jsv(g.id)}')"><td><div class="u">${avc(g.name,g.photo)}<b>${esc(g.name)}</b>${g.verified?' <span class="tag ok" style="margin-left:4px">✓</span>':''}</div></td><td data-l="Location" class="muted">${esc(gLoc(g))||'-'}</td><td data-l="Experience" class="muted">${esc(gExp(g))||'-'}</td><td onclick="event.stopPropagation()"><div class="row-acts"><button class="btn2 sm" onclick="guideRosterView('${jsv(g.id)}')">View</button><button class="btn2 sm danger" onclick="guideDel('${jsv(g.id)}')">Remove</button></div></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No guides yet.</div>'}</div>`;
+    $('#content').innerHTML=guideRosterPanel();
   }}
 function gExp(g){return [g.years?(/[a-z]/i.test(String(g.years))?g.years:g.years+' yrs'):'', g.treks_led?g.treks_led+' treks':''].filter(Boolean).join(' · ')||g.experience||'';}
 function gLoc(g){return [g.city,g.state].filter(Boolean).join(', ')||g.region||'';}
+/* ---- Availability + Basic Rate helpers (ops comparison) ---- */
+let _grFilter={date:'',rateMin:'',rateMax:'',verified:false,certified:false,q:''};
+function gAvailMap(g){const m={};(g.availability||[]).forEach(a=>{if(a&&a.day)m[a.day]=a.status;});return m;}
+function gStatusOn(g,date){if(!date)return null;if((g.booked||[]).includes(date))return 'booked';return gAvailMap(g)[date]||null;}
+function gNextAvail(g){const t=new Date().toISOString().slice(0,10);const bk=new Set(g.booked||[]);const d=(g.availability||[]).filter(a=>a.status==='available'&&a.day>=t&&!bk.has(a.day)).map(a=>a.day).sort();return d[0]||'';}
+function gAvailChip(g,date){
+  if(date){const s=gStatusOn(g,date);
+    if(s==='available')return '<span class="av-chip ok">🟢 Available</span>';
+    if(s==='tentative')return '<span class="av-chip warn">🟡 Tentative</span>';
+    if(s==='unavailable')return '<span class="av-chip bad">🔴 Unavailable</span>';
+    if(s==='booked')return '<span class="av-chip bad">🔴 Booked</span>';
+    return '<span class="av-chip">— Not set</span>';}
+  const n=gNextAvail(g);const bk=(g.booked||[]).length;
+  return n?('<span class="av-chip ok">🟢 '+dshort(n)+'</span>'):(bk?'<span class="av-chip bad">🔴 Booked soon</span>':'<span class="av-chip">— Not set</span>');
+}
+function gRateHtml(g){return g.day_rate?('<b class="rate-big">₹'+Number(g.day_rate).toLocaleString('en-IN')+'</b><small>/day</small>'):'<span class="muted" style="font-size:12px">— set</span>';}
+function guideRosterFiltered(){const f=_grFilter;return _guideRoster.filter(g=>{
+  if(f.verified&&!g.verified)return false;
+  if(f.certified&&!String(g.certifications||'').trim())return false;
+  if(f.rateMin!==''&&!(Number(g.day_rate||0)>=Number(f.rateMin)))return false;
+  if(f.rateMax!==''&&!(Number(g.day_rate||1e12)<=Number(f.rateMax)))return false;
+  if(f.q){const s=(g.name+' '+(g.region||'')+' '+gLoc(g)).toLowerCase();if(!s.includes(f.q.toLowerCase()))return false;}
+  if(f.date&&gStatusOn(g,f.date)!=='available')return false;   /* who is actually available that day */
+  return true;});}
+function guideRosterTableHTML(){
+  const list=guideRosterFiltered(),date=_grFilter.date;
+  if(!list.length)return '<div class="empty">No guides match these filters.</div>';
+  return '<div class="adm-count">'+list.length+' guide'+(list.length!==1?'s':'')+'</div>'+wrapTbl('<table class="tbl"><thead><tr><th>Guide</th><th>Experience</th><th>'+(date?('Avail · '+dshort(date)):'Availability')+'</th><th>Basic Rate</th><th></th></tr></thead><tbody>'+list.map(g=>'<tr style="cursor:pointer" onclick="guideRosterView(\''+jsv(g.id)+'\')"><td><div class="u">'+avc(g.name,g.photo)+'<div><b>'+esc(g.name)+'</b>'+(g.verified?' <span class="tag ok" style="margin-left:4px">✓</span>':'')+'<br><small class="muted">'+(esc(gLoc(g))||'')+'</small></div></div></td><td data-l="Experience" class="muted">'+(esc(gExp(g))||'-')+'</td><td data-l="Availability">'+gAvailChip(g,date)+'</td><td data-l="Rate" class="rate-cell">'+gRateHtml(g)+'</td><td onclick="event.stopPropagation()"><button class="btn2 sm" onclick="guideRosterView(\''+jsv(g.id)+'\')">View</button></td></tr>').join('')+'</tbody></table>');
+}
+function applyGuideFilters(){
+  _grFilter={date:($('#grDate')||{}).value||'',rateMin:($('#grMin')||{}).value||'',rateMax:($('#grMax')||{}).value||'',verified:!!($('#grVer')||{}).checked,certified:!!($('#grCert')||{}).checked,q:($('#grQ')||{}).value||''};
+  const w=$('#grTableWrap');if(w)w.innerHTML=_guideRoster.length?guideRosterTableHTML():'<div class="empty">No guides yet.</div>';
+}
+function guideRosterPanel(){
+  const back='<button class="btn2" onclick="renderGuides()">&larr; Back</button>';
+  return '<div class="panel"><div class="tbar">'+back+'<h2 style="margin:0 0 0 10px">Trek leaders</h2><span class="spacer"></span><button class="btn2" onclick="bulkOpen(\'guides\')">⬆ Bulk upload</button><button class="btn2 pri" onclick="guideAdd()">+ Add guide</button></div>'
+    +'<p class="desc">Who\'s available for a date and at what rate — filter below, then tap a guide.</p>'
+    +'<div class="gr-filters">'
+      +'<label class="gr-f"><span>Available on</span><input type="date" id="grDate" value="'+esc(_grFilter.date||'')+'" onchange="applyGuideFilters()"></label>'
+      +'<label class="gr-f"><span>Rate ₹/day</span><span class="gr-rate"><input type="number" id="grMin" placeholder="min" value="'+esc(_grFilter.rateMin||'')+'" oninput="applyGuideFilters()"><input type="number" id="grMax" placeholder="max" value="'+esc(_grFilter.rateMax||'')+'" oninput="applyGuideFilters()"></span></label>'
+      +'<label class="gr-chk"><input type="checkbox" id="grVer" '+(_grFilter.verified?'checked':'')+' onchange="applyGuideFilters()"> Verified</label>'
+      +'<label class="gr-chk"><input type="checkbox" id="grCert" '+(_grFilter.certified?'checked':'')+' onchange="applyGuideFilters()"> Certified</label>'
+      +'<input type="text" id="grQ" class="gr-q" placeholder="Search name / region…" value="'+esc(_grFilter.q||'')+'" oninput="applyGuideFilters()">'
+    +'</div>'
+    +'<div id="grTableWrap">'+(_guideRoster.length?guideRosterTableHTML():'<div class="empty">No guides yet.</div>')+'</div></div>';
+}
 function guideProfile(id){
   const a=_guideApps.find(x=>String(x.id)===String(id));if(!a)return;
   const s=(a.status||'pending').toLowerCase();
@@ -1282,6 +1344,8 @@ function guideRosterView(id){
   const ph=String(phone);const telNum=ph.replace(/[^0-9+]/g,'');
   let waDigits=ph.replace(/[^0-9]/g,'').replace(/^0+/,'');if(waDigits.length===10)waDigits='91'+waDigits;
   body.innerHTML=`<div class="dh">${avc(g.name,g.photo)}<div><b style="font-size:16px">${esc(g.name||'Guide')}</b>${g.verified?' <span class="tag ok">✓ verified</span>':''}<br><small class="muted">${esc(loc||'Trek leader')}</small></div><span class="spacer"></span><button class="btn2" onclick="closeOv()">Close</button></div>
+    <div class="gv-top"><div class="gv-rate"><small>Basic Rate</small><b>${g.day_rate?('₹'+Number(g.day_rate).toLocaleString('en-IN')+' <i>/day</i>'):'Not set'}</b></div><button class="btn2 sm" onclick="guideRateEdit('${jsv(g.id)}',${g.day_rate||0})">${g.day_rate?'Edit rate':'Set rate'}</button></div>
+    <div style="margin:6px 0 2px">${gAvailChip(g,'')}${(g.booked&&g.booked.length)?' <span class="av-chip bad" style="margin-left:6px">'+g.booked.length+' booked date'+(g.booked.length>1?'s':'')+'</span>':''}</div>
     <div class="sec-t">Contact</div>${row('Phone / number',phone)}${row('Email',email)}${row('Location',loc)}${(!phone&&!email)?'<div class="muted" style="font-size:12.5px;margin:2px 0 8px">No contact on file — added manually. To capture number &amp; email, approve them from a Guide application.</div>':''}
     <div class="sec-t">Dashboard access</div>${g.user_id?`<div class="ua-ev"><span class="d" style="background:var(--ok)"></span><div>Linked to an app account ✓<small>They can open the Guide Dashboard from their Tripomonk profile</small></div></div>`:`<div class="ua-ev"><span class="d" style="background:var(--yellow)"></span><div>Not linked yet<small>Link their app email so they can open their dashboard</small></div></div>`}
     <div class="row-acts" style="justify-content:flex-start;margin:6px 0 2px"><button class="btn2 sm" onclick="guideLinkAccount('${jsv(g.id)}')">${g.user_id?'Re-link account':'Link app account'}</button>${g.user_id?`<button class="btn2 sm danger" onclick="guideUnlinkAccount('${jsv(g.id)}')">Unlink</button>`:''}</div>
@@ -1292,6 +1356,11 @@ function guideRosterView(id){
     <div class="sec-t">Actions</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">${telNum?`<a class="btn2" style="text-decoration:none" href="tel:${esc(telNum)}">Call</a><a class="btn2" style="text-decoration:none" href="https://wa.me/${esc(waDigits)}" target="_blank" rel="noopener">WhatsApp</a>`:''}${email?`<a class="btn2" style="text-decoration:none" href="mailto:${esc(email)}">Email</a>`:''}<button class="btn2 danger" onclick="guideDel('${jsv(g.id)}')">Remove guide</button></div>`;
   guideRosterFull(g.id);}
+function guideRateEdit(gid,cur){
+  modal('<h3>Basic rate</h3><div class="fld"><label>₹ per day</label><input id="grRateInp" type="number" inputmode="numeric" value="'+(cur||'')+'" placeholder="e.g. 2500"/></div><div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="grRateGo">Save</button></div>');
+  const i=$('#grRateInp');if(i)setTimeout(()=>i.focus(),60);
+  $('#grRateGo').onclick=async()=>{const v=Math.max(0,parseInt((($('#grRateInp')||{}).value||'').replace(/[^0-9]/g,''),10)||0);closeOv();const r=await adminCall('set_guide_rate',{guide_id:gid,rate:v});if(r&&r.error){toast('Failed: '+r.error+(/column|relation/i.test(r.error)?' — run SQL-guide-availability.sql':''));return;}const gg=_guideRoster.find(x=>String(x.id)===String(gid));if(gg)gg.day_rate=v;toast('Basic rate saved ✓');guideRosterView(gid);};
+}
 async function guideRosterFull(gid){
   const el=$('#gvFull');if(!el)return;
   let d=null;try{const r=await adminCall('guide_full',{guide_id:gid});if(r&&r.treks!==undefined)d=r;}catch(e){}
