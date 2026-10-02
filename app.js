@@ -10070,10 +10070,11 @@ function guideEditRate(cur){const box=document.getElementById('gRateBox');if(!bo
     +'<button class="btn sm" onclick="guideSaveRate()">Save</button>';
   const i=document.getElementById('gRateInp');if(i)setTimeout(()=>i.focus(),60);}
 async function guideSaveRate(){const el=document.getElementById('gRateInp');const v=Math.max(0,parseInt(((el&&el.value)||'').replace(/[^0-9]/g,''),10)||0);
-  try{const sb=getSupaClient();if(sb)await sb.functions.invoke('guide',{body:{action:'set_rate',rate:v}});}catch(e){}
   if(_myGuide)_myGuide.day_rate=v;
   const box=document.getElementById('gRateBox');if(box)box.innerHTML=guideRateHTML(_myGuide||{day_rate:v});
-  if(typeof toast==='function')toast('Basic rate saved ✓');}
+  let ok=false,err='';
+  try{const sb=getSupaClient();if(sb){const rr=await sb.functions.invoke('guide',{body:{action:'set_rate',rate:v}});const r=rr&&rr.data;ok=!!(r&&r.ok);err=(r&&r.error)||'';}}catch(e){err=String(e&&e.message||e);}
+  if(typeof toast==='function')toast(ok?'Basic rate saved ✓':(/sign in|invalid session|not a registered/i.test(err)?'Please sign in as the guide to save':'Rate not saved — deploy the updated guide function'+(err&&!/non-2xx/i.test(err)?' ('+err+')':'')));}
 /* ---- Availability calendar ---- */
 function _gIso(y,m,d){return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');}
 function _gDaysBetween(a,b){const out=[];let d=new Date(a+'T00:00:00'),e=new Date(b+'T00:00:00');while(d<=e){out.push(d.toISOString().slice(0,10));d.setDate(d.getDate()+1);}return out;}
@@ -10083,7 +10084,13 @@ function guideCalNav(delta){_gCal=new Date(_gCal.getFullYear(),_gCal.getMonth()+
 async function _guideSaveAvail(days,status){
   days.forEach(d=>{if(status==='clear')delete _gAvail[d];else _gAvail[d]=status;});
   renderGuideAvail();
-  try{const sb=getSupaClient();if(sb)await sb.functions.invoke('guide',{body:{action:'set_availability',days,status}});}catch(e){}
+  let ok=false,err='';
+  try{const sb=getSupaClient();if(sb){const rr=await sb.functions.invoke('guide',{body:{action:'set_availability',days,status}});const r=rr&&rr.data;ok=!!(r&&r.ok);err=(r&&r.error)||((rr&&rr.error&&rr.error.message)||'');}}catch(e){err=String(e&&e.message||e);}
+  if(typeof toast==='function'){
+    if(ok)toast('Availability saved ✓');
+    else if(/sign in|invalid session|not a registered/i.test(err))toast('Please sign in as the guide to save');
+    else toast('Availability not saved — run SQL-guide-availability.sql and deploy the updated guide function'+(err&&!/non-2xx/i.test(err)?' ('+err+')':''));
+  }
 }
 function guideDayTap(iso){
   if(_gBooked.has(iso))return;                 /* booked = locked */
