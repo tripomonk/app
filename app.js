@@ -9997,8 +9997,17 @@ function myGuide(){return _myGuide;}
 function guideTreks(gid){return (typeof treks!=='undefined'?treks:[]).filter(t=>String(t.guide_id||'')===String(gid));}
 async function loadMyGuide(){
   if(!isLoggedIn()){_myGuide=null;return null;}
-  try{ if(!_guidesLoaded)await loadGuides(); const uid=await authUid(); _myGuide=(guides||[]).find(g=>g.user_id&&String(g.user_id)===String(uid))||null; }
-  catch(e){_myGuide=null;}
+  try{
+    if(!_guidesLoaded)await loadGuides();
+    const uid=await authUid();
+    /* 1) linked by user_id */
+    _myGuide=(guides||[]).find(g=>g.user_id&&String(g.user_id)===String(uid))||null;
+    /* 2) name fallback — the account's name matches a guide roster name */
+    if(!_myGuide){const nm=String(getSavedName()||'').trim().toLowerCase();if(nm)_myGuide=(guides||[]).find(g=>String(g.name||'').trim().toLowerCase()===nm)||null;}
+    /* 3) authoritative — ask the guide edge fn, which auto-links this account by EMAIL
+          (guide_contacts / approved application) and returns the guide even if user_id wasn't set */
+    if(!_myGuide){try{const sb=getSupaClient();if(sb){const rr=await sb.functions.invoke('guide',{body:{action:'me'}});if(rr&&rr.data&&rr.data.ok&&rr.data.guide){const gid=rr.data.guide.id;_myGuide=(guides||[]).find(g=>String(g.id)===String(gid))||rr.data.guide;}}}catch(e){}}
+  }catch(e){_myGuide=null;}
   return _myGuide;
 }
 async function renderGuideDash(){
