@@ -1469,7 +1469,10 @@ function getSavedPhoto(){try{return localStorage.getItem('tmk_uphoto')||'';}catc
 /* set the avatar's letter/clear its text WITHOUT dropping a .pav-cam badge child
    (the tappable "change photo" affordance on the profile avatar) */
 function setAvKeepCam(el,txt){const cam=el.querySelector('.pav-cam');el.textContent=txt;if(cam)el.appendChild(cam);}
-function editAvatarTap(){if(!isLoggedIn()){go('login');return;}const i=document.getElementById('profilePhoto');if(i)i.click();}
+function editAvatarTap(){if(!isLoggedIn()){go('login');return;}openPhotoChoice();}
+/* chooser: pick an avatar OR upload from gallery (instead of opening the gallery directly) */
+function openPhotoChoice(){const s=document.getElementById('photoChoiceSheet');if(s)s.classList.add('show');}
+function closePhotoChoice(){const s=document.getElementById('photoChoiceSheet');if(s)s.classList.remove('show');}
 function setAvatarEl(el,name,photo){
   if(!el)return;
   const letter=(String(name||'E').trim()[0]||'E').toUpperCase();
@@ -1680,15 +1683,23 @@ function renderAvatarGrid(){
   const cur=getSavedPhoto();
   ag.innerHTML=AVATARS.map((rel,i)=>{const on=cur&&(cur===avatarUrl(i+1)||cur.endsWith(rel));return `<img src="${rel}" alt="Trekker avatar ${i+1}" loading="lazy" class="${on?'on':''}" onclick="pickAvatar(${i+1})"/>`;}).join('');
 }
-function openAvatarSheet(){renderAvatarGrid();const s=document.getElementById('avatarSheet');if(s)s.classList.add('show');}
+let _avatarMode='edit';   /* 'edit' = needs Save Changes; 'profile' = save immediately */
+function openAvatarSheet(mode){_avatarMode=(mode==='profile')?'profile':'edit';renderAvatarGrid();const s=document.getElementById('avatarSheet');if(s)s.classList.add('show');}
 function closeAvatarSheet(){const s=document.getElementById('avatarSheet');if(s)s.classList.remove('show');}
 function pickAvatar(n){
   const full=avatarUrl(n);
   try{localStorage.setItem('tmk_uphoto',full);localStorage.removeItem('tmk_uphoto_src');}catch(e){}
+  closeAvatarSheet();
+  if(_avatarMode==='profile'){                 /* chosen from the main profile → persist now */
+    _avatarMode='edit';
+    try{if(typeof upsertProfile==='function')upsertProfile();}catch(e){}
+    try{renderProfile();}catch(e){}
+    if(typeof toast==='function')toast('Profile photo updated ✓');
+    return;
+  }
   const av=document.getElementById('epAv');
   if(av){av.style.backgroundImage=`url('${full}')`;av.style.backgroundSize='cover';av.style.backgroundPosition='center';av.textContent='';
     const badge=document.createElement('span');badge.style.cssText='position:absolute;bottom:0;right:0;width:26px;height:26px;border-radius:50%;background:var(--accent);display:grid;place-items:center';badge.innerHTML='<span class="msr" style="font-size:14px;color:#fff">photo_camera</span>';av.appendChild(badge);}
-  closeAvatarSheet();
   if(typeof toast==='function')toast('Avatar selected — tap Save Changes to keep it');
 }
 function renderEditProfile(){
@@ -10971,7 +10982,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,renderPlanner,sendPlan,plannerChip,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,submitNewPassword,toggleResetPw,cancelReset,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,permitWebsite,applyPermit,openPermitCountry,permitBackToCountries,filterByCity,getDirections,addStaff,removeStaff,setStaffRole,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab,openReviewModal,closeReviewModal,submitReview,setRevStars,adminAddReview,adminDelReview,toggleSavePost,renderEmergency,renderSavedPosts,followAction,requestCall,declineCall,allowCallMsg,togglePrivateAccount,renderFollowRequests,acceptFollowReq,declineFollowReq,admToggleHl,filterAdminHub,admAssignCaptain,admChangeBatch,admRefund,admCancelBooking,admInvoice,renderAdminUsers,paintUsers,admNotifyUser,renderAdminPayments,admPayFilter,admExportCSV,admRevenueCSV,renderAdminGear,gearAdj,gearAddItem,gearDelItem,gearSeed,renderAdminCommunity,admDeletePost,admFeaturePost,renderAdminPermits,permSet,renderAdminSupport,ticketReply,ticketResolve,raiseTicket,renderAdminCRM,crmSearch,crmOpen,renderAdminAI,saveAiCfg,renderAdminVendors,vendorSet,openVendorDash,renderVendorDash,applyVendor,vendorAddListing,vendorToggleListing,vendorDelListing,renderBecomeGuide,submitGuideApplication,renderGuideDash,renderGuidePublic,guideScan,guideStopScan,guideVerify,openGuideProfile,openGuideApply,openGuides,renderGuidesList,openHostTrips});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,renderPlanner,sendPlan,plannerChip,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,editAvatarTap,openPhotoChoice,closePhotoChoice,openAvatarSheet,closeAvatarSheet,pickAvatar,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,submitNewPassword,toggleResetPw,cancelReset,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,permitWebsite,applyPermit,openPermitCountry,permitBackToCountries,filterByCity,getDirections,addStaff,removeStaff,setStaffRole,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab,openReviewModal,closeReviewModal,submitReview,setRevStars,adminAddReview,adminDelReview,toggleSavePost,renderEmergency,renderSavedPosts,followAction,requestCall,declineCall,allowCallMsg,togglePrivateAccount,renderFollowRequests,acceptFollowReq,declineFollowReq,admToggleHl,filterAdminHub,admAssignCaptain,admChangeBatch,admRefund,admCancelBooking,admInvoice,renderAdminUsers,paintUsers,admNotifyUser,renderAdminPayments,admPayFilter,admExportCSV,admRevenueCSV,renderAdminGear,gearAdj,gearAddItem,gearDelItem,gearSeed,renderAdminCommunity,admDeletePost,admFeaturePost,renderAdminPermits,permSet,renderAdminSupport,ticketReply,ticketResolve,raiseTicket,renderAdminCRM,crmSearch,crmOpen,renderAdminAI,saveAiCfg,renderAdminVendors,vendorSet,openVendorDash,renderVendorDash,applyVendor,vendorAddListing,vendorToggleListing,vendorDelListing,renderBecomeGuide,submitGuideApplication,renderGuideDash,renderGuidePublic,guideScan,guideStopScan,guideVerify,openGuideProfile,openGuideApply,openGuides,renderGuidesList,openHostTrips});
 
 /* init */
 applyTheme();   /* dark / light / system theme */
@@ -12388,7 +12399,7 @@ function guidesHomeBox(){
     : '<p class="homebox-empty">'+(_guidesLoaded?'Verified trek leaders coming soon.':'Loading…')+'</p>';
   const total=(guides||[]).filter(g=>g&&(g.name||_guideAcct[g.id])).length;
   return '<div class="homebox">'
-    +'<div class="homebox-h"><h3>Our Trek Guides</h3>'+(total?'<a onclick="openGuides()">See all</a>':'')+'</div>'
+    +'<div class="homebox-h"><h3>Trek Guides</h3>'+(total?'<a onclick="openGuides()">See all</a>':'')+'</div>'
     +grid
     +'<button class="homebox-cta alt" onclick="go(\'guideEligibility\')"><span class="msr">verified</span><span>Guide With Us</span></button>'
   +'</div>';
