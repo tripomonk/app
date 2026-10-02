@@ -9991,6 +9991,8 @@ function captainTestLast(){const b=getBookings()[0];if(!b){note('Make a booking 
 
 /* ===== Guide portal — approved trek leaders get a dashboard, QR check-in & a public profile ===== */
 let _myGuide=null, _guidePubId=null, _gStream=null, _gRAF=null;
+/* guide availability calendar state */
+let _gAvail={}, _gBooked=new Set(), _gCal=new Date(), _gBrush='available', _gRange=false, _gRangeStart=null;
 function myGuide(){return _myGuide;}
 function guideTreks(gid){return (typeof treks!=='undefined'?treks:[]).filter(t=>String(t.guide_id||'')===String(gid));}
 async function loadMyGuide(){
@@ -10016,6 +10018,9 @@ async function renderGuideDash(){
   const bkFor=nm=>bookings.filter(b=>strip(b.trek)===nm);
   const trekkers=bookings.reduce((s,b)=>s+(Number(b.pax)||1),0);
   const earned=(data&&data.totalEarned)||0, pending=(data&&data.pendingEarned)||0, payments=(data&&data.payments)||[];
+  _gAvail={};((data&&data.availability)||[]).forEach(a=>{if(a&&a.day)_gAvail[a.day]=a.status;});
+  _gBooked=new Set(((data&&data.booked)||[]).filter(Boolean));
+  _gCal=new Date();
   /* reviews on my treks — from the SAME shared reviews data */
   try{if(typeof loadReviews==='function'&&(!reviewsData||!reviewsData.length))await loadReviews();}catch(e){}
   const names=mine.map(t=>t.n);
@@ -10025,6 +10030,9 @@ async function renderGuideDash(){
   box.innerHTML=`
     <div class="gd-card">${av}<div style="min-width:0"><b>${esc(g.name||'Guide')}</b>${g.verified?' <span class="gd-verified"><span class="msr">verified</span></span>':''}<br><small>${esc([g.city,g.state].filter(Boolean).join(', ')||'Trek Leader')}</small></div></div>
     <div class="gd-stats gd-stats-4"><div><b>${mine.length}</b><small>Treks</small></div><div><b>${noStats?'—':trekkers}</b><small>Trekkers</small></div><div><b>${noStats?'—':('₹'+Number(earned).toLocaleString('en-IN'))}</b><small>Earned</small></div><div><b>${rv.length?rAvg.toFixed(1)+'★':'—'}</b><small>Rating</small></div></div>
+    <div class="gd-rate" id="gRateBox">${guideRateHTML(g)}</div>
+    <div class="sec-h" style="margin:22px 4px 10px"><b>My availability</b> <small class="muted" style="font-weight:600;font-size:11px">· tap dates to update</small></div>
+    <div id="gAvailBody"></div>
     <div class="gd-scan" onclick="guideScan()"><div class="ch-ic"><span class="msr">qr_code_scanner</span></div><b>Scan trekker tickets</b><small>Check in trekkers on your treks — works from your phone.</small><span class="ch-go">Open scanner</span></div>
     <div id="gCam" style="display:none;margin:12px 0"><video id="gVideo" playsinline muted style="width:100%;border-radius:16px;background:#000;aspect-ratio:1/1;object-fit:cover"></video><button class="btn ghost sm" style="margin-top:8px;width:100%" onclick="guideStopScan()">Stop scanning</button></div>
     <div class="cap-or"><span>or enter the ticket code</span></div>
@@ -10041,6 +10049,62 @@ async function renderGuideDash(){
     ${rv.length?`<div class="gd-rev-head"><b style="font-size:22px">${rAvg.toFixed(1)}</b> <span style="color:var(--yellow)">${'★'.repeat(Math.round(rAvg))}</span> <small class="muted">(${rv.length} on your treks)</small></div>${rv.slice(0,6).map(r=>guideRevRow(r)).join('')}`:'<div class="note2">No reviews on your treks yet.</div>'}
     <div style="text-align:center;margin:18px 0 6px"><button class="btn ghost sm" onclick="openGuideProfile('${jsq(g.id)}')"><span class="msr">badge</span> View my public profile</button></div>
     <div style="height:calc(var(--safe-bottom) + 20px)"></div>`;
+  hydrate(box);
+  renderGuideAvail();
+}
+/* ---- Basic Rate (₹/day) — editable inline by the guide ---- */
+function guideRateHTML(g){const r=g&&g.day_rate;
+  return '<div><small>Your basic rate</small><b>'+(r?('₹'+Number(r).toLocaleString('en-IN')+' <i>/ day</i>'):'Not set yet')+'</b></div>'
+    +'<button class="btn ghost sm" onclick="guideEditRate('+(r||0)+')">'+(r?'Edit':'Set rate')+'</button>';}
+function guideEditRate(cur){const box=document.getElementById('gRateBox');if(!box)return;
+  box.innerHTML='<div style="flex:1;min-width:0"><small>Basic rate (₹ / day)</small><input id="gRateInp" type="number" inputmode="numeric" value="'+(cur||'')+'" placeholder="e.g. 2500" style="all:unset;display:block;width:100%;font-size:18px;font-weight:800;color:var(--text);border-bottom:1px solid var(--stroke);padding:3px 0"/></div>'
+    +'<button class="btn sm" onclick="guideSaveRate()">Save</button>';
+  const i=document.getElementById('gRateInp');if(i)setTimeout(()=>i.focus(),60);}
+async function guideSaveRate(){const el=document.getElementById('gRateInp');const v=Math.max(0,parseInt(((el&&el.value)||'').replace(/[^0-9]/g,''),10)||0);
+  try{const sb=getSupaClient();if(sb)await sb.functions.invoke('guide',{body:{action:'set_rate',rate:v}});}catch(e){}
+  if(_myGuide)_myGuide.day_rate=v;
+  const box=document.getElementById('gRateBox');if(box)box.innerHTML=guideRateHTML(_myGuide||{day_rate:v});
+  if(typeof toast==='function')toast('Basic rate saved ✓');}
+/* ---- Availability calendar ---- */
+function _gIso(y,m,d){return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');}
+function _gDaysBetween(a,b){const out=[];let d=new Date(a+'T00:00:00'),e=new Date(b+'T00:00:00');while(d<=e){out.push(d.toISOString().slice(0,10));d.setDate(d.getDate()+1);}return out;}
+function guideSetBrush(s){_gBrush=s;renderGuideAvail();}
+function guideToggleRange(){_gRange=!_gRange;_gRangeStart=null;renderGuideAvail();}
+function guideCalNav(delta){_gCal=new Date(_gCal.getFullYear(),_gCal.getMonth()+delta,1);renderGuideAvail();}
+async function _guideSaveAvail(days,status){
+  days.forEach(d=>{if(status==='clear')delete _gAvail[d];else _gAvail[d]=status;});
+  renderGuideAvail();
+  try{const sb=getSupaClient();if(sb)await sb.functions.invoke('guide',{body:{action:'set_availability',days,status}});}catch(e){}
+}
+function guideDayTap(iso){
+  if(_gBooked.has(iso))return;                 /* booked = locked */
+  if(_gRange){
+    if(!_gRangeStart){_gRangeStart=iso;renderGuideAvail();return;}
+    const [a,b]=[_gRangeStart,iso].sort();_gRangeStart=null;
+    _guideSaveAvail(_gDaysBetween(a,b),_gBrush);
+    return;
+  }
+  const status=(_gAvail[iso]===_gBrush)?'clear':_gBrush;   /* tap same brush again → clear */
+  _guideSaveAvail([iso],status);
+}
+function renderGuideAvail(){
+  const box=document.getElementById('gAvailBody');if(!box)return;
+  const y=_gCal.getFullYear(),m=_gCal.getMonth();
+  const first=new Date(y,m,1).getDay(),dim=new Date(y,m+1,0).getDate();
+  const todayIso=new Date().toISOString().slice(0,10);
+  const label=l=>l[0].toUpperCase()+l.slice(1);
+  const brush=['available','tentative','unavailable'].map(s=>`<button class="gcal-brush s-${s}${_gBrush===s?' on':''}" onclick="guideSetBrush('${s}')">${label(s)}</button>`).join('');
+  let cells='';for(let i=0;i<first;i++)cells+='<span class="gcal-d empty"></span>';
+  for(let d=1;d<=dim;d++){const iso=_gIso(y,m,d);const past=iso<todayIso;const booked=_gBooked.has(iso);
+    const st=booked?'booked':(_gAvail[iso]||'');
+    const cls='gcal-d'+(st?' s-'+st:'')+(past?' past':'')+(booked?' locked':'')+((_gRange&&_gRangeStart===iso)?' sel':'');
+    cells+=`<span class="${cls}" ${(past||booked)?'':`onclick="guideDayTap('${iso}')"`}>${d}</span>`;}
+  box.innerHTML=`<div class="gcal-brushes">${brush}<button class="gcal-rangebtn${_gRange?' on':''}" onclick="guideToggleRange()"><span class="msr">date_range</span>Range</button></div>
+    <div class="gcal-nav"><button onclick="guideCalNav(-1)"><span class="msr">chevron_left</span></button><b>${_gCal.toLocaleDateString('en-IN',{month:'long',year:'numeric'})}</b><button onclick="guideCalNav(1)"><span class="msr">chevron_right</span></button></div>
+    <div class="gcal-dow">${['S','M','T','W','T','F','S'].map(x=>'<span>'+x+'</span>').join('')}</div>
+    <div class="gcal-grid">${cells}</div>
+    <div class="gcal-legend"><span><i class="s-available"></i>Available</span><span><i class="s-tentative"></i>Tentative</span><span><i class="s-unavailable"></i>Unavailable</span><span><i class="s-booked"></i>Booked</span></div>
+    ${_gRange?'<div class="gcal-hint">'+(_gRangeStart?('Start '+_gRangeStart+' — now tap the end date'):'Tap the start date, then the end date')+'</div>':''}`;
   hydrate(box);
 }
 function guideTrekRow(t,stats){return `<div class="gd-trek" onclick="openDetailByName('${jsq(t.n)}')"><div class="gd-trek-img" style="background-image:url('${esc((t.img||'').split('?')[0])}')"></div><div style="flex:1;min-width:0"><b>${esc(t.n)}</b><br><small>${esc(t.region||'')}${t.days?' · '+t.days+'D':''}${t.lvl?' · '+esc(t.lvl):''}${stats?' · '+esc(stats):''}</small></div><span class="msr" style="color:var(--muted)">chevron_right</span></div>`;}
@@ -10982,7 +11046,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,renderPlanner,sendPlan,plannerChip,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,editAvatarTap,openPhotoChoice,closePhotoChoice,openAvatarSheet,closeAvatarSheet,pickAvatar,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,submitNewPassword,toggleResetPw,cancelReset,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,permitWebsite,applyPermit,openPermitCountry,permitBackToCountries,filterByCity,getDirections,addStaff,removeStaff,setStaffRole,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab,openReviewModal,closeReviewModal,submitReview,setRevStars,adminAddReview,adminDelReview,toggleSavePost,renderEmergency,renderSavedPosts,followAction,requestCall,declineCall,allowCallMsg,togglePrivateAccount,renderFollowRequests,acceptFollowReq,declineFollowReq,admToggleHl,filterAdminHub,admAssignCaptain,admChangeBatch,admRefund,admCancelBooking,admInvoice,renderAdminUsers,paintUsers,admNotifyUser,renderAdminPayments,admPayFilter,admExportCSV,admRevenueCSV,renderAdminGear,gearAdj,gearAddItem,gearDelItem,gearSeed,renderAdminCommunity,admDeletePost,admFeaturePost,renderAdminPermits,permSet,renderAdminSupport,ticketReply,ticketResolve,raiseTicket,renderAdminCRM,crmSearch,crmOpen,renderAdminAI,saveAiCfg,renderAdminVendors,vendorSet,openVendorDash,renderVendorDash,applyVendor,vendorAddListing,vendorToggleListing,vendorDelListing,renderBecomeGuide,submitGuideApplication,renderGuideDash,renderGuidePublic,guideScan,guideStopScan,guideVerify,openGuideProfile,openGuideApply,openGuides,renderGuidesList,openHostTrips});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,renderPlanner,sendPlan,plannerChip,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,editAvatarTap,openPhotoChoice,closePhotoChoice,openAvatarSheet,closeAvatarSheet,pickAvatar,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,submitNewPassword,toggleResetPw,cancelReset,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,permitWebsite,applyPermit,openPermitCountry,permitBackToCountries,filterByCity,getDirections,addStaff,removeStaff,setStaffRole,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab,openReviewModal,closeReviewModal,submitReview,setRevStars,adminAddReview,adminDelReview,toggleSavePost,renderEmergency,renderSavedPosts,followAction,requestCall,declineCall,allowCallMsg,togglePrivateAccount,renderFollowRequests,acceptFollowReq,declineFollowReq,admToggleHl,filterAdminHub,admAssignCaptain,admChangeBatch,admRefund,admCancelBooking,admInvoice,renderAdminUsers,paintUsers,admNotifyUser,renderAdminPayments,admPayFilter,admExportCSV,admRevenueCSV,renderAdminGear,gearAdj,gearAddItem,gearDelItem,gearSeed,renderAdminCommunity,admDeletePost,admFeaturePost,renderAdminPermits,permSet,renderAdminSupport,ticketReply,ticketResolve,raiseTicket,renderAdminCRM,crmSearch,crmOpen,renderAdminAI,saveAiCfg,renderAdminVendors,vendorSet,openVendorDash,renderVendorDash,applyVendor,vendorAddListing,vendorToggleListing,vendorDelListing,renderBecomeGuide,submitGuideApplication,renderGuideDash,renderGuidePublic,guideScan,guideStopScan,guideVerify,openGuideProfile,openGuideApply,openGuides,renderGuidesList,openHostTrips,guideEditRate,guideSaveRate,guideSetBrush,guideToggleRange,guideCalNav,guideDayTap});
 
 /* init */
 applyTheme();   /* dark / light / system theme */

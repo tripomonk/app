@@ -2588,6 +2588,47 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
   .gd-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:4px}
   .gd-stats>div{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:12px 8px;text-align:center}
   .gd-stats b{display:block;font-size:18px;font-weight:800}.gd-stats small{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  /* Basic Rate card */
+  .gd-rate{display:flex;align-items:center;gap:12px;margin-top:12px;padding:14px 16px;border-radius:16px;
+    background:linear-gradient(135deg,rgba(15,157,88,.16),rgba(47,107,255,.08));border:1px solid rgba(15,157,88,.3)}
+  .gd-rate>div{flex:1;min-width:0}
+  .gd-rate small{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .gd-rate b{display:block;font-size:19px;font-weight:800;color:var(--text);margin-top:2px}
+  .gd-rate b i{font-style:normal;font-size:12px;font-weight:600;color:var(--muted)}
+  /* availability calendar */
+  .gcal-brushes{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+  .gcal-brush,.gcal-rangebtn{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:4px;padding:7px 11px;border-radius:999px;
+    font-size:12px;font-weight:700;cursor:pointer;border:1px solid var(--stroke);background:var(--card);color:var(--muted)}
+  .gcal-brush.s-available.on{background:rgba(15,157,88,.22);color:#2bbd7e;border-color:rgba(15,157,88,.5)}
+  .gcal-brush.s-tentative.on{background:rgba(245,158,11,.2);color:#f5a623;border-color:rgba(245,158,11,.5)}
+  .gcal-brush.s-unavailable.on{background:rgba(239,68,68,.18);color:#ff7a7a;border-color:rgba(239,68,68,.5)}
+  .gcal-rangebtn .msr{font-size:15px}
+  .gcal-rangebtn.on{background:rgba(47,107,255,.18);color:var(--accent2);border-color:rgba(47,107,255,.5)}
+  .gcal-nav{display:flex;align-items:center;justify-content:space-between;margin:4px 0 8px}
+  .gcal-nav b{font-size:14.5px}
+  .gcal-nav button{all:unset;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;cursor:pointer;background:var(--card);border:1px solid var(--stroke);color:var(--text)}
+  .gcal-dow{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px}
+  .gcal-dow span{text-align:center;font-size:10px;color:var(--muted2);font-weight:700}
+  .gcal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .gcal-d{aspect-ratio:1;display:grid;place-items:center;border-radius:10px;font-size:12.5px;font-weight:600;cursor:pointer;
+    background:var(--card);border:1px solid var(--stroke);color:var(--text);transition:transform .1s}
+  .gcal-d:active{transform:scale(.9)}
+  .gcal-d.empty{background:transparent;border:0;cursor:default}
+  .gcal-d.past{opacity:.32;cursor:default}
+  .gcal-d.s-available{background:rgba(15,157,88,.9);color:#fff;border-color:transparent}
+  .gcal-d.s-tentative{background:rgba(245,158,11,.92);color:#2a1c00;border-color:transparent}
+  .gcal-d.s-unavailable{background:rgba(239,68,68,.9);color:#fff;border-color:transparent}
+  .gcal-d.s-booked{background:rgba(47,107,255,.9);color:#fff;border-color:transparent;cursor:not-allowed}
+  .gcal-d.locked{cursor:not-allowed}
+  .gcal-d.sel{outline:2px solid var(--accent2);outline-offset:1px}
+  .gcal-legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px;font-size:11px;color:var(--muted)}
+  .gcal-legend span{display:inline-flex;align-items:center;gap:5px}
+  .gcal-legend i{width:11px;height:11px;border-radius:4px;display:inline-block}
+  .gcal-legend i.s-available{background:rgba(15,157,88,.9)}
+  .gcal-legend i.s-tentative{background:rgba(245,158,11,.92)}
+  .gcal-legend i.s-unavailable{background:rgba(239,68,68,.9)}
+  .gcal-legend i.s-booked{background:rgba(47,107,255,.9)}
+  .gcal-hint{margin-top:9px;font-size:11.5px;color:var(--accent2);font-weight:600}
   .gd-trek{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:10px;margin-bottom:8px;cursor:pointer}
   .gd-trek:active{transform:scale(.99)}
   .gd-trek-img{width:52px;height:52px;border-radius:11px;background:var(--bg) center/cover no-repeat;flex:none}
