@@ -1,0 +1,21 @@
+{
+  "name": "tripomonk-trek-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tripomonk trekking app (PWA) — wrapped to Android via Capacitor.",
+  "scripts": {
+    "build:og": "node build-og.mjs",
+    "build:web": "node prepare-www.mjs",
+    "android:add": "npm run build:web && npx cap add android",
+    "android:sync": "npm run build:web && npx cap sync android",
+    "android:open": "npx cap open android",
+    "apk:debug": "cd android && gradlew assembleDebug"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.0"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.1.0",
+    "@capacitor/android": "^6.1.0"
+  }
+}

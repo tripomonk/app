@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Tripomonk</title>
+<meta name="robots" content="noindex"/>
+<meta name="theme-color" content="#0b1220"/>
+<style>html,body{height:100%;margin:0;background:#0b1220;color:#eaf0fb;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+.c{height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px}
+a{color:#9fc0ff}</style>
+<script>
+/* GitHub Pages has no server-side SPA rewrite. This 404 page catches any path the
+   static build didn't generate and sends the visitor into the app:
+   - /trip/<slug>  -> the app opens that hosted trip by slug (#trip=)
+   - anything else -> the app home. The app uses hash routing, so this is enough. */
+(function () {
+  try {
+    var p = location.pathname.replace(/\/+$/, '');
+    var m = p.match(/^\/trip\/([^/]+)$/);
+    var dest = m ? '/#trip=' + m[1] : '/';
+    location.replace(dest);
+  } catch (e) {
+    location.replace('/');
+  }
+})();
+</script>
+</head>
+<body>
+<div class="c">
+  <p>Taking you to Tripomonk…</p>
+  <p><a href="/">Tap here if you aren't redirected</a></p>
+</div>
+</body>
+</html>
