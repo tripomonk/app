@@ -1393,10 +1393,16 @@ function guideLinkAccount(gid){
     <p class="desc" style="margin-top:0">Enter the email this guide uses to sign in to the Tripomonk app. It lets them open their <b>Guide Dashboard</b> from their profile. If they haven't created an account yet, we'll link it automatically the first time they sign in with this email.</p>
     <div class="fld"><label>Guide's app email</label><input id="glEmail" type="email" placeholder="guide@email.com" value="${esc(g.email||'')}"/></div>
     <div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="glGo">Link</button></div>`);
-  $('#glGo').onclick=async()=>{const email=($('#glEmail').value||'').trim();if(!/.+@.+\..+/.test(email)){toast('Enter a valid email');return;}closeOv();const r=await adminCall('link_guide_account',{guide_id:gid,email});
+  const doLink=async(email,force)=>{
+    const r=await adminCall('link_guide_account',{guide_id:gid,email,force});
+    /* safeguard: backend blocks an email that doesn't match the guide's own on-file email —
+       confirm the override, then re-link with force so the admin can still fix genuine cases. */
+    if(r&&r.mismatch){confirmDo((r.error||'This email does not match the guide\'s records.')+' Link anyway?',async()=>{await doLink(email,true);});return;}
     if(r&&r.error){toast('Failed: '+r.error+(/relation|column|listUsers/i.test(r.error)?' — deploy the updated admin function':''));return;}
     toast(r&&r.linked?'Linked ✓ — they can open the Guide Dashboard now':'Saved — they\'ll be linked on their next sign-in with this email');
-    guideReload();};}
+    guideReload();
+  };
+  $('#glGo').onclick=async()=>{const email=($('#glEmail').value||'').trim();if(!/.+@.+\..+/.test(email)){toast('Enter a valid email');return;}closeOv();await doLink(email,false);};}
 function guideUnlinkAccount(gid){confirmDo('Unlink this guide from their app account?',async()=>{const r=await adminCall('unlink_guide_account',{guide_id:gid});toast(r&&r.error?('Failed: '+r.error):'Unlinked');if(!(r&&r.error))guideReload();});}
 /* open a PRIVATE guide document via a short-lived signed URL */
 async function guideOpenDoc(path){const r=await adminCall('sign_doc',{path});if(r&&r.url){window.open(r.url,'_blank','noopener');}else{toast('Could not open document'+((r&&r.error)?(': '+r.error):''));}}
