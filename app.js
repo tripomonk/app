@@ -1424,6 +1424,7 @@ async function verifyOtp(){
 async function signOut(){
   const sb=getSupaClient();if(sb){try{await sb.auth.signOut();}catch(e){}}   /* drops the Supabase session token */
   currentUser=null;_profileLoadedFor=null;_myUid=null;_recoveryMode=false;
+  _myGuide=null;_guidePubId=null;_hostApp=null;_hostLoaded=false;   /* drop the previous account's guide/host identity from memory (belt-and-suspenders; the reload below also clears it) */
   try{stopMsgSub();}catch(e){}
   clearLocalIdentity();   /* IDENTITY_KEYS + followState/staffSet */
   try{
@@ -4441,7 +4442,13 @@ async function loadProfileFromServer(){
   /* if a DIFFERENT account signed in on this device, wipe the previous person's
      name/photo/follows first — otherwise they post under the old identity */
   let prev=null;try{prev=localStorage.getItem('tmk_uid');}catch(e){}
-  if(prev&&prev!==currentUser.id)clearLocalIdentity();
+  if(prev&&prev!==currentUser.id){
+    clearLocalIdentity();
+    /* a different account signed in without a sign-out (no page reload here): also drop the
+       previous person's guide/host identity from MEMORY, or their Guide/Host Dashboard — and
+       profile — would leak to this user until the next async re-resolve. */
+    _myGuide=null;_guidePubId=null;_hostApp=null;_hostLoaded=false;
+  }
   try{localStorage.setItem('tmk_uid',currentUser.id);}catch(e){}
   try{
     /* consent is fetched SEPARATELY: it's a column-level-restricted column on this project,
@@ -10000,11 +10007,12 @@ async function loadMyGuide(){
   try{
     if(!_guidesLoaded)await loadGuides();
     const uid=await authUid();
-    /* 1) linked by user_id */
+    /* 1) linked by user_id — the only trustworthy client-side signal */
     _myGuide=(guides||[]).find(g=>g.user_id&&String(g.user_id)===String(uid))||null;
-    /* 2) name fallback — the account's name matches a guide roster name */
-    if(!_myGuide){const nm=String(getSavedName()||'').trim().toLowerCase();if(nm)_myGuide=(guides||[]).find(g=>String(g.name||'').trim().toLowerCase()===nm)||null;}
-    /* 3) authoritative — ask the guide edge fn, which auto-links this account by EMAIL
+    /* NO name-based fallback: matching a guide by display name is insecure — a stale cached
+       name or a name collision would show another person (e.g. the owner) their Guide
+       Dashboard. Identity is user_id (above) or the edge fn's authoritative EMAIL link (below). */
+    /* 2) authoritative — ask the guide edge fn, which auto-links this account by EMAIL
           (guide_contacts / approved application) and returns the guide even if user_id wasn't set */
     if(!_myGuide){try{const sb=getSupaClient();if(sb){const rr=await sb.functions.invoke('guide',{body:{action:'me'}});if(rr&&rr.data&&rr.data.ok&&rr.data.guide){const gid=rr.data.guide.id;_myGuide=(guides||[]).find(g=>String(g.id)===String(gid))||rr.data.guide;}}}catch(e){}}
   }catch(e){_myGuide=null;}
