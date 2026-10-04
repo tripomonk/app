@@ -144,6 +144,30 @@ footer a.lk{color:var(--gold-lt)}
 .done p{color:var(--muted);font-size:14px;margin-bottom:6px}
 .done .bid{color:var(--gold-lt);font-size:14px;font-weight:500}
 
+/* package details sheet */
+.tsub{font-size:12px;color:var(--gold-lt);margin:4px 0 0}
+.pkg-more{font-size:12px;color:var(--gold-lt);opacity:.85}
+.pkg-meta{font-size:12.5px;color:var(--muted);margin-top:3px}
+.pkg-price{font-size:22px;font-weight:600;color:var(--ivory);margin:14px 0 2px}
+.pkg-price small{font-size:12.5px;font-weight:400;color:var(--gold-lt)}
+.pkg-host{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--muted);margin:6px 0 2px}
+.pkg-host .msr{font-size:16px;color:var(--gold-lt)}
+.pkg-sec-t{font-size:12px;font-weight:600;text-transform:uppercase;color:var(--gold);margin:20px 0 11px}
+.pkg-day{border-left:2px solid var(--line);padding:0 0 15px 15px;position:relative}
+.pkg-day:last-of-type{padding-bottom:4px}
+.pkg-day::before{content:"";position:absolute;left:-5px;top:4px;width:8px;height:8px;border-radius:50%;background:var(--gold)}
+.pkg-day .pkg-dh{display:flex;flex-direction:column;gap:1px;margin-bottom:5px}
+.pkg-day .pkg-dn{font-size:10.5px;font-weight:600;text-transform:uppercase;color:var(--gold-lt)}
+.pkg-day .pkg-dh b{font-size:15px;font-weight:600;color:var(--ivory)}
+.pkg-day p{font-size:13px;color:var(--muted);line-height:1.6}
+.pkg-list{list-style:none;display:flex;flex-direction:column;gap:9px;margin:0;padding:0}
+.pkg-list li{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;color:#e7ddca}
+.pkg-list .msr{font-size:17px;flex:0 0 auto;margin-top:1px}
+.pkg-list .ok{color:var(--gold)}
+.pkg-list .no{color:#ff8a8a}
+.pkg-terms{list-style:none;display:flex;flex-direction:column;gap:8px;margin:0;padding:0}
+.pkg-terms li{font-size:12.5px;color:var(--muted);line-height:1.55;padding-left:14px;position:relative}
+.pkg-terms li::before{content:"•";position:absolute;left:0;color:var(--gold-deep)}
 @media (max-width:760px){.xp{grid-template-columns:repeat(3,1fr);gap:16px 10px}}
 /* mobile: all three packages in ONE line, side by side */
 @media (max-width:560px){
@@ -181,7 +205,7 @@ footer a.lk{color:var(--gold-lt)}
 
 <!-- HERO -->
 <section class="hero">
-  <video class="hero-video" autoplay muted loop playsinline preload="metadata" poster="/illustrations/varanasi-ghats.webp"><source src="/media/varanasi-aerial.mp4" type="video/mp4"></video>
+  <video class="hero-video" autoplay muted loop playsinline preload="metadata" poster="/illustrations/varanasi-ghats.webp"></video>
   <div class="hero-shade"></div>
   <div class="inner">
     <svg class="diya"><use href="#s-diya"/></svg>
@@ -217,7 +241,7 @@ footer a.lk{color:var(--gold-lt)}
     <div class="sec-h reveal">
       <div class="eyebrow">Reserve your journey</div>
       <h2>Three ways to witness Kashi</h2>
-      <p>Pay 25% now to lock your place — balance before the trip. Limited spots; Dev Diwali sells out early.</p>
+      <p>Pay 50% now to confirm — balance 7 days before the trip. Limited spots; Dev Deepawali sells out early.</p>
     </div>
     <div class="tiers" id="tiers"></div>
     <p class="note-line">Prices per person for 2026 departures · secure payment by Razorpay · GST as applicable.</p>
@@ -258,7 +282,7 @@ footer a.lk{color:var(--gold-lt)}
       <div class="summ">
         <div class="r"><span id="sTier">Package</span><b id="sPP">₹0 / person</b></div>
         <div class="r"><span><span id="sPax">1</span> traveller(s)</span><b id="sTotal">₹0</b></div>
-        <div class="pay"><span>Pay now to reserve (25%)</span><b id="sPay">₹0</b></div>
+        <div class="pay"><span>Pay now to reserve (50%)</span><b id="sPay">₹0</b></div>
       </div>
       <div class="err" id="bkErr"></div>
       <button class="btn btn-gold btn-block" id="payBtn" onclick="pay()"><span class="msr" style="font-size:18px">lock</span><span id="payTx">Pay ₹0 to reserve</span></button>
@@ -274,6 +298,9 @@ footer a.lk{color:var(--gold-lt)}
   </div>
 </div>
 
+<!-- PACKAGE DETAILS SHEET -->
+<div class="ov" id="pkgOv"><div class="sheet" id="pkgSheet"></div></div>
+
 <script>
 (function(){
   "use strict";
@@ -283,13 +310,26 @@ footer a.lk{color:var(--gold-lt)}
 
   var XP=[['local_fire_department','Ghat Illumination'],['self_improvement','Ganga Aarti'],['sailing','Boat Ride'],['restaurant','Banarasi Food'],['music_note','Cultural Evening'],['photo_camera','Photo Moments']];
   // prices MUST match the server map in supabase/functions/razorpay (kind: devdiwali)
+  // 2N/3D Varanasi itinerary (shared by both packages — same trip, different comfort)
+  var ITIN=[
+    ['Day 1','Arrival · Kashi · Ganga Aarti','Arrive in Varanasi and check in near the ghats. Visit Kashi Vishwanath Temple, then explore Vishwanath Gali for local sweets, lassi and street food. In the evening, witness the Ganga Aarti at Dashashwamedh Ghat, followed by Kaal Bhairav Temple.'],
+    ['Day 2','Experience Dev Deepawali','Morning kachori-sabzi and jalebi, then a ghat walk through the magic of Banaras. In the evening, board the pre-booked boat for Dev Deepawali and experience the illuminated ghats, thousands of diyas and the celebration from the Ganga.'],
+    ['Day 3','Subah-e-Banaras · Departure','Early-morning sunrise boat ride from Assi Ghat. Visit Sankat Mochan Temple and Durga Temple near Assi Ghat. Enjoy a final Banarasi breakfast, then check out and depart.']
+  ];
+  // prices MUST match the server map in supabase/functions/razorpay (kind: devdiwali)
   var TIERS=[
     {id:'experience',ic:'auto_awesome',name:'Dev Deepawali Experience',feat:true,price:19999,
-      forw:'The complete night — river, aarti, food, glow.',
-      inc:['Stay + all transfers','Ganga boat experience','Front-row ghat experience','Ganga Aarti darshan','Banarasi food + culture','Dedicated Trip Captain']},
+      duration:'2 Nights / 3 Days',sharing:'Triple sharing',
+      forw:'The complete Dev Deepawali — stay, aarti, the boat and the glow.',
+      itin:ITIN,
+      inc:['2 nights in premium hotels near the ghats','Half-board meals (breakfast + dinner)','Pre-booked Dev Deepawali boat ride on the Ganga','Sunrise boat ride at Assi Ghat','Evening Ganga Aarti experience','All sightseeing as per the itinerary','Dedicated tour manager throughout','No-cost EMI available'],
+      exc:['Travel to & from Varanasi (train / flight / bus)','Pick-up & drop (not included with the boat-ride package)','Personal expenses, shopping and tips','Personal medical expenses','Temple donations and optional activities','Anything not listed under inclusions · GST as applicable']},
     {id:'premium',ic:'workspace_premium',name:'Premium Varanasi',feat:false,price:34999,
-      forw:'Kashi with space, comfort and care.',
-      inc:['Premium riverside stay','Private transfers','Premium private boat','Curated private experiences','Priority assistance']}
+      duration:'2 Nights / 3 Days',sharing:'Private room',
+      forw:'The same Dev Deepawali, elevated — space, privacy and care.',
+      itin:ITIN,
+      inc:['Premium riverside stay (private room)','Full-board meals (all meals included)','Private Dev Deepawali boat — your group only','Private sunrise boat at Assi Ghat','Private transfers throughout','Priority Ganga Aarti seating','Dedicated host + concierge support','No-cost EMI available'],
+      exc:['Travel to & from Varanasi (train / flight / bus)','Personal expenses, shopping and tips','Personal medical expenses','Temple donations and optional activities','Anything not listed under inclusions · GST as applicable']}
   ];
   var INR=function(n){return '₹'+Number(n||0).toLocaleString('en-IN');};
   var el=function(t,c,h){var e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e;};
@@ -301,13 +341,15 @@ footer a.lk{color:var(--gold-lt)}
   /* tiers */
   var tc=$('tiers');
   TIERS.forEach(function(t){
-    var li=t.inc.map(function(i){return '<li><span class="msr">check</span>'+i+'</li>';}).join('');
+    var li=t.inc.slice(0,5).map(function(i){return '<li><span class="msr">check</span>'+i+'</li>';}).join('');
+    var more=t.inc.length>5?'<li class="pkg-more">+ '+(t.inc.length-5)+' more · full itinerary inside</li>':'';
     var c=el('div','tier reveal'+(t.feat?' feat':''));
     c.innerHTML=(t.feat?'<span class="tag">Most loved</span>':'')+
-      '<span class="msr ic">'+t.ic+'</span><h3>'+t.name+'</h3><p class="for">'+t.forw+'</p><ul>'+li+'</ul>'+
-      '<div class="amt">'+INR(t.price)+' <small>/ person</small></div><div class="adv">reserve from '+INR(Math.round(t.price*0.25))+'</div>'+
-      '<button class="btn '+(t.feat?'btn-gold':'btn-ghost')+' btn-block" data-id="'+t.id+'">Reserve</button>';
-    c.querySelector('button').addEventListener('click',function(){openBook(t.id);});
+      '<span class="msr ic">'+t.ic+'</span><h3>'+t.name+'</h3><div class="tsub">'+t.duration+' · '+t.sharing+'</div>'+
+      '<p class="for">'+t.forw+'</p><ul>'+li+more+'</ul>'+
+      '<div class="amt">'+INR(t.price)+' <small>/ person</small></div><div class="adv">reserve from '+INR(Math.round(t.price*0.5))+'</div>'+
+      '<button class="btn '+(t.feat?'btn-gold':'btn-ghost')+' btn-block" data-id="'+t.id+'">View details</button>';
+    c.querySelector('button').addEventListener('click',function(){openPkg(t.id);});
     tc.appendChild(c);
   });
 
@@ -323,11 +365,21 @@ footer a.lk{color:var(--gold-lt)}
     $('cdM').textContent=pad(Math.floor(s%3600/60));$('cdS').textContent=pad(s%60);}
   tick();setInterval(tick,1000);
 
+  /* responsive hero video: a 16:9 LANDSCAPE clip on desktop, the 9:16 PORTRAIT clip on
+     mobile. If the desktop file isn't uploaded yet, it falls back to the portrait one. */
+  (function(){
+    var hv=document.querySelector('.hero-video'); if(!hv)return;
+    var portrait='/media/varanasi-aerial.mp4', landscape='/media/varanasi-aerial-wide.mp4';
+    hv.src = matchMedia('(min-width:768px)').matches ? landscape : portrait;
+    hv.addEventListener('error',function(){ if(hv.currentSrc.indexOf('varanasi-aerial-wide')>-1) hv.src=portrait; });
+    var p=hv.play(); if(p&&p.catch)p.catch(function(){});
+  })();
+
   /* ---------- booking ---------- */
   var cur=null,pax=1,paying=false;
   window.setPax=function(d){pax=Math.min(20,Math.max(1,pax+d));$('paxQ').textContent=pax;refreshSumm();};
   function refreshSumm(){
-    var total=cur.price*pax, now=Math.round(total*0.25);
+    var total=cur.price*pax, now=Math.round(total*0.5);
     $('sTier').textContent=cur.name;$('sPP').textContent=INR(cur.price)+' / person';
     $('sPax').textContent=pax;$('sTotal').textContent=INR(total);$('sPay').textContent=INR(now);
     $('payTx').textContent='Pay '+INR(now)+' to reserve';
@@ -341,6 +393,32 @@ footer a.lk{color:var(--gold-lt)}
   };
   window.closeBook=function(){$('ov').classList.remove('show');document.body.style.overflow='';};
   $('ov').addEventListener('click',function(e){if(e.target===$('ov'))closeBook();});
+
+  /* ---------- package details sheet (opens per package with full itinerary) ---------- */
+  window.openPkg=function(id){
+    var t=TIERS.filter(function(x){return x.id===id;})[0];if(!t)return;
+    var itin=t.itin.map(function(d){return '<div class="pkg-day"><div class="pkg-dh"><span class="pkg-dn">'+d[0]+'</span><b>'+d[1]+'</b></div><p>'+d[2]+'</p></div>';}).join('');
+    var inc=t.inc.map(function(i){return '<li><span class="msr ok">check</span>'+i+'</li>';}).join('');
+    var exc=t.exc.map(function(i){return '<li><span class="msr no">close</span>'+i+'</li>';}).join('');
+    $('pkgSheet').innerHTML=
+      '<div class="sheet-h"><div><h3>'+t.name+'</h3><div class="pkg-meta">'+t.duration+' · '+t.sharing+' · Varanasi</div></div><button class="x" onclick="closePkg()" aria-label="Close">×</button></div>'+
+      '<div class="pkg-price">'+INR(t.price)+' <small>/ person · pay '+INR(Math.round(t.price*0.5))+' (50%) to reserve</small></div>'+
+      '<div class="pkg-host"><span class="msr">person</span> Hosted by Abhishek Kamat</div>'+
+      '<div class="pkg-sec-t">Day-by-day itinerary</div>'+itin+
+      '<div class="pkg-sec-t">What\'s included</div><ul class="pkg-list">'+inc+'</ul>'+
+      '<div class="pkg-sec-t">What\'s not included</div><ul class="pkg-list">'+exc+'</ul>'+
+      '<div class="pkg-sec-t">Booking &amp; cancellation</div><ul class="pkg-terms">'+
+        '<li>50% advance to confirm (non-refundable); balance 7 days before departure.</li>'+
+        '<li>Added to a WhatsApp group after confirmation; boarding details shared 1–2 days prior.</li>'+
+        '<li>Cancellation: more than 30 days before — full advance refund; within 30 days — no refund.</li>'+
+        '<li>Carry a valid government ID. No-cost EMI available.</li>'+
+      '</ul>'+
+      '<button class="btn btn-gold btn-block" style="margin-top:6px" onclick="closePkg();openBook(\''+t.id+'\')"><span class="msr" style="font-size:18px">lock</span>&nbsp;Reserve · pay 50% advance</button>';
+    $('pkgSheet').scrollTop=0;
+    $('pkgOv').classList.add('show');document.body.style.overflow='hidden';
+  };
+  window.closePkg=function(){$('pkgOv').classList.remove('show');document.body.style.overflow='';};
+  $('pkgOv').addEventListener('click',function(e){if(e.target===$('pkgOv'))closePkg();});
 
   function post(action,body){
     return fetch(RZP,{method:'POST',headers:{'Content-Type':'application/json',apikey:SUPA_ANON,Authorization:'Bearer '+SUPA_ANON},
