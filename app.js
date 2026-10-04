@@ -1064,10 +1064,32 @@ function renderDataPrivacy(){
     +(given
       ? '<button class="btn" style="margin-top:10px;background:#c0392b" onclick="withdrawConsent()"><span class="msr">block</span> Withdraw my consent</button>'
       : '<button class="btn" style="margin-top:10px" onclick="go(\'login\')"><span class="msr">login</span> Give consent &amp; sign in</button>')
+    +(()=>{const ck=window.tmkCookies?window.tmkCookies.get():null;
+      return '<div class="dp-sec">Analytics cookies</div>'
+        +'<div class="note2">Microsoft Clarity (usage heatmaps &amp; session recordings) and the Meta Pixel (ad measurement). Optional — currently <b>'+(ck==='yes'?'allowed':ck==='no'?'declined':'not chosen')+'</b> on this device.</div>'
+        +(ck==='yes'
+          ? '<button class="btn ghost" style="margin-top:10px" onclick="setCookieChoice(\'no\')"><span class="msr">toggle_off</span> Turn off analytics cookies</button>'
+          : '<button class="btn ghost" style="margin-top:10px" onclick="setCookieChoice(\'yes\')"><span class="msr">toggle_on</span> Allow analytics cookies</button>');})()
     +'<div class="dp-sec">Grievances</div>'
     +'<div class="note2">Questions or complaints about your data: <b>grievance@tripomonk.com</b>. You may also complain to the Data Protection Board of India.</div>';
   hydrate(box);
 }
+/* Analytics cookie notice (DPDP): Clarity + Meta Pixel load only after "Accept".
+   Equal-weight buttons, nothing pre-chosen; the decision is per device. */
+function cookieNotice(){
+  if(!window.tmkCookies||window.tmkCookies.get()||document.getElementById('cookieNotice'))return;
+  const el=document.createElement('div');el.id='cookieNotice';el.setAttribute('role','dialog');el.setAttribute('aria-label','Cookie choice');
+  el.innerHTML='<div class="ck-h"><span class="msr" aria-hidden="true">cookie</span>Analytics cookies</div>'
+    +'<p>May we use Microsoft Clarity and the Meta Pixel to see how the app is used and measure our ads? Nothing loads unless you accept. <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a></p>'
+    +'<div class="ck-b"><button class="ck-no" onclick="setCookieChoice(\'no\')">Decline</button><button class="ck-yes" onclick="setCookieChoice(\'yes\')">Accept</button></div>';
+  document.body.appendChild(el);
+}
+function setCookieChoice(v){
+  if(window.tmkCookies)window.tmkCookies.set(v);
+  const el=document.getElementById('cookieNotice');if(el)el.remove();
+  if(cur==='dataPrivacy')renderDataPrivacy();
+}
+document.addEventListener('DOMContentLoaded',()=>setTimeout(cookieNotice,1200));
 async function withdrawConsent(){
   if(!(await askConfirm('Withdrawing your consent signs you out and stops further data processing on this device. Continue?','Withdraw consent')))return;
   const c=getConsent()||{version:CONSENT_VERSION};
@@ -8873,7 +8895,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='471';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='472';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
