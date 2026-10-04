@@ -17,7 +17,7 @@
   header{position:sticky;top:0;z-index:10;background:rgba(10,22,38,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--stroke)}
   .nav{display:flex;align-items:center;justify-content:space-between;height:64px}
   .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:19px}
-  .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#1f5be0);display:grid;place-items:center;color:#fff;font-weight:800}
+  .logo{width:34px;height:34px;border-radius:10px;display:inline-block;vertical-align:middle;background:url(icons/logo.svg) center/cover no-repeat}
   .btn{display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:999px;font-weight:700;font-size:14px;cursor:pointer;border:0;
     background:linear-gradient(135deg,var(--accent),#1f5be0);color:#fff;box-shadow:0 12px 26px -12px var(--accent)}
   .btn.ghost{background:transparent;border:1px solid var(--stroke);color:var(--text);box-shadow:none}
@@ -68,7 +68,7 @@
 </head>
 <body>
   <header><div class="wrap nav">
-    <div class="brand"><span class="logo">T</span> Tripomonk</div>
+    <div class="brand"><span class="logo" role="img" aria-label="Tripomonk logo"></span> Tripomonk</div>
     <a class="btn" href="https://app.tripomonk.com">Open the App</a>
   </div></header>
 
@@ -125,7 +125,7 @@
 
   <footer><div class="wrap fcols">
     <div>
-      <div class="brand" style="font-size:16px;margin-bottom:8px"><span class="logo" style="width:28px;height:28px;border-radius:8px">T</span> Tripomonk</div>
+      <div class="brand" style="font-size:16px;margin-bottom:8px"><span class="logo" role="img" aria-label="Tripomonk logo" style="width:28px;height:28px;border-radius:8px"></span> Tripomonk</div>
       <div>Guided Himalayan treks &amp; adventures.<br/>Operated by Tripomonk Travel Private Limited, Uttarakhand, India.</div>
       <div style="margin-top:8px">Support: <a href="mailto:tripomonk@gmail.com">tripomonk@gmail.com</a></div>
     </div>
