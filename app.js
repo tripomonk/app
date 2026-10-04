@@ -5239,6 +5239,8 @@ function openAdminConsole(){
   if(!canOpenAdmin()){note('Admin access is restricted to the owner and assigned team roles.','Restricted');return;}
   try{window.open('/admin/','_blank','noopener');}catch(e){location.href='/admin/';}
 }
+/* Dev Deepawali 2026 campaign landing page (standalone page at /dev-diwali.html) */
+function openDevDiwali(){try{window.open('/dev-diwali/','_blank','noopener');}catch(e){location.href='/dev-diwali/';}}
 /* ============================================================
    ACCOUNT & SETTINGS MENU (hamburger) — everything that isn't the
    social profile lives here: bookings, payments, tools, support.
@@ -8758,7 +8760,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='468';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='469';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
