@@ -532,7 +532,7 @@ function paintNews(list){
   if(!filtered.length){box.innerHTML=`<div class="empty"><p>No news matches “${esc(_newsQuery)}”.</p></div>`;return;}
   const alerts=filtered.filter(isAlert),news=filtered.filter(n=>!isAlert(n));
   let html='';
-  if(alerts.length)html+=`<div class="nsec">⚠ Alerts</div>`+alerts.map(newsCard).join('');
+  if(alerts.length)html+=`<div class="nsec"><span class="msr" style="font-size:16px;vertical-align:-4px">warning</span> Alerts</div>`+alerts.map(newsCard).join('');
   if(news.length)html+=`<div class="nsec"${alerts.length?' style="margin-top:18px"':''}>Trek News</div>`+news.map(newsCard).join('');
   box.innerHTML=html;hydrate(box);
 }
@@ -623,7 +623,7 @@ async function ensurePeople(force){
   return peoplePool;
 }
 const personMap={};people.forEach(p=>personMap[p.n]=p);
-const ME={n:"You",h:"@you",bio:"Trekker with Tripomonk 🏔️",home:"",flwr:0};
+const ME={n:"You",h:"@you",bio:"Trekker with Tripomonk",home:"",flwr:0};
 function getPerson(n){return personMap[n]||(n==='You'?ME:{n:n,h:'@'+n.toLowerCase().replace(/[^a-z]/g,''),bio:'Tripomonk trekker',home:'',flwr:0});}
 /* deterministic avatar gradient + initials from a name */
 const AVG=[['#ffd27a','#ff7a59'],['#7ad1ff','#2f6bff'],['#b7f5c0','#2fb56b'],['#ffb3d9','#c44bd6'],['#ffe08a','#f59e0b'],['#c9b7ff','#7c5cff']];
@@ -1584,7 +1584,7 @@ function onUsernameInput(v){
     unameSpin(false);
     if(res.err){setUnameMsg(res.err,'bad');return;}
     _unameOk=res.ok;
-    setUnameMsg(res.ok?'@'+u+' is available 🎉':'@'+u+' is already taken.',res.ok?'ok':'bad');
+    setUnameMsg(res.ok?'@'+u+' is available':'@'+u+' is already taken.',res.ok?'ok':'bad');
   },450);
 }
 
@@ -2062,10 +2062,10 @@ async function renderProfileGallery(){
 /* options in a single-select group — picking one clears the others in the group */
 const EXP_OPTIONS=['Beginner','Intermediate','Advanced'];
 const PREF_GROUPS=[
-  ['🏔️','Regions you love',['Uttarakhand','Himachal','Ladakh','Kashmir','Northeast','Spiritual']],
-  ['🥾','Trek style',['Trekking','Backpacking','Spiritual tours','Family trips','Solo','Group departures']],
-  ['✨','Interests',['Photography','Camping','Road trips','Bike expeditions','Adventure sports','Wildlife','Culture & food','Fitness & endurance']],
-  ['📈','Experience level',EXP_OPTIONS]
+  ['landscape','Regions you love',['Uttarakhand','Himachal','Ladakh','Kashmir','Northeast','Spiritual']],
+  ['hiking','Trek style',['Trekking','Backpacking','Spiritual tours','Family trips','Solo','Group departures']],
+  ['interests','Interests',['Photography','Camping','Road trips','Bike expeditions','Adventure sports','Wildlife','Culture & food','Fitness & endurance']],
+  ['trending_up','Experience level',EXP_OPTIONS]
 ];
 let _prefSel=[],_prefSkippedSession=false,_prefRole='';
 /* per-ACCOUNT storage key — different accounts on the same device stay independent */
@@ -2108,11 +2108,11 @@ function renderPrefs(){
       </div>
     </div>
     ${_prefRole==='Host'?`<div class="role-hint"><span class="msr">info</span>Choosing Host takes you to a quick application after this — you can still book as an Explorer too.</div>`:''}`;
-  const intro=`<div class="pref-intro"><b>🧭 Your trek vibe</b><small>Pick what excites you — we use it to match you with like-minded trekkers and trips.</small></div>`;
+  const intro=`<div class="pref-intro"><b><span class="msr" style="font-size:18px;vertical-align:-4px">explore</span> Your trek vibe</b><small>Pick what excites you — we use it to match you with like-minded trekkers and trips.</small></div>`;
   const groups=PREF_GROUPS.map(g=>{
     const n=g[2].filter(o=>_prefSel.includes(o)).length;
     return `<div class="pref-group">
-      <div class="pref-group-h"><span class="pgi">${g[0]}</span>${esc(g[1])}${n?`<span class="pgn">${n}</span>`:''}</div>
+      <div class="pref-group-h"><span class="pgi msr" aria-hidden="true">${g[0]}</span>${esc(g[1])}${n?`<span class="pgn">${n}</span>`:''}</div>
       <div class="chips" style="flex-wrap:wrap">${g[2].map(o=>`<div class="chip pill ${_prefSel.includes(o)?'on':''}" onclick="togglePref('${jsq(o)}')">${esc(o)}</div>`).join('')}</div>
     </div>`;}).join('');
   box.innerHTML=roleCards+intro+groups;
@@ -2258,7 +2258,7 @@ function tagBadge(t){
   return '<span class="trek-tag '+tagStyle(v)+'">'+esc(v)+'</span>';
 }
 function bigCard(t){return `<div class="bigcard" onclick="openDetail(${t.idx})" data-bg="${esc(t.img||'')}" style="background-color:#12243f">
-  ${trekScoreBadge(t,'on-photo')}<span class="pr">${t.soon?'Coming Soon':INR(t.price)}</span>${tagBadge(t)}
+  ${trekScoreBadge(t,'on-photo')}<span class="pr">${t.soon?'Coming Soon':INR(priceOf(t).now)}</span>${tagBadge(t)}
   <div class="info"><h3>${t.n}</h3><div class="reg">${ic('pin',12)} ${t.region} · ${t.dur} · ${t.lvl}</div></div></div>`;}
 
 let homeFilter='All';
@@ -2455,9 +2455,9 @@ function renderCompare(){
       ['Fitness needed',t=>fitnessOf(t.lvl)],
       ['Best season',t=>t.best||'—'],
       ['Region',t=>t.region||'—'],
-      ['Rating',t=>t.r?('⭐ '+t.r):'—'],
+      ['Rating',t=>t.r?('★ '+t.r):'—'],
       ['Reviews',t=>{if(t.rev==null||t.rev==='')return '—';const n=Number(t.rev);return isNaN(n)?String(t.rev):n.toLocaleString('en-IN');}],
-      ['Beginner friendly',t=>isBeginnerFriendly(t.lvl)?'✅ Yes':'—']
+      ['Beginner friendly',t=>isBeginnerFriendly(t.lvl)?'Yes':'—']
     ];
     const head=`<tr><th class="cmp-corner"></th>${sel.map(t=>`<th class="${t.n===best.n?'best':''}"><div class="cmp-th-img" style="background-image:url('${esc(t.img||'')}')"></div><b>${esc(t.n)}</b>${t.n===best.n?'<span class="cmp-best-tag">Best match</span>':''}</th>`).join('')}</tr>`;
     const rows=ROWS.map(r=>`<tr><td class="cmp-lbl">${r[0]}</td>${sel.map(t=>`<td class="${t.n===best.n?'best':''}">${r[1](t)}</td>`).join('')}</tr>`).join('');
@@ -2881,7 +2881,7 @@ function openDetail(i){const t=treks[i];if(!t)return;
   const dit=trekItin(t);
   document.getElementById('dItinPrev').innerHTML=dit.slice(0,3).map((d,i)=>`<div class="tl"><div class="line"><div class="dot"></div>${i<2?'<div class="rod"></div>':''}</div><div class="bd"><div class="d">Day ${i+1}</div><h3>${d[0]}</h3></div></div>`).join('');
   document.getElementById('dRevPrev').innerHTML=reviewPreviewHTML(t);
-  document.getElementById('dFav').classList.remove('on');
+  syncFav(document.getElementById('dFav'),t);
   const cta=document.getElementById('dCta');
   if(t.soon){cta.innerHTML=ic('bell',16)+' Coming Soon · Notify me';cta.onclick=()=>wa(t.n+' — please notify me when it goes live.');}
   else if(isTour(t)){cta.innerHTML='Book this trip&nbsp; →';cta.onclick=()=>openTourDepart(t.idx);}
@@ -2923,7 +2923,7 @@ function renderTrip(t){
   g('tripPickup').innerHTML=pickupBlockHTML(t);
   g('tripHl').innerHTML=hlHTML(t);
   g('tripRevPrev').innerHTML=reviewPreviewHTML(t);
-  const fv=g('tripFav');if(fv)fv.classList.remove('on');
+  syncFav(g('tripFav'),t);
   /* sticky booking bar */
   const cta=g('tripCta'),cap=g('tripCtaCap'),pr=g('tripCtaPrice');
   if(pr)pr.innerHTML=priceTag(t);
@@ -2998,7 +2998,20 @@ function handleDeepLink(){
   const mh=h.match(/#htrip=([^&]+)/);
   if(mh){const id=decodeURIComponent(mh[1]);setTimeout(()=>{try{openHostTripDetail(id);}catch(e){}},400);}
 }
-function toggleFav(el){el.classList.toggle('on');el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop');}
+/* Wishlist — saved trek names per account on this device (the heart used to be decorative
+   and the Wishlist screen always showed the same three treks). */
+function wishKey(){return 'tmk_wish_'+(currentUser?currentUser.id:'guest');}
+function getWish(){try{const a=JSON.parse(localStorage.getItem(wishKey())||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}}
+function setWish(a){try{localStorage.setItem(wishKey(),JSON.stringify(a));}catch(e){}}
+function isWished(name){return getWish().includes(name);}
+function syncFav(el,t){if(el)el.classList.toggle('on',!!(t&&isWished(t.n)));}
+function toggleFav(el){
+  const t=cart.trek;if(!t)return;
+  const w=getWish(),on=!w.includes(t.n);
+  setWish(on?[t.n,...w]:w.filter(n=>n!==t.n));
+  el.classList.toggle('on',on);el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop');
+  if(typeof toast==='function')toast(on?'Saved to your wishlist':'Removed from your wishlist');
+}
 
 /* Day photos are gone on purpose: they were generic stock shots repeated down the page,
    so they read as noise, pushed the real content down and cost bandwidth. The day number
@@ -3427,9 +3440,9 @@ function bookingCard(b){
     </div></div>`;
 }
 function bkPopCard(t,i){
-  return `<div class="bk-pop-c" onclick="openDetail(${i})">
+  return `<div class="bk-pop-c" onclick="openDetail(${t.idx})">
     <div class="bk-pop-img" style="background-image:url('${esc(t.img||'')}')"></div>
-    <div class="bk-pop-tx"><b>${esc(t.n)}</b><small>${esc(t.region||'')} · ${INR(t.price||0)}</small></div></div>`;
+    <div class="bk-pop-tx"><b>${esc(t.n)}</b><small>${esc(t.region||'')} · ${INR(priceOf(t).now)}</small></div></div>`;
 }
 /* ============================================================
    TREK GUARDIAN — an OFFLINE safety companion for a booked trek.
@@ -3531,13 +3544,13 @@ function renderBookings(){
     if(past.length)html+='<div class="bk-sec">Past trips</div><div class="bk-list bk-past">'+past.map(bookingCard).join('')+'</div>';
     box.innerHTML=html;
   }else{
-    const pop=treks.slice(0,6).map((t,i)=>bkPopCard(t,i)).join('');
+    const pop=treks.filter(t=>!t.soon).sort((a,b)=>(b.pop?1:0)-(a.pop?1:0)).slice(0,6).map((t,i)=>bkPopCard(t,i)).join('');
     box.innerHTML=`<div class="bk-empty">
       <div class="bk-empty-ill"><img src="illustrations/trekss.svg" alt="A trekker on the trail"/></div>
       <b>No bookings yet</b>
       <small>Your booked treks and e-tickets will show up here. Your next Himalayan adventure is one tap away.</small>
       <button class="bk-cta" onclick="go('explore')"><span class="msr">hiking</span> Browse Treks</button>
-      <div class="bk-pop-h">🔥 Popular right now</div>
+      ${pop?`<div class="bk-pop-h"><span class="msr" style="font-size:18px;vertical-align:-4px">local_fire_department</span> Popular right now</div>`:''}
       <div class="bk-pop-row">${pop}</div>
     </div>`;
   }
@@ -3545,7 +3558,14 @@ function renderBookings(){
 }
 let _pkForce='';
 function openPackingFor(trekName){_pkForce=trekName||'';go('packing');}
-function renderWishlist(){document.getElementById('wishList').innerHTML=treks.slice(2,5).map(trekCard).join('');hydrate(document.getElementById('wishList'));}
+function renderWishlist(){
+  const el=document.getElementById('wishList');if(!el)return;
+  const saved=getWish().map(n=>treks.find(t=>t.n===n)).filter(Boolean);
+  el.innerHTML=saved.length?saved.map(trekCard).join('')
+    :`<div class="empty" style="padding:48px 20px;text-align:center"><span class="msr" style="font-size:40px;color:var(--muted)">favorite</span>
+      <p style="color:var(--muted);margin:10px 0 16px">No saved trips yet. Tap the heart on any trek to keep it here.</p>
+      <button class="btn" style="max-width:220px;margin:0 auto" onclick="go('explore')">Browse treks</button></div>`;
+  hydrate(el);}
 
 /* community + packing + profile */
 let commTab='Discover';
@@ -4450,7 +4470,7 @@ function onPostRejected(post){
   if(typeof cur!=='undefined'&&cur==='community')renderFeed();
   note('Your post was removed because it looked inappropriate (adult or explicit content). If this is a mistake, contact support.','Post removed');
 }
-/* Run a new post through server-side moderation (OpenAI, via the `moderate` edge fn).
+/* Run a new post through server-side moderation (Gemini, via the `moderate` edge fn).
    Returns 'live' | 'rejected' | 'pending'. The DB row is authoritative; this return
    just lets the composer react (pull a rejected post, or say "under review"). */
 async function moderatePost(id){
@@ -4952,7 +4972,7 @@ function renderComments(){
   const list=document.getElementById('cmList');if(!list)return;
   updateCmHeader();
   /* existing comments render without .new, so nothing re-animates on every open */
-  list.innerHTML=cmList.length?cmList.map(c=>commentHTML(c,false)).join(''):`<div class="cm-empty">Be the first to comment 💬</div>`;
+  list.innerHTML=cmList.length?cmList.map(c=>commentHTML(c,false)).join(''):`<div class="cm-empty">Be the first to comment</div>`;
   hydrate(list);
 }
 /* add a single comment with a slide-in — only the new node animates */
@@ -5193,15 +5213,15 @@ function computePassport(){
   let km=0,ft=0;const regions=new Set();let hardest=0;const lvlRank={Easy:1,Moderate:2,'Moderate-Hard':3,Difficult:4,Hard:4};
   trekNames.forEach(tn=>{const t=treks.find(x=>x.n===tn);if(t){km+=parseInt(String(t.dist).replace(/[^\d]/g,''))||0;ft+=parseInt(String(t.alt).replace(/[^\d]/g,''))||0;if(t.region)regions.add(t.region);hardest=Math.max(hardest,lvlRank[t.lvl]||0);}});
   const badges=[
-    {em:'🥾',t:'First Summit',d:'Complete 1 trek',on:done>=1},
-    {em:'⛰️',t:'Trail Veteran',d:'5 treks',on:done>=5},
-    {em:'🏔️',t:'Mountaineer',d:'10 treks',on:done>=10},
-    {em:'🧗',t:'Peak Bagger',d:'Finish a Difficult trek',on:hardest>=4},
-    {em:'🗺️',t:'Explorer',d:'2+ regions',on:regions.size>=2},
-    {em:'❄️',t:'Snow Walker',d:'A winter trek',on:trekNames.some(tn=>{const t=treks.find(x=>x.n===tn);return t&&/Dec|Jan|Feb/.test(t.best||'');})},
-    {em:'📸',t:'Storyteller',d:'Share a post',on:userPosts.length>0},
-    {em:'🌄',t:'Altitude Club',d:'10,000+ ft total',on:ft>=10000},
-    {em:'👑',t:'Summit Legend',d:'15 treks',on:done>=15},
+    {em:'hiking',t:'First Summit',d:'Complete 1 trek',on:done>=1},
+    {em:'route',t:'Trail Veteran',d:'5 treks',on:done>=5},
+    {em:'landscape',t:'Mountaineer',d:'10 treks',on:done>=10},
+    {em:'flag',t:'Peak Bagger',d:'Finish a Difficult trek',on:hardest>=4},
+    {em:'explore',t:'Explorer',d:'2+ regions',on:regions.size>=2},
+    {em:'ac_unit',t:'Snow Walker',d:'A winter trek',on:trekNames.some(tn=>{const t=treks.find(x=>x.n===tn);return t&&/Dec|Jan|Feb/.test(t.best||'');})},
+    {em:'photo_camera',t:'Storyteller',d:'Share a post',on:userPosts.length>0},
+    {em:'trending_up',t:'Altitude Club',d:'10,000+ ft total',on:ft>=10000},
+    {em:'workspace_premium',t:'Summit Legend',d:'15 treks',on:done>=15},
   ];
   return{bs,done,km,ft,regions,hardest,badges,earned:badges.filter(b=>b.on).length};
 }
@@ -5222,9 +5242,9 @@ function renderPassport(){
       <div class="pp-stat"><b>${ft.toLocaleString('en-IN')}</b><small>ft climbed</small></div>
     </div>
     <div class="sec" style="margin:4px 2px 10px"><h2 style="font-size:15px">Badges</h2></div>
-    <div class="pp-badges">${badges.map(b=>`<div class="pp-badge ${b.on?'':'locked'}"><span class="em">${b.em}</span><b>${b.t}</b><small>${b.on?'Earned':b.d}</small></div>`).join('')}</div>
+    <div class="pp-badges">${badges.map(b=>`<div class="pp-badge ${b.on?'':'locked'}"><span class="em msr" aria-hidden="true">${b.em}</span><b>${b.t}</b><small>${b.on?'Earned':b.d}</small></div>`).join('')}</div>
     <div class="sec" style="margin:20px 2px 10px"><h2 style="font-size:15px">Your Treks</h2></div>
-    ${bs.length?bs.map(b=>{const t=treks.find(x=>x.n===(b.trek||'').replace(' (Activity)',''));return `<div class="pp-stamp"><div class="ps-img" style="background-image:url('${b.img||(t?t.img:'')}')"></div><div class="ps-bd"><b>${esc(b.trek)}</b><small>${esc(b.date)}</small></div><span class="ps-done">${b.checkedIn?'✓ Completed':'Booked'}</span></div>`;}).join(''):`<div class="pp-empty"><span class="pp-empty-ic">🏔️</span><b>Your passport is waiting</b><p>Book your first trek and it’ll be stamped here — every journey, badge and summit you collect.</p><button class="btn" style="max-width:220px;margin:2px auto 0" onclick="go('explore')"><span class="msr">explore</span> Browse treks</button></div>`}
+    ${bs.length?bs.map(b=>{const t=treks.find(x=>x.n===(b.trek||'').replace(' (Activity)',''));return `<div class="pp-stamp"><div class="ps-img" style="background-image:url('${b.img||(t?t.img:'')}')"></div><div class="ps-bd"><b>${esc(b.trek)}</b><small>${esc(b.date)}</small></div><span class="ps-done">${b.checkedIn?'✓ Completed':'Booked'}</span></div>`;}).join(''):`<div class="pp-empty"><span class="pp-empty-ic msr" aria-hidden="true">landscape</span><b>Your passport is waiting</b><p>Book your first trek and it’ll be stamped here — every journey, badge and summit you collect.</p><button class="btn" style="max-width:220px;margin:2px auto 0" onclick="go('explore')"><span class="msr">explore</span> Browse treks</button></div>`}
     <div style="height:20px"></div>`;
   hydrate(box);
 }
@@ -5872,7 +5892,7 @@ async function buyGiftCard(){
       if(!res||!res.ok){note('Payment received — your gift code is being generated. If it doesn\'t appear, contact us with payment ID: '+(response.razorpay_payment_id||'—'),'Almost done');return;}
       const code=res.code||'';
       try{if(code&&navigator.clipboard)navigator.clipboard.writeText(code);}catch(e){}
-      note('Your '+inr(amount)+' '+card.name+' gift card is ready 🎁  Code: '+code+' (copied).'+(card.perk?' Includes: '+card.perk+' — quote it when booking.':'')+' Redeem it in your Wallet, or share the code with a friend to gift it.','Gift card ready').then(()=>go('wallet'));
+      note('Your '+inr(amount)+' '+card.name+' gift card is ready. Code: '+code+' (copied).'+(card.perk?' Includes: '+card.perk+' — quote it when booking.':'')+' Redeem it in your Wallet, or share the code with a friend to gift it.','Gift card ready').then(()=>go('wallet'));
     },
     modal:{ondismiss:function(){restore();note('Payment cancelled — nothing was charged.','Cancelled');}}
   });
@@ -5904,7 +5924,7 @@ async function redeemGiftCode(){
   try{
     const token=await authToken();
     const res=await rzpCall('redeem_giftcard',{code,token});
-    if(res&&res.ok){note(inr(res.amount||0)+' added to your wallet! 🎉','Redeemed').then(()=>{if(el)el.value='';loadWallet();});}
+    if(res&&res.ok){note(inr(res.amount||0)+' added to your wallet!','Redeemed').then(()=>{if(el)el.value='';loadWallet();});}
     else note((res&&res.error)||'That code is invalid or already used.','Could not redeem');
   }catch(e){note('Could not redeem right now — please try again.','Error');}
   if(btn){btn.disabled=false;btn.textContent='Redeem to wallet';}
@@ -6014,7 +6034,7 @@ function chatKey(n){return 'tmk_chat_'+String(n||'team').toLowerCase().replace(/
 function chatSeed(n){
   if(n==='Tripomonk Team'){
     /* welcome message is admin-editable in Admin → AI & Automation (aiCfg) */
-    return [{who:'them',txt:(typeof aiCfg==='function'?aiCfg('welcome'):'Welcome to Tripomonk! 🏔️ Message us anytime for help with bookings, payments or picking your next trek.')}];
+    return [{who:'them',txt:(typeof aiCfg==='function'?aiCfg('welcome'):'Welcome to Tripomonk! Message us anytime for help with bookings, payments or picking your next trek.')}];
   }
   return [];
 }
@@ -6265,7 +6285,7 @@ function chatContacts(){
   return list;
 }
 function chatPreview(msgs){const last=msgs[msgs.length-1];if(!last)return 'Start a conversation';
-  if(last.type==='callreq')return '📞 '+(last.who==='me'?'You requested a call':'Wants to call you');
+  if(last.type==='callreq')return (last.who==='me'?'You requested a call':'Wants to call you');
   if(last.type==='sys')return last.txt;
   return (last.who==='me'?'You: ':'')+(last.txt||'');}
 function chatWhen(msgs){const last=msgs&&msgs[msgs.length-1];if(!last)return '';if(last.ts)return timeAgo(last.ts);return last.t||'';}
@@ -6291,10 +6311,10 @@ async function refreshOpenThread(){const name=chatWith;if(name==='Tripomonk Team
 function callReqBubble(m,i){
   if(m.who==='me'){   /* MY request, shown on the requester's side */
     if(m.status==='allowed')
-      return `<div class="chat-sys">📞 ${esc(properName(chatWith))} allowed your call. <a onclick="requestCall('${jsq(chatWith)}')" style="color:var(--accent2);font-weight:700;cursor:pointer">Call now →</a></div>`;
+      return `<div class="chat-sys"><span class="msr" style="font-size:15px;vertical-align:-4px">call</span> ${esc(properName(chatWith))} allowed your call. <a onclick="requestCall('${jsq(chatWith)}')" style="color:var(--accent2);font-weight:700;cursor:pointer">Call now →</a></div>`;
     if(m.status==='declined')
-      return `<div class="chat-sys">📞 ${esc(properName(chatWith))} declined the call request.</div>`;
-    return `<div class="chat-sys">📞 Call request sent — waiting for ${esc(properName(chatWith))} to allow. Their number stays private until they do.</div>`;
+      return `<div class="chat-sys"><span class="msr" style="font-size:15px;vertical-align:-4px">call</span> ${esc(properName(chatWith))} declined the call request.</div>`;
+    return `<div class="chat-sys"><span class="msr" style="font-size:15px;vertical-align:-4px">call</span> Call request sent — waiting for ${esc(properName(chatWith))} to allow. Their number stays private until they do.</div>`;
   }
   /* a request someone sent ME — once I've answered it, the card is gone (a sys line is shown instead) */
   if(m.status==='allowed'||m.status==='declined')return '';
@@ -6439,7 +6459,7 @@ function renderChat(){
   }
   if(compose)compose.style.display='';
   if(!rows.length){
-    thread.innerHTML=`<div class="chat-empty"><div class="ce-ava">${avatar(chatWith,66)}</div><b>${esc(properName(chatWith))}</b><p>${team?'Ask us anything about bookings, payments or picking your next trek.':'Say hi 👋 — this is the start of your conversation.'}</p></div>`;
+    thread.innerHTML=`<div class="chat-empty"><div class="ce-ava">${avatar(chatWith,66)}</div><b>${esc(properName(chatWith))}</b><p>${team?'Ask us anything about bookings, payments or picking your next trek.':'Say hi — this is the start of your conversation.'}</p></div>`;
   }else{
     /* WhatsApp-style: show a delivery/read receipt only under the LAST message I sent */
     let lastMeIdx=-1;rows.forEach((m,i)=>{if(m.who==='me'&&(m.type==='text'||!m.type))lastMeIdx=i;});
@@ -6612,7 +6632,7 @@ async function togglePrivateAccount(){
   try{localStorage.setItem(prefKey(),JSON.stringify(p));}catch(e){}
   privateByName[myName()]=!!p.private;
   renderSettings();
-  toast(p.private?'Your account is now private 🔒':'Your account is now public');
+  toast(p.private?'Your account is now private':'Your account is now public');
   try{const sb=getSupaClient();const uid=sb?await authUid():null;if(sb&&uid)await sb.from('profiles').update({prefs:p}).eq('id',uid);}catch(e){}
 }
 /* incoming follow requests for MY (private) account */
@@ -6691,7 +6711,7 @@ function renderPlanner(){
 function plMatchCls(label){return /strong/i.test(label)?'ok':/good/i.test(label)?'good':/partial/i.test(label)?'warn':'dim';}
 function plannerCard(t,rec){
   rec=(typeof rec==='string')?{why:rec}:(rec||{});
-  const price=t.price?('₹'+Number(t.price).toLocaleString('en-IN')):'';
+  const price=t.price?('₹'+Number(priceOf(t).now).toLocaleString('en-IN')):'';
   const badge=rec.match?`<span class="pl-match ${plMatchCls(rec.match)}">${esc(rec.match)}</span>`:'';
   const w=rec.why?`<span class="pl-card-why">${esc(rec.why)}</span>`:'';
   return `<div class="pl-card" onclick="openDetailByName('${jsq(t.n)}')">
@@ -8480,7 +8500,7 @@ async function crmOpen(name){
 }
 /* ---- Admin · AI & Automation (live message templates, stored in app_config) ---- */
 let _aiCfg=null;
-const AI_DEFAULTS={welcome:'Welcome to Tripomonk! 🏔️ We’re glad to have you. Message us anytime for help with bookings, payments or picking your next trek.',sos:'EMERGENCY — I need help on my Tripomonk trek. Please call me right away.',planner:'Tell us your dates, fitness and vibe — we’ll suggest the right trek for you.'};
+const AI_DEFAULTS={welcome:'Welcome to Tripomonk! We’re glad to have you. Message us anytime for help with bookings, payments or picking your next trek.',sos:'EMERGENCY — I need help on my Tripomonk trek. Please call me right away.',planner:'Tell us your dates, fitness and vibe — we’ll suggest the right trek for you.'};
 async function loadAiCfg(){
   if(_aiCfg)return _aiCfg;
   _aiCfg=Object.assign({},AI_DEFAULTS);
@@ -8895,7 +8915,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='472';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='473';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -9543,10 +9563,11 @@ const MKT_PRICING={
   gstPct:0,          /* ⚠ treks show no GST line today. Confirm rate + ITC with your CA first. */
   conveniencePct:0,  /* 0 = no booking fee, matching the trek flow */
   weekendPct:0,      /* weekend/seasonal surcharge, off until operators confirm */
-  groupTiers:[{min:6,pct:5},{min:10,pct:10}],
-  /* ⚠ client-side coupons are visible and forgeable. The edge function MUST
-     re-validate any code before it affects the amount charged. */
-  coupons:{TREK10:{pct:10,label:'10% off'}}
+  /* Group discounts and coupons stay OFF until the razorpay edge function prices them —
+     the cart used to advertise "5% off for 6+" and TREK10, but checkout charged full price.
+     Re-enable only together with server-side support (e.g. groupTiers:[{min:6,pct:5}]). */
+  groupTiers:[],
+  coupons:{}
 };
 const isWeekendISO=iso=>{if(!iso)return false;const d=new Date(iso+'T00:00:00').getDay();return d===0||d===6;};
 const pct=(n,p)=>Math.round(n*p/100);
@@ -9738,13 +9759,14 @@ function renderCart(){
 
   const nextTier=MKT_PRICING.groupTiers.filter(t=>b.totalPax<t.min).sort((a,c)=>a.min-c.min)[0];
 
+  const hasCoupons=Object.keys(MKT_PRICING.coupons).length>0;
   body.innerHTML=`${items}
-    <div class="coupon">
+    ${hasCoupons?`<div class="coupon">
       <div class="inp"><span class="msr" style="font-size:18px;color:var(--muted)">sell</span>
         <input id="cartCoupon" placeholder="Coupon code" autocapitalize="characters" value="${esc(cartCoupon)}"/></div>
       <button onclick="applyCoupon()">Apply</button>
-    </div>
-    ${cartCoupon?`<p class="coupon-msg ${b.couponInvalid?'bad':'ok'}">${b.couponInvalid?'“'+esc(cartCoupon)+'” is not a valid code.':esc(b.coupon)+' applied — '+esc(b.couponLabel)}</p>`:''}
+    </div>`:''}
+    ${hasCoupons&&cartCoupon?`<p class="coupon-msg ${b.couponInvalid?'bad':'ok'}">${b.couponInvalid?'“'+esc(cartCoupon)+'” is not a valid code.':esc(b.coupon)+' applied — '+esc(b.couponLabel)}</p>`:''}
     ${nextTier?`<p class="coupon-msg" style="color:var(--muted2)">Add ${nextTier.min-b.totalPax} more ${nextTier.min-b.totalPax===1?'person':'people'} to unlock ${nextTier.pct}% off.</p>`:''}
     <div class="bill">
       ${rows.join('')}
@@ -9753,7 +9775,7 @@ function renderCart(){
     </div>
     <button class="btn" onclick="cartCheckout()">Continue to checkout &nbsp;→</button>
     <p style="font-size:11px;color:var(--muted2);text-align:center;margin:12px 0 0;line-height:1.5">
-      Final price is confirmed by Tripomonk before payment.</p>
+      ${cartItems.length===1&&cartItems[0].kind==='trek'?'Next: traveller details, then pay 25% to confirm your seat.':'We’ll confirm availability and the final price with you on WhatsApp.'}</p>
     <div style="height:calc(var(--safe-bottom) + 20px)"></div>`;
   hydrate(body);
   updateCartBadge();
@@ -9761,7 +9783,19 @@ function renderCart(){
 function cartCheckout(){
   if(!cartItems.length){note('Add an activity first.','Empty');return;}
   if(!isLoggedIn()){note('Please sign in to book.','Sign in required').then(()=>{_loginReturn='cart';go('login');});return;}
-  note('Checkout and payment are the next step — the server must price this cart before it can charge anything.','Coming next');
+  /* one trek → the normal, server-priced booking flow (travellers → review → pay 25%) */
+  if(cartItems.length===1&&cartItems[0].kind==='trek'){
+    const it=cartItems[0],t=treks.find(x=>x.n===it.trekName);
+    if(!t||t.soon){note('This trip is not open for booking right now. Chat with us on WhatsApp and we’ll help.','Not bookable');return;}
+    const b=getBatches(t.n).find(x=>x.label===it.date);
+    if(!b){note('That departure is no longer available. Please pick another date.','Pick a new date').then(()=>{cart.trek=t;go('selectDate');});return;}
+    cart.trek=t;cart.date=b.label;cart.total=discPrice(b.price||t.price,t);cart.pax=Math.max(1,it.adults||1);
+    go('travellers');return;
+  }
+  /* several trips/activities in one go → our team books them together on WhatsApp */
+  const pr=priceCart(cartItems,{});
+  const lines=pr.lines.map(l=>'• '+l.name+(l.date?' — '+(l.kind==='trek'?l.date:prettyDate(l.date))+(l.slot?' '+l.slot:''):'')+' — '+l.pax+' '+(l.pax===1?'person':'people')+' — '+INR(l.total)).join('\n');
+  wa('Hi Tripomonk! I’d like to book these together:\n\n'+lines+'\n\nEstimated total: '+INR(pr.grand)+'\nName: '+(getSavedName()||'')+'\n\nPlease confirm availability and the final price.');
 }
 
 /* ---- destinations grid ---- */
@@ -9882,7 +9916,7 @@ function gearRecoCard(t){
       +'<small>Added to your booking at checkout</small></div></div>'
     : '<div class="gr-kit" style="justify-content:center"><small style="color:var(--muted)">Tap the gear you want to hire.</small></div>';
   return '<div class="gearreco">'
-    +'<div class="gr-head"><span class="gr-emoji">🎒</span><b>Recommended Gear</b><span class="gr-count">'+sel.length+' of '+all.length+' selected'+(ctx?' · '+esc(ctx):'')+'</span></div>'
+    +'<div class="gr-head"><span class="gr-emoji msr" aria-hidden="true">backpack</span><b>Recommended Gear</b><span class="gr-count">'+sel.length+' of '+all.length+' selected'+(ctx?' · '+esc(ctx):'')+'</span></div>'
     +'<div class="gr-list">'+rows+'</div>'
     +footer
     +'<p class="gr-note">Suggested for '+esc(t.n)+' by altitude, season & difficulty. Tap the gear you want to hire.</p>'
@@ -10881,7 +10915,7 @@ function fitSubmit(){
 /* ---- AI Training Plan ----
    Renders a solid deterministic plan INSTANTLY (always works, offline-safe), then
    asks Claude (via the fitness-coach edge function) to personalise today's session
-   + a coaching note. If the ANTHROPIC_API_KEY secret isn't set, or the function isn't
+   + a coaching note. If the GEMINI_API_KEY secret isn't set, or the function isn't
    deployed, the deterministic plan simply stays — nothing breaks. */
 let _planTrek='';
 function openTrainingPlan(name){_planTrek=name||'';go('trainingPlan');}
@@ -12831,10 +12865,10 @@ async function htPay(){
    ============================================================ */
 /* host progression levels by trips run (Ambassador is invite-only, not auto) */
 function hostLevel(n){
-  if(n>30)return{t:'Elite Host',em:'💎'};
-  if(n>=11)return{t:'Summit Host',em:'🥇'};
-  if(n>=4)return{t:'Trail Host',em:'🥈'};
-  return{t:'Explorer Host',em:'🥉'};
+  if(n>30)return{t:'Elite Host',em:'diamond'};
+  if(n>=11)return{t:'Summit Host',em:'military_tech'};
+  if(n>=4)return{t:'Trail Host',em:'workspace_premium'};
+  return{t:'Explorer Host',em:'explore'};
 }
 async function openHostDash(){
   await loadHostApp();
@@ -12863,7 +12897,7 @@ async function renderHostDash(){
   const draft=_hdTrips.filter(t=>t.status==='draft').length;
   const seats=_hdTrips.filter(t=>t.status==='live').reduce((s,t)=>s+(t.max_people||0),0);
   const lv=hostLevel(_hdTrips.length);const lvEl=document.getElementById('hdLevel');
-  if(lvEl)lvEl.innerHTML='<span class="hd-level">'+lv.em+' '+lv.t+'</span> ·';
+  if(lvEl)lvEl.innerHTML='<span class="hd-level"><span class="msr" style="font-size:16px;vertical-align:-3px">'+lv.em+'</span> '+lv.t+'</span> ·';
   const st=document.getElementById('hdStats');
   if(st)st.innerHTML='<div><b>'+_hdTrips.length+'</b><small>Trips</small></div>'
     +'<div><b>'+live+'</b><small>Live</small></div>'
@@ -12983,7 +13017,7 @@ async function postTripToCommunity(id){
   const post={id:'p'+Date.now(),uid:currentUser?currentUser.id:null,n:authorName,when:'just now',txt,imgs:t.img?[t.img]:[],likes:0,comments:[],trek:t.title,tagged:[]};
   userPosts.unshift(post);savePosts();
   await savePostRemote(post);
-  note('Shared to the community feed! 🎉 It will help trekkers discover your trip.','Posted');
+  note('Shared to the community feed! It will help trekkers discover your trip.','Posted');
 }
 /* ============================================================
    HOST EARNINGS — verified hosts only (this whole dashboard is
