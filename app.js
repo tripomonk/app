@@ -817,7 +817,7 @@ function requestCall(n){
 const menu=[['bookings','My Bookings','bookings'],['shield','Trek Passport','passport'],['like','My Preferences','onboarding'],['monitor','Trek Health','health'],['distance','Trek Navigation','navmap'],['heartmenu','My Wishlist','wishlist'],['starline','My Reviews','reviews'],['settings','Settings','settings'],['help','Help & Support','help']];
 const setList=[['user','Account & security','account'],['bell','Notifications','notifPrefs'],['globe','Language','language'],['card','Payment methods','payments'],['shield','Privacy Policy','privacy'],['help','About Tripomonk','about']];
 /* demo notifications removed — the notifications screen shows only real activity now */
-const faqs=[['How do I book a trek?','Pick a trek, choose a batch on Select Date, add travellers and pay 25% to confirm your seat.'],['What is the cancellation policy?','Free cancellation up to 15 days before departure (full refund). Within 15 days, a 50% charge applies.'],['Do you provide gear on rent?','Yes — add the gear kit (jacket, boots, poles) as an add-on at checkout.'],['Are permits included?','We arrange forest / eco-zone permits for you as an assisted service.'],['What fitness level do I need?','Easy treks suit beginners; Moderate+ need regular cardio for 3–4 weeks before.']];
+const faqs=[['How do I book a trek?','Pick a trek, choose a batch on Select Date, add travellers and pay 25% to confirm your seat.'],['What is the cancellation policy?','More than 30 days before departure: full refund (less payment-gateway charges). 15–29 days: 75% refund. 7–14 days: 50% refund. Under 7 days or no-show: no refund. If we cancel for weather or safety, you get a full refund or a free date change.'],['Do you provide gear on rent?','Yes — add the gear kit (jacket, boots, poles) as an add-on at checkout.'],['Are permits included?','We arrange forest / eco-zone permits for you as an assisted service.'],['What fitness level do I need?','Easy treks suit beginners; Moderate+ need regular cardio for 3–4 weeks before.']];
 let reviewsData=[];  /* {id,trek,author,rating,body,ts,date} — loaded from Supabase / localStorage (see loadReviews) */
 const KNOW=[['community','8–15','Group size'],['user','10+ yrs','Min age'],['altitude','Moderate','Fitness']];
 const EXCL=['Personal expenses','Travel to the base city','Anything not in inclusions'];
@@ -6781,8 +6781,10 @@ async function sendPlan(text){
       if(sb){
         const catalog=treks.map(t=>({n:t.n,region:t.region,price:t.price,days:t.days,lvl:t.lvl,best:t.best||'',from:t.dep||'',alt:t.alt||'',type:isTour(t)?'tour':'trek',tag:t.tag||'',soon:!!t.soon}));
         const messages=_planMsgs.filter(m=>m.role==='user'||m.role==='assistant').slice(-12).map(m=>({role:m.role,content:m.content}));
-        const r=await sb.functions.invoke('plan',{body:{messages,catalog,context:_tripCtx}});
+        /* never leave the dots up forever: past 25s, answer from the built-in engine instead */
+        const r=await Promise.race([sb.functions.invoke('plan',{body:{messages,catalog,context:_tripCtx}}),_plSleep(25000).then(()=>null)]);
         if(r&&r.data&&r.data.ok)res=r.data;
+        else if(r&&r.data&&r.data.detail)console.warn('planner fallback:',r.data.detail);
       }
     }catch(e){/* fall through to the local engine */}
   }
@@ -8915,7 +8917,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='473';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='474';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
