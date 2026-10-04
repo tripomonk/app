@@ -4101,7 +4101,24 @@ async function deletePost(id){
   await renderFeed();
   note('Post deleted.');
 }
+/* community is sign-in gated: logged-out visitors get a sign-up prompt, not the feed/people */
+function communityGate(){
+  return '<div class="comm-gate">'
+    +'<div class="cg-ic"><span class="msr">groups</span></div>'
+    +'<h3>Join the Tripomonk community</h3>'
+    +'<p>Sign up to connect with fellow trekkers, share your journeys, find trek partners and follow trip stories.</p>'
+    +'<button class="btn" onclick="_loginReturn=\'community\';go(\'login\')"><span class="msr" style="font-size:18px;vertical-align:-3px">login</span> Sign up / Sign in</button>'
+  +'</div>';
+}
 async function renderFeed(){
+  const _comm=document.getElementById('community');
+  if(typeof isLoggedIn==='function'&&!isLoggedIn()){
+    if(_comm)_comm.classList.add('locked');
+    const gbox=document.getElementById('feed');
+    if(gbox){gbox.innerHTML=communityGate();hydrate(gbox);}
+    return;
+  }
+  if(_comm)_comm.classList.remove('locked');
   renderCommTabs();renderStories();
   /* stories + member list load alongside the feed, then the tray + suggestions re-render */
   Promise.all([loadStories(),ensurePeople()]).then(()=>{renderStories();renderSuggestions();}).catch(()=>{});
@@ -12483,13 +12500,17 @@ function hostsHomeBox(){
 }
 /* box: Our Trek Guides — 3-col grid of guide profiles + "Check Eligibility" CTA */
 function guidesHomeBox(){
+  const signedIn=(typeof isLoggedIn==='function'&&isLoggedIn());
   const gl=(guides||[]).filter(g=>g&&(g.name||_guideAcct[g.id])).slice(0,6);
-  const grid=gl.length
-    ? '<div class="hg-grid">'+gl.map(guideGridCell).join('')+'</div>'
-    : '<p class="homebox-empty">'+(_guidesLoaded?'Verified trek leaders coming soon.':'Loading…')+'</p>';
   const total=(guides||[]).filter(g=>g&&(g.name||_guideAcct[g.id])).length;
+  /* logged-out visitors see a clean recruitment CTA (not the guide grid), matching Our Hosts */
+  const grid = !signedIn
+    ? '<p class="homebox-empty">Lead treks with Tripomonk.</p>'
+    : (gl.length
+        ? '<div class="hg-grid">'+gl.map(guideGridCell).join('')+'</div>'
+        : '<p class="homebox-empty">'+(_guidesLoaded?'Verified trek leaders coming soon.':'Loading…')+'</p>');
   return '<div class="homebox">'
-    +'<div class="homebox-h"><h3>Trek Guides</h3>'+(total?'<a onclick="openGuides()">See all</a>':'')+'</div>'
+    +'<div class="homebox-h"><h3>Trek Guides</h3>'+((signedIn&&total)?'<a onclick="openGuides()">See all</a>':'')+'</div>'
     +grid
     +'<button class="homebox-cta alt" onclick="go(\'guideEligibility\')"><span class="msr">verified</span><span>Guide With Us</span></button>'
   +'</div>';

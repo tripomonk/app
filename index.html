@@ -3502,6 +3502,15 @@ window.fbTrack=function(ev,params){try{if(window.fbq)window.fbq('track',ev,param
     background:var(--accent);color:#fff;font-family:var(--font);font-size:11.5px;font-weight:700;cursor:pointer}
   .scard .sfollow.on{background:transparent;color:var(--muted);border-color:var(--stroke2)}
   .comm-section-head{display:flex;align-items:center;justify-content:space-between;margin:4px 2px 12px}
+  /* community sign-in gate (logged-out visitors) — hide people/feed, show a sign-up prompt */
+  .community-view.locked #storiesRow,.community-view.locked .comm-pills,.community-view.locked #commTabs,.community-view.locked #commSuggest,.community-view.locked .comm-section-head,.community-view.locked .comm-actions{display:none}
+  .comm-gate{text-align:center;max-width:380px;margin:40px auto;padding:34px 24px}
+  .comm-gate .cg-ic{width:66px;height:66px;border-radius:50%;margin:0 auto 18px;display:grid;place-items:center;background:rgba(47,107,255,.16);color:#7aa8ff}
+  .comm-gate .cg-ic .msr{font-size:34px}
+  .comm-gate h3{font-size:21px;margin:0 0 10px}
+  .comm-gate p{font-size:14.5px;opacity:.72;margin:0 0 22px;line-height:1.6}
+  .comm-gate .btn{min-width:210px}
+  #community.active.locked ~ .community-fab{display:none}
   .comm-section-head b{font-size:15px}
   .comm-section-head span{font-size:12px;color:var(--accent2);font-weight:700;cursor:pointer}
   #community #feed{display:flex;flex-direction:column;gap:14px;padding-bottom:8px}
