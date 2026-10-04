@@ -88,7 +88,13 @@ const SVGIC={
 function ic(n,s){s=s||20;
   if(SVGIC[n])return `<span class="ic" style="display:inline-flex;width:${s}px;height:${s}px">${SVGIC[n].replace('<svg','<svg width="'+s+'" height="'+s+'"')}</span>`;
   return `<span class="msr" style="font-size:${s}px">${IMAP[n]||'circle'}</span>`;}
-function hydrate(root){(root||document).querySelectorAll('[data-i]').forEach(el=>{el.innerHTML=ic(el.dataset.i,+el.dataset.sz||20);el.removeAttribute('data-i');});fitCarousels(root);if(typeof animateTrekScores==='function')animateTrekScores();}
+/* Tappable cards are <div onclick>; give them button semantics so keyboard and
+   screen-reader users can reach and activate them (Enter/Space handled below). */
+function a11yClickables(root){(root||document).querySelectorAll('[onclick]:not(button):not(a):not(input):not(select):not(textarea):not(label):not([role])').forEach(el=>{el.setAttribute('role','button');if(!el.hasAttribute('tabindex'))el.tabIndex=0;});}
+document.addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const el=e.target;
+  if(el&&el.getAttribute&&el.getAttribute('role')==='button'&&el.hasAttribute('onclick')&&!/^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(el.tagName)){e.preventDefault();el.click();}});
+document.addEventListener('DOMContentLoaded',()=>a11yClickables(document));
+function hydrate(root){(root||document).querySelectorAll('[data-i]').forEach(el=>{el.innerHTML=ic(el.dataset.i,+el.dataset.sz||20);el.removeAttribute('data-i');});a11yClickables(root);fitCarousels(root);if(typeof animateTrekScores==='function')animateTrekScores();}
 
 /* ---------- data ---------- */
 const U='https://images.unsplash.com/photo-';
@@ -131,7 +137,8 @@ const treks=[
   {n:"Markha Valley",region:"Ladakh",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Kongmaru_La_Pass%2C_Markha_Valley_trek%2C_Ladakh%2C_India_%282018%29.jpg/1280px-Kongmaru_La_Pass%2C_Markha_Valley_trek%2C_Ladakh%2C_India_%282018%29.jpg",credit:"Chris Hunkeler from Carlsbad, California, USA · CC BY-SA 2.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Difficult",days:7,alt:"17,060 ft",dist:"65 km",best:"Jun – Sep",price:18999,soon:true,desc:"A classic Ladakh teahouse trek through remote villages and high passes."},
   {n:"Chadar Trek",region:"Ladakh",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Chadar_trek_image_2.jpg/1280px-Chadar_trek_image_2.jpg",credit:"Goutam1962 · CC BY-SA 4.0 · Wikimedia Commons",r:4.8,rev:"—",lvl:"Difficult",days:9,alt:"11,150 ft",dist:"62 km",best:"Jan – Feb",price:24999,soon:true,desc:"The legendary walk on the frozen Zanskar river — a true winter expedition."},
   {n:"Goecha La",region:"Sikkim",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Indian_hikers_with_country_flag_on_hills_of_Goecha_La_Trek%2C_in_West_Sikkim_district_of_Sikkim%2C_photographed_by_Yogabrata_Chakraborty%2C_on_October_18%2C_2021.jpg/1280px-Indian_hikers_with_country_flag_on_hills_of_Goecha_La_Trek%2C_in_West_Sikkim_district_of_Sikkim%2C_photographed_by_Yogabrata_Chakraborty%2C_on_October_18%2C_2021.jpg",credit:"Billjones94 · CC BY-SA 4.0 · Wikimedia Commons",r:4.8,rev:"—",lvl:"Difficult",days:10,alt:"16,200 ft",dist:"90 km",best:"Apr – May",price:21999,soon:true,desc:"Up close with Kanchenjunga, the world's third-highest peak, through rhododendron forest."},
-  {n:"Sandakphu",region:"Sikkim",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Abies_densa_foliage%2C_Sandakphu%2C_Singalila_National_Park%2C_Sikkim.jpg/1280px-Abies_densa_foliage%2C_Sandakphu%2C_Singalila_National_Park%2C_Sikkim.jpg",credit:"Debojyoti Dey · CC BY-SA 4.0 · Wikimedia Commons",r:4.6,rev:"—",lvl:"Moderate",days:6,alt:"11,930 ft",dist:"50 km",best:"Oct – Dec",price:13499,soon:true,desc:"Walk the Singalila ridge for views of four of the five highest peaks on earth."},
+  {n:"Sandakphu",region:"Sikkim",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Abies_densa_foliage%2C_Sandakphu%2C_Singalila_National_Park%2C_Sikkim.jpg/1280px-Abies_densa_foliage%2C_Sandakphu%2C_Singalila_National_Park%2C_Sikkim.jpg",credit:"Debojyoti Dey · CC BY-SA 4.0 · Wikimedia Commons",r:4.6,rev:"—",lvl:"Moderate",days:6,alt:"11,930 ft",dist:"50 km",best:"Oct – Dec",price:13499,soon:true,desc:"Walk the Singalila ridge for views of four of the five highest peaks on earth."}
+,
   /* ---- imported from All-treks sheet (coming soon) ---- */
   {n:"Hemkund Sahib",region:"Uttarakhand",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Hemkund_Sahib_and_Lokpal_Lake.jpg/1280px-Hemkund_Sahib_and_Lokpal_Lake.jpg",credit:"Harshit SR · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:6,alt:"15,200 ft",dist:"—",best:"May – Oct",price:12000,soon:true,dep:"Rishikesh",desc:"A 6-day moderate trek in Uttarakhand, topping out at 15,200 ft. Best time to go: May – Oct."},
   {n:"Dayara Bugyal",region:"Uttarakhand",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/En_route_to_Dayara_Bugyal_at_Gui_camp_03.jpg/1280px-En_route_to_Dayara_Bugyal_at_Gui_camp_03.jpg",credit:"Satdeep Gill · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:5,alt:"12,100 ft",dist:"—",best:"May – Jun, Oct – Nov",price:10500,soon:true,dep:"Dehradun",desc:"A 5-day moderate trek in Uttarakhand, topping out at 12,100 ft. Best time to go: May – Jun, Oct – Nov."},
@@ -265,8 +272,20 @@ function wikiFix(u){
   const m=String(u).match(/\/\/(?:[a-z0-9.-]+\.)?(?:wikimedia|wikipedia)\.org\/wiki\/(?:[^/]*?:)?File:([^?#]+)/i);
   return m?('https://commons.wikimedia.org/wiki/Special:FilePath/'+m[1]+'?width=1600'):u;
 }
+/* Wikimedia ignores Unsplash-style ?w= params, so cards were pulling 1280px thumbs (and
+   some full-size originals, several MB each). Request a real Wikimedia thumbnail at one of
+   its standard widths instead. Only ever downsizes: every catalogue photo is ≥1280px. */
+const WM_STEPS=[250,330,500,960,1280];
+function wmFit(u,want){
+  u=String(u||'');if(!/^https:\/\/upload\.wikimedia\.org\/wikipedia\/commons\//.test(u))return u;
+  const [base,qs]=u.split('?');const w=want||+((u.match(/[?&]w=(\d+)/)||[])[1])||960;
+  const step=WM_STEPS.find(x=>x>=w)||1280;const tail=qs?'?'+qs:'';
+  if(/\/commons\/thumb\/.+\/\d+px-[^/]+$/.test(base))return base.replace(/\/(\d+)px-([^/]+)$/,(m,cur,f)=>'/'+Math.min(step,+cur)+'px-'+f)+tail;
+  const m=base.match(/\/commons\/([0-9a-f])\/([0-9a-f]{2})\/([^/]+\.(?:jpe?g|png|webp))$/i);
+  return m?`https://upload.wikimedia.org/wikipedia/commons/thumb/${m[1]}/${m[2]}/${m[3]}/${step}px-${m[3]}${tail}`:u;
+}
 function deriveTreks(){treks.forEach((t,i)=>{t.idx=i;
-  if(t.img)t.img=wikiFix(t.img);                       // repair Wikimedia file-page URLs → real image
+  if(t.img)t.img=wmFit(wikiFix(t.img));                // repair Wikimedia file-page URLs → real image, at a sane size
   if(t.img && t.img.indexOf('?')<0)t.img=t.img+Q;     // append sizing only if not already present
   t.hl=(Array.isArray(t.highlights)&&t.highlights.length)?t.highlights:HL;   /* admin-picked highlights, else the default set */
   t.dur=t.days+(t.days>1?' Days':' Day');
@@ -996,7 +1015,8 @@ function recordConsent(){
 function onConsentToggle(){
   const chk=document.getElementById('consentChk'),btn=document.getElementById('googleBtn'),row=document.getElementById('consentRow');
   const on=!!(chk&&chk.checked);
-  if(btn){btn.disabled=!on;btn.style.opacity=on?'1':'.5';btn.style.pointerEvents=on?'':'none';}
+  /* dimmed but still tappable until ticked, so a tap explains why (consentedLogin) instead of doing nothing */
+  if(btn){btn.disabled=false;btn.setAttribute('aria-disabled',on?'false':'true');btn.style.opacity=on?'1':'.5';btn.style.pointerEvents='';}
   if(row)row.classList.remove('shake');
 }
 /* the sign-in button calls this — belt and braces even though it's disabled until ticked */
@@ -1317,7 +1337,7 @@ function renderSplashCollage(){
   const perCol=Math.ceil(N/3);                            /* CSS columns fill top→bottom */
   let html='';
   for(let i=0;i<N;i++){
-    const src=imgs[i%imgs.length].replace(/w=\d+/,'w=420');
+    const src=wmFit(imgs[i%imgs.length].replace(/w=\d+/,'w=420'),420);
     const h=heights[i%heights.length];
     /* bottom-up diagonal wave: lower rows rise first, then up + slightly rightward */
     const col=Math.floor(i/perCol),row=i%perCol;
@@ -2172,7 +2192,7 @@ const INR=n=>'₹'+Number(n).toLocaleString('en-IN');
 /* ---------- render ---------- */
 function trekCard(t){return `<div class="tcard" onclick="openDetail(${t.idx})"><div class="ph" style="background-image:url('${t.img}')">${t.soon?'<span class="soon">Coming Soon</span>':''}${trekScoreBadge(t,'on-photo')}</div>
   <div class="bd"><h3>${t.n}</h3><div class="reg">${ic('pin',13)} ${t.region}</div>
-  <div class="rt"><span class="star">★</span> <b>${t.r}</b> <span class="g">(${t.rev})</span></div>
+  <div class="rt">${rateHTML(t)}</div>
   <div class="ft"><span class="tag">${ic('clock',12)} ${t.dur}</span><span class="tag">${t.lvl}</span>${readinessChip(t)}</div></div></div>`;}
 /* lazy-load card background images: only paint a card's photo when it is near the
    viewport. Without this, a long list (130+ treks) loads every image at once and
@@ -2226,7 +2246,7 @@ function renderHomeChips(){document.getElementById('homeChips').innerHTML=diffs.
 function setHomeFilter(d){homeFilter=d;renderHomeChips();renderHome();}
 function trekCardH(t){return `<div class="hcard" onclick="openDetail(${t.idx})"><div class="hph" style="background-image:url('${t.img}')">${t.soon?'<span class="soon">Coming Soon</span>':''}${tagBadge(t)}${trekScoreBadge(t,'on-photo')}</div>
   <div class="hbd"><h3>${t.n}</h3><div class="reg">${ic('pin',12)} ${t.region}</div>
-  <div class="rt"><span class="star">★</span> <b>${t.r}</b> <span style="color:var(--muted)">(${t.rev})</span></div>
+  <div class="rt">${rateHTML(t)}</div>
   <div class="ft"><span class="tag">${ic('clock',12)} ${t.dur}</span><span class="tag">${t.lvl}</span></div></div></div>`;}
 /* ===== Reusable dynamic 3D coverflow stack (index-based, swipe/drag, infinite, virtualized) ===== */
 let _cfMoved=false;
@@ -2314,7 +2334,7 @@ function renderHomeHero(){
   const f=treks.find(t=>t.feat&&!t.soon)||treks.find(t=>t.feat)||treks.find(t=>!t.soon)||treks[0];
   if(!f){box.innerHTML='';return;}
   box.innerHTML=`<div class="hhero" style="background-image:url('${f.img}')" onclick="openDetail(${f.idx})">
-    <span class="hh-price">From ₹${Number(f.price).toLocaleString('en-IN')}</span>
+    <span class="hh-price">From ₹${Number(discPrice(f.price,f)).toLocaleString('en-IN')}</span>
     <div class="hh-c"><span class="hh-tag">Featured trek</span>
       <h3>${esc(f.n)}</h3>
       <p>${esc(f.region)} · ${esc(f.lvl)} · ${esc(f.days+'D')}</p>
@@ -2687,7 +2707,9 @@ async function loadConditions(t){
   }catch(e){return cached?cached.data:null;}
 }
 /* Open-Meteo weathercode → a simple emoji */
-function wxIcon(code){code=+code||0;if(code===0)return '☀️';if(code<=3)return '⛅';if(code<=48)return '🌫️';if(code<=67)return '🌧️';if(code<=77)return '❄️';if(code<=82)return '🌧️';return '⛈️';}
+/* Open-Meteo WMO code → Material Symbol (the customer app never uses emoji) */
+function wxIcon(code){code=+code||0;const [n,c]=code===0?['sunny','#FFB800']:code<=3?['partly_cloudy_day','#FFC94D']:code<=48?['foggy','#9fb3c8']:code<=67?['rainy','#5aa9ff']:code<=77?['ac_unit','#bfe3ff']:code<=82?['rainy','#5aa9ff']:['thunderstorm','#b48cff'];
+  return `<span class="msr" style="font-size:22px;color:${c}" aria-hidden="true">${n}</span>`;}
 /* local calendar date as YYYY-MM-DD — used to keep the forecast pinned to the real today */
 function localTodayISO(){const d=new Date(),p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
 function forecastStrip(days){
@@ -2820,8 +2842,7 @@ function openDetail(i){const t=treks[i];if(!t)return;
   if(doff){const of=(t.offer||'').trim();if(of){doff.innerHTML='<span class="msr">local_offer</span><div><b>Offer</b><span>'+esc(of)+'</span></div>';doff.style.display='flex';}else doff.style.display='none';}
   document.getElementById('dName').textContent=t.n;
   document.getElementById('dReg').textContent=t.region;
-  document.getElementById('dRate').textContent=t.r;
-  document.getElementById('dRev').textContent='('+t.rev+' reviews)';
+  {const m=document.getElementById('dRate');if(m&&m.parentElement)m.parentElement.innerHTML=rateHTML(t,true)+'<b id="dRate" hidden></b><span id="dRev" hidden></span>';}
   const _dl=document.getElementById('dLvl');if(_dl)_dl.textContent=t.lvl;   /* difficulty removed from the header; guarded in case the element returns */
   const _tour=isTour(t);
   const dsb=document.getElementById('dScoreBadge');if(dsb){if(_tour){dsb.innerHTML='';dsb.style.display='none';}else{dsb.style.display='';dsb.innerHTML=trekScoreBadge(t,'trek-score-lg')+'<span class="d-score-cap">Trek score</span>';}}
@@ -2865,8 +2886,7 @@ function renderTrip(t){
   const db=g('tripDepBadge');if(db){db.textContent=depLabel(t);db.style.display=depLabel(t)?'':'none';}
   g('tripName').textContent=t.n;
   g('tripReg').textContent=(destById(t.dest_id)||{}).n||t.region||'';
-  g('tripRate').textContent=t.r;
-  g('tripRev').textContent='('+t.rev+' reviews)';
+  {const m=g('tripRate');if(m&&m.parentElement)m.parentElement.innerHTML=rateHTML(t,true)+'<b id="tripRate" hidden></b><span id="tripRev" hidden></span>';}
   /* compact fact band instead of the trek 4-stat grid */
   const q=[['clock',t.dur||((t.days||'')+' days')],['altitude',t.lvl||'—'],['calendar',t.best||'—'],['community',((typeof KNOW!=='undefined'&&KNOW[0]&&KNOW[0][1])||'8–15')+' group']];
   g('tripQuick').innerHTML=q.map(x=>`<span class="tq"><span class="ic">${ic(x[0],14)}</span>${esc(String(x[1]))}</span>`).join('');
@@ -2874,6 +2894,7 @@ function renderTrip(t){
   const of=g('tripOffer'),ov=(t.offer||'').trim();
   if(of){if(ov){of.innerHTML='<span class="msr">local_offer</span><div><b>Offer</b><span>'+esc(ov)+'</span></div>';of.style.display='flex';of.parentElement.style.display='';}else{of.style.display='none';of.parentElement.style.display='none';}}
   g('tripDesc').textContent=t.desc||'';
+  {const b=g('tripDesc').closest('.blk');if(b)b.style.display=t.desc?'':'none';}   /* no empty "About this trip" heading */
   renderTripWeather(t);
   g('tripRoute').innerHTML=routeTimeline(t);
   g('tripIncl').innerHTML=inclCard(INCL,EXCL);
@@ -2946,7 +2967,8 @@ async function shareTrek(){
 function handleDeepLink(){
   const h=window.location.hash||'';
   const m=h.match(/#trek=([^&]+)/);
-  if(m){const name=decodeURIComponent(m[1]);setTimeout(()=>{try{openDetailByName(name);}catch(e){}},400);return;}
+  /* #trek= carries the trek name; links rescued by 404.html carry its /t/<slug> instead */
+  if(m){const key=decodeURIComponent(m[1]);setTimeout(()=>{try{const t=treks.find(x=>x.n===key)||treks.find(x=>slugify(x.n)===key);openDetailByName(t?t.n:key);}catch(e){}},400);return;}
   /* new clean host-trip link: #trip=<slug> */
   const mt=h.match(/#trip=([^&]+)/);
   if(mt){const key=decodeURIComponent(mt[1]);setTimeout(()=>{try{openHostTripBySlug(key);}catch(e){}},400);return;}
@@ -2983,6 +3005,12 @@ function renderItinerary(){const t=cart.trek,it=trekItin(t);
   hydrate(document.getElementById('itinList'));
 }
 
+/* A star rating is only shown when it is backed by a review count — never "★ 4.7 (0)". */
+function revCount(t){const v=String((t&&t.rev)==null?'':t.rev).trim().toLowerCase();const m=v.match(/^([\d.,]+)\s*(k)?$/);if(!m)return 0;const n=parseFloat(m[1].replace(/,/g,''));return isNaN(n)?0:Math.round(n*(m[2]?1000:1));}
+function rateHTML(t,withWord){return revCount(t)>0&&t.r?`<span class="star">★</span> <b>${esc(String(t.r))}</b> <span class="g" style="color:var(--muted)">(${esc(String(t.rev))}${withWord?' reviews':''})</span>`:'<span class="g" style="color:var(--muted)">New</span>';}
+/* Coalesce concurrent calls: while one request is in flight, every other caller gets the
+   same promise instead of firing a duplicate (home used to fetch guides/hosts 4× on load). */
+function shareInflight(fn){let p=null;return function(...a){if(p)return p;p=Promise.resolve().then(()=>fn.apply(this,a));p.then(()=>{p=null;},()=>{p=null;});return p;};}
 /* select date — only real bookable departures, no confusing month grid */
 function parseStartDate(label){
   /* label like "18 May – 22 May" or "01 Jun – 05 Jun" → {day:'18', mo:'MAY'} */
@@ -2996,18 +3024,42 @@ function batchState(seats){
   if(/few/.test(s))return 'few';
   return 'ok';
 }
+/* seats left per departure, computed server-side from real bookings: {trekName:{label:left}} */
+const _seatsLeft={};
+async function loadSeatsLeft(name){
+  try{const r=await rzpCall('availability',{trek:name});
+    if(r&&Array.isArray(r.batches)){const m={};r.batches.forEach(b=>{if(typeof b.left==='number')m[b.label]=b.left;});return m;}}catch(e){}
+  return null;}
+/* a numeric seats value = capacity; live bookings bring it down. Text values are shown as typed. */
+function batchSeatInfo(name,b){
+  const raw=String(b.seats||'').trim();const isNum=/^\d+$/.test(raw);
+  let st=batchState(raw);
+  if(!isNum)return {st,full:st==='full',label:st==='full'?(raw||'Sold out'):(raw||'Available')};
+  const known=_seatsLeft[name]&&(b.label in _seatsLeft[name]);
+  const left=known?_seatsLeft[name][b.label]:+raw;
+  if(left<=0)return {st:'full',full:true,label:'Sold out'};
+  st=left<=3?'few':'ok';
+  return {st,full:false,label:left===1?'1 seat left':left+(st==='few'?' seats left':' seats available')};
+}
+function bookSelectedDate(){
+  if(!cart.date){note('There are no open departures for this trip right now. Tap “Chat on WhatsApp” and we’ll plan a date with you.','No dates open');return;}
+  go('travellers');}
 function renderSelectDate(){const t=cart.trek;
   const batches=getBatches(t.n);
   /* pick first non-full batch as default selection */
-  const firstIdx=batches.findIndex(b=>batchState(b.seats)!=='full');
-  const sel=firstIdx>=0?firstIdx:0;
-  const chosen=batches[sel];
+  const firstIdx=batches.findIndex(b=>!batchSeatInfo(t.n,b).full);
+  const chosen=firstIdx>=0?batches[firstIdx]:null;
+  const sel=firstIdx;
   cart.date=chosen?chosen.label:''; cart.total=discPrice(chosen?(chosen.price||t.price):t.price,t);
+  /* refresh live seat counts once per open, then repaint if anything changed */
+  if(!renderSelectDate._busy){renderSelectDate._busy=true;
+    loadSeatsLeft(t.n).then(m=>{renderSelectDate._busy=false;if(!m)return;
+      const was=JSON.stringify(_seatsLeft[t.n]||{});_seatsLeft[t.n]=m;
+      if(JSON.stringify(m)!==was&&cur==='selectDate'&&cart.trek===t){renderSelectDate._busy=true;renderSelectDate();renderSelectDate._busy=false;}});}
   document.getElementById('batches').innerHTML=batches.length?batches.map((b,i)=>{
-    const st=batchState(b.seats);const full=st==='full';
+    const si=batchSeatInfo(t.n,b);const st=si.st;const full=si.full;
     const d=parseStartDate(b.label);
-    const seatsRaw=String(b.seats||'').trim();const isNum=/^\d+$/.test(seatsRaw);
-    const sLabel=full?(seatsRaw||'Sold out'):(isNum?seatsRaw+' seats available':(seatsRaw||'Available'));
+    const sLabel=si.label;
     const sIcon=full?'block':st==='few'?'local_fire_department':'check_circle';
     const onClick=full?'':`onclick="selBatch(this,'${(b.label||'').replace(/'/g,'')}',${b.price||t.price})"`;
     return `<div class="batch ${i===sel&&!full?'on':''} ${full?'full':''}" ${onClick}>
@@ -3238,6 +3290,15 @@ async function refreshPayQuote(){
 }
 function selPay(el){document.querySelectorAll('#payment .pay').forEach(p=>p.classList.remove('on'));el.classList.add('on');}
 
+/* Razorpay's checkout (plus its iframe and fraud-detection bundle) used to load on every
+   page for every visitor. Now it loads only when someone heads toward paying. */
+let _rzpLoad=null;
+function loadRazorpay(){
+  if(window.Razorpay)return Promise.resolve(true);
+  if(!_rzpLoad)_rzpLoad=new Promise(res=>{const sc=document.createElement('script');sc.src='https://checkout.razorpay.com/v1/checkout.js';sc.async=true;
+    sc.onload=()=>res(!!window.Razorpay);sc.onerror=()=>{_rzpLoad=null;res(false);};document.head.appendChild(sc);});
+  return _rzpLoad;}
+const RZP_SCREENS=['travellers','review','payment','cart','giftCards','wallet','htBook','hostTripView','act','activities','gear'];
 /* call the secure Razorpay Edge Function */
 /* the logged-in user's access token — lets the edge function credit the right wallet */
 async function authToken(){
@@ -3257,7 +3318,7 @@ async function confirmBooking(){
   const c=cart.contact||getContact()||{};
   const name=c.name||(document.getElementById('leadName')?document.getElementById('leadName').value:'').trim()||'Guest';
   if(!c.phone||!c.email||!c.emName||!c.emPhone){note('Please complete your contact and emergency details first.','Details required');go('travellers');return;}
-  if(!window.Razorpay){note('Payment gateway is loading — please wait a moment and try again.','Please wait');return;}
+  if(!window.Razorpay&&!(await loadRazorpay())){note('Payment gateway is loading — please wait a moment and try again.','Please wait');return;}
   if(!sbOn){note('Payment service not configured. Please contact Tripomonk.','Payment error');return;}
   const gearIds=(cart.trek?gearSelected(cart.trek):[]).map(g=>g.id);
   const bookingReq={kind:'trek',trek:t.n,date:cart.date,pax:cart.pax,name:name,email:c.email||getUserEmail()||'',phone:c.phone||'',emergency_name:c.emName||'',emergency_phone:c.emPhone||'',gear_ids:gearIds};
@@ -4409,7 +4470,7 @@ function notNotifSelf(r){
 async function pushNotif({recipientId,recipientName,type,postId,preview}){
   const sb=getSupaClient();if(!sb)return;
   const row=notifRow({recipientId,recipientName,type,postId,preview});
-  if(!notNotifSelf(row))return;   /* never notify yourself */
+  if(!row.recipient_id||!notNotifSelf(row))return;   /* only real accounts; never notify yourself */
   const{error}=await sb.from('notifications').insert(row);
   if(error)console.warn('pushNotif:',error.message);
 }
@@ -4556,13 +4617,14 @@ async function uidForName(name){
    and never re-show them. Capped so it can't grow without bound. */
 function getDismissedNotifs(){try{return JSON.parse(localStorage.getItem('tmk_notif_dismissed')||'[]');}catch(e){return[];}}
 function dismissNotifLocal(id){if(!id&&id!==0)return;id=String(id);const d=getDismissedNotifs();if(d.indexOf(id)<0){d.push(id);if(d.length>400)d.splice(0,d.length-400);try{localStorage.setItem('tmk_notif_dismissed',JSON.stringify(d));}catch(e){}}}
-async function loadNotifsRemote(){
+function loadNotifsRemote(){const f=loadNotifsRemote._s||(loadNotifsRemote._s=shareInflight(_loadNotifsRemote));return f();}
+async function _loadNotifsRemote(){
   const sb=getSupaClient();if(!sb)return null;
-  const name=myName();
+  /* guests have no notifications (RLS returns nothing), so don't ask */
+  if(!currentUser)return [];
   return await breaker(async()=>{
-    let q=sb.from('notifications').select('*').order('created_at',{ascending:false}).limit(60);
-    if(currentUser)q=q.or(`recipient_id.eq.${currentUser.id},recipient_name.eq.${name}`);
-    else q=q.eq('recipient_name',name);
+    /* identity = user id only — never a display name (anyone can pick any name) */
+    let q=sb.from('notifications').select('*').eq('recipient_id',currentUser.id).order('created_at',{ascending:false}).limit(60);
     const{data,error}=await q;
     if(error)throw error;
     const dis=getDismissedNotifs();
@@ -4658,7 +4720,7 @@ async function notifyMentions(txt,postId){
   const uids=await Promise.all(people.map(p=>uidForName(p.n)));
   const rows=people
     .map((p,i)=>notifRow({recipientId:uids[i],recipientName:uids[i]?null:p.n,type:'mention',postId,preview}))
-    .filter(notNotifSelf);
+    .filter(r=>r.recipient_id&&notNotifSelf(r));   /* only real accounts can receive (and read) them */
   if(!rows.length)return;
   const{error}=await sb.from('notifications').insert(rows);
   if(error)console.warn('notifyMentions:',error.message);
@@ -5770,7 +5832,7 @@ async function buyGiftCard(){
   const card=GIFT_CARDS[_giftSel],amount=_giftAmt;
   if(!(amount>=500)){note('Choose an amount first.','Amount required');return;}
   if(!isLoggedIn()){note('Please sign in to buy a gift card.','Sign in required').then(()=>{_loginReturn='giftCards';go('login');});return;}
-  if(!window.Razorpay){note('Payment is still loading — try again in a moment.','Please wait');return;}
+  if(!window.Razorpay&&!(await loadRazorpay())){note('Payment is still loading — try again in a moment.','Please wait');return;}
   if(!sbOn){note('Payment service not configured. Please contact Tripomonk.','Payment error');return;}
   const btn=document.getElementById('gcBuyBtn');if(btn){btn.disabled=true;btn.textContent='Starting payment…';}
   const restore=()=>{if(btn)btn.disabled=false;renderGiftAmts();};
@@ -6591,7 +6653,9 @@ function doSearch(q){const inp=document.getElementById('searchInput');if(inp&&q&
   /* empty query = browse treks only (tours live in their own section); an ACTIVE search
      matches everything incl. tours, so someone typing "Ladakh"/"Spiti" still finds the tour */
   const f=treks.filter(t=>q?(t.n.toLowerCase().includes(q)||t.region.toLowerCase().includes(q)||t.lvl.toLowerCase().includes(q)):!isTour(t));
-  const el=document.getElementById('searchResults');el.innerHTML=(f.length?f:treks.filter(t=>!isTour(t))).map(trekCard).join('');hydrate(el);}
+  const el=document.getElementById('searchResults');
+  /* no matches → say so, then suggest popular treks (never pass them off as results) */
+  el.innerHTML=f.length?f.map(trekCard).join(''):`<div class="empty" style="grid-column:1/-1"><p>No treks match “${esc(q)}”. Try a region like Uttarakhand, or a trek name. Popular picks:</p></div>`+treks.filter(t=>!isTour(t)&&!t.soon).slice(0,6).map(trekCard).join('');hydrate(el);}
 /* ===== AI Trip Planner — conversational search grounded in the real catalogue ===== */
 let _planMsgs=[], _planBusy=false, _tripCtx={}, _planShown=new Set(), _planLastMin=0;
 function renderPlanner(){
@@ -6956,7 +7020,7 @@ async function renderNotifications(){
       return `<div class="noti-sw" data-nid="${esc(n.id)}" style="animation-delay:${delay}s">
         <div class="noti-del">${ic('trash',20)}</div>
         <div class="noti-card ${unread?'unread':''}" data-type="${esc(n.type||'')}" data-post="${esc(n.post_id||'')}" data-actor="${esc(n.actor_name||'')}">
-          <div class="noti-ico" style="background:${st.c}">${st.e}</div>
+          <div class="noti-ico" style="background:${st.c}"><span class="msr" style="font-size:20px;color:#fff" aria-hidden="true">${NOTIF_ICON[n.type]||'notifications'}</span></div>
           <div class="noti-t"><span class="noti-name">${esc(handleFor(n.actor_name))}<b class="noti-time"> · ${timeAgo(n.created_at)}</b></span><span class="noti-desc">${notifDesc(n)}</span></div>
         </div>
       </div>`;
@@ -7919,12 +7983,26 @@ async function renderAdminBookings(){
 }
 /* a whatsapp-ready number: strip non-digits, add 91 for a bare 10-digit Indian mobile */
 function waNumber(p){let d=String(p||'').replace(/\D/g,'');if(d.length===10)d='91'+d;return d;}
+/* ready-to-send WhatsApp confirmation for a booking (sent from the team's own WhatsApp until the Cloud API bot is live) */
+function waConfirmText(b){
+  const paid=Number(b.paid)||0, tot=Number(b.total)||0;
+  return `Hi ${b.name||''}, your Tripomonk booking is confirmed!
+`
+    +`Trek: ${b.trek||''}
+Date: ${b.date||''}
+Trekkers: ${b.pax||1}
+`
+    +`Advance paid: ${INR(paid)}${tot?' of '+INR(tot):''}
+Booking ID: ${b.payment_id||b.id||''}
+`
+    +`We'll share pickup details and the packing list before the trek. Reply here anytime with questions.`;
+}
 function admBookingCard(b){
   const wa=waNumber(b.phone);
   const paid=Number(b.paid)||0, tot=Number(b.total)||0;
   const st=b.checked_in?'Checked in':esc(b.status||'Confirmed');
   const id=jsq(String(b.id||''));
-  const batches=getBatches((b.trek||'').replace(' (Activity)',''))||[];
+  const batches=getAllBatches((b.trek||'').replace(' (Activity)',''))||[];
   return `<div class="adm-bk" onclick="this.classList.toggle('open')">
     <div class="adm-bk-top">
       <div class="adm-bk-main"><b>${esc(b.trek||'—')}</b><small>${esc(b.name||'')} · ${esc(b.date||'')} · ${b.pax||1} pax</small></div>
@@ -7932,7 +8010,7 @@ function admBookingCard(b){
       <span class="adm-bk-chev msr">expand_more</span>
     </div>
     <div class="adm-bk-det">
-      <div class="adm-bk-row"><span class="msr">call</span>${b.phone?`<a href="tel:${esc(b.phone)}" onclick="event.stopPropagation()">${esc(b.phone)}</a>${wa?`<a class="adm-bk-wa" href="https://wa.me/${esc(wa)}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><span class="msr">chat</span> WhatsApp</a>`:''}`:'<span class="adm-bk-na">No phone</span>'}</div>
+      <div class="adm-bk-row"><span class="msr">call</span>${b.phone?`<a href="tel:${esc(b.phone)}" onclick="event.stopPropagation()">${esc(b.phone)}</a>${wa?`<a class="adm-bk-wa" href="https://wa.me/${esc(wa)}?text=${esc(encodeURIComponent(waConfirmText(b)))}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><span class="msr">chat</span> Send confirmation</a>`:''}`:'<span class="adm-bk-na">No phone</span>'}</div>
       <div class="adm-bk-row"><span class="msr">mail</span>${b.email?`<a href="mailto:${esc(b.email)}" onclick="event.stopPropagation()">${esc(b.email)}</a>`:'<span class="adm-bk-na">No email</span>'}</div>
       <div class="adm-bk-row"><span class="msr">emergency</span><span>Emergency: <b>${esc(b.emergency_name||'—')}</b> · ${esc(b.emergency_phone||'—')}</span></div>
       <div class="adm-bk-row"><span class="msr">payments</span><span>Paid ${INR(paid)}${tot?' of '+INR(tot):''} · <span class="adm-bk-pid">${esc(b.payment_id||b.id||'')}</span></span></div>
@@ -8073,7 +8151,7 @@ async function renderUserActivity(){
 async function admNotifyUser(name){
   const msg=await askCode('Message '+properName(name),{placeholder:'Your message — they get a notification'});
   if(!msg||!msg.trim())return;
-  try{const uid=await uidForName(name);await pushNotif({recipientId:uid,recipientName:uid?null:name,type:'admin',preview:msg.trim().slice(0,140)});toast('Sent to '+properName(name));}
+  try{const uid=await uidForName(name);if(!uid){toast(properName(name)+' has no app account — notification not sent');return;}await pushNotif({recipientId:uid,type:'admin',preview:msg.trim().slice(0,140)});toast('Sent to '+properName(name));}
   catch(e){note('Could not send the notification.','Error');}
 }
 /* ---- Admin · Payments (transactions, refunds, host payouts, reports) ---- */
@@ -8659,13 +8737,31 @@ async function saveHomePicks(){
 /* ----- Departures (batches) ----- */
 function getBatchMap(){try{return JSON.parse(localStorage.getItem('tmk_batches')||'{}');}catch(e){return {};}}
 function setBatchMap(m){try{localStorage.setItem('tmk_batches',JSON.stringify(m));}catch(e){}}
-/* Departures per trek. Source of truth = the trek's DB `batches` (so they show for
-   everyone). Falls back to the local cache, then to sensible defaults. */
-function getBatches(name){
-  const t=treks.find(x=>x.n===name)||{price:0};
+/* Every departure saved for a trek, past ones included — for staff screens. Source of
+   truth = the trek's DB `batches`; the local cache is only an offline fallback. */
+function getAllBatches(name){
+  const t=treks.find(x=>x.n===name)||{};
   if(Array.isArray(t.batches)&&t.batches.length)return t.batches;
-  const m=getBatchMap();if(m[name]&&m[name].length)return m[name];
-  return [{label:'18 May – 22 May',seats:'Few seats left',price:t.price},{label:'25 May – 29 May',seats:'Available',price:t.price},{label:'01 Jun – 05 Jun',seats:'Available',price:t.price+500}];}
+  const m=getBatchMap();return (m[name]&&m[name].length)?m[name]:[];}
+/* Start date of a departure as a Date. Uses the ISO `start` the admin console saves;
+   older entries only have a label like "18 Sep – 24 Sep" (no year), so the year is
+   inferred: this year, unless that is more than ~6 months ago (then it means next year).
+   MUST match batchStart() in supabase/functions/razorpay/index.ts. */
+const _MON={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+function batchStart(b){
+  if(b&&b.start){const d=new Date(b.start+'T00:00:00');if(!isNaN(d))return d;}
+  const m=String((b&&b.label)||'').match(/(\d{1,2})\s*([A-Za-z]{3})[a-z]*\.?\s*(\d{4})?/);
+  if(!m||!(m[2].toLowerCase() in _MON))return null;
+  const now=new Date();const d=new Date(m[3]?+m[3]:now.getFullYear(),_MON[m[2].toLowerCase()],+m[1]);
+  if(!m[3]&&now-d>180*864e5)d.setFullYear(d.getFullYear()+1);
+  return d;}
+function batchIsPast(b){const d=batchStart(b);if(!d)return false;const today=new Date();today.setHours(0,0,0,0);return d<today;}
+/* Departures a customer can actually pick: upcoming only, soonest first. No made-up
+   defaults — a trek with no real departures shows the WhatsApp enquiry instead. */
+function getBatches(name){
+  const t=treks.find(x=>x.n===name)||{};
+  const list=(Array.isArray(t.batches)?t.batches:[]).filter(b=>!batchIsPast(b));
+  return list.sort((a,b)=>((batchStart(a)||0)-(batchStart(b)||0)));}
 /* persist a trek's departures to the DB (via the admin function) so every user sees them */
 async function saveBatches(name,list){
   const t=treks.find(x=>x.n===name);
@@ -8687,7 +8783,7 @@ function admTrekSelect(selName,onchangeFn){
   </div>`;
 }
 function renderDepartures(){const sel=depTrek||((treks.find(t=>!t.soon)||treks[0]).n); depTrek=sel;
-  const list=getBatches(sel);
+  const list=getAllBatches(sel);
   document.getElementById('adminBody').innerHTML=
     admTrekSelect(sel,"depTrek=this.value;renderDepartures()")+
     `<div class="adm-sec">Departures</div>
@@ -8721,11 +8817,11 @@ async function addBatch(){const g=id=>document.getElementById(id);
   const end=till||from;
   const label=fmtBatchDate(from)+' – '+fmtBatchDate(end);
   const t=treks.find(x=>x.n===depTrek)||{price:0};
-  const list=getBatches(depTrek).slice();
+  const list=getAllBatches(depTrek).slice();
   list.push({label,seats:g('bSeats').value.trim()||'Available',price:parseInt(g('bPrice').value)||t.price,start:from,end:end});
   await saveBatches(depTrek,list);renderDepartures();}
 async function delBatch(i){
-  const list=getBatches(depTrek).slice();
+  const list=getAllBatches(depTrek).slice();
   list.splice(i,1);
   await saveBatches(depTrek,list);renderDepartures();}
 /* ----- Admin · Reviews (add manually + manage) ----- */
@@ -8777,7 +8873,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='469';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='471';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -9281,7 +9377,7 @@ function renderAct(){
   document.getElementById('actWhere').textContent=(d?d.n+' · ':'')+a.start;
   /* no invented ratings — say "new" until real reviews exist */
   document.getElementById('actMeta').innerHTML=a.r
-    ?`<span class="star">★</span> <b>${a.r}</b> <span class="g" style="color:var(--muted)">(${a.rev} reviews)</span> &nbsp;·&nbsp; <span class="lvl">${esc(a.lvl)}</span>`
+    ?`${rateHTML(a,true)} &nbsp;·&nbsp; <span class="lvl">${esc(a.lvl)}</span>`
     :`<span class="g" style="color:var(--muted)">No reviews yet</span> &nbsp;·&nbsp; <span class="lvl">${esc(a.lvl)}</span>`;
   const stats=[['clock',a.dur,'Duration'],['altitude',a.lvl,'Difficulty'],['user','Age '+a.minAge+'+','Minimum'],['community','Max '+a.maxGroup,'Group size']];
   document.getElementById('actStats').innerHTML=stats.map(s=>
@@ -9377,7 +9473,7 @@ async function bookActNow(){
   const pax=actPax();
   if(pax<1){note('Add at least one participant.','Who\'s going?');return;}
   if(!isLoggedIn()){note('Please sign in to book this activity.','Sign in required').then(()=>{_loginReturn='act';go('login');});return;}
-  if(!window.Razorpay){note('Payment gateway is still loading — please wait a few seconds and tap Book again.','Please wait');return;}
+  if(!window.Razorpay&&!(await loadRazorpay())){note('Payment gateway is still loading — please wait a few seconds and tap Book again.','Please wait');return;}
   if(!sbOn){note('Payment service not configured. Please contact Tripomonk.','Payment error');return;}
   const leadName=getSavedName()||(getUserEmail()?getUserEmail().split('@')[0]:'Guest');
   const when=actSel.date+' · '+actSel.slot;
@@ -9943,7 +10039,7 @@ async function bookActivity(name,priceStr,details){
   const amount=parseInt(String(priceStr).replace(/[^\d]/g,''))||0;
   if(amount<1){note('This activity is not bookable online yet — please contact us.','Unavailable');return;}
   if(!isLoggedIn()){note('Please sign in to book this activity.','Sign in required').then(()=>{_loginReturn='activities';go('login');});return;}
-  if(!window.Razorpay){note('Payment gateway is still loading — please wait a few seconds and tap Book again.','Please wait');return;}
+  if(!window.Razorpay&&!(await loadRazorpay())){note('Payment gateway is still loading — please wait a few seconds and tap Book again.','Please wait');return;}
   if(!sbOn){note('Payment service not configured. Please contact Tripomonk.','Payment error');return;}
   const leadName=(details.name||getSavedName()||(getUserEmail()?getUserEmail().split('@')[0]:'Guest'));
   const phone=details.phone||getSavedMobile()||'';
@@ -10321,7 +10417,8 @@ function playHeroVideo(hh,url){
    ============================================================ */
 let guides=[],_guidesLoaded=false;
 function guideById(id){if(!id)return null;return guides.find(g=>String(g.id)===String(id))||null;}
-async function loadGuides(force){
+function loadGuides(force){if(force)return _loadGuides(true);const f=loadGuides._s||(loadGuides._s=shareInflight(()=>_loadGuides(false)));return f();}
+async function _loadGuides(force){
   const sb=getSupaClient();if(!sb){_guidesLoaded=true;return guides;}
   if(guides.length&&!force)return guides;
   try{
@@ -10948,6 +11045,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   const nav=document.getElementById('nav');nav.classList.toggle('hide',el.hasAttribute('data-nonav'));
   if(el.dataset.tab)document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===el.dataset.tab));
   el.scrollTop=0;
+  if(RZP_SCREENS.includes(id))loadRazorpay();
   if(id==='travellers'&&!isLoggedIn()){requireLogin('travellers');return;}
   if(id==='explore'){if(!exploreInit){exploreInit=true;}renderExplore();}
   if(id==='filters')renderFilters();
@@ -11031,7 +11129,10 @@ function go(id){const el=document.getElementById(id);if(!el)return;
 /* in-app back button → use browser history so it stays in sync with device back */
 function back(){history.back();}
 /* actually move the app to the previous screen (called by device/browser back) */
-function _showPrev(){stopAllMedia();const p=hist.pop();if(p){cur=p;document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));const el=document.getElementById(p);el.classList.add('active');document.getElementById('nav').classList.toggle('hide',el.hasAttribute('data-nonav'));if(el.dataset.tab){lastTab=el.dataset.tab;document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===el.dataset.tab));}staggerActive();saveNav();}else{cur='__root';go(lastTab||'home');}}
+function _showPrev(){stopAllMedia();
+  /* never step back onto the splash/onboarding (e.g. after a refresh restored an inner screen) */
+  let p=hist.pop();while(p&&(p==='splash'||!document.getElementById(p)))p=hist.pop();
+  if(p){cur=p;document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));const el=document.getElementById(p);el.classList.add('active');document.getElementById('nav').classList.toggle('hide',el.hasAttribute('data-nonav'));if(el.dataset.tab){lastTab=el.dataset.tab;document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===el.dataset.tab));}staggerActive();saveNav();}else{cur='__root';go(lastTab||'home');}}
 /* close the top open modal / bottom-sheet / story viewer (returns true if one was closed).
    Lets device/browser Back dismiss an overlay instead of navigating the screen underneath away. */
 function closeTopOverlay(){
@@ -12188,7 +12289,8 @@ function dedupeHosts(rows){
   });
   return Object.values(by);
 }
-async function loadVerifiedHosts(){
+function loadVerifiedHosts(){const f=loadVerifiedHosts._s||(loadVerifiedHosts._s=shareInflight(_loadVerifiedHosts));return f();}
+async function _loadVerifiedHosts(){
   const sb=getSupaClient();if(!sb){verifiedHosts=[];return;}
   try{
     const r=await sb.from('profiles').select('name,username,photo,is_host')
@@ -12224,7 +12326,8 @@ function hostTripEnded(t){
   if(!end)return false;                 /* no date info — never auto-hide */
   return String(end)<todayISO(0);       /* strictly before today = the trip is over */
 }
-async function loadLiveHostTrips(){
+function loadLiveHostTrips(){const f=loadLiveHostTrips._s||(loadLiveHostTrips._s=shareInflight(_loadLiveHostTrips));return f();}
+async function _loadLiveHostTrips(){
   const sb=getSupaClient();if(!sb){liveHostTrips=[];return;}
   try{
     /* include in-progress trips (started but not over), exclude ended ones */
@@ -12661,7 +12764,7 @@ function renderHtBook(){
 }
 async function htPay(){
   const t=_htvTrip;if(!t){note('Please reopen this trip.','Nothing selected');return;}
-  if(!window.Razorpay){note('Payment is still loading — wait a moment and tap again.','Please wait');return;}
+  if(!window.Razorpay&&!(await loadRazorpay())){note('Payment is still loading — wait a moment and tap again.','Please wait');return;}
   if(!sbOn){note('Payment service not configured. Please contact Tripomonk.','Payment error');return;}
   const g=id=>document.getElementById(id);
   const name=(g('htName').value||'').trim();
