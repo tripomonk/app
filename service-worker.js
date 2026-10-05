@@ -1,7 +1,7 @@
 /* Tripomonk service worker — caches the app shell so it loads instantly
    and works offline. Bump CACHE when you change index.html / app.js so
    users get the new version. */
-const CACHE = 'tripomonk-v487';
+const CACHE = 'tripomonk-v489';
 const ASSETS = [
   './',
   './index.html',
@@ -20,6 +20,9 @@ const ASSETS = [
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE)
     .then(c => c.addAll(ASSETS.map(u => new Request(u, { cache: 'reload' }))))
+    .then(() => caches.open(CDN_CACHE).then(c => Promise.all(CDN_WARM.map(u =>
+      fetch(u, { mode: u.includes('fonts.googleapis.com') ? 'cors' : 'no-cors' })
+        .then(r => (r.ok || r.type === 'opaque') ? c.put(u, r) : null).catch(() => null)))))
     .then(() => self.skipWaiting()));
 });
 
@@ -28,13 +31,24 @@ self.addEventListener('install', e => {
 // SURVIVE a version bump — wiping them on every deploy is what made each update feel
 // like a first install.
 const IMG_CACHE = 'tripomonk-img-v1';
+// Fonts + versioned code libraries from CDNs (icon font, Poppins, Leaflet, jsPDF, the e-ticket
+// QR library, supabase-js). Kept across app updates like photos; refreshed in the background.
+// Without this, offline the icon font is missing and every icon shows as a raw word.
+const CDN_CACHE = 'tripomonk-cdn-v1';
+const CDN_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com', 'unpkg.com', 'cdnjs.cloudflare.com', 'cdn.jsdelivr.net'];
+const CDN_WARM = [
+  'https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap',
+  'https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,1,0&display=block',
+  'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js',
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js',
+];
 const IMG_MAX = 180;
 
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
       .then(keys => Promise.all(
-        keys.filter(k => k !== CACHE && k !== IMG_CACHE).map(k => caches.delete(k))))
+        keys.filter(k => k !== CACHE && k !== IMG_CACHE && k !== CDN_CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
@@ -73,6 +87,17 @@ self.addEventListener('fetch', e => {
   // (posts, profiles, host_trips, bookings…). Caching those froze the app — new data
   // never appeared. Photos are the exception: they're immutable URLs and by far the
   // heaviest thing we load, so they get their own cache.
+  if (url.origin !== self.location.origin && CDN_HOSTS.includes(url.hostname)) {
+    e.respondWith(caches.open(CDN_CACHE).then(async cache => {
+      const hit = await cache.match(e.request);
+      const net = fetch(e.request).then(res => {
+        if (res && (res.ok || res.type === 'opaque')) cache.put(e.request, res.clone()).catch(() => {});
+        return res;
+      }).catch(() => hit || Response.error());
+      return hit || net;
+    }));
+    return;
+  }
   if (url.origin !== self.location.origin) {
     const isImage = e.request.destination === 'image' ||
       /\.(png|jpe?g|webp|gif|avif|svg)($|\?)/i.test(url.pathname);

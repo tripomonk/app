@@ -3408,6 +3408,7 @@ async function authToken(){
   try{const{data}=await sb.auth.getSession();return (data&&data.session&&data.session.access_token)||'';}catch(e){return'';}
 }
 async function rzpCall(action,payload){
+  if(!navigator.onLine)return {error:'You’re offline. Connect to the internet to continue — nothing has been charged.'};
   if(action==='create'){payload=Object.assign({},payload);
     const rc=activeReferral();if(rc&&!payload.ref_code)payload.ref_code=rc;
     if(!payload.token){try{payload.token=await authToken();}catch(e){}}}
@@ -9097,7 +9098,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='488';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='489';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -9724,7 +9725,7 @@ async function bookActNow(){
   const restore=()=>{if(btn)btn.disabled=false;renderAct();};
   let order;
   try{order=await rzpCall('create',{booking:bk});}
-  catch(e){restore();note('Could not reach payment service: '+e,'Payment error');return;}
+  catch(e){restore();note(navigator.onLine?'Could not reach the payment service. Please try again in a moment.':'You’re offline. Connect to the internet to book — nothing has been charged.','Payment error');return;}
   if(!order||!order.order_id){restore();note('Could not start payment — '+((order&&order.error)?order.error:'no order returned'),'Payment error');return;}
   const rzp=new window.Razorpay({
     key:order.key_id, order_id:order.order_id, amount:order.amount, currency:order.currency||'INR',
@@ -11587,6 +11588,22 @@ document.addEventListener('DOMContentLoaded',()=>{try{if(/take-promise/.test(loc
    payload from an older build is cleared so nothing lingers. */
 document.addEventListener('DOMContentLoaded',()=>{try{localStorage.removeItem('tmk_guide_signup');}catch(e){}});
 
+/* ---------- offline banner ----------
+   Saved treks, e-tickets (with their QR) and the packing list keep working offline; booking,
+   chat and community need a connection — say so instead of failing with network errors. */
+function paintOffline(){
+  let b=document.getElementById('offlineBar');
+  if(!navigator.onLine){
+    if(!b){b=document.createElement('div');b.id='offlineBar';b.setAttribute('role','status');document.body.appendChild(b);}
+    b.className='offline-bar show';
+    b.innerHTML='<span class="msr" aria-hidden="true">cloud_off</span><span>You’re offline — saved treks and your e-tickets still work. Booking and chat need internet.</span>';
+  }else if(b&&b.classList.contains('show')){
+    b.className='offline-bar show on';b.innerHTML='<span class="msr" aria-hidden="true">wifi</span><span>Back online</span>';
+    setTimeout(()=>{if(navigator.onLine)b.classList.remove('show');},2200);
+  }
+}
+window.addEventListener('offline',paintOffline);window.addEventListener('online',paintOffline);
+document.addEventListener('DOMContentLoaded',paintOffline);
 /* ---------- update prompt ---------- */
 let _updateReady=false;
 function showUpdateToast(){
