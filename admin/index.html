@@ -269,6 +269,7 @@
     <div class="nav-i" data-sec="users"><span class="ic">👥</span> Users</div>
     <div class="nav-i" data-sec="crm"><span class="ic">🗂️</span> CRM</div>
     <div class="nav-i" data-sec="hosts"><span class="ic">🧗</span> Hosts</div>
+    <div class="nav-i" data-sec="referrals"><span class="ic">🎁</span> Referrals</div>
     <div class="nav-i" data-sec="guides"><span class="ic">🥾</span> Guides</div>
     <div class="nav-i" data-sec="staff"><span class="ic">🛡️</span> Staff</div>
     <div class="side-sec">Community</div>
@@ -448,6 +449,7 @@ const SEC={
   users:['Users','Members & behaviour',renderUsers],
   crm:['CRM','Customer 360',renderCRM],
   hosts:['Hosts','Applications & live trips',renderHosts],
+  referrals:['Referrals','Host referral rewards',renderReferrals],
   guides:['Guides','Trek leaders',renderGuides],
   staff:['Staff','Team & roles',renderStaff],
   community:['Community posts','Moderate',renderCommunity],
@@ -1048,6 +1050,38 @@ async function crmOpen(name,phone){
   }
 }
 /* HOSTS */
+/* REFERRALS — a host's link brought a new trekker who paid for their first trip.
+   After the trek: Pay → reward credited to the host's wallet (admin edge fn, once); Void if cancelled. */
+async function renderReferrals(){
+  const seq=_navSeq;
+  const {rows,error}=await qtbl('referrals',b=>b.order('created_at',{ascending:false}).limit(500));
+  if(error){$('#content').innerHTML='<div class="panel"><div class="empty">Referrals aren’t set up yet — run <b>SQL-referrals.sql</b>.</div></div>';return;}
+  const {rows:cfg}=await qtbl('app_config',b=>b.eq('key','referral_reward'));
+  const reward=Number((cfg[0]||{}).value||500);
+  const ids=[...new Set(rows.flatMap(r=>[r.host_id,r.referred_user_id]))];
+  let names={};if(ids.length){const {data}=await sb.from('profiles').select('id,name,username').in('id',ids);(data||[]).forEach(p=>names[p.id]=p.name||('@'+(p.username||'')));}
+  if(seq!==_navSeq)return;
+  const pend=rows.filter(r=>r.status==='pending'),paid=rows.filter(r=>r.status==='paid');
+  const tag=st=>`<span class="tag ${st==='paid'?'ok':st==='void'?'bad':'warn'}">${esc(st)}</span>`;
+  $('#content').innerHTML=`<div class="kpis">${kpi('Pending',pend.length,'⏳','#c79a10','')}${kpi('Rewards owed',INR(pend.reduce((a,r)=>a+(+r.reward||0),0)),'🎁','var(--accent)','')}${kpi('Paid out',INR(paid.reduce((a,r)=>a+(+r.reward||0),0)),'💰','#1e8f5f','')}</div>
+  <div class="panel"><div class="tbar"><h2 style="margin:0">Referral rewards</h2><span class="spacer"></span>
+    <label class="muted" style="font-size:13px">Reward per first trip ₹ <input id="refAmt" type="number" min="0" step="50" value="${reward}" style="width:100px"/></label><button class="btn2 sm" onclick="refSaveAmt()">Save</button></div>
+    <p class="desc">A host’s link brought a new trekker who paid for their first trip. Pay the reward after the trek — it goes to the host’s Tripomonk wallet. Void it if the trip was cancelled. New referrals use the amount above; existing ones keep the amount they were created with.</p>
+    ${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Host</th><th>New trekker</th><th>Trip</th><th>Paid</th><th>Reward</th><th>Status</th><th></th></tr></thead><tbody>${rows.map(r=>`<tr>
+      <td><b>${esc(names[r.host_id]||'—')}</b><br><small class="muted">code ${esc(r.code)}</small></td>
+      <td data-l="Trekker">${esc(names[r.referred_user_id]||'—')}</td>
+      <td data-l="Trip">${esc(r.trek||'—')}<br><small class="muted">${esc(r.trek_date||'')}</small></td>
+      <td data-l="Paid">${INR(r.amount_paid)}</td><td data-l="Reward"><b>${INR(r.reward)}</b></td><td data-l="Status">${tag(r.status)}</td>
+      <td>${r.status==='pending'?`<div class="row-acts"><button class="btn2 sm pri" onclick="refAct(${r.id},'pay')">Pay reward</button><button class="btn2 sm danger" onclick="refAct(${r.id},'void')">Void</button></div>`:(r.paid_at?`<small class="muted">${dshort(r.paid_at)}</small>`:'')}</td></tr>`).join('')}</tbody></table>`)
+      :'<div class="empty">No referrals yet. They appear here when a new trekker books their first trip through a host’s link.</div>'}</div>`;
+}
+async function refSaveAmt(){const v=Math.max(0,Math.round(Number($('#refAmt').value)||0));
+  const {error}=await sb.from('app_config').upsert({key:'referral_reward',value:String(v)},{onConflict:'key'});
+  toast(error?('Failed: '+error.message):('Reward set to '+INR(v)+' for new referrals'));}
+function refAct(id,kind){const pay=kind==='pay';
+  confirmDo(pay?'Pay this referral reward? It is added to the host’s Tripomonk wallet straight away and they get a notification.':'Void this referral? No reward will be paid.',async()=>{
+    const r=await adminCall(pay?'pay_referral':'void_referral',{id});if(r&&r.error){toast('Failed: '+r.error);return;}
+    toast(pay?('Paid '+INR(r.amount||0)+' to the host’s wallet'):'Referral voided');select('referrals');});}
 async function renderPledges(){const {rows,error}=await qtbl('pledges',b=>b.order('created_at',{ascending:false}).limit(1000));
   if(error){$('#content').innerHTML='<div class="panel"><div class="empty">Pledges table not deployed - run <b>SQL-add-pledges.sql</b>.</div></div>';return;}
   $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Mountain Promise</h2><span class="spacer"></span><span class="muted">${rows.length} trekker${rows.length!==1?'s':''} pledged</span></div><p class="desc">Everyone who has taken the Mountain Promise.</p>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>#</th><th>Name</th><th>Taken</th></tr></thead><tbody>${rows.map((p,i)=>`<tr><td class="muted">${i+1}</td><td><div class="u">${avc(p.name)}<b>${esc(p.name||'Trekker')}</b></div></td><td data-l="Taken" class="muted">${timeAgo(p.created_at)}</td></tr>`).join('')}</tbody></table>`):'<div class="empty">No one has taken the promise yet.</div>'}</div>`;}
