@@ -5947,7 +5947,7 @@ async function buyGiftCard(){
 /* ---- wallet ---- */
 let _walletBal=0;
 function renderWallet(){loadWallet();renderTopupAmts();}
-/* header wallet pill → wallet screen (sign-in first for guests) */
+/* header wallet button → wallet screen (sign-in first for guests) */
 function openWallet(){if(!isLoggedIn()){note('Sign in to use your Tripomonk wallet.','Sign in required').then(()=>{_loginReturn='wallet';go('login');});return;}go('wallet');}
 function paintHomeWallet(){const el=document.getElementById('homeWalletAmt');if(el)el.textContent=isLoggedIn()?inr(Math.max(0,_walletBal)):'Wallet';}
 async function refreshHomeWallet(){
@@ -6810,38 +6810,64 @@ function plannerCard(t,rec){
 }
 /* Branded intro state — greeting + glowing orb + trek suggestion chips. Shown until the
    first user message, then it switches to the normal chat thread. */
+/* the glowing orb with blinking eyes — reused big in the intro and small atop the chat */
+function plannerOrbHTML(){
+  return '<div class="pl-orb"><span class="glow"></span><span class="ball"><span class="shine"></span><span class="eyes"><i class="eye"></i><i class="eye"></i></span></span></div>';
+}
 function plannerIntroHTML(){
   const nm=(getSavedName()||'').split(' ')[0];
   const CHIPS=[['ac_unit','Snow trek for beginners'],['payments','Treks under ₹10,000'],['event','Best treks in November'],['directions_car','A weekend from Delhi']];
   const chips=CHIPS.map(c=>'<button class="pl-chip" onclick="plannerChip(\''+c[1]+'\')"><span class="msr">'+c[0]+'</span>'+c[1]+'</button>').join('');
   return '<div class="pl-intro">'
     +'<div class="pl-greet"><h2>Hello'+(nm?', '+esc(nm):' there')+'!</h2><p>Where would you like to trek?</p></div>'
-    +'<div class="pl-orb"><span class="glow"></span><span class="ball"><span class="shine"></span></span></div>'
+    +plannerOrbHTML()
     +'<div class="pl-chips">'+chips+'</div>'
   +'</div>';
 }
-function newPlan(){_planMsgs=[];_tripCtx={};_planShown=new Set();_planLastMin=0;_planBusy=false;_planTyping=false;renderPlanner();}
+function newPlan(){_planMsgs=[];_tripCtx={};_planShown=new Set();_planLastMin=0;_planBusy=false;_planTyping=false;_plAnimFrom=0;
+  const c=document.getElementById('plannerChat');if(c)c.innerHTML='';renderPlanner();}
+/* Planner = one continuous chat in this same screen (ChatGPT-style). The welcome block
+   (greeting, mascot, chips) is the first thing in the scroll area and simply moves up as
+   messages are added below it. Only the area between the fixed header and the fixed input
+   scrolls. New rows animate once (index ≥ _plAnimFrom), so the word-by-word typing repaint
+   never replays an animation. */
+let _plAnimFrom=0;
+const _plReduce=()=>{try{return matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(e){return false;}};
+/* grow the input with its text (Enter sends, Shift+Enter = new line) */
+function plAutoGrow(el){if(!el)return;el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px';}
+function plInputKey(e){if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();sendPlan();}}
 function paintPlanner(){
   const chat=document.getElementById('plannerChat');if(!chat)return;
-  /* no user message yet → show the intro hero instead of the welcome bubble */
-  if(!_planBusy&&!_planMsgs.some(m=>m.role==='user')){chat.innerHTML=plannerIntroHTML();hydrate(chat);return;}
+  /* the welcome block is built once and kept — never re-rendered — so it just scrolls up */
+  let intro=chat.querySelector('.pl-intro'),thread=document.getElementById('plThread');
+  if(!intro||!thread){chat.innerHTML=plannerIntroHTML()+'<div class="pl-thread" id="plThread" aria-live="polite"></div>';hydrate(chat);
+    intro=chat.querySelector('.pl-intro');thread=document.getElementById('plThread');}
+  const started=_planBusy||_planMsgs.some(m=>m.role==='user');
+  intro.classList.toggle('pl-docked',started);         /* once chatting, the intro stops filling the screen */
+  if(!started){thread.innerHTML='';return;}
   const findTrek=nm=>treks.find(x=>x.n===nm)||treks.find(x=>String(x.n).toLowerCase()===String(nm).toLowerCase());
-  let html=_planMsgs.map(m=>{
-    const bubble=`<div class="pl-row pl-row-${m.role}"><div class="pl-msg pl-${m.role}">${esc(m.content)}${m._typing?'<span class="pl-caret"></span>':''}</div></div>`;
+  const animFrom=_plAnimFrom;
+  /* the canned "Hi — I'm your planner…" opener duplicates the intro, so skip assistant lines before the first user line */
+  const firstUser=_planMsgs.findIndex(m=>m.role==='user');
+  const html=_planMsgs.map((m,i)=>{
+    if(i<firstUser)return '';
+    const bubble=`<div class="pl-row pl-row-${m.role}${i>=animFrom?' pl-in':''}"><div class="pl-msg pl-${m.role}">${esc(m.content)}${m._typing?'<span class="pl-caret"></span>':''}</div></div>`;
     let extra='';
     if(!m._typing){
       if(m.brief)extra+=`<div class="pl-brief"><span class="msr">tune</span>${esc(m.brief)}</div>`;
       const recs=(m.recs&&m.recs.length)?m.recs:((m.treks||[]).map(n=>({name:n,why:''})));
       if(recs.length){
         const cs=recs.map(r=>{const t=findTrek(r.name);return t?plannerCard(t,r):'';}).filter(Boolean).join('');
-        if(cs)extra+=`<div class="pl-cards">${cs}</div>`;
+        if(cs){extra+=`<div class="pl-cards${m._cardsIn?'':' pl-in-cards'}">${cs}</div>`;m._cardsIn=true;}
       }
     }
     return bubble+extra;
-  }).join('');
-  if(_planBusy)html+=`<div class="pl-row pl-row-assistant"><div class="pl-msg pl-assistant pl-typing"><span></span><span></span><span></span></div></div>`;
-  chat.innerHTML=html;hydrate(chat);
-  chat.scrollTop=chat.scrollHeight;
+  }).join('')+(_planBusy?`<div class="pl-row pl-row-assistant pl-in"><div class="pl-msg pl-assistant pl-typing" aria-label="Planner is typing"><span></span><span></span><span></span></div></div>`:'');
+  thread.innerHTML=html;hydrate(thread);
+  const grew=_planMsgs.length>animFrom;
+  _plAnimFrom=_planMsgs.length;
+  /* always land on the latest message; glide for new rows, snap while a reply types */
+  if(grew&&!_plReduce())chat.scrollTo({top:chat.scrollHeight,behavior:'smooth'});else chat.scrollTop=chat.scrollHeight;
 }
 function plannerChip(text){const inp=document.getElementById('plannerInput');if(inp)inp.value=text;sendPlan();}
 let _planTyping=false;
@@ -6871,9 +6897,10 @@ function plNormalizeRecs(res){
 async function sendPlan(text){
   const inp=document.getElementById('plannerInput');
   const q=(text||(inp&&inp.value)||'').trim();if(!q||_planBusy||_planTyping)return;
-  if(inp)inp.value='';
+  if(inp){inp.value='';plAutoGrow(inp);}
   try{logEvent('plan_query',{q:q.slice(0,80)});}catch(e){}
-  _planMsgs.push({role:'user',content:q});_planBusy=true;paintPlanner();
+  _planBusy=true;
+  _planMsgs.push({role:'user',content:q});paintPlanner();
   const ql=q.toLowerCase();
   const chit=plChitchat(ql);                 /* greetings / thanks / "what can you do" — answer locally */
   plExtract(ql,_tripCtx);plRefine(ql,_tripCtx);   /* remember what they told us this turn */
@@ -9021,7 +9048,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='476';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='478';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -11271,7 +11298,6 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='accountMenu')renderAccountMenu();
   if(id==='giftCards')renderGiftCards();
   if(id==='wallet')renderWallet();
-  if(id==='home')refreshHomeWallet();
   if(id==='editProfile')renderEditProfile();
   if(id==='onboarding')initPrefs();
   if(id==='settings')renderSettings();

@@ -3627,7 +3627,15 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   .pl-chip{display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:12px 13px;font-size:13px;color:var(--text);cursor:pointer;text-align:left;line-height:1.25}
   .pl-chip .msr{font-size:18px;color:var(--accent2);flex:0 0 auto}
   .pl-chip:active{transform:scale(.98)}
-  @media (prefers-reduced-motion:reduce){.pl-orb .ball,.pl-orb .glow{animation:none}}
+  /* orb eyes — blink open/close */
+  .pl-orb .eyes{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:11%}
+  .pl-orb .eye{width:8%;height:21%;min-width:5px;background:#fff;border-radius:999px;box-shadow:0 0 9px rgba(255,255,255,.6);transform-origin:center;animation:plblink 4.6s ease-in-out infinite}
+  @keyframes plblink{0%,88%,100%{transform:scaleY(1)}93%{transform:scaleY(.08)}}
+  /* chat mode: small orb pinned above the thread so the premium UI stays */
+  .pl-orbhead{position:sticky;top:0;z-index:3;display:flex;justify-content:center;padding:2px 0 12px;margin:-2px 0 2px;background:linear-gradient(180deg,var(--bg) 60%,transparent)}
+  .pl-orbhead .pl-orb{width:62px;height:62px;margin:0}
+  .pl-orbhead .pl-orb .glow{inset:-16%}
+  @media (prefers-reduced-motion:reduce){.pl-orb .ball,.pl-orb .glow,.pl-orb .eye{animation:none}}
   #home .hhero{border-radius:28px;min-height:190px;box-shadow:0 26px 54px -35px rgba(0,0,0,.95)}
   #home .hcard{border-radius:26px;min-width:238px;width:238px;background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.055));box-shadow:0 20px 42px -34px rgba(0,0,0,.9)}
   #home .hcard .hph{height:154px;border-radius:24px;margin:8px 8px 0}.hcard .hbd{padding:13px 15px 16px}
@@ -3710,13 +3718,33 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   .home-top-ui{grid-template-columns:1fr auto 1fr}
   .home-top-ui>.home-avatar-btn{justify-self:start}
   .home-top-actions{justify-self:end;display:flex;align-items:center;gap:8px}
-  .home-wallet{height:46px;padding:0 12px 0 10px;border-radius:18px;border:1px solid var(--stroke);background:rgba(255,255,255,.09);color:var(--text);display:flex;align-items:center;gap:6px;cursor:pointer;font:700 13px var(--font)}
-  .home-wallet .msr{font-size:20px;color:#ffce1f}
+  .home-wallet{width:46px;height:46px;padding:0;border-radius:18px;border:1px solid var(--stroke);background:rgba(255,255,255,.09);color:var(--text);display:grid;place-items:center;cursor:pointer}
+  .home-wallet .msr{font-size:22px;color:#fff}
   html.light .home-wallet{background-color:#fff;border-color:rgba(16,32,58,.14);box-shadow:0 3px 8px -4px rgba(16,32,58,.25)}
-  html.light .home-wallet .msr{color:#b07d00}
-  @media (max-width:360px){.home-wallet b{display:none}.home-wallet{padding:0 12px}}
+  html.light .home-wallet .msr{color:var(--accent)}
   .wc-amts{display:flex;flex-wrap:wrap;gap:8px}
   .wc-amts .chip{cursor:pointer}
+  /* ---- planner: one continuous chat; header + input fixed, only the middle scrolls ---- */
+  .planner-chat{min-height:0;overscroll-behavior:contain}
+  .planner-chat>.pl-intro,.planner-chat>.pl-thread,.pl-intro>*{flex-shrink:0}   /* stack at natural height, never squeeze into each other */
+  .pl-intro.pl-docked{min-height:0;padding-bottom:6px}
+  .pl-intro.pl-docked .pl-orb{margin:24px auto 28px}   /* auto margins collapse once the intro is content-height — keep air around the mascot */
+  .planner-chat{scrollbar-width:none}.planner-chat::-webkit-scrollbar{display:none}
+  .pl-thread{display:flex;flex-direction:column;gap:10px}
+  .pl-inwrap textarea{flex:1;min-width:0;background:transparent;border:0;padding:9px 6px;color:var(--text);font:14px/1.4 var(--font);outline:none;resize:none;max-height:120px;overflow-y:auto}
+  .pl-inwrap textarea::placeholder{color:var(--muted)}
+  @keyframes plRise{from{opacity:0;transform:translateY(26px) scale(.97)}to{opacity:1;transform:none}}
+  @keyframes plIntroIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  .pl-in{animation:plRise .42s cubic-bezier(.2,.8,.2,1) both}
+  .pl-row-user.pl-in .pl-msg{transform-origin:bottom right}
+  .pl-row-assistant.pl-in{animation-delay:.06s}
+  .pl-cards.pl-in-cards>*{animation:plRise .45s cubic-bezier(.2,.8,.2,1) both}
+  .pl-cards.pl-in-cards>*:nth-child(2){animation-delay:.09s}
+  .pl-cards.pl-in-cards>*:nth-child(3){animation-delay:.18s}
+  .pl-intro>.pl-greet{animation:plIntroIn .45s ease both}
+  .pl-intro>.pl-orb{animation:plIntroIn .5s .06s ease both}
+  .pl-intro>.pl-chips{animation:plIntroIn .5s .12s ease both}
+  @media (prefers-reduced-motion:reduce){.pl-in,.pl-cards.pl-in-cards>*,.pl-intro>*{animation:none}}
 </style>
 </head>
 <body>
@@ -3749,7 +3777,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
       <button class="home-avatar-btn" onclick="go('profile')" id="homeUserAv">E</button>
       <div class="home-title-block"><small>Tripomonk</small><h1>Explore</h1></div>
       <div class="home-top-actions">
-        <button class="home-wallet" onclick="openWallet()" aria-label="Wallet"><span class="msr" aria-hidden="true">account_balance_wallet</span><b id="homeWalletAmt">₹0</b></button>
+        <button class="home-wallet" onclick="openWallet()" aria-label="Wallet"><span class="msr" aria-hidden="true">account_balance_wallet</span></button>
         <button class="home-bell" onclick="go('notifications')" style="position:relative" aria-label="Notifications"><span class="ic" data-i="bell"></span><span class="notif-badge" id="notifDot"></span></button>
       </div>
     </div>
@@ -4570,7 +4598,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
     <div class="planner-inputbar">
       <div class="pl-inwrap">
         <button class="pl-plus" onclick="newPlan()" aria-label="New plan" title="New plan"><span class="msr">add</span></button>
-        <input id="plannerInput" placeholder="Where to next?" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();sendPlan();}"/>
+        <textarea id="plannerInput" rows="1" placeholder="Where to next?" autocomplete="off" enterkeyhint="send" aria-label="Message the trip planner" onkeydown="plInputKey(event)" oninput="plAutoGrow(this)"></textarea>
       </div>
       <button class="pl-send" onclick="sendPlan()" aria-label="Send"><span class="msr">arrow_upward</span></button>
     </div>
