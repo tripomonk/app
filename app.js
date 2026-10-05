@@ -2212,6 +2212,9 @@ function roleCanTab(tab){const r=currentAdminRole();if(!r)return false;const all
    out of the quoted JS string. Strip the dangerous chars, then HTML-escape. */
 function jsq(s){return esc(String(s==null?'':s).replace(/[\'"`<>]/g,''));}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+/* safe inside style="background-image:url('…')": quotes/brackets/backslashes/spaces percent-encoded,
+   so an image address can never close the url() and inject styles */
+function cssUrl(u){return String(u==null?'':u).replace(/['"()\\\s<>]/g,c=>'%'+c.charCodeAt(0).toString(16).toUpperCase().padStart(2,'0'));}
 /* Tidy a user-entered display name: trim, collapse runs of spaces, and capitalize the
    first letter of each word so "sawan kumar verma" shows as "Sawan Kumar Verma". Only
    the first letter is touched, so intentional casing (e.g. "McDonald") is preserved.
@@ -2220,10 +2223,12 @@ function properName(n){return String(n==null?'':n).trim().replace(/\s+/g,' ').re
 const INR=n=>'₹'+Number(n).toLocaleString('en-IN');
 
 /* ---------- render ---------- */
-function trekCard(t){return `<div class="tcard" onclick="openDetail(${t.idx})"><div class="ph" style="background-image:url('${t.img}')">${t.soon?'<span class="soon">Coming Soon</span>':''}${trekScoreBadge(t,'on-photo')}</div>
-  <div class="bd"><h3>${t.n}</h3><div class="reg">${ic('pin',13)} ${t.region}</div>
+/* card text is escaped like every other user/admin-entered field (defence in depth — trek
+   data comes from the admin console and bulk upload) */
+function trekCard(t){return `<div class="tcard" onclick="openDetail(${t.idx})"><div class="ph" style="background-image:url('${cssUrl(t.img)}')">${t.soon?'<span class="soon">Coming Soon</span>':''}${trekScoreBadge(t,'on-photo')}</div>
+  <div class="bd"><h3>${esc(t.n)}</h3><div class="reg">${ic('pin',13)} ${esc(t.region)}</div>
   <div class="rt">${rateHTML(t)}</div>
-  <div class="ft"><span class="tag">${ic('clock',12)} ${t.dur}</span><span class="tag">${t.lvl}</span>${readinessChip(t)}</div></div></div>`;}
+  <div class="ft"><span class="tag">${ic('clock',12)} ${esc(t.dur)}</span><span class="tag">${esc(t.lvl)}</span>${readinessChip(t)}</div></div></div>`;}
 /* lazy-load card background images: only paint a card's photo when it is near the
    viewport. Without this, a long list (130+ treks) loads every image at once and
    iOS Safari runs out of memory and crashes the tab. Geometry-based (not
@@ -2267,22 +2272,22 @@ function tagBadge(t){
 }
 function bigCard(t){return `<div class="bigcard" onclick="openDetail(${t.idx})" data-bg="${esc(t.img||'')}" style="background-color:#12243f">
   ${trekScoreBadge(t,'on-photo')}<span class="pr">${t.soon?'Coming Soon':INR(priceOf(t).now)}</span>${tagBadge(t)}
-  <div class="info"><h3>${t.n}</h3><div class="reg">${ic('pin',12)} ${t.region} · ${t.dur} · ${t.lvl}</div></div></div>`;}
+  <div class="info"><h3>${esc(t.n)}</h3><div class="reg">${ic('pin',12)} ${esc(t.region)} · ${esc(t.dur)} · ${esc(t.lvl)}</div></div></div>`;}
 
 let homeFilter='All';
 const diffs=['All','Easy','Moderate','Difficult'];
 const diffIcon={All:'treks',Easy:'pine',Moderate:'altitude',Difficult:'flame'};
 function renderHomeChips(){document.getElementById('homeChips').innerHTML=diffs.map(d=>`<div class="chip ${d===homeFilter?'on':''}" onclick="setHomeFilter('${d}')"><span style="display:grid;place-items:center">${ic(diffIcon[d],20)}</span>${d==='All'?'All Treks':d}</div>`).join('');hydrate(document.getElementById('homeChips'));}
 function setHomeFilter(d){homeFilter=d;renderHomeChips();renderHome();}
-function trekCardH(t){return `<div class="hcard" onclick="openDetail(${t.idx})"><div class="hph" style="background-image:url('${t.img}')">${t.soon?'<span class="soon">Coming Soon</span>':''}${tagBadge(t)}${trekScoreBadge(t,'on-photo')}</div>
-  <div class="hbd"><h3>${t.n}</h3><div class="reg">${ic('pin',12)} ${t.region}</div>
+function trekCardH(t){return `<div class="hcard" onclick="openDetail(${t.idx})"><div class="hph" style="background-image:url('${cssUrl(t.img)}')">${t.soon?'<span class="soon">Coming Soon</span>':''}${tagBadge(t)}${trekScoreBadge(t,'on-photo')}</div>
+  <div class="hbd"><h3>${esc(t.n)}</h3><div class="reg">${ic('pin',12)} ${esc(t.region)}</div>
   <div class="rt">${rateHTML(t)}</div>
-  <div class="ft"><span class="tag">${ic('clock',12)} ${t.dur}</span><span class="tag">${t.lvl}</span></div></div></div>`;}
+  <div class="ft"><span class="tag">${ic('clock',12)} ${esc(t.dur)}</span><span class="tag">${esc(t.lvl)}</span></div></div></div>`;}
 /* ===== Reusable dynamic 3D coverflow stack (index-based, swipe/drag, infinite, virtualized) ===== */
 let _cfMoved=false;
 /* card builders */
 function trekCardCF(t,i){return `<div class="fcx" data-cf="${i}" onclick="cfTapCard(this)">
-  <div class="fcx-img" style="background-image:url('${t.img}')">${t.soon?'<span class="soon">Coming Soon</span>':''}${tagBadge(t)}${trekScoreBadge(t,'on-photo')}</div>
+  <div class="fcx-img" style="background-image:url('${cssUrl(t.img)}')">${t.soon?'<span class="soon">Coming Soon</span>':''}${tagBadge(t)}${trekScoreBadge(t,'on-photo')}</div>
   <div class="fcx-bd">
     <h3>${esc(t.n)}</h3>
     <div class="fcx-loc">${ic('pin',13)} ${esc(t.region)}</div>
@@ -2442,7 +2447,7 @@ function renderCompare(){
   /* picker list */
   const list=`<div class="cmp-pick">${picker.map(t=>{
     const on=_cmpSel.includes(t.n);
-    return `<div class="cmp-po ${on?'on':''}" onclick="toggleCmp('${jsq(t.n)}')"><div class="cmp-po-img" style="background-image:url('${esc(t.img||'')}')"></div><div class="cmp-po-tx"><b>${esc(t.n)}</b><small>${esc(t.region||'')} · ${INR(t.price||0)}</small></div><span class="cmp-po-chk">${on?ic('check',14):'+'}</span></div>`;
+    return `<div class="cmp-po ${on?'on':''}" onclick="toggleCmp('${jsq(t.n)}')"><div class="cmp-po-img" style="background-image:url('${cssUrl(t.img)}')"></div><div class="cmp-po-tx"><b>${esc(t.n)}</b><small>${esc(t.region||'')} · ${INR(t.price||0)}</small></div><span class="cmp-po-chk">${on?ic('check',14):'+'}</span></div>`;
   }).join('')||'<div class="empty"><p>No treks match your search.</p></div>'}</div>`;
 
   let compare='';
@@ -2467,7 +2472,7 @@ function renderCompare(){
       ['Reviews',t=>{const c=realRating(t).count;return c?c.toLocaleString('en-IN'):'—';}],
       ['Beginner friendly',t=>isBeginnerFriendly(t.lvl)?'Yes':'—']
     ];
-    const head=`<tr><th class="cmp-corner"></th>${sel.map(t=>`<th class="${t.n===best.n?'best':''}"><div class="cmp-th-img" style="background-image:url('${esc(t.img||'')}')"></div><b>${esc(t.n)}</b>${t.n===best.n?'<span class="cmp-best-tag">Best match</span>':''}</th>`).join('')}</tr>`;
+    const head=`<tr><th class="cmp-corner"></th>${sel.map(t=>`<th class="${t.n===best.n?'best':''}"><div class="cmp-th-img" style="background-image:url('${cssUrl(t.img)}')"></div><b>${esc(t.n)}</b>${t.n===best.n?'<span class="cmp-best-tag">Best match</span>':''}</th>`).join('')}</tr>`;
     const rows=ROWS.map(r=>`<tr><td class="cmp-lbl">${r[0]}</td>${sel.map(t=>`<td class="${t.n===best.n?'best':''}">${r[1](t)}</td>`).join('')}</tr>`).join('');
     const ctas=`<tr><td class="cmp-lbl"></td>${sel.map(t=>`<td class="cmp-cta ${t.n===best.n?'best':''}"><button onclick="openDetailByName('${jsq(t.n)}')">Book / Details</button><button class="ghost" onclick="shareTrekByName('${jsq(t.n)}')">Share</button></td>`).join('')}</tr>`;
     const fs=userFitnessScore();
@@ -3519,7 +3524,7 @@ function bookingCard(b){
 }
 function bkPopCard(t,i){
   return `<div class="bk-pop-c" onclick="openDetail(${t.idx})">
-    <div class="bk-pop-img" style="background-image:url('${esc(t.img||'')}')"></div>
+    <div class="bk-pop-img" style="background-image:url('${cssUrl(t.img)}')"></div>
     <div class="bk-pop-tx"><b>${esc(t.n)}</b><small>${esc(t.region||'')} · ${INR(priceOf(t).now)}</small></div></div>`;
 }
 /* ============================================================
@@ -9092,7 +9097,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='487';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='488';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -11069,7 +11074,7 @@ function aiRecoHTML(score){
   const rec=[],chal=[],avoid=[];
   pool.forEach(t=>{const req=trekReqScore(t),d=score-req;if(d>=0)rec.push([t,req]);else if(req-score<=10)chal.push([t,req]);else avoid.push([t,req]);});
   rec.sort((x,y)=>y[1]-x[1]);chal.sort((x,y)=>x[1]-y[1]);avoid.sort((x,y)=>x[1]-y[1]);
-  const colf=(title,arr,cls,icn)=>arr.length?`<div class="reco-col reco-${cls}"><div class="reco-h"><span class="msr">${icn}</span>${title}</div>${arr.slice(0,4).map(([t,req])=>`<div class="reco-row" onclick="openDetailByName('${jsq(t.n)}')"><div class="reco-ph" style="background-image:url('${esc(t.img||'')}')"></div><div class="reco-tx"><b>${esc(t.n)}</b><small>${esc(t.region||'')} · Req ${req}</small></div><span class="reco-req fit-b-${cls}">${req}</span></div>`).join('')}</div>`:'';
+  const colf=(title,arr,cls,icn)=>arr.length?`<div class="reco-col reco-${cls}"><div class="reco-h"><span class="msr">${icn}</span>${title}</div>${arr.slice(0,4).map(([t,req])=>`<div class="reco-row" onclick="openDetailByName('${jsq(t.n)}')"><div class="reco-ph" style="background-image:url('${cssUrl(t.img)}')"></div><div class="reco-tx"><b>${esc(t.n)}</b><small>${esc(t.region||'')} · Req ${req}</small></div><span class="reco-req fit-b-${cls}">${req}</span></div>`).join('')}</div>`:'';
   return (colf('Recommended',rec,'green','check_circle')+colf('Possible challenge',chal,'yellow','trending_up')+colf('Avoid for now',avoid,'red','block'))||'<div class="empty"><p>No treks to match yet.</p></div>';
 }
 
@@ -12996,7 +13001,7 @@ function renderHtBook(){
   const total=(t.price||0)*_htvPax, adv=Math.round(total*0.25);
   const when=t.start_date?new Date(t.start_date+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'As scheduled';
   box.innerHTML=`
-    <div class="tcard" style="cursor:default"><div class="ph" style="background-image:url('${esc(t.img||'')}')"></div>
+    <div class="tcard" style="cursor:default"><div class="ph" style="background-image:url('${cssUrl(t.img)}')"></div>
       <div class="bd"><h3>${esc(t.title)}</h3>
         <div class="rt">${ic('calendar',14)} <span>${esc(when)}</span></div>
         <div class="rt">${ic('user',14)} <span>${_htvPax} ${_htvPax===1?'traveller':'travellers'} · hosted by ${esc(t.host_name||'host')}</span></div></div></div>
