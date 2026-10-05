@@ -99,10 +99,14 @@ function a11yClickables(root){const R=root||document;
   /* sideways-scrolling strips with nothing focusable inside: let the keyboard reach + scroll them */
   R.querySelectorAll('.fc-strip,.hrow,.chips,.regions,.insp-track,#inclusions,#gcRow,[id$="_tr"]').forEach(el=>{
     if(el.hasAttribute('tabindex')||el.querySelector('button,a[href],input,[tabindex],[role="button"]'))return;
-    if(el.scrollWidth>el.clientWidth+2){el.tabIndex=0;if(!el.hasAttribute('aria-label'))el.setAttribute('aria-label','Scrollable list');}});}
+    /* no width check: screens are drawn while hidden, when nothing has a width yet */
+    el.tabIndex=0;if(!el.hasAttribute('aria-label'))el.setAttribute('aria-label','Scrollable list');});}
 document.addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const el=e.target;
   if(el&&el.getAttribute&&el.getAttribute('role')==='button'&&el.hasAttribute('onclick')&&!/^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(el.tagName)){e.preventDefault();el.click();}});
-document.addEventListener('DOMContentLoaded',()=>a11yClickables(document));
+document.addEventListener('DOMContentLoaded',()=>{a11yClickables(document);
+  /* parts of a screen render later (weather, rails, gift designs…) — re-apply to the visible screen, debounced */
+  let _a11yT=null;try{new MutationObserver(()=>{clearTimeout(_a11yT);_a11yT=setTimeout(()=>{const v=document.querySelector('.view.active');if(v)a11yClickables(v);},250);})
+    .observe(document.body,{childList:true,subtree:true});}catch(e){}});
 function hydrate(root){(root||document).querySelectorAll('[data-i]').forEach(el=>{el.innerHTML=ic(el.dataset.i,+el.dataset.sz||20);el.removeAttribute('data-i');});a11yClickables(root);fitCarousels(root);if(typeof animateTrekScores==='function')animateTrekScores();}
 
 /* ---------- data ---------- */
@@ -9107,7 +9111,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='491';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='492';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
