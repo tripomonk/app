@@ -4621,7 +4621,10 @@ async function upsertProfile(){
   if(saved&&(g||cat||bio)){try{await sb.from('profiles').upsert({id:uid,updated_at:ts,gender:g||null,category:cat||null,bio:bio||null});}catch(e){}}
 }
 /* everything that identifies ONE person on this device */
-const IDENTITY_KEYS=['tmk_uname','tmk_uhandle','tmk_uphoto','tmk_uphoto_src','tmk_ucover','tmk_socials','tmk_umobile','tmk_gender','tmk_category','tmk_bio','tmk_follows','tmk_followreqs','tmk_posts','tmk_savedposts','tmk_likes','tmk_comments','tmk_bookings','tmk_reviews','tmk_blocked','tmk_fitness','tmk_pledge','tmk_pledge_prompted','tmk_ref_count','tmk_ref_earn','tmk_notif_seen','tmk_admin','tmk_admin_key','tmk_captain','tmk_plan'];
+/* NOTE: tmk_fitness (the Adventure Readiness assessment) is intentionally NOT here — it's a
+   device-level self-assessment that should persist across sign-out so a completed readiness
+   always shows on the profile. It still syncs to the cloud per account and is restored on sign-in. */
+const IDENTITY_KEYS=['tmk_uname','tmk_uhandle','tmk_uphoto','tmk_uphoto_src','tmk_ucover','tmk_socials','tmk_umobile','tmk_gender','tmk_category','tmk_bio','tmk_follows','tmk_followreqs','tmk_posts','tmk_savedposts','tmk_likes','tmk_comments','tmk_bookings','tmk_reviews','tmk_blocked','tmk_pledge','tmk_pledge_prompted','tmk_ref_count','tmk_ref_earn','tmk_notif_seen','tmk_admin','tmk_admin_key','tmk_captain','tmk_plan'];
 function clearLocalIdentity(){
   try{IDENTITY_KEYS.forEach(k=>localStorage.removeItem(k));}catch(e){}
   followState={};staffSet=new Set();_prefSkippedSession=false;
@@ -9081,7 +9084,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='485';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='486';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
