@@ -3604,6 +3604,13 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   .pl-brief{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;max-width:100%;background:rgba(255,255,255,.06);border:1px solid var(--stroke);color:var(--muted);font-size:11.5px;font-weight:600;padding:5px 11px;border-radius:20px;margin:2px 0 8px}
   .pl-brief .msr{font-size:14px;color:var(--accent2)}
   .pl-cards{display:flex;flex-direction:column;gap:8px}
+  /* tappable "refine" chips under the latest answer — guide the next question */
+  .pl-follows{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0 2px}
+  .pl-follow{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;color:var(--accent2);background:rgba(47,107,255,.1);border:1px solid rgba(47,107,255,.3);border-radius:999px;padding:7px 12px;transition:background .15s,transform .1s}
+  .pl-follow .msr{font-size:15px;opacity:.85}
+  .pl-follow:hover{background:rgba(47,107,255,.18)}
+  .pl-follow:active{transform:scale(.96)}
+  html.light .pl-follow{background:rgba(47,107,255,.08)}
   .pl-card{display:flex;gap:11px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:10px;cursor:pointer;align-items:flex-start}
   .pl-card:active{transform:scale(.99)}
   .pl-card-img{width:64px;height:64px;border-radius:10px;background:var(--bg) center/cover no-repeat;flex:none}

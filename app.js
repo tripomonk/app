@@ -6896,6 +6896,14 @@ const _plReduce=()=>{try{return matchMedia('(prefers-reduced-motion: reduce)').m
 /* grow the input with its text (Enter sends, Shift+Enter = new line) */
 function plAutoGrow(el){if(!el)return;el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px';}
 function plInputKey(e){if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();sendPlan();}}
+/* light, XSS-safe markdown for planner replies (itineraries, packing lists, budgets):
+   escape FIRST, then add our own tags. Newlines render via .pl-msg{white-space:pre-wrap}. */
+function plFormat(s){
+  let t=esc(String(s==null?'':s));
+  t=t.replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>');      /* **bold** key labels */
+  t=t.replace(/(^|\n)[ \t]*[-*][ \t]+/g,'$1• ');                /* tidy bullet markers */
+  return t;
+}
 function paintPlanner(){
   const chat=document.getElementById('plannerChat');if(!chat)return;
   /* the welcome block is built once and kept — never re-rendered — so it just scrolls up */
@@ -6911,7 +6919,7 @@ function paintPlanner(){
   const firstUser=_planMsgs.findIndex(m=>m.role==='user');
   const html=_planMsgs.map((m,i)=>{
     if(i<firstUser)return '';
-    const bubble=`<div class="pl-row pl-row-${m.role}${i>=animFrom?' pl-in':''}"><div class="pl-msg pl-${m.role}">${esc(m.content)}${m._typing?'<span class="pl-caret"></span>':''}</div></div>`;
+    const bubble=`<div class="pl-row pl-row-${m.role}${i>=animFrom?' pl-in':''}"><div class="pl-msg pl-${m.role}">${m.role==='assistant'?plFormat(m.content):esc(m.content)}${m._typing?'<span class="pl-caret"></span>':''}</div></div>`;
     let extra='';
     if(!m._typing){
       if(m.brief)extra+=`<div class="pl-brief"><span class="msr">tune</span>${esc(m.brief)}</div>`;
@@ -6919,6 +6927,10 @@ function paintPlanner(){
       if(recs.length){
         const cs=recs.map(r=>{const t=findTrek(r.name);return t?plannerCard(t,r):'';}).filter(Boolean).join('');
         if(cs){extra+=`<div class="pl-cards${m._cardsIn?'':' pl-in-cards'}">${cs}</div>`;m._cardsIn=true;}
+      }
+      /* only the latest answer keeps its refine chips active, so old turns don't clutter */
+      if(i===_planMsgs.length-1&&m.followups&&m.followups.length){
+        extra+='<div class="pl-follows">'+m.followups.map(f=>`<button class="pl-follow" onclick="plannerFollow(this)"><span class="msr">tune</span><span class="pl-follow-t">${esc(f)}</span></button>`).join('')+'</div>';
       }
     }
     return bubble+extra;
@@ -6934,7 +6946,7 @@ let _planTyping=false;
 const _plSleep=ms=>new Promise(r=>setTimeout(r,ms));
 /* reveal the assistant reply word-by-word (with a blinking caret) so it reads like a
    real AI answering; the trek cards pop in only after the text finishes. */
-async function typePlanner(msg,full,recs,brief){
+async function typePlanner(msg,full,recs,brief,follow){
   _planTyping=true;msg._typing=true;msg.content='';
   const parts=String(full||'').split(/(\s+)/);   /* keep whitespace tokens */
   let i=0;
@@ -6944,8 +6956,14 @@ async function typePlanner(msg,full,recs,brief){
     paintPlanner();
     await _plSleep(22+Math.random()*34);         /* uneven cadence feels human */
   }
-  msg.content=full||'';msg.recs=recs||[];msg.brief=brief||'';msg._typing=false;
+  msg.content=full||'';msg.recs=recs||[];msg.brief=brief||'';msg.followups=follow||[];msg._typing=false;
   _planTyping=false;paintPlanner();
+}
+/* tap a suggested refinement → sends it as the next message */
+function plannerFollow(b){if(_planBusy||_planTyping)return;const t=b&&b.querySelector('.pl-follow-t');const q=t?t.textContent.trim():'';if(q)sendPlan(q);}
+/* fallback refinement chips (used when the AI didn't supply its own followups) */
+function plDefaultFollowups(ctx){ctx=ctx||{};
+  return [ctx.budget?'Something cheaper':'Under ₹10,000', ctx.days?'A shorter trip':'Just a weekend', 'An easier trek'];
 }
 function plNormalizeRecs(res){
   let arr=[];
@@ -6983,13 +7001,14 @@ async function sendPlan(text){
   const think=(res?450:820)+Math.random()*520;
   const waited=Date.now()-t0;if(waited<think)await _plSleep(think-waited);
   _planBusy=false;
-  let full,recs=[],brief='';
+  let full,recs=[],brief='',follow=[];
   if(chit){full=chit;}
-  else if(res){full=res.reply||'Here are some options:';recs=plNormalizeRecs(res);brief=res.brief||plBrief(_tripCtx).join(' · ');}
+  else if(res){full=res.reply||'Here are some options:';recs=plNormalizeRecs(res);brief=res.brief||plBrief(_tripCtx).join(' · ');follow=Array.isArray(res.followups)?res.followups.slice(0,3):[];}
   else{const tf=plTravelFaq(ql);if(tf){full=tf;}else{const out=plRecommend(ql,_tripCtx);full=out.reply;recs=out.recs;brief=out.brief;}}
+  if(!follow.length&&recs.length)follow=plDefaultFollowups(_tripCtx);   /* always offer a next step */
   recs.forEach(r=>_planShown.add(r.name));
-  const msg={role:'assistant',content:'',recs:[],brief:''};_planMsgs.push(msg);
-  await typePlanner(msg,full,recs,brief);
+  const msg={role:'assistant',content:'',recs:[],brief:'',followups:[]};_planMsgs.push(msg);
+  await typePlanner(msg,full,recs,brief,follow);
 }
 /* local fallback so the planner still helps if the AI is unavailable: parse budget,
    duration, difficulty and region, then filter the real catalogue */
@@ -7002,7 +7021,7 @@ function plChitchat(ql){
   if(has(/\b(thanks|thank you|thankyou|thx|ty|great|awesome|cool|nice|perfect|ok(ay)?)\b/)&&ql.length<=18)
     return "You're welcome! Want me to refine these by budget, dates or difficulty — or shortlist something new?";
   if(has(/what can you do|who are you|how (do|does) (you|this|it) work|what do you do|^help\b|help me|what is this/))
-    return "I help you find the right Himalayan trek or tour. Tell me things like your budget (₹), number of days, group (solo/friends/family), fitness or difficulty, region, or a trek you already like — and I'll match real Tripomonk trips and explain why each fits. You can also ask me about the best season, permits, fitness or packing.";
+    return "I'm your Tripomonk travel companion. I can match real treks & tours to your budget, days, group and vibe — and also build a day-by-day plan, a packing list or a budget breakdown, and answer anything on seasons, weather, fitness, altitude, permits, transport, money or safety. I can even sketch a custom or road-trip idea. What are you planning?";
   if(has(/contact|call you|phone number|whatsapp|reach you|customer (care|support)|talk to (someone|human|team)/))
     return "You can reach the Tripomonk team from Profile → Help & Support in the app. Meanwhile I can help you plan — what kind of trip are you after?";
   return null;
@@ -7021,6 +7040,14 @@ function plTravelFaq(ql){
     return "Essentials: sturdy trekking shoes, warm layers, a rain layer, headlamp, water bottle, sunscreen and a small daypack. Every Tripomonk trek page has a full packing list — tell me the trek for specifics.";
   if(has(/how (do i|to) book|booking|payment|pay\b|upi|refund|cancel|price includes|what.s included|inclusion/))
     return "You can book right in the app — pick a batch, add travellers and pay securely (UPI or card). Tell me a budget or dates and I'll shortlist treks you can book now.";
+  if(has(/altitude sickness|\bams\b|acute mountain|acclimat|how high|altitude/))
+    return "Altitude matters above ~3,000 m. Go slow, drink plenty of water, and spend a night acclimatising before climbing higher; a mild headache or breathlessness is common, but worsening symptoms mean descend. Our guides pace treks for safe acclimatisation — ask me about a specific trek's maximum altitude.";
+  if(has(/how (do i |to )?reach|how to get (to|there)|transport|nearest (airport|railway|station)|how far|pick ?up|cab|bus from/))
+    return "Most Uttarakhand treks start from Dehradun (nearest airport/railhead) with a shared drive to the basecamp village; Himachal treks usually route via Chandigarh or Manali. Tell me the trek and your city and I'll outline the route.";
+  if(has(/\batm\b|cash|network|signal|\bsim\b|internet|wifi|charge|electricity|connectivity/))
+    return "Carry enough cash — ATMs and card machines thin out past the last town — and expect mobile network to drop near the trailhead (BSNL/Jio last longest). Charge your devices and a power bank beforehand. Ask me about a specific trek's last connectivity point.";
+  if(has(/\bsafe\b|safety|solo|alone|women|woman|female|is it ok to go/))
+    return "Our treks run with certified guides, fixed safety protocols and group departures, which makes them well-suited to solo and women travellers — plenty join on their own. Tell me your dates and I'll point you to group departures you can join.";
   return null;
 }
 /* ---- offline planner engine: understands requirements, scores fit, explains why ---- */
@@ -9111,7 +9138,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='492';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='495';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
