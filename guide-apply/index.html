@@ -282,7 +282,7 @@
         <li><div class="pi">2</div><div><b>We reach out</b><br><small style="color:var(--muted)">By phone or email if it's a good fit.</small></div></li>
         <li><div class="pi">3</div><div><b>You start leading</b><br><small style="color:var(--muted)">We'll match you with upcoming departures.</small></div></li>
       </ul>
-      <p class="sub" style="text-align:center;margin-top:16px">We're setting up your explorer profile — taking you into the app to discover treks, trips &amp; the community while we review your application.</p>
+      <p class="sub" style="text-align:center;margin-top:16px">Taking you into the Tripomonk app to discover treks, trips &amp; the community while we review your application.</p>
       <p class="foot" style="margin-top:14px"><span class="msr">favorite</span> Welcome to the Tripomonk community</p>
     </div>
 
@@ -372,18 +372,20 @@ async function uploadTo(bucket,file){
 }
 async function pickPhoto(inp){
   const f=inp.files[0];if(!f)return;
+  if(f.size>10*1024*1024||!/^image\//.test(f.type||'')){$('photoMsg').textContent='Please choose a photo under 10 MB';inp.value='';return;}
   $('photoMsg').textContent='Uploading…';
   try{const r=await uploadTo('guide-photos',f);photoUrl=r.publicUrl;$('photoPrev').style.backgroundImage=`url('${photoUrl}')`;$('photoPrev').innerHTML='';$('photoMsg').textContent='Photo added ✓';}
   catch(e){$('photoMsg').textContent='Upload failed — try again';}
   inp.value='';
 }
 function renderDocs(){
-  $('docList').innerHTML=docs.map((d,i)=>`<div class="fileitem${d.path?'':' up'}"><span class="msr">${d.path?'description':'progress_activity'}</span><span class="nm">${d.name}</span>${d.path?`<span class="msr rm" onclick="rmDoc(${i})">close</span>`:''}</div>`).join('');
+  $('docList').innerHTML=docs.map((d,i)=>`<div class="fileitem${d.path?'':' up'}"><span class="msr">${d.path?'description':(/\((failed|skipped)/.test(d.name)?'error':'progress_activity')}</span><span class="nm">${String(d.name).replace(/[&<>"']/g,c=>"&#"+c.charCodeAt(0)+";")}</span>${d.path?`<span class="msr rm" onclick="rmDoc(${i})">close</span>`:''}</div>`).join('');
 }
 function rmDoc(i){docs.splice(i,1);renderDocs();}
 async function pickDocs(inp){
   const files=[...inp.files];inp.value='';
   for(const f of files){
+    if(f.size>15*1024*1024||!/^(image\/|application\/pdf)/.test(f.type||'')){docs.push({name:f.name+' (skipped — PDF or image under 15 MB only)',path:''});renderDocs();continue;}
     const item={name:f.name,path:''};docs.push(item);renderDocs();
     try{const r=await uploadTo('guide-docs',f);item.path=r.path;}catch(e){item.name=f.name+' (failed)';}
     renderDocs();
@@ -411,9 +413,6 @@ async function submit(){
   try{
     const {error}=await sb.from('guide_applications').insert(row);
     if(error)throw error;
-    /* Hand the applicant's basics to the main app (same origin) so it can auto-create a
-       ready-to-use explorer profile and welcome them in. */
-    try{localStorage.setItem('tmk_guide_signup',JSON.stringify({name:v('name'),phone,email:v('email'),photo:photoUrl||'',ts:Date.now()}));}catch(e){}
     $('prog').hidden=true;show('done');setFooter('done');startAppCountdown();
   }catch(e){
     btn.disabled=false;btn.innerHTML='Submit application <span class="msr">send</span>';
