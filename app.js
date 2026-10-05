@@ -3314,14 +3314,42 @@ function computeTotal(){const t=cart.trek;const base=cart.total*cart.pax;const g
 async function refreshPayQuote(){
   const t=cart.trek;if(!t)return;
   const gearIds=(gearSelected(t)||[]).map(g=>g.id);
-  let q;try{q=await rzpCall('quote',{booking:{trek:t.n,date:cart.date,pax:cart.pax,gear_ids:gearIds}});}catch(e){return;}
+  const token=await authToken();
+  let q;try{q=await rzpCall('quote',{booking:{trek:t.n,date:cart.date,pax:cart.pax,gear_ids:gearIds},token});}catch(e){return;}
   if(!q||q.error||typeof q.paid!=='number'||typeof q.total!=='number')return;
-  const base=Number(q.base)||0,gear=Number(q.gearTotal)||0,sum=Number(q.total)||0,now=Number(q.paid)||0,bal=sum-now;
+  const base=Number(q.base)||0,gear=Number(q.gearTotal)||0,sum=Number(q.total)||0,now=Number(q.paid)||0;
   cart.grand=sum;cart.gearTotal=gear;cart.payNow=now;
+  /* wallet (gift-card money): pays as much as it can, up to 100% of the trip */
+  cart.walletBal=Number(q.wallet_balance)||0;cart.walletUse=Number(q.wallet_use)||0;cart.cashNow=(q.cash_now!=null)?Number(q.cash_now):now;
+  if(cart.useWallet==null)cart.useWallet=cart.walletBal>0;      /* on by default when there's money in it */
+  paintPayment(base,gear,sum,now);
+}
+function toggleWalletPay(){cart.useWallet=!cart.useWallet;paintPayment(cart._pyBase,cart.gearTotal,cart.grand,cart.payNow);}
+function paintPayment(base,gear,sum,now){
+  cart._pyBase=base;
+  const use=!!(cart.useWallet&&cart.walletUse>0);
+  const fromWallet=use?cart.walletUse:0, cash=use?cart.cashNow:now, paidNow=fromWallet+cash, bal=Math.max(0,sum-paidNow);
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=INR(v);};
   set('payAmt',sum);set('pyBase',base);
   const gr=document.getElementById('pyGearRow');if(gr){if(gear>0){gr.style.display='flex';set('pyGear',gear);}else gr.style.display='none';}
-  set('pyNow',now);set('pyBal',bal);set('payNow',now);
+  set('pyNow',paidNow);set('pyBal',bal);
+  const nowLbl=document.querySelector('#payment .ps-now span');
+  if(nowLbl)nowLbl.textContent=use?(bal===0?'Paid in full now':'Pay now'):'Pay now · gear in full + 25% trek';
+  /* wallet row (only when the account has wallet money) */
+  const pv=document.getElementById('payment');let w=document.getElementById('pyWallet');
+  if(cart.walletBal>0){
+    if(!w){w=document.createElement('div');w.id='pyWallet';w.className='panel py-wallet';w.setAttribute('role','button');w.tabIndex=0;w.onclick=toggleWalletPay;
+      const sum1=pv.querySelector('.paysum');if(sum1)sum1.after(w);}
+    w.innerHTML='<span class="msr" aria-hidden="true">account_balance_wallet</span>'
+      +'<div class="pw-tx"><b>Use wallet balance</b><small>'+INR(cart.walletBal)+' available'+(use?' · '+INR(fromWallet)+' applied':'')+'</small></div>'
+      +'<span class="tgl '+(use?'on':'')+'"><i></i></span>';
+  }else if(w)w.remove();
+  /* wallet covers everything due now → no card/UPI step */
+  const cashOnly=use&&cash===0;
+  pv.querySelectorAll('.pay').forEach(x=>{x.style.display=cashOnly?'none':'';});
+  const rzTag=pv.querySelector('.paysum-head .tag');if(rzTag)rzTag.style.display=cashOnly?'none':'';
+  const btn=pv.querySelector('.cta .btn');
+  if(btn)btn.innerHTML=cashOnly?('Confirm with wallet · '+INR(fromWallet)):('Pay <span id="payNow">'+INR(cash)+'</span> &amp; Confirm');
 }
 function selPay(el){document.querySelectorAll('#payment .pay').forEach(p=>p.classList.remove('on'));el.classList.add('on');}
 
@@ -3353,16 +3381,23 @@ async function confirmBooking(){
   const c=cart.contact||getContact()||{};
   const name=c.name||(document.getElementById('leadName')?document.getElementById('leadName').value:'').trim()||'Guest';
   if(!c.phone||!c.email||!c.emName||!c.emPhone){note('Please complete your contact and emergency details first.','Details required');go('travellers');return;}
-  if(!window.Razorpay&&!(await loadRazorpay())){note('Payment gateway is loading — please wait a moment and try again.','Please wait');return;}
   if(!sbOn){note('Payment service not configured. Please contact Tripomonk.','Payment error');return;}
+  if(confirmBooking._busy)return;            /* no double taps → no double booking */
   const gearIds=(cart.trek?gearSelected(cart.trek):[]).map(g=>g.id);
   const bookingReq={kind:'trek',trek:t.n,date:cart.date,pax:cart.pax,name:name,email:c.email||getUserEmail()||'',phone:c.phone||'',emergency_name:c.emName||'',emergency_phone:c.emPhone||'',gear_ids:gearIds};
   let advanceAmt=Math.round(total*0.25);
   let pricedBooking=null;
-  /* 1) create a server-side order; server calculates the trusted amount */
-  let order;
-  try{order=await rzpCall('create',{booking:bookingReq});pricedBooking=order&&order.booking?order.booking:null;if(pricedBooking){advanceAmt=Number(pricedBooking.paid)||advanceAmt;}}catch(e){order=null;}
+  /* 1) create a server-side order; server calculates the trusted amount (and the wallet part) */
+  const useWallet=!!(cart.useWallet&&cart.walletUse>0);
+  const token=useWallet?await authToken():'';
+  const attemptId=Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+  let order;confirmBooking._busy=true;
+  try{order=await rzpCall('create',{booking:bookingReq,use_wallet:useWallet,token,attempt_id:attemptId});pricedBooking=order&&order.booking?order.booking:null;if(pricedBooking){advanceAmt=Number(pricedBooking.paid)||advanceAmt;}}catch(e){order=null;}
+  confirmBooking._busy=false;
+  /* wallet paid everything due now — booking already confirmed on the server */
+  if(order&&order.ok&&order.wallet_only){finishBooking(order.id,order.booking,bookingReq,name,total,advanceAmt);return;}
   if(!order||!order.order_id){note((order&&order.error)?order.error:'Could not start payment. Please try again.','Payment error');return;}
+  if(!window.Razorpay&&!(await loadRazorpay())){note('Payment gateway is loading — please wait a moment and try again.','Please wait');return;}
   const rzp=new window.Razorpay({
     key: order.key_id,
     order_id: order.order_id,
@@ -3387,18 +3422,24 @@ async function confirmBooking(){
         note('Payment received but we could not verify it instantly. Our team will confirm your seat shortly — please save your payment ID: '+(response.razorpay_payment_id||'—'),'Verification pending');
         return;
       }
-      saveUserName(name);
-      const sbk=(res&&res.booking)||pricedBooking||bookingReq;
-      const b={id:response.razorpay_payment_id,name:sbk.name||name,trek:sbk.trek||t.n,img:t.img,date:sbk.date||cart.date,pax:sbk.pax||cart.pax,total:sbk.total||total,paid:sbk.paid||advanceAmt,ts:Date.now(),status:'Confirmed',checkedIn:false,paymentId:response.razorpay_payment_id};
-      const all=getBookings();all.unshift(b);saveBookings(all);cart.booking=b;
-      logEvent('booking',{trek:b.trek,amount:Number(b.paid)||0});
-      if(window.fbTrack)window.fbTrack('Purchase',{value:Number(b.total)||Number(b.paid)||0,currency:'INR',content_name:b.trek||'',content_type:'product'});
-      document.getElementById('scName').textContent=t.n;
-      showTicket(b);go('success');
+      finishBooking(response.razorpay_payment_id,(res&&res.booking)||pricedBooking,bookingReq,name,total,advanceAmt);
     },
     modal:{ondismiss:function(){note('Payment cancelled — your seat is not yet confirmed.','Cancelled');}}
   });
   rzp.open();
+}
+/* a confirmed booking (paid by Razorpay, wallet, or both) → save it and show the e-ticket */
+function finishBooking(id,serverBooking,bookingReq,name,total,advanceAmt){
+      const t=cart.trek;
+      saveUserName(name);
+      const sbk=serverBooking||bookingReq;
+      const b={id:id,name:sbk.name||name,trek:sbk.trek||t.n,img:t.img,date:sbk.date||cart.date,pax:sbk.pax||cart.pax,total:sbk.total||total,paid:sbk.paid||advanceAmt,ts:Date.now(),status:'Confirmed',checkedIn:false,paymentId:response.razorpay_payment_id};
+      const all=getBookings();all.unshift(b);saveBookings(all);cart.booking=b;
+      logEvent('booking',{trek:b.trek,amount:Number(b.paid)||0});
+      if(window.fbTrack)window.fbTrack('Purchase',{value:Number(b.total)||Number(b.paid)||0,currency:'INR',content_name:b.trek||'',content_type:'product'});
+      document.getElementById('scName').textContent=t.n;
+      cart.useWallet=null;
+      showTicket(b);go('success');
 }
 function showTicket(b){const t=treks.find(x=>x.n===b.trek)||cart.trek;
   document.getElementById('tkPh').style.backgroundImage=`url('${b.img||t.img}')`;
@@ -5892,7 +5933,12 @@ async function buyGiftCard(){
       if(!res||!res.ok){note('Payment received — your gift code is being generated. If it doesn\'t appear, contact us with payment ID: '+(response.razorpay_payment_id||'—'),'Almost done');return;}
       const code=res.code||'';
       try{if(code&&navigator.clipboard)navigator.clipboard.writeText(code);}catch(e){}
-      note('Your '+inr(amount)+' '+card.name+' gift card is ready. Code: '+code+' (copied).'+(card.perk?' Includes: '+card.perk+' — quote it when booking.':'')+' Redeem it in your Wallet, or share the code with a friend to gift it.','Gift card ready').then(()=>go('wallet'));
+      note('Your '+inr(amount)+' '+card.name+' gift card is ready. Code: '+code+' (copied).'+(card.perk?' Includes: '+card.perk+' — quote it when booking.':'')+' Redeem it in your Wallet, or share the code with a friend to gift it.','Gift card ready').then(async()=>{
+        if(code&&await askConfirm('Add '+inr(amount)+' to your own wallet now? You can use it to pay for any trip — up to the full amount. (Skip this if the card is a gift for someone else.)','Add to my wallet')){
+          let r2;try{r2=await rzpCall('redeem_giftcard',{code,token:await authToken()});}catch(e){r2=null;}
+          if(r2&&r2.ok)toast(inr(r2.amount||amount)+' added to your wallet');else note((r2&&r2.error)||'Could not add it right now — redeem the code from your Wallet.','Not added');
+        }
+        go('wallet');});
     },
     modal:{ondismiss:function(){restore();note('Payment cancelled — nothing was charged.','Cancelled');}}
   });
@@ -8917,7 +8963,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='474';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='475';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>

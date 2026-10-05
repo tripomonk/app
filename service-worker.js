@@ -1,7 +1,7 @@
 /* Tripomonk service worker — caches the app shell so it loads instantly
    and works offline. Bump CACHE when you change index.html / app.js so
    users get the new version. */
-const CACHE = 'tripomonk-v474';
+const CACHE = 'tripomonk-v475';
 const ASSETS = [
   './',
   './index.html',
@@ -13,8 +13,14 @@ const ASSETS = [
   './icons/icon-maskable-512.png'
 ];
 
+// cache:'reload' = always fetch the FRESH file from the server, never the browser's HTTP
+// cache. GitHub Pages serves everything with max-age=600, so right after a deploy the new
+// worker could store the new app.js next to a 10-minute-old index.html (all the CSS lives
+// there) — new code on old styles is what stretched the screen after updates.
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE)
+    .then(c => c.addAll(ASSETS.map(u => new Request(u, { cache: 'reload' }))))
+    .then(() => self.skipWaiting()));
 });
 
 // Photos live in their own cache with its own lifetime. They are content-addressed
@@ -95,7 +101,10 @@ self.addEventListener('fetch', e => {
   // but refresh the cached copy in the background so the next load is current.
   e.respondWith(
     caches.match(e.request).then(cached => {
-      const network = fetch(e.request).then(res => {
+      // no-cache: revalidate with the server (cheap 304 when unchanged) so the background
+      // refresh can't re-store a stale copy from the HTTP cache either. (A navigation Request
+      // can't be re-issued with options — the browser throws — so page loads go by URL.)
+      const network = fetch(e.request.mode === 'navigate' ? e.request.url : e.request, { cache: 'no-cache' }).then(res => {
         // Only cache SUCCESSFUL responses. Previously a 404 (e.g. an asset that didn't
         // exist yet, like a logo added later) got cached and then served forever, so the
         // file stayed "missing" even after it was added. Never store a non-OK response.
