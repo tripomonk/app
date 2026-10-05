@@ -389,6 +389,8 @@ footer a.lk{color:var(--gold-lt)}
     $('bkName').textContent='Reserve · '+cur.name;$('bkFor').textContent=cur.forw;
     $('bkErr').textContent='';$('bkForm').style.display='';$('bkDone').style.display='none';
     $('payBtn').disabled=false;refreshSumm();
+    /* reservations close when the package starts (23 Nov 2026, IST) — the server enforces this too */
+    if(Date.now()+5.5*3600000>=Date.UTC(2026,10,23)){$('payBtn').disabled=true;$('payTx').textContent='Reservations closed';$('bkErr').textContent='Dev Diwali 2026 reservations have closed. WhatsApp us for our next journey.';}
     $('ov').classList.add('show');document.body.style.overflow='hidden';
   };
   window.closeBook=function(){$('ov').classList.remove('show');document.body.style.overflow='';};
