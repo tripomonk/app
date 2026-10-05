@@ -2290,7 +2290,7 @@ function trekCardCF(t,i){return `<div class="fcx" data-cf="${i}" onclick="cfTapC
     <div class="fcx-stats">
       <div><small>Distance</small><b>${esc(t.dist||'—')}</b></div>
       <div><small>Best time</small><b>${esc(t.best||'—')}</b></div>
-      <div><small>Rating</small><b>★ ${t.r}</b></div>
+      <div><small>Rating</small><b>${ratingText(t)}</b></div>
     </div>
     <div class="fcx-foot"><div><small>${priceOf(t).off?priceOf(t).off+'% OFF · from':'Total Price'}</small><div class="fcx-price">${priceTag(t)}</div></div>
       <button class="fcx-go" onclick="event.stopPropagation();cfOpenCard(this)"><span class="msr">hiking</span> View trek</button></div>
@@ -2463,8 +2463,8 @@ function renderCompare(){
       ['Fitness needed',t=>fitnessOf(t.lvl)],
       ['Best season',t=>t.best||'—'],
       ['Region',t=>t.region||'—'],
-      ['Rating',t=>t.r?('★ '+t.r):'—'],
-      ['Reviews',t=>{if(t.rev==null||t.rev==='')return '—';const n=Number(t.rev);return isNaN(n)?String(t.rev):n.toLocaleString('en-IN');}],
+      ['Rating',t=>ratingText(t)],
+      ['Reviews',t=>{const c=realRating(t).count;return c?c.toLocaleString('en-IN'):'—';}],
       ['Beginner friendly',t=>isBeginnerFriendly(t.lvl)?'Yes':'—']
     ];
     const head=`<tr><th class="cmp-corner"></th>${sel.map(t=>`<th class="${t.n===best.n?'best':''}"><div class="cmp-th-img" style="background-image:url('${esc(t.img||'')}')"></div><b>${esc(t.n)}</b>${t.n===best.n?'<span class="cmp-best-tag">Best match</span>':''}</th>`).join('')}</tr>`;
@@ -2619,7 +2619,7 @@ function tripCardCF(t,i){
       <div class="fcx-stats">
         <div><small>Duration</small><b>${t.days?esc(String(t.days))+' days':esc(t.dur||'—')}</b></div>
         <div><small>Best time</small><b>${esc(t.best||'—')}</b></div>
-        <div><small>Rating</small><b>★ ${esc(String(t.r||'—'))}</b></div>
+        <div><small>Rating</small><b>${ratingText(t)}</b></div>
       </div>
       <div class="fcx-foot"><div><small>${priceOf(t).off?priceOf(t).off+'% OFF · from':'From'}</small><div class="fcx-price">${priceTag(t)}</div></div>
         <button class="fcx-go" onclick="event.stopPropagation();cfOpenCard(this)">View trip</button></div>
@@ -3068,8 +3068,15 @@ function renderItinerary(){const t=cart.trek,it=trekItin(t);
 }
 
 /* A star rating is only shown when it is backed by a review count — never "★ 4.7 (0)". */
-function revCount(t){const v=String((t&&t.rev)==null?'':t.rev).trim().toLowerCase();const m=v.match(/^([\d.,]+)\s*(k)?$/);if(!m)return 0;const n=parseFloat(m[1].replace(/,/g,''));return isNaN(n)?0:Math.round(n*(m[2]?1000:1));}
-function rateHTML(t,withWord){return revCount(t)>0&&t.r?`<span class="star">★</span> <b>${esc(String(t.r))}</b> <span class="g" style="color:var(--muted)">(${esc(String(t.rev))}${withWord?' reviews':''})</span>`:'<span class="g" style="color:var(--muted)">New</span>';}
+/* Stars come ONLY from real customer reviews (the reviews table, via reviewsData) — never from
+   the catalogue's typed-in rating/review numbers. No reviews → "New". (Decision 2026-10-05.) */
+function realRating(t){const n=String((t&&t.n)||'').toLowerCase();if(!n)return {count:0,avg:0};
+  const rs=(reviewsData||[]).filter(r=>String(r.trek||'').toLowerCase()===n);
+  const avg=rs.length?rs.reduce((a,r)=>a+(+r.rating||0),0)/rs.length:0;
+  return {count:rs.length,avg:Math.round(avg*10)/10};}
+function revCount(t){return realRating(t).count;}
+function rateHTML(t,withWord){const rr=realRating(t);return rr.count?`<span class="star">★</span> <b>${rr.avg.toFixed(1)}</b> <span class="g" style="color:var(--muted)">(${rr.count}${withWord?(rr.count===1?' review':' reviews'):''})</span>`:'<span class="g" style="color:var(--muted)">New</span>';}
+function ratingText(t){const rr=realRating(t);return rr.count?'★ '+rr.avg.toFixed(1):'New';}
 /* Coalesce concurrent calls: while one request is in flight, every other caller gets the
    same promise instead of firing a duplicate (home used to fetch guides/hosts 4× on load). */
 function shareInflight(fn){let p=null;return function(...a){if(p)return p;p=Promise.resolve().then(()=>fn.apply(this,a));p.then(()=>{p=null;},()=>{p=null;});return p;};}
@@ -3876,6 +3883,7 @@ async function loadReviews(){
   }catch(e){/* table not deployed yet, or offline — fall back to the local cache */}}
   reviewsData=list.map(r=>({...r,date:r.date||reviewDateLabel(r.ts||Date.now())}));
   repaintReviews();
+  if(reviewsData.length&&cur==='home'&&typeof renderHome==='function'){try{renderHome();}catch(e){}}
   return reviewsData;
 }
 /* add a review (used by both the user modal and admin manual entry). Optimistic:
@@ -9084,7 +9092,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='486';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='487';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
