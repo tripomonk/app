@@ -2486,10 +2486,28 @@ function renderCompare(){
     ${list}`;
   hydrate(box);
 }
+let _planTypeStarted=false;
+/* "Plan my trip with AI" types out letter-by-letter with a blinking caret, then loops. */
+function planTypeStart(){
+  const el=document.getElementById('homePlanTxt'); if(!el||_planTypeStarted)return; _planTypeStarted=true;
+  const full='Plan my trip with AI';
+  try{ if(matchMedia('(prefers-reduced-motion: reduce)').matches){el.textContent=full;return;} }catch(e){}
+  (async function loop(){
+    try{
+      while(true){
+        for(let i=1;i<=full.length;i++){el.textContent=full.slice(0,i);await _plSleep(60);}
+        await _plSleep(2600);
+        for(let i=full.length;i>=0;i--){el.textContent=full.slice(0,i);await _plSleep(28);}
+        await _plSleep(650);
+      }
+    }catch(e){el.textContent=full;}
+  })();
+}
 function renderHome(){
   const hav=document.getElementById('homeUserAv');
   if(hav)setAvatarEl(hav,getSavedName()||'Explorer',getSavedPhoto());
   const hg=document.getElementById('homeGreet');if(hg){const nm=getSavedName();hg.textContent=nm?'Hello, '+nm:'Hello there';}
+  planTypeStart();
   renderHomeHero();
   /* Popular Treks is a small featured rail — admin's picks (Admin → Home) float to the
      front, then bookable, then a few coming-soon. Sorting rather than filtering keeps the
@@ -7152,7 +7170,10 @@ function plRecommend(ql,ctx){
     /* region we don't serve → best fit elsewhere, no dead end */
     const alt=pool.map(t=>({t,score:plScore(t,Object.assign({},ctx,{region:null})).score})).sort((a,b)=>b.score-a.score).slice(0,3);
     recsArr=alt;mode='alt';
-    reply=`We don't run trips in ${_plCap(ctx.region)} yet — but going on the rest of what you want, here's what I'd genuinely recommend instead:`;
+    /* the region may simply be between seasons (all its trips Coming soon) — say that, not "we don't go there" */
+    const rg=String(ctx.region).toLowerCase();const soonThere=treks.some(t=>t.soon&&((t.region||'')+' '+(t.n||'')).toLowerCase().includes(rg));
+    reply=soonThere?`Our ${_plCap(ctx.region)} treks are coming soon — open one and tap “Notify me” to hear first when dates open. Bookable right now, going on the rest of what you want:`
+      :`We don't run trips in ${_plCap(ctx.region)} yet — but going on the rest of what you want, here's what I'd genuinely recommend instead:`;
   }else if(!anyKnown){
     recsArr=pool.filter(t=>t.pop).slice(0,3).map(t=>({t,score:0}));
     reply="Here are a few of our most-loved trips to start with — tell me your budget or dates and I'll tailor these to you:";
@@ -9048,7 +9069,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='478';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='481';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -9532,7 +9553,17 @@ let curAct=null;
 /* what the user picked on this screen */
 let actSel={date:'',slot:'',adults:1,children:0,exp:'Beginner'};
 const EXP_LEVELS=['Beginner','Intermediate','Expert'];
-function todayISO(d){const t=new Date();t.setDate(t.getDate()+(d||0));return t.toISOString().slice(0,10);}
+/* local calendar date (toISOString() is UTC — before 5:30am IST it returned yesterday) */
+function todayISO(d){const t=new Date();t.setDate(t.getDate()+(d||0));return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');}
+/* a slot can be booked unless it is in the past, or starts within the next hour today */
+function slotOpen(date,slot){
+  if(!date)return true;
+  const today=todayISO(0);
+  if(date<today)return false;
+  if(date>today)return true;
+  const m=String(slot||'').match(/(\d{1,2}):(\d{2})/);if(!m)return true;
+  const now=new Date();return (+m[1])*60+(+m[2]) > now.getHours()*60+now.getMinutes()+60;
+}
 
 function openAct(id){
   const a=actById(id);if(!a)return;
@@ -9564,8 +9595,13 @@ function renderAct(){
   dt.min=todayISO(0);dt.value=actSel.date||'';
 
   /* slots */
-  document.getElementById('actSlots').innerHTML=(a.slots||[]).map(s=>
-    `<span class="tap ${actSel.slot===s?'sel':''}" onclick="pickSlot('${s}')">${s}</span>`).join('');
+  /* today's slots that have passed (or start within the hour) can't be picked */
+  if(actSel.slot&&!slotOpen(actSel.date,actSel.slot))actSel.slot=(a.slots||[]).find(x=>slotOpen(actSel.date,x))||'';
+  const anyOpen=(a.slots||[]).some(x=>slotOpen(actSel.date,x));
+  document.getElementById('actSlots').innerHTML=(a.slots||[]).map(s=>slotOpen(actSel.date,s)
+    ?`<span class="tap ${actSel.slot===s?'sel':''}" onclick="pickSlot('${s}')">${s}</span>`
+    :`<span class="tap off" aria-disabled="true" title="This time has passed">${s}</span>`).join('')
+    +(anyOpen?'':'<small class="act-noslot">No more slots today — pick another date.</small>');
 
   /* participants */
   document.getElementById('actAdultAge').textContent='18+';
@@ -9599,7 +9635,7 @@ function renderAct(){
   recalcAct();
   hydrate(document.getElementById('act'));
 }
-function pickSlot(s){actSel.slot=s;renderAct();}
+function pickSlot(s){if(!slotOpen(actSel.date,s))return;actSel.slot=s;renderAct();}
 function pickExp(l){actSel.exp=l;renderAct();}
 function stepPax(kind,delta){
   const a=actById(curAct);if(!a)return;
@@ -9622,7 +9658,8 @@ function actSubtotal(){
 }
 function recalcAct(){
   const a=actById(curAct);if(!a)return;
-  const dt=document.getElementById('actDate');if(dt)actSel.date=dt.value||'';
+  const dt=document.getElementById('actDate');
+  if(dt){const was=actSel.date;actSel.date=dt.value||'';if(was!==actSel.date){renderAct();return;}}
   const total=actSubtotal();
   document.getElementById('actTotal').textContent=INR(total);
   document.getElementById('actPriceSub').textContent=actPax()+(actPax()===1?' person':' people')+' · '+INR(a.price)+' each';
@@ -9645,6 +9682,7 @@ async function bookActNow(){
   recalcAct();
   if(!actSel.date){note('Please choose a date for your activity.','Pick a date');return;}
   if(!actSel.slot){note('Please choose a time slot.','Pick a slot');return;}
+  if(!slotOpen(actSel.date,actSel.slot)){note('That time has already passed. Please pick a later slot or another date.','Pick another slot');renderAct();return;}
   const pax=actPax();
   if(pax<1){note('Add at least one participant.','Who\'s going?');return;}
   if(!isLoggedIn()){note('Please sign in to book this activity.','Sign in required').then(()=>{_loginReturn='act';go('login');});return;}

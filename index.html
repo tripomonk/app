@@ -3577,6 +3577,17 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   .dd-banner .dd-tx small{display:block;font-size:12px;color:rgba(255,255,255,.74);margin-top:1px}
   .dd-banner .dd-ch{color:#ffd98a;font-size:22px;flex:0 0 auto}
   .ai-badge{margin-left:auto;background:linear-gradient(120deg,var(--accent),var(--accent2));color:#fff;font-size:10px;font-weight:800;letter-spacing:.06em;padding:3px 8px;border-radius:8px}
+  /* mini animated orb in the "Plan my trip" bar (replaces the flat AI badge).
+     Uses .pl-orb.search-orb (higher specificity) so the compact size beats the base .pl-orb rules. */
+  .pl-orb.search-orb{width:30px;height:30px;margin:0 0 0 auto;flex:0 0 auto}
+  .pl-orb.search-orb .glow{display:none}
+  .pl-orb.search-orb .ball{box-shadow:0 0 14px -3px rgba(107,61,240,.75),inset -3px -4px 8px rgba(30,16,70,.5),inset 3px 4px 7px rgba(255,255,255,.4);animation:orbBadge 3.6s ease-in-out infinite}
+  .pl-orb.search-orb .eye{width:12%;height:26%;min-width:0;box-shadow:0 0 4px rgba(255,255,255,.5)}
+  @keyframes orbBadge{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+  /* typewriter text in the Plan-my-trip bar */
+  .home-search .plan-type{white-space:nowrap;border-right:2px solid rgba(255,255,255,.5);padding-right:2px;animation:planCaret 1.05s steps(1) infinite}
+  @keyframes planCaret{50%{border-color:transparent}}
+  @media (prefers-reduced-motion:reduce){.home-search .plan-type{border-right:0;animation:none}}
   #planner.active{display:flex;flex-direction:column;padding:0}
   #planner .bar{flex:none;padding:calc(var(--safe-top) + 10px) 16px 10px;display:flex;align-items:center}
   .planner-chat{flex:1;overflow-y:auto;padding:8px 16px 6px;display:flex;flex-direction:column;gap:10px}
@@ -3745,6 +3756,8 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   .pl-intro>.pl-orb{animation:plIntroIn .5s .06s ease both}
   .pl-intro>.pl-chips{animation:plIntroIn .5s .12s ease both}
   @media (prefers-reduced-motion:reduce){.pl-in,.pl-cards.pl-in-cards>*,.pl-intro>*{animation:none}}
+  #actSlots .tap.off{opacity:.38;text-decoration:line-through;cursor:not-allowed;pointer-events:none}
+  .act-noslot{display:block;width:100%;margin-top:6px;color:var(--muted);font-size:12px}
 </style>
 </head>
 <body>
@@ -3786,7 +3799,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
       <div><div class="greet" id="homeGreet">Hello there</div><h2 class="htitle">Find your next <span>Himalayan trek</span></h2></div>
       <button onclick="go('community')"><span class="ic" data-i="community"></span></button>
     </div>
-    <div class="search home-search" onclick="go('planner')"><span class="ic" data-i="search"></span><span>Plan my trip</span><span class="ai-badge">AI</span></div>
+    <div class="search home-search" onclick="go('planner')"><span class="ic" data-i="search"></span><span id="homePlanTxt" class="plan-type">Plan my trip with AI</span><span class="pl-orb search-orb" aria-hidden="true"><span class="glow"></span><span class="ball"><span class="shine"></span><span class="eyes"><i class="eye"></i><i class="eye"></i></span></span></span></div>
     <div class="dd-banner" onclick="openDevDiwali()"><span class="dd-ic msr">local_fire_department</span><div class="dd-tx"><b>Dev Deepawali 2026 · Varanasi</b><small>A thousand diyas on the Ganga — reserve your place</small></div><span class="dd-ch msr">chevron_right</span></div>
     <div id="homeHero"></div>
     <div class="quick" id="quick"></div>
