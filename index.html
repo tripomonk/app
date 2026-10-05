@@ -3767,6 +3767,14 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   .offline-bar.show{transform:translate(-50%,0)}
   .offline-bar.on{background:#123a26;border-color:rgba(80,220,140,.35);color:#bff3d4}
   .offline-bar .msr{font-size:18px;flex:none}
+  /* ---- accessibility: WCAG AA text contrast (≥ 4.5:1) — same hues, a shade deeper ---- */
+  .wa-btn,.em-cta.wa{background:#0e7a42}                       /* white text 5.4:1 (was 2.0 / 2.8) */
+  .wa-btn{box-shadow:0 10px 24px -10px rgba(14,122,66,.6)}
+  .em-cta.call{background:#d32f2f}                             /* emergency Call 5.0:1 (was 3.3) */
+  .chip.on{background:#2556d8;border-color:#2556d8}            /* 6.2:1 (was 4.49) */
+  .batch.on .calb{background:#2556d8;border-color:#2556d8}
+  .batch.on .calb .mo{color:#fff}                              /* month label 6.2:1 (was 3.7) */
+  .pr-was{color:var(--muted)}                                  /* struck-out old price (was 3.5) */
 </style>
 </head>
 <body>
@@ -3854,7 +3862,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   <!-- EXPLORE -->
   <section class="view" id="explore" data-tab="explore">
     <div class="bar"><div class="rb round" onclick="go('home')"><span class="ic" data-i="menu"></span></div><h1>Explore Treks</h1></div>
-    <div class="search" onclick="go('search')"><span class="ic" data-i="search"></span><span style="flex:1">Search treks or places</span><span class="ic search-filter" data-i="sliders" onclick="event.stopPropagation();go('filters')"></span></div>
+    <div class="search" onclick="go('search')"><span class="ic" data-i="search"></span><button type="button" onclick="event.stopPropagation();go('search')" style="all:unset;flex:1;cursor:pointer;color:inherit;font:inherit">Search treks or places</button><button type="button" class="ic search-filter" data-i="sliders" aria-label="Filters" onclick="event.stopPropagation();go('filters')" style="background:none;border:0;padding:0;color:inherit;cursor:pointer"></button></div>
     <div class="sec"><h2>By Region</h2></div>
     <div class="regions" id="regions"></div>
     <div class="sec" style="margin-top:18px"><h2>By Difficulty</h2></div>

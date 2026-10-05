@@ -9107,7 +9107,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='490';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='491';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -10394,7 +10394,10 @@ async function loadMyGuide(){
        Dashboard. Identity is user_id (above) or the edge fn's authoritative EMAIL link (below). */
     /* 2) authoritative — ask the guide edge fn, which auto-links this account by EMAIL
           (guide_contacts / approved application) and returns the guide even if user_id wasn't set */
-    if(!_myGuide){try{const sb=getSupaClient();if(sb){const rr=await sb.functions.invoke('guide',{body:{action:'me'}});if(rr&&rr.data&&rr.data.ok&&rr.data.guide){const gid=rr.data.guide.id;_myGuide=(guides||[]).find(g=>String(g.id)===String(gid))||rr.data.guide;}}}catch(e){}}
+    if(!_myGuide){try{const sb=getSupaClient();if(sb){const rr=await sb.functions.invoke('guide',{body:{action:'me'}});if(rr&&rr.data&&rr.data.ok&&rr.data.guide){const gid=rr.data.guide.id;_myGuide=(guides||[]).find(g=>String(g.id)===String(gid))||rr.data.guide;if(rr.data.guide.day_rate!==undefined)_myGuide.day_rate=rr.data.guide.day_rate;}}}catch(e){}}
+    /* day_rate is private (SQL-guide-rate-private.sql) — the public guide list never has it,
+       so a guide gets ONLY their own rate from the guide edge function */
+    else if(_myGuide.day_rate===undefined){try{const sb=getSupaClient();const rr=sb&&await sb.functions.invoke('guide',{body:{action:'me'}});if(rr&&rr.data&&rr.data.ok&&rr.data.guide&&String(rr.data.guide.id)===String(_myGuide.id))_myGuide.day_rate=rr.data.guide.day_rate??null;}catch(e){}}
   }catch(e){_myGuide=null;}
   return _myGuide;
 }
@@ -10689,7 +10692,7 @@ async function _loadGuides(force){
   try{
     /* signed out → only the public columns (SQL-privacy-tighten.sql hides day_rate from anon;
        select('*') would be refused). Keep this list in sync with that grant. */
-    const cols=isLoggedIn()?'*':'id,application_id,name,photo,bio,city,state,region,languages,experience,certifications,years,treks_led,instagram,verified,user_id,sort,created_at';
+    const cols='id,application_id,name,photo,bio,city,state,region,languages,experience,certifications,years,treks_led,instagram,verified,user_id,sort,created_at';   /* never day_rate */
     const r=await sb.from('guides').select(cols).order('sort',{ascending:true});
     if(!r.error&&Array.isArray(r.data))guides=r.data;
     _guidesLoaded=true;
