@@ -333,14 +333,17 @@ function closeOv(){$('#drawer').classList.remove('show');$('#modalOv').classList
 document.querySelectorAll('[data-close]').forEach(e=>e.addEventListener('click',closeOv));
 function modal(html){$('#modalBox').classList.remove('modal-wide');$('#modalBox').innerHTML=html;$('#modalOv').classList.add('show');}
 function modalW(html){$('#modalBox').classList.add('modal-wide');$('#modalBox').innerHTML=html;$('#modalOv').classList.add('show');}
-function confirmDo(msg,cb){modal(`<h3>Please confirm</h3><p class="muted" style="font-size:13.5px">${esc(msg)}</p><div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="cfDo">Confirm</button></div>`);$('#cfDo').onclick=()=>{closeOv();cb();};}
+function confirmDo(msg,cb){modal(`<h3>Please confirm</h3><p class="muted" style="font-size:13.5px">${esc(msg).replace(/\n/g,'<br>')}</p><div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="cfDo">Confirm</button></div>`);$('#cfDo').onclick=()=>{closeOv();cb();};}
 
 async function adminCall(action,data){
   const { data:{session} }=await sb.auth.getSession();
   const token=session?session.access_token:CFG.ANON;
   try{const res=await fetch(CFG.URL+'/functions/v1/admin',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token,apikey:CFG.ANON},body:JSON.stringify(Object.assign({action},data||{}))});return await res.json();}catch(e){return {error:String(e&&e.message||e)};}
 }
-async function qtbl(table,build){let b=sb.from(table).select('*');if(build)b=build(b);const {data,error}=await b;return {rows:data||[],error};}
+/* _navSeq bumps on every section switch. A load that finishes after the admin has moved on
+   never resolves, so a slow section can't paint over the one now on screen. */
+let _navSeq=0;
+async function qtbl(table,build){const seq=_navSeq;let b=sb.from(table).select('*');if(build)b=build(b);const {data,error}=await b;if(seq!==_navSeq)return new Promise(()=>{});return {rows:data||[],error};}
 
 /* auth */
 async function boot(){const { data:{session} }=await sb.auth.getSession();if(session&&await gate(session.user))return afterAuth();showLogin();}
@@ -456,7 +459,7 @@ const SEC={
   settings:['Settings','Console info',renderSettings],
 };
 let _bk=null;
-function select(sec){if(!allowedFor(sec))sec='dashboard';const S=SEC[sec];if(!S)return;document.querySelectorAll('.nav-i').forEach(n=>n.classList.toggle('on',n.dataset.sec===sec));$('#secTitle').textContent=S[0];$('#secSub').textContent=S[1];toggleMenu(false);$('#content').innerHTML='<div class="panel"><div class="skel" style="width:40%;margin-bottom:12px"></div><div class="skel" style="width:80%;margin-bottom:8px"></div><div class="skel" style="width:70%"></div></div>';if(typeof admMarkSeenFor==='function')admMarkSeenFor(sec);S[2]();}
+function select(sec){if(!allowedFor(sec))sec='dashboard';const S=SEC[sec];if(!S)return;_navSeq++;document.querySelectorAll('.nav-i').forEach(n=>n.classList.toggle('on',n.dataset.sec===sec));$('#secTitle').textContent=S[0];$('#secSub').textContent=S[1];toggleMenu(false);$('#content').innerHTML='<div class="panel"><div class="skel" style="width:40%;margin-bottom:12px"></div><div class="skel" style="width:80%;margin-bottom:8px"></div><div class="skel" style="width:70%"></div></div>';if(typeof admMarkSeenFor==='function')admMarkSeenFor(sec);S[2]();}
 document.querySelectorAll('.nav-i').forEach(n=>n.addEventListener('click',()=>select(n.dataset.sec)));
 /* ---- Notifications: new bookings / host requests / vendor requests / support / permits / reports ---- */
 const NOTIF_CATS=[
@@ -542,7 +545,7 @@ async function renderDashboard(){
 /* BOOKINGS */
 function stTag(b){const s=(b.status||'confirmed').toLowerCase();const cls=/cancel/.test(s)?'bad':/refund/.test(s)?'warn':/pending/.test(s)?'neutral':'ok';return `<span class="tag ${cls}">${esc(b.status||'Confirmed')}</span>`;}
 function bkTable(list,acts){return wrapTbl(`<table class="tbl"><thead><tr><th>Guest</th><th>Trek</th><th>Date</th><th>Pax</th><th>Paid</th><th>Captain</th><th>Status</th>${acts?'<th></th>':'<th>Booked</th>'}</tr></thead><tbody>
-  ${list.map(b=>`<tr><td><div class="u">${avc(b.name)}<div><b>${esc(b.name||'Guest')}</b><br><small class="muted">${esc(b.phone||b.email||'')}</small></div></div></td><td data-l="Trek">${esc(b.trek||b.title||'—')}</td><td data-l="Date">${esc(b.date||'—')}</td><td data-l="Pax">${esc(b.pax||1)}</td><td data-l="Paid"><b>${INR(paidOf(b))}</b></td><td data-l="Captain" class="muted">${esc(b.captain||'—')}</td><td data-l="Status">${stTag(b)}</td>
+  ${list.map(b=>`<tr><td><div class="u">${avc(b.name)}<div><b>${esc(b.name||'Guest')}</b><br><small class="muted">${esc(b.phone||b.email||'')}</small></div></div></td><td data-l="Trek">${esc(b.trek||b.title||'—')}</td><td data-l="Date">${esc(b.date||'—')}</td><td data-l="Pax">${esc(b.pax||1)}</td><td data-l="Paid"><b>${INR(paidOf(b))}</b>${Number(b.wallet_used)>0?`<br><small class="muted">${Number(b.wallet_used)>=paidOf(b)?'all from wallet':INR(b.wallet_used)+' wallet'}</small>`:''}</td><td data-l="Captain" class="muted">${esc(b.captain||'—')}</td><td data-l="Status">${stTag(b)}</td>
     ${acts?`<td><div class="row-acts"><button class="btn2 sm" onclick="bkAction('${jsv(b.id)}','confirm')">Confirm</button><button class="btn2 sm" onclick="bkAssign('${jsv(b.id)}')">Captain</button><button class="btn2 sm danger" onclick="bkAction('${jsv(b.id)}','refund')">Refund</button></div></td>`:`<td data-l="Booked" class="muted">${dshort(b.created_at)}</td>`}</tr>`).join('')}</tbody></table>`);}
 async function renderBookings(){
   const bk=(await getBookings()).slice().sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
@@ -551,7 +554,13 @@ async function renderBookings(){
   const apply=()=>{const q=$('#bkq').value.toLowerCase(),f=$('#bkf').value.toLowerCase();paint(bk.filter(b=>(!q||((b.name||'')+' '+(b.trek||'')+' '+(b.phone||'')+' '+(b.email||'')).toLowerCase().includes(q))&&(!f||(b.status||'confirmed').toLowerCase()===f)));};
   $('#bkq').oninput=apply;$('#bkf').onchange=apply;paint(bk);
 }
-async function bkAction(id,kind){const map={confirm:'Confirmed',cancel:'Cancelled',refund:'Refunded'};confirmDo('Mark this booking as '+map[kind]+'?',async()=>{const r=await adminCall('update_booking',{id,status:map[kind]});if(r&&r.error){toast('Failed: '+r.error);return;}const b=(_bk||[]).find(x=>String(x.id)===String(id));if(b)b.status=map[kind];toast('Booking '+map[kind].toLowerCase());select('bookings');});}
+async function bkAction(id,kind){const map={confirm:'Confirmed',cancel:'Cancelled',refund:'Refunded'};
+  const b0=(_bk||[]).find(x=>String(x.id)===String(id))||{};const w=Number(b0.wallet_used)||0,cash=Math.max(0,paidOf(b0)-w);
+  /* the Refund button only moves the wallet part — the UPI/card part is refunded from the Razorpay dashboard */
+  const msg=kind==='refund'?('Mark this booking as Refunded?'+(w>0?'\n\n'+INR(w)+' paid from the wallet goes back to the customer’s wallet automatically.':'')+(cash>0?'\n\nRefund the '+INR(cash)+' paid by UPI/card in your Razorpay dashboard (payment '+(b0.payment_id||b0.id||'—')+') — this button does not move that money.':'')):('Mark this booking as '+map[kind]+'?');
+  confirmDo(msg,async()=>{const r=await adminCall('update_booking',{id,status:map[kind]});if(r&&r.error){toast('Failed: '+r.error);return;}
+    const b=(_bk||[]).find(x=>String(x.id)===String(id));if(b)b.status=map[kind];
+    toast('Booking '+map[kind].toLowerCase()+(r&&r.wallet_refunded?' · '+INR(r.wallet_refunded)+' returned to the wallet':''));select('bookings');});}
 function bkAssign(id){modal(`<h3>Assign trip captain</h3><div class="fld"><label>Captain name</label><input id="capName" placeholder="e.g. Rohit Negi"/></div><div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="capGo">Assign</button></div>`);$('#capGo').onclick=async()=>{const name=$('#capName').value.trim();if(!name)return;closeOv();const r=await adminCall('update_booking',{id,captain:name});if(r&&r.error){toast('Failed: '+r.error);return;}const b=(_bk||[]).find(x=>String(x.id)===String(id));if(b)b.captain=name;toast('Captain assigned');select('bookings');};}
 function exportCSV(){const bk=_bk||[];const head=['Name','Trek','Date','Pax','Total','Paid','Status','Captain','Booked','PaymentID'];const rows=bk.map(b=>[b.name,b.trek||b.title,b.date,b.pax,b.total,paidOf(b),b.status,b.captain,(b.created_at||'').slice(0,10),b.payment_id||b.id]);const csv=[head].concat(rows).map(r=>r.map(x=>'"'+String(x==null?'':x).replace(/"/g,'""')+'"').join(',')).join('\r\n');const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download='tripomonk-bookings.csv';a.click();}
 /* PAYMENTS */
@@ -964,11 +973,12 @@ function vendView(id){const v=(_vendors||[]).find(x=>String(x.id)===String(id));
     <div class="actions" style="margin-top:14px"><button class="btn2" onclick="closeOv()">Close</button><button class="btn2 danger" onclick="closeOv();vendSet('${jsv(v.id)}','rejected')">Reject</button><button class="btn2 pri" onclick="closeOv();vendSet('${jsv(v.id)}','approved')">Approve</button></div>`);}
 async function vendSet(id,st){const {error}=await sb.from('vendors').update({status:st}).eq('id',id);toast(error?('Failed: '+error.message):('Vendor '+st));if(!error)renderVendors();}
 /* USERS + activity */
-async function renderUsers(){const {rows}=await qtbl('profiles',b=>b.select('id,name,username,photo,is_host').order('name'));
+async function renderUsers(){const seq=_navSeq;const {rows}=await qtbl('profiles',b=>b.select('id,name,username,photo,is_host').order('name'));
   /* last-active per user from app_events (best-effort — section still works if analytics isn't deployed) */
   const lastAct={};let hasEvents=false;
   try{const {data,error}=await sb.from('app_events').select('user_id,created_at').order('created_at',{ascending:false}).limit(5000);
     if(!error&&data){hasEvents=true;data.forEach(e=>{if(e.user_id&&!lastAct[e.user_id])lastAct[e.user_id]=e.created_at;});}}catch(e){}
+  if(seq!==_navSeq)return;   /* admin moved to another section while this loaded */
   const DAY=86400000,now=Date.now();
   const activeWithin=(uid,d)=>{const t=lastAct[uid];return t&&(now-new Date(t).getTime())<=d*DAY;};
   $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Users</h2><span class="spacer"></span><span class="muted" id="uCount">${rows.length} members</span></div>
