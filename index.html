@@ -3759,6 +3759,10 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   #actSlots .tap.off{opacity:.38;text-decoration:line-through;cursor:not-allowed;pointer-events:none}
   .act-noslot{display:block;width:100%;margin-top:6px;color:var(--muted);font-size:12px}
   .hstat.closed{background:rgba(255,255,255,.08);color:var(--muted);border-color:var(--stroke)}
+  .auth-seg{display:flex;gap:4px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:4px;margin:0 0 12px}
+  .auth-seg button{all:unset;flex:1;text-align:center;padding:9px 6px;border-radius:10px;font:600 13px var(--font);color:rgba(255,255,255,.75);cursor:pointer}
+  .auth-hint{display:block;min-height:0;margin:-4px 2px 8px;color:rgba(255,255,255,.6);font-size:11.5px;line-height:1.4}
+  .auth-hint:empty{display:none}
 </style>
 </head>
 <body>
@@ -4468,12 +4472,18 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
           <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.29-8.16 2.29-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
           <span style="color:#1a1a1a;font-size:15px;font-weight:600">Continue with Google</span>
         </button>
-        <button id="pwOpenBtn" onclick="showPwLogin()" style="all:unset;width:100%;text-align:center;color:rgba(255,255,255,.7);font-size:13px;font-weight:600;cursor:pointer;padding:6px 0 10px;display:block">Sign in with email &amp; password</button>
+        <button id="pwOpenBtn" onclick="showPwLogin()" style="all:unset;width:100%;text-align:center;color:rgba(255,255,255,.7);font-size:13px;font-weight:600;cursor:pointer;padding:6px 0 10px;display:block">Continue with email</button>
         <div id="pwLoginForm" style="display:none;margin-bottom:6px">
-          <div class="auth-inp"><span class="msr">alternate_email</span><input id="emailInput" type="text" placeholder="Email or username" autocapitalize="none" autocorrect="off" autocomplete="username"></div>
+          <div class="auth-seg" role="tablist" aria-label="Sign in or create account">
+            <button id="tabSignin" role="tab" onclick="authTab('signin')">Sign in</button>
+            <button id="tabSignup" role="tab" onclick="authTab('signup')">Create account</button>
+          </div>
+          <div class="auth-inp" id="signupName" style="display:none"><span class="msr">person</span><input id="authName" type="text" placeholder="Your full name" autocomplete="name" maxlength="80"></div>
+          <div class="auth-inp"><span class="msr" id="emailIcon">alternate_email</span><input id="emailInput" type="text" placeholder="Email or username" autocapitalize="none" autocorrect="off" autocomplete="username"></div>
           <div class="auth-inp"><span class="msr">lock</span><input id="authPassword" type="password" placeholder="Password" autocomplete="current-password"><span class="msr auth-eye" id="pwToggle" onclick="togglePw()">visibility</span></div>
+          <small id="pwHint" class="auth-hint"></small>
           <button class="btn" id="pwBtn" style="width:100%;margin-top:4px" onclick="pwLoginGated()">Sign in</button>
-          <button onclick="forgotPassword()" style="all:unset;display:block;width:100%;text-align:center;color:rgba(255,255,255,.55);font-size:12px;cursor:pointer;padding:10px 0 2px">Forgot password?</button>
+          <button id="forgotBtn" onclick="forgotPassword()" style="all:unset;display:block;width:100%;text-align:center;color:rgba(255,255,255,.55);font-size:12px;cursor:pointer;padding:10px 0 2px">Forgot password?</button>
         </div>
         <button onclick="continueAsGuest()" style="all:unset;width:100%;text-align:center;color:rgba(255,255,255,.6);font-size:13px;font-weight:500;cursor:pointer;padding:10px 0;display:block">Browse without account →</button>
         <p style="color:rgba(255,255,255,.35);font-size:11px;text-align:center;margin:14px 0 0;line-height:1.5">Analytics cookies (Microsoft Clarity, Meta Pixel) run only if you accept them. See our <a href="terms.html" style="color:rgba(255,255,255,.55)">Terms</a> &amp; <a href="privacy.html" style="color:rgba(255,255,255,.55)">Privacy Policy</a></p>

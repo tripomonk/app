@@ -1128,7 +1128,9 @@ function authTab(mode){
     if(idIcon)idIcon.textContent='mail';
     if(pw)pw.setAttribute('autocomplete','new-password');
     if(pwBtn)pwBtn.textContent='Create account';
-    if(pwHint)pwHint.textContent='At least 6 characters. We’ll email you a link to verify.';
+    if(pwHint)pwHint.textContent='At least 8 characters with a letter and a number. We’ll email you a link to verify your account.';
+    const fb=document.getElementById('forgotBtn');if(fb)fb.style.display='none';
+    const nm=document.getElementById('authName');if(nm)setTimeout(()=>nm.focus(),50);
   }else{
     on(si);off(su);
     if(nameRow)nameRow.style.display='none';
@@ -1137,7 +1139,9 @@ function authTab(mode){
     if(pw)pw.setAttribute('autocomplete','current-password');
     if(pwBtn)pwBtn.textContent='Sign in';
     if(pwHint)pwHint.textContent='';
+    const fb=document.getElementById('forgotBtn');if(fb)fb.style.display='block';
   }
+  [si,su].forEach(el=>{if(el)el.setAttribute('aria-selected',el===(mode==='signup'?su:si)?'true':'false');});
 }
 function togglePw(){
   const p=document.getElementById('authPassword'),t=document.getElementById('pwToggle');
@@ -1145,10 +1149,10 @@ function togglePw(){
   if(t)t.textContent=show?'visibility_off':'visibility';
 }
 /* reveal the email/password sign-in form on the login card */
-function showPwLogin(){
-  _authMode='signin';
+function showPwLogin(mode){
   const f=document.getElementById('pwLoginForm'),b=document.getElementById('pwOpenBtn');
   if(f)f.style.display='';if(b)b.style.display='none';
+  authTab(mode==='signup'?'signup':'signin');
   const e=document.getElementById('emailInput');if(e)setTimeout(()=>e.focus(),50);
 }
 /* same consent gate as Google sign-in, then run the existing (secure) password auth */
@@ -1159,7 +1163,7 @@ function pwLoginGated(){
     if(row){row.classList.remove('shake');void row.offsetWidth;row.classList.add('shake');}
     note('Please tick the box to continue.','Almost there');return;
   }
-  recordConsent();_authMode='signin';passwordAuth();
+  recordConsent();passwordAuth();          /* mode comes from the Sign in / Create account switch */
 }
 /* set / change a password for the CURRENT signed-in account. Supabase Auth hashes and
    stores it — the app never sees or keeps the raw password. Lets the user then sign in
@@ -1202,21 +1206,25 @@ async function passwordAuth(){
   const done=()=>{if(btn){btn.disabled=false;btn.textContent=_authMode==='signup'?'Create account':'Sign in';}};
 
   if(_authMode==='signup'){
-    if(!id.includes('@')){note('Enter a valid email address to sign up.','Invalid email');return;}
+    const n=(document.getElementById('authName').value||'').trim();
+    if(n.length<2){note('Please enter your name.','Name required');document.getElementById('authName').focus();return;}
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(id)){note('Enter a valid email address to sign up.','Invalid email');return;}
     {const pe=passwordError(pass);if(pe){note(pe,'Weak password');return;}}
     busy('Creating…');
-    const{data,error}=await sb.auth.signUp({email:id,password:pass});
+    const{data,error}=await sb.auth.signUp({email:id,password:pass,options:{
+      data:{full_name:n,name:n},                                   /* name travels with the account */
+      emailRedirectTo:window.location.origin+window.location.pathname}});
     done();
-    if(error){note(error.message,'Could not sign up');return;}
-    const n=(document.getElementById('authName').value||'').trim();if(n)saveUserName(n);
+    if(error){note(/registered|exists/i.test(error.message)?'An account with this email already exists — sign in instead, or use “Forgot password?”.':error.message,'Could not sign up');return;}
+    saveUserName(n);
     /* Supabase emails a verification link. If confirmations are ON, there's no
        session yet; if OFF, the user is already signed in. Handle both. */
     if(data&&data.session){
       currentUser=data.session.user;await loadProfileFromServer();upsertProfile();
       note('Account created!','Welcome to Tripomonk').then(()=>{const r=_loginReturn;_loginReturn=null;go(r||lastTab||'home');setTimeout(maybeOnboard,500);});
     }else{
-      note('Account created. Check '+id+' for a verification link, then sign in.','Verify your email')
-        .then(()=>authTab('signin'));
+      note('Almost done! We sent a verification link to '+id+'. Open it on this phone, then sign in with your email and password. (Check spam if you don’t see it.)','Verify your email')
+        .then(()=>{authTab('signin');const pw=document.getElementById('authPassword');if(pw)pw.value='';});
     }
     return;
   }
@@ -9073,7 +9081,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='484';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='485';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
