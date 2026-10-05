@@ -5946,7 +5946,50 @@ async function buyGiftCard(){
 }
 /* ---- wallet ---- */
 let _walletBal=0;
-function renderWallet(){loadWallet();}
+function renderWallet(){loadWallet();renderTopupAmts();}
+/* header wallet pill → wallet screen (sign-in first for guests) */
+function openWallet(){if(!isLoggedIn()){note('Sign in to use your Tripomonk wallet.','Sign in required').then(()=>{_loginReturn='wallet';go('login');});return;}go('wallet');}
+function paintHomeWallet(){const el=document.getElementById('homeWalletAmt');if(el)el.textContent=isLoggedIn()?inr(Math.max(0,_walletBal)):'Wallet';}
+async function refreshHomeWallet(){
+  if(!isLoggedIn()){paintHomeWallet();return;}
+  const sb=getSupaClient();const uid=sb?await authUid():null;if(!uid){paintHomeWallet();return;}
+  try{const{data}=await sb.from('wallet_transactions').select('amount').eq('user_id',uid);_walletBal=(data||[]).reduce((s,r)=>s+(+r.amount||0),0);}catch(e){}
+  paintHomeWallet();
+}
+/* ---- add money to the wallet (Razorpay, paid in full, credited on verify) ---- */
+const TOPUP_AMTS=[500,1000,2000,5000];let _topAmt=1000;
+function renderTopupAmts(){const el=document.getElementById('wcAmts');if(!el)return;
+  el.innerHTML=TOPUP_AMTS.map(a=>`<div class="chip pill ${_topAmt===a?'on':''}" onclick="topupPick(${a})">${inr(a)}</div>`).join('');
+  const b=document.getElementById('wcTopBtn');if(b&&!b.disabled)b.textContent='Add '+inr(_topAmt||0);}
+function topupPick(a){const inp=document.getElementById('wcTopAmt');
+  if(a){_topAmt=a;if(inp)inp.value='';}else{_topAmt=Math.round(Number(inp&&inp.value)||0);}
+  renderTopupAmts();}
+async function topupWallet(){
+  const amount=_topAmt;
+  if(!(amount>=100&&amount<=100000)){note('Choose an amount between ₹100 and ₹1,00,000.','Amount');return;}
+  if(!isLoggedIn()){openWallet();return;}
+  if(!sbOn){note('Payment service not configured. Please contact Tripomonk.','Payment error');return;}
+  const btn=document.getElementById('wcTopBtn');const restore=()=>{if(btn){btn.disabled=false;}renderTopupAmts();};
+  if(btn){btn.disabled=true;btn.textContent='Starting payment…';}
+  const name=getSavedName()||'Trekker',email=getUserEmail()||'',token=await authToken();
+  const req={kind:'wallet_topup',amount,name,email,phone:getSavedMobile()||''};
+  let order;try{order=await rzpCall('create',{booking:req,token});}catch(e){order=null;}
+  if(!order||!order.order_id){restore();note((order&&order.error)||'Could not start payment. Please try again.','Payment error');return;}
+  if(!window.Razorpay&&!(await loadRazorpay())){restore();note('Payment is still loading — try again in a moment.','Please wait');return;}
+  const rzp=new window.Razorpay({
+    key:order.key_id,order_id:order.order_id,amount:order.amount,currency:order.currency||'INR',
+    name:'Tripomonk',description:'Add money to wallet',image:'icons/icon-192.png',
+    prefill:{name,email,contact:getSavedMobile()||''},theme:{color:'#2f6bff'},
+    handler:async function(response){
+      let res;try{res=await rzpCall('verify',{razorpay_order_id:response.razorpay_order_id,razorpay_payment_id:response.razorpay_payment_id,razorpay_signature:response.razorpay_signature,booking:req,token});}catch(e){res=null;}
+      restore();
+      if(!res||!res.ok){note('Payment received — your wallet will be credited shortly. If it isn’t, contact us with payment ID: '+(response.razorpay_payment_id||'—'),'Almost done');return;}
+      toast(inr(res.amount||amount)+' added to your wallet');loadWallet();refreshHomeWallet();
+    },
+    modal:{ondismiss:function(){restore();note('Payment cancelled — nothing was charged.','Cancelled');}}
+  });
+  rzp.open();
+}
 async function loadWallet(){
   const bEl=document.getElementById('wcBal'),tEl=document.getElementById('wcTxns');
   const sb=getSupaClient();const uid=sb?await authUid():null;
@@ -5955,10 +5998,10 @@ async function loadWallet(){
     const{data}=await sb.from('wallet_transactions').select('amount,kind,note,created_at').eq('user_id',uid).order('created_at',{ascending:false});
     const rows=data||[];
     _walletBal=rows.reduce((s,r)=>s+(+r.amount||0),0);
-    if(bEl)bEl.textContent=inr(_walletBal);
+    if(bEl)bEl.textContent=inr(_walletBal);paintHomeWallet();
     if(tEl)tEl.innerHTML=rows.length?rows.map(r=>{const pos=(+r.amount||0)>=0;
       return '<div class="wtxn"><div class="wtxn-tx"><b>'+esc(r.note||r.kind||'Transaction')+'</b><small>'+new Date(r.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})+'</small></div><div class="wtxn-amt '+(pos?'pos':'neg')+'">'+(pos?'+':'−')+inr(Math.abs(+r.amount||0)).slice(1)+'</div></div>';
-    }).join(''):'<div class="empty" style="padding:22px 6px"><p>No wallet activity yet. Buy or redeem a gift card to add funds.</p></div>';
+    }).join(''):'<div class="empty" style="padding:22px 6px"><p>No wallet activity yet. Add money above or redeem a gift card.</p></div>';
   }catch(e){if(bEl)bEl.textContent='₹0';if(tEl)tEl.innerHTML='<div class="empty" style="padding:22px 6px"><p>Wallet isn’t set up on the server yet.</p></div>';}
 }
 async function redeemGiftCode(){
@@ -6765,8 +6808,23 @@ function plannerCard(t,rec){
     <div class="pl-card-bd"><div class="pl-card-top"><b>${esc(t.n)}</b>${badge}</div><small>${esc(t.region||'')}${t.days?' · '+t.days+'D':''}${t.lvl?' · '+esc(t.lvl):''} · ${price}${t.soon?' · coming soon':''}</small>${w}</div>
   </div>`;
 }
+/* Branded intro state — greeting + glowing orb + trek suggestion chips. Shown until the
+   first user message, then it switches to the normal chat thread. */
+function plannerIntroHTML(){
+  const nm=(getSavedName()||'').split(' ')[0];
+  const CHIPS=[['ac_unit','Snow trek for beginners'],['payments','Treks under ₹10,000'],['event','Best treks in November'],['directions_car','A weekend from Delhi']];
+  const chips=CHIPS.map(c=>'<button class="pl-chip" onclick="plannerChip(\''+c[1]+'\')"><span class="msr">'+c[0]+'</span>'+c[1]+'</button>').join('');
+  return '<div class="pl-intro">'
+    +'<div class="pl-greet"><h2>Hello'+(nm?', '+esc(nm):' there')+'!</h2><p>Where would you like to trek?</p></div>'
+    +'<div class="pl-orb"><span class="glow"></span><span class="ball"><span class="shine"></span></span></div>'
+    +'<div class="pl-chips">'+chips+'</div>'
+  +'</div>';
+}
+function newPlan(){_planMsgs=[];_tripCtx={};_planShown=new Set();_planLastMin=0;_planBusy=false;_planTyping=false;renderPlanner();}
 function paintPlanner(){
   const chat=document.getElementById('plannerChat');if(!chat)return;
+  /* no user message yet → show the intro hero instead of the welcome bubble */
+  if(!_planBusy&&!_planMsgs.some(m=>m.role==='user')){chat.innerHTML=plannerIntroHTML();hydrate(chat);return;}
   const findTrek=nm=>treks.find(x=>x.n===nm)||treks.find(x=>String(x.n).toLowerCase()===String(nm).toLowerCase());
   let html=_planMsgs.map(m=>{
     const bubble=`<div class="pl-row pl-row-${m.role}"><div class="pl-msg pl-${m.role}">${esc(m.content)}${m._typing?'<span class="pl-caret"></span>':''}</div></div>`;
@@ -8963,7 +9021,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='475';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='476';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -11213,6 +11271,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='accountMenu')renderAccountMenu();
   if(id==='giftCards')renderGiftCards();
   if(id==='wallet')renderWallet();
+  if(id==='home')refreshHomeWallet();
   if(id==='editProfile')renderEditProfile();
   if(id==='onboarding')initPrefs();
   if(id==='settings')renderSettings();
