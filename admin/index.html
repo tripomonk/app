@@ -1196,7 +1196,7 @@ async function guideAppList(){
 }
 async function guideRosterList(){
   try{const r=await adminCall('list_guides',{});if(r&&Array.isArray(r.rows))return r.rows;}catch(e){}
-  const q=await qtbl('guides',b=>b.limit(200));return q.rows||[];   /* fallback: no private contact */
+  const q=await qtbl('guides',b=>b.select('id,application_id,name,photo,bio,city,state,region,languages,experience,certifications,years,treks_led,instagram,verified,user_id,sort,created_at').limit(200));return q.rows||[];   /* fallback: public columns only (day_rate comes via the admin edge fn) */
 }
 async function renderGuides(){
   _guideApps=await guideAppList();
