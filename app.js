@@ -9073,7 +9073,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='482';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='483';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -10653,7 +10653,10 @@ async function _loadGuides(force){
   const sb=getSupaClient();if(!sb){_guidesLoaded=true;return guides;}
   if(guides.length&&!force)return guides;
   try{
-    const r=await sb.from('guides').select('*').order('sort',{ascending:true});
+    /* signed out → only the public columns (SQL-privacy-tighten.sql hides day_rate from anon;
+       select('*') would be refused). Keep this list in sync with that grant. */
+    const cols=isLoggedIn()?'*':'id,application_id,name,photo,bio,city,state,region,languages,experience,certifications,years,treks_led,instagram,verified,user_id,sort,created_at';
+    const r=await sb.from('guides').select(cols).order('sort',{ascending:true});
     if(!r.error&&Array.isArray(r.data))guides=r.data;
     _guidesLoaded=true;
   }catch(e){_guidesLoaded=true;}
