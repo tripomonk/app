@@ -3005,6 +3005,7 @@ async function shareTrek(){
 }
 /* open a trek/post directly from a shared deep link (#trek=Name) */
 function handleDeepLink(){
+  captureReferral();
   const h=window.location.hash||'';
   const m=h.match(/#trek=([^&]+)/);
   /* #trek= carries the trek name; links rescued by 404.html carry its /t/<slug> instead */
@@ -3387,6 +3388,9 @@ async function authToken(){
   try{const{data}=await sb.auth.getSession();return (data&&data.session&&data.session.access_token)||'';}catch(e){return'';}
 }
 async function rzpCall(action,payload){
+  if(action==='create'){payload=Object.assign({},payload);
+    const rc=activeReferral();if(rc&&!payload.ref_code)payload.ref_code=rc;
+    if(!payload.token){try{payload.token=await authToken();}catch(e){}}}
   const r=await fetch(SB.SUPABASE_URL+'/functions/v1/razorpay',{
     method:'POST',
     headers:{'Content-Type':'application/json',Authorization:'Bearer '+SB.SUPABASE_ANON_KEY,apikey:SB.SUPABASE_ANON_KEY},
@@ -9069,7 +9073,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='481';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='482';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -13095,15 +13099,17 @@ function renderHdBody(){
 function isPastTrip(t){
   const d=String((t&&(t.end_date||t.start_date))||'').slice(0,10);
   if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return false;   /* unknown date format → treat as not-past (safe) */
-  return d < new Date().toISOString().slice(0,10);
+  return d < todayISO(0);                             /* local date, not UTC */
 }
 function hdTripRow(t){
-  const chip='<span class="hstat '+(t.status==='live'?'approved':t.status==='rejected'?'rejected':'pending')
+  const chip='<span class="hstat '+(t.status==='live'?'approved':t.status==='rejected'?'rejected':t.status==='closed'?'closed':'pending')
     +'" style="margin:0;padding:3px 8px;font-size:10px">'+esc(t.status)+'</span>';
   const editable=t.status!=='live';
-  /* marketing buttons on EVERY trip so a host can always share/promote it */
-  const mk='<button class="mk" onclick="shareHostTrip(\''+jsq(t.id)+'\',\''+jsq(t.title)+'\')">'+ic('share',14)+' Share</button>'
-          +'<button class="mk" onclick="postTripToCommunity(\''+jsq(t.id)+'\')">'+ic('community',14)+' Post to feed</button>';
+  /* marketing buttons only where a trekker can actually book: live and not yet over */
+  const canPromote=t.status==='live'&&!isPastTrip(t);
+  const mk=canPromote?('<button class="mk" onclick="shareHostTrip(\''+jsq(t.id)+'\',\''+jsq(t.title)+'\')">'+ic('share',14)+' Share</button>'
+          +'<button class="mk" onclick="postTripToCommunity(\''+jsq(t.id)+'\')">'+ic('community',14)+' Post to feed</button>')
+          :((t.status==='pending'||!t.status)?'<small class="muted" style="font-size:11px">You can share it once Tripomonk publishes it</small>':'');
   return '<div class="htrip">'
     +'<div class="tph" style="background-image:url(\''+esc(t.img||'')+'\')"></div>'
     +'<div class="tbd"><b>'+esc(t.title)+'</b>'
@@ -13198,8 +13204,10 @@ async function postTripToCommunity(id){
    bookings exist.
    ============================================================ */
 const HOST_TAKE=0.90;         /* host keeps 90% */
-/* a stable, shareable referral code for this host */
+/* a stable, shareable referral code for this host. Once registered (referral_codes) it is
+   remembered per account, so renaming your username never breaks links already shared. */
 function hostReferralCode(){
+  try{const k=localStorage.getItem('tmk_ref_mycode_'+((currentUser&&currentUser.id)||''));if(k)return k;}catch(e){}
   const u=getSavedUsername();
   const clean=u?u.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12):'';
   if(clean)return clean;
@@ -13211,9 +13219,43 @@ function referralLink(){
   const base=window.location.origin+window.location.pathname.replace(/index\.html$/,'');
   return base+'#ref='+hostReferralCode();
 }
-/* no referral backend yet — read any locally-credited total, default 0 (honest) */
-function hostReferralEarnings(){try{return Math.max(0,+localStorage.getItem('tmk_ref_earn')||0);}catch(e){return 0;}}
-function hostReferralCount(){try{return Math.max(0,+localStorage.getItem('tmk_ref_count')||0);}catch(e){return 0;}}
+function hashCode6(seed){let h=0;for(let i=0;i<seed.length;i++)h=(h*31+seed.charCodeAt(i))>>>0;return 'TMK'+h.toString(36).toUpperCase().slice(0,6);}
+/* make sure this host's code exists in referral_codes and points at THIS account */
+async function ensureReferralCode(){
+  const sb=getSupaClient();const uid=sb?await authUid():null;if(!uid)return hostReferralCode();
+  const key='tmk_ref_mycode_'+uid;
+  try{const k=localStorage.getItem(key);if(k)return k;}catch(e){}
+  /* already registered on another device? */
+  try{const{data}=await sb.from('referral_codes').select('code').eq('user_id',uid).order('created_at').limit(1);
+    if(data&&data[0]){try{localStorage.setItem(key,data[0].code);}catch(e){}return data[0].code;}}catch(e){}
+  for(const c of [hostReferralCode(),hashCode6(uid)]){
+    const{error}=await sb.from('referral_codes').insert({code:c,user_id:uid});
+    if(!error){try{localStorage.setItem(key,c);}catch(e){}return c;}      /* taken by someone else → try the next */
+  }
+  return hostReferralCode();
+}
+/* real referral numbers from the referrals table (pending = awaiting the trek; paid = in wallet) */
+let _refStats={count:0,pending:0,pendingAmt:0,paidAmt:0};
+async function loadReferralStats(){
+  const sb=getSupaClient();const uid=sb?await authUid():null;if(!uid)return _refStats;
+  try{const{data}=await sb.from('referrals').select('status,reward').eq('host_id',uid);
+    const r=(data||[]).filter(x=>x.status!=='void');
+    _refStats={count:r.length,pending:r.filter(x=>x.status==='pending').length,
+      pendingAmt:r.filter(x=>x.status==='pending').reduce((a,x)=>a+(+x.reward||0),0),
+      paidAmt:r.filter(x=>x.status==='paid').reduce((a,x)=>a+(+x.reward||0),0)};}catch(e){}
+  return _refStats;}
+function hostReferralEarnings(){return _refStats.paidAmt;}
+function hostReferralCount(){return _refStats.count;}
+/* a customer arrived through a host's link → remember the code for 30 days */
+function captureReferral(){
+  try{const m=(location.hash+'&'+location.search).match(/[#?&]ref=([A-Za-z0-9]{3,16})/);
+    if(m)localStorage.setItem('tmk_ref',JSON.stringify({code:m[1].toUpperCase(),ts:Date.now()}));}catch(e){}
+}
+function activeReferral(){
+  try{const r=JSON.parse(localStorage.getItem('tmk_ref')||'null');
+    if(r&&r.code&&Date.now()-r.ts<30*864e5)return r.code;}catch(e){}
+  return '';
+}
 async function shareReferral(){
   const code=hostReferralCode(),url=referralLink();
   const data={title:'Join me on Tripomonk',text:'Explore the Himalayas with Tripomonk 🏔️ Use my code '+code+' when you book.',url};
@@ -13267,6 +13309,7 @@ async function loadHostEarnings(){
   const tripNet=known.reduce((s,x)=>s+x.net,0);               /* host's 90% of profit, costed trips */
   const advance=booked.reduce((s,x)=>s+x.advance,0);
   const bookings=booked.reduce((s,x)=>s+x.bookings,0);
+  await loadReferralStats();
   const refEarn=hostReferralEarnings(),refCount=hostReferralCount();
   return{perTrip,booked,revenue,knownRevenue,pendingRevenue,opsCost,profit,tripNet,advance,bookings,refEarn,refCount,total:tripNet+refEarn};
 }
@@ -13274,8 +13317,9 @@ async function renderHdEarnings(box){
   box.innerHTML='<div class="earn-loading"><span class="msr spin">progress_activity</span> Loading your earnings…</div>';
   const e=await loadHostEarnings();
   if(hdTab!=='Earnings')return;   /* user switched tabs while loading */
-  const m=v=>INR(v||0),code=hostReferralCode();
-  const isEmpty=e.bookings===0&&e.refEarn===0;
+  const code=await ensureReferralCode();if(hdTab!=='Earnings')return;
+  const m=v=>INR(v||0);
+  const isEmpty=e.bookings===0&&e.refEarn===0&&!_refStats.pending;
   const hero='<div class="earn-hero">'
     +'<small>Your earnings so far</small>'
     +'<div class="earn-big">'+m(e.total)+'</div>'
@@ -13314,11 +13358,12 @@ async function renderHdEarnings(box){
     :'';
   const refCard='<div class="earn-card">'
     +'<div class="earn-ch"><span class="msr">redeem</span><b>Referral earnings</b>'+(e.refCount?'<span class="earn-tag">'+e.refCount+' joined</span>':'')+'</div>'
-    +'<div class="earn-line grand"><span>Earned from referrals</span><b>'+m(e.refEarn)+'</b></div>'
+    +(_refStats.pending?'<div class="earn-line sub"><span>Waiting for their trek ('+_refStats.pending+')</span><b>'+m(_refStats.pendingAmt)+'</b></div>':'')
+    +'<div class="earn-line grand"><span>Paid to your wallet</span><b>'+m(e.refEarn)+'</b></div>'
     +'<div class="ref-box"><div class="ref-code"><small>YOUR CODE</small><b>'+esc(code)+'</b></div>'
     +'<div class="ref-acts"><button class="mk" onclick="copyReferral()"><span class="msr">link</span> Copy link</button>'
     +'<button class="mk" onclick="shareReferral()"><span class="msr">ios_share</span> Share</button></div></div>'
-    +'<p class="host-note" style="margin:10px 0 0">Share your code — you earn a reward for every new trekker who books their first trip through it. Rewards appear here after their trek.</p>'
+    +'<p class="host-note" style="margin:10px 0 0">Share your link — when a new trekker opens it and books their first trip within 30 days, you earn a reward. It’s added to your Tripomonk wallet after their trek.</p>'
     +'</div>';
   const payout='<p class="host-note" style="text-align:center;margin-top:4px">You earn 90% of the profit on each trip (booking revenue minus operations cost). Payouts settle after each trip — bank & ID details are handled on your verification call, never in the app.</p>';
   box.innerHTML=hero+empty+pendingBanner+tripCard+modelCard+breakdown+refCard+payout;
