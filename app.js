@@ -90,7 +90,16 @@ function ic(n,s){s=s||20;
   return `<span class="msr" style="font-size:${s}px">${IMAP[n]||'circle'}</span>`;}
 /* Tappable cards are <div onclick>; give them button semantics so keyboard and
    screen-reader users can reach and activate them (Enter/Space handled below). */
-function a11yClickables(root){(root||document).querySelectorAll('[onclick]:not(button):not(a):not(input):not(select):not(textarea):not(label):not([role])').forEach(el=>{el.setAttribute('role','button');if(!el.hasAttribute('tabindex'))el.tabIndex=0;});}
+function a11yClickables(root){const R=root||document;
+  /* a tappable card that already contains its own buttons/links stays a plain container —
+     making it a button too would hide those inner controls from screen readers */
+  R.querySelectorAll('[onclick]:not(button):not(a):not(input):not(select):not(textarea):not(label):not([role])').forEach(el=>{
+    if(el.querySelector('button,a[href],input,select,textarea,[role="button"]'))return;
+    el.setAttribute('role','button');if(!el.hasAttribute('tabindex'))el.tabIndex=0;});
+  /* sideways-scrolling strips with nothing focusable inside: let the keyboard reach + scroll them */
+  R.querySelectorAll('.fc-strip,.hrow,.chips,.regions,.insp-track,#inclusions,#gcRow,[id$="_tr"]').forEach(el=>{
+    if(el.hasAttribute('tabindex')||el.querySelector('button,a[href],input,[tabindex],[role="button"]'))return;
+    if(el.scrollWidth>el.clientWidth+2){el.tabIndex=0;if(!el.hasAttribute('aria-label'))el.setAttribute('aria-label','Scrollable list');}});}
 document.addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const el=e.target;
   if(el&&el.getAttribute&&el.getAttribute('role')==='button'&&el.hasAttribute('onclick')&&!/^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(el.tagName)){e.preventDefault();el.click();}});
 document.addEventListener('DOMContentLoaded',()=>a11yClickables(document));
@@ -9098,7 +9107,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='489';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='490';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
