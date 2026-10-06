@@ -684,7 +684,13 @@ function atHandle(n){const s=String(handleFor(n)).replace(/^@/,'').trim();
   return '@'+s;}
 function avatar(n,size){size=size||38;const g=AVG[avHash(n)%AVG.length];const fs=Math.round(size*.4);
   const photo=photoFor(n);
-  const bg=photo?`background-image:url('${esc(photo)}');background-size:cover;background-position:center`:`background:linear-gradient(135deg,${g[0]},${g[1]})`;
+  /* Preset avatars are a character on a blue→navy rounded-square. A tight circle crops the
+     head/hair at the corners, so inset them to 90% on a MATCHING gradient — the full character
+     shows and the margin blends seamlessly. Uploaded photos still use cover (normal crop). */
+  const preset=photo&&/avatars\/avatar-\d/.test(photo);
+  const bg=preset
+    ? `background:url('${esc(photo)}') center/90% no-repeat,linear-gradient(180deg,#0064fc 0%,#0243a1 52%,#051f4a 100%)`
+    : (photo?`background-image:url('${esc(photo)}');background-size:cover;background-position:center`:`background:linear-gradient(135deg,${g[0]},${g[1]})`);
   /* border-radius + overflow are baked in inline so the avatar is ALWAYS a circle, even
      if the stylesheet is stale/partial on a device — a square photo was the symptom. */
   return `<div class="av-i" onclick="openPerson('${jsq(n)}')" style="width:${size}px;height:${size}px;font-size:${fs}px;border-radius:50%;overflow:hidden;${bg}">${photo?'':initials(n)}</div>`;}
@@ -9138,7 +9144,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='496';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='498';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
