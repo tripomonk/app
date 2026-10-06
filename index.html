@@ -3831,6 +3831,8 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
     .view{left:240px;right:312px;padding-top:34px;padding-bottom:44px;
       padding-inline:max(28px, calc((100% - 1300px)/2))}
     .view.full{left:240px;right:312px;padding:0}
+    /* the community FEED reads best as a narrow social column, not the full content width */
+    #community.view{padding-inline:max(24px, calc((100% - 1180px)/2))}
     /* login / boot / flows hide the nav → let content use the whole width (no rails) */
     .screen:has(.nav.hide) .view{left:0;right:0}
 
