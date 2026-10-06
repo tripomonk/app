@@ -3848,10 +3848,10 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
     .nf-links a:hover{background:rgba(127,160,255,.08);color:var(--text)}
     .nf-links a .msr{font-size:18px;color:var(--muted)}
 
-    /* --- gift cards: the mobile 78%-width carousel balloons on desktop → cap + centre --- */
-    .giftcards-view .gc-card{flex:0 0 330px;max-width:330px}
-    .giftcards-view .gc-row::before,.giftcards-view .gc-row::after{flex:0 0 calc(50% - 165px)}
-    .giftcards-view .gc-head,.giftcards-view .gc-cta,.giftcards-view .gc-amt-wrap{max-width:460px;margin-left:auto;margin-right:auto}
+    /* --- gift cards: it's an immersive full-screen MOBILE view. On desktop, don't stretch it
+           — render the whole thing as a centred ~480px column so it looks exactly like mobile
+           (full-height black backdrop, portrait card carousel, amounts below). --- */
+    .giftcards-view{padding:0 max(18px,calc((100% - 480px)/2))}
   }
 </style>
 </head>
