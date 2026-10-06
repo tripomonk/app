@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded',()=>{a11yClickables(document);
   /* parts of a screen render later (weather, rails, gift designs…) — re-apply to the visible screen, debounced */
   let _a11yT=null;try{new MutationObserver(()=>{clearTimeout(_a11yT);_a11yT=setTimeout(()=>{const v=document.querySelector('.view.active');if(v)a11yClickables(v);},250);})
     .observe(document.body,{childList:true,subtree:true});}catch(e){}});
-function hydrate(root){(root||document).querySelectorAll('[data-i]').forEach(el=>{el.innerHTML=ic(el.dataset.i,+el.dataset.sz||20);el.removeAttribute('data-i');});a11yClickables(root);fitCarousels(root);if(typeof animateTrekScores==='function')animateTrekScores();}
+function hydrate(root){(root||document).querySelectorAll('[data-i]').forEach(el=>{el.innerHTML=ic(el.dataset.i,+el.dataset.sz||20);el.removeAttribute('data-i');});a11yClickables(root);fitCarousels(root);if(typeof addCarouselArrows==='function')addCarouselArrows(root);if(typeof animateTrekScores==='function')animateTrekScores();}
 
 /* ---------- data ---------- */
 const U='https://images.unsplash.com/photo-';
@@ -4050,15 +4050,28 @@ async function renderDeskRail(force){
       +'</div>';}).join('');
     box.innerHTML='<div class="dr-card"><div class="dr-head">Trekkers to follow</div>'+rows
       +'<a class="dr-all" onclick="go(\'peopleSearch\')">See all trekkers</a></div>'
-      +'<div class="dr-card"><div class="dr-head">Discover</div><div class="dr-links">'
-        +'<a onclick="openDevDiwali()"><span class="msr">local_fire_department</span>Dev Deepawali 2026</a>'
-        +'<a onclick="openGiftCards()"><span class="msr">card_giftcard</span>Gift cards</a>'
-        +'<a onclick="go(\'help\')"><span class="msr">support_agent</span>Help &amp; support</a>'
-      +'</div></div>'
+      +_railPopularTreks()
       +'<div class="dr-foot">© Tripomonk · guided Himalayan treks</div>';
     hydrate(box);
     _deskRailDone=true;
   }catch(e){/* non-fatal */}
+}
+/* right-rail "Popular treks" card — DISTINCT from the left sidebar's utility links, so the
+   two sides don't repeat. Pulls from the live catalogue; opens the trek on tap. */
+function _railPopularTreks(){
+  try{
+    if(typeof treks==='undefined'||!Array.isArray(treks))return '';
+    /* bookable first, then popular — never exclude so the card always has a few picks */
+    const list=treks.filter(t=>t&&t.n)
+      .sort((a,b)=>((a.soon?1:0)-(b.soon?1:0))||((b.pop?1:0)-(a.pop?1:0)))
+      .slice(0,4);
+    if(!list.length)return '';
+    const rows=list.map(t=>{const price=t.price?('₹'+Number(t.price).toLocaleString('en-IN')):'';
+      return '<a class="dr-trek" onclick="openDetailByName(\''+jsq(t.n)+'\')"><span class="msr">terrain</span>'
+        +'<span class="dr-trek-tx"><b>'+esc(t.n)+'</b><small>'+esc(t.region||'')+(price?' · '+price:'')+'</small></span></a>';}).join('');
+    return '<div class="dr-card"><div class="dr-head">Popular treks</div><div class="dr-links">'+rows+'</div>'
+      +'<a class="dr-all" onclick="go(\'explore\')">Browse all treks</a></div>';
+  }catch(e){return '';}
 }
 function personRow(p){
   const sn=jsq(p.n);
@@ -4191,6 +4204,33 @@ function fitCarousels(root){
     im.onload=()=>{const c=clampRatio(im.naturalWidth/im.naturalHeight);if(c){_carRatio[url]=c.toFixed(4);car.style.aspectRatio=_carRatio[url];}};
     im.src=url;
   });
+}
+/* DESKTOP only: horizontal carousels can't be mouse-swiped, so add ← → arrow buttons to the
+   post image carousels (.car / .car-track) and the "Trekkers like you" rail (.suggest-rail).
+   Idempotent — runs on every hydrate; skips rows that aren't actually scrollable yet. */
+function addCarouselArrows(root){
+  try{
+    if(typeof matchMedia==='function' && !matchMedia('(min-width:1024px)').matches)return;
+    (root||document).querySelectorAll('.car-track, .suggest-rail').forEach(scroller=>{
+      if(scroller._arrowed)return;
+      if(scroller.scrollWidth<=scroller.clientWidth+12){        /* not scrollable (or not laid out yet) */
+        if(!scroller._arrowRetry){scroller._arrowRetry=1;setTimeout(()=>addCarouselArrows(root),500);}
+        return;
+      }
+      const mount=scroller.classList.contains('car-track')?scroller.closest('.car'):scroller.parentElement;
+      if(!mount)return;
+      scroller._arrowed=true;mount.classList.add('car-has-arrows');
+      const yc=scroller.offsetTop+scroller.clientHeight/2;      /* vertical centre of the rail */
+      const mk=dir=>{const b=document.createElement('button');b.type='button';
+        b.className='car-arrow '+(dir==='prev'?'car-prev':'car-next');b.style.top=yc+'px';
+        b.setAttribute('aria-label',dir==='prev'?'Previous':'Next');
+        b.innerHTML='<span class="msr">'+(dir==='prev'?'chevron_left':'chevron_right')+'</span>';
+        b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();
+          scroller.scrollBy({left:(dir==='prev'?-1:1)*Math.max(220,Math.round(scroller.clientWidth*.85)),behavior:'smooth'});});
+        return b;};
+      mount.appendChild(mk('prev'));mount.appendChild(mk('next'));
+    });
+  }catch(e){}
 }
 let likeCounts={},likedByMe={},commentCounts={};
 function postCard(p){
@@ -9179,7 +9219,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='499';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='500';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>

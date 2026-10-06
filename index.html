@@ -3796,6 +3796,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   .nav-foot{display:none}                                      /* desktop-only sidebar footer */
   .nav-brand{display:none}                                     /* desktop-only sidebar logo */
   .deskrail{display:none}                                      /* desktop-only right rail */
+  .car-arrow{display:none}                                     /* desktop-only carousel arrows */
 
   /* ===================================================================
      FULL DESKTOP LAYOUT (≥1024px). Placed LAST so it overrides the mobile
@@ -3855,6 +3856,26 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
     /* keep the floating + / cart buttons clear of the right rail */
     .fab{right:calc(312px + 22px);bottom:30px}
     .screen:has(.nav.hide) .fab{right:calc(22px + var(--safe-right))}
+
+    /* right-rail "Popular treks" rows */
+    .dr-trek{display:flex;align-items:center;gap:11px;padding:8px 6px;text-decoration:none;cursor:pointer;border-radius:10px}
+    .dr-trek:hover{background:rgba(127,160,255,.07)}
+    .dr-trek .msr{font-size:19px;color:var(--accent2);flex:none}
+    .dr-trek-tx{min-width:0}
+    .dr-trek-tx b{display:block;font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .dr-trek-tx small{display:block;font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    /* carousel swipe arrows (mouse can't swipe) */
+    .car-has-arrows{position:relative}
+    .car-arrow{display:grid;place-items:center;position:absolute;z-index:6;width:34px;height:34px;border-radius:50%;border:0;cursor:pointer;
+      transform:translateY(-50%);background:rgba(10,18,30,.72);color:#fff;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+      box-shadow:0 4px 14px -4px rgba(0,0,0,.6);transition:background .15s}
+    .car-arrow:hover{background:rgba(10,18,30,.92)}
+    .car-arrow:active{transform:translateY(-50%) scale(.92)}
+    .car-arrow .msr{font-size:22px}
+    .car-arrow.car-prev{left:6px}
+    .car-arrow.car-next{right:6px}
+    html.light .car-arrow{background:rgba(255,255,255,.92);color:#0d1b2e;box-shadow:0 4px 14px -4px rgba(16,32,58,.3)}
 
     /* mobile swipe-rows of cards become a wrap grid that fills the width */
     .hrow{flex-wrap:wrap;overflow:visible;margin:0;padding:0}
