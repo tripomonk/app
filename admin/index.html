@@ -1131,7 +1131,13 @@ function hostDetail(which){
   }else{
     $('#content').innerHTML=`<div class="panel"><div class="tbar">${back}<h2 style="margin:0 0 0 10px">Host trips</h2><span class="spacer"></span><span class="tag">${_hostTrips.length}</span></div><p class="desc">Edit price, dates &amp; status.</p>${_hostTrips.length?wrapTbl(`<table class="tbl"><thead><tr><th>Trip</th><th>Host</th><th>Price</th><th>Dates</th><th>Status</th><th></th></tr></thead><tbody>${_hostTrips.map(t=>`<tr><td><b>${esc(t.title||'')}</b><br><small class="muted">${esc(t.destination||'')}</small></td><td data-l="Host" class="muted">${esc(t.host_name||'')}</td><td data-l="Price">${INR(t.price)}</td><td data-l="Dates" class="muted">${esc(t.start_date||'')}${t.end_date?' to '+esc(t.end_date):''}</td><td data-l="Status">${hostStTag(t.status)}</td><td><div class="row-acts"><button class="btn2 sm" onclick="hostTripEdit('${jsv(t.id)}')">Edit</button>${/live/i.test(t.status)?`<button class="btn2 sm" onclick="hostTripStatus('${jsv(t.id)}','draft')">Unlist</button>`:`<button class="btn2 sm" onclick="hostTripStatus('${jsv(t.id)}','live')">Publish</button>`}</div></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No host trips yet.</div>'}</div>`;
   }}
-async function hostSet(id,st){const {error}=await sb.from('host_applications').update({status:st}).eq('id',id);toast(error?('Update blocked - run SQL-admin-writes-fix.sql ('+(error.code||error.message)+')'):('Host '+st));if(!error)hostReload();}
+async function hostSet(id,st){
+  const r=await adminCall('set_host_app_status',{id,status:st});
+  if(r&&r.error){toast('Failed: '+r.error+(/function|not found|Unexpected|<!DOCTYPE|relation|column/i.test(r.error)?' — deploy the updated admin function':''));return;}
+  if(!(r&&r.ok)){toast('Failed — deploy the updated admin function');return;}
+  toast(st==='approved'?'Host approved ✓':st==='rejected'?'Host rejected':'Host '+st);
+  hostReload();
+}
 function hostProfile(id){
   const a=_hostApps.find(x=>String(x.id)===String(id));if(!a)return;
   const d=$('#drawer'),body=$('#drawerBody');d.classList.add('show');
