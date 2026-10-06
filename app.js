@@ -4025,6 +4025,41 @@ function suggestFollow(n,btn){
   const now=isFollowing(n);
   if(btn){btn.classList.toggle('on',now);btn.textContent=now?'Following':'Follow';}
 }
+/* DESKTOP right rail — "Trekkers to follow" + quick links. Fills the empty right side on
+   wide screens only; reuses the same people/suggestion engine as the community rail. It's a
+   persistent element in .screen, so one render covers every tab. No-op on phones. */
+let _deskRailDone=false;
+async function renderDeskRail(force){
+  try{
+    if(typeof matchMedia==='function' && !matchMedia('(min-width:1024px)').matches)return;
+    const box=document.getElementById('deskRail');if(!box)return;
+    if(_deskRailDone && !force)return;         /* render once unless asked to refresh */
+    const pool=await ensurePeople();
+    if(!pool||!pool.length){return;}           /* keep whatever's there; try again later */
+    const mine=(typeof getPrefs==='function'?(getPrefs()||[]):[]);
+    let list=pool.filter(p=>p&&p.n&&!isFollowing(p.n));
+    if(mine.length)list.sort((a,b)=>sharedPrefs(b.prefs)-sharedPrefs(a.prefs));
+    list=list.slice(0,6);
+    if(!list.length){box.innerHTML='';_deskRailDone=true;return;}
+    try{await loadAuthorPhotos(list.map(p=>p.n));}catch(e){}
+    const rows=list.map(p=>{const sn=jsq(p.n),on=isFollowing(p.n);
+      return '<div class="dr-row" data-dr="'+esc(p.n)+'">'
+        +'<div class="dr-av" onclick="openPerson(\''+sn+'\')">'+avatar(p.n,40)+'</div>'
+        +'<div class="dr-tx" onclick="openPerson(\''+sn+'\')"><b>'+esc(properName(p.n))+'</b><small>'+esc(handleFor(p.n))+'</small></div>'
+        +'<button class="dr-follow'+(on?' on':'')+'" onclick="suggestFollow(\''+sn+'\',this)">'+(on?'Following':'Follow')+'</button>'
+      +'</div>';}).join('');
+    box.innerHTML='<div class="dr-card"><div class="dr-head">Trekkers to follow</div>'+rows
+      +'<a class="dr-all" onclick="go(\'peopleSearch\')">See all trekkers</a></div>'
+      +'<div class="dr-card"><div class="dr-head">Discover</div><div class="dr-links">'
+        +'<a onclick="openDevDiwali()"><span class="msr">local_fire_department</span>Dev Deepawali 2026</a>'
+        +'<a onclick="openGiftCards()"><span class="msr">card_giftcard</span>Gift cards</a>'
+        +'<a onclick="go(\'help\')"><span class="msr">support_agent</span>Help &amp; support</a>'
+      +'</div></div>'
+      +'<div class="dr-foot">© Tripomonk · guided Himalayan treks</div>';
+    hydrate(box);
+    _deskRailDone=true;
+  }catch(e){/* non-fatal */}
+}
 function personRow(p){
   const sn=jsq(p.n);
   const shared=sharedPrefs(p.prefs);
@@ -9144,7 +9179,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='498';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='499';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>

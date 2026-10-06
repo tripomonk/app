@@ -3794,6 +3794,8 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   .batch.on .calb .mo{color:#fff}                              /* month label 6.2:1 (was 3.7) */
   .pr-was{color:var(--muted)}                                  /* struck-out old price (was 3.5) */
   .nav-foot{display:none}                                      /* desktop-only sidebar footer */
+  .nav-brand{display:none}                                     /* desktop-only sidebar logo */
+  .deskrail{display:none}                                      /* desktop-only right rail */
 
   /* ===================================================================
      FULL DESKTOP LAYOUT (≥1024px). Placed LAST so it overrides the mobile
@@ -3808,8 +3810,10 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
     /* --- bottom tab bar → left sidebar rail --- */
     .nav{left:0;right:auto;top:0;bottom:0;width:240px;flex-direction:column;justify-content:flex-start;align-items:stretch;
       gap:6px;border-radius:0;border:0;border-right:1px solid var(--stroke);background:var(--bg);
-      backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none;padding:80px 16px 20px}
-    .nav::before{content:"tripomonk";position:absolute;top:27px;left:20px;font-size:19px;font-weight:600;letter-spacing:-.3px;color:var(--text)}
+      backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none;padding:20px 14px}
+    .nav-brand{display:flex;align-items:center;gap:11px;margin:4px 6px 16px;text-decoration:none;cursor:pointer}
+    .nav-brand img{width:34px;height:34px;border-radius:10px;display:block;flex:none}
+    .nav-brand span{font-size:20px;font-weight:600;letter-spacing:-.3px;color:var(--text)}
     .nav button{box-sizing:border-box;flex-direction:row;justify-content:flex-start;gap:14px;width:100%;font-size:14px;font-weight:600;
       color:var(--muted-strong);padding:12px 14px;border-radius:13px}
     .nav button .ic,.nav button .msr{font-size:22px}
@@ -3822,12 +3826,35 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
     .nav .nav-center::after{content:"Community";font-size:14px;font-weight:600}
     .nav .nav-center.on{background:rgba(255,206,31,.12);color:var(--yellow)}
 
-    /* --- content sits right of the rail, centred to a comfortable column --- */
-    .view{left:240px;padding-top:34px;padding-bottom:44px;
-      padding-inline:max(32px, calc((100% - 1280px)/2))}
-    .view.full{left:240px;padding:0}
-    /* login / boot / flows hide the nav → let content use the whole width */
-    .screen:has(.nav.hide) .view{left:0}
+    /* --- content sits between the left rail and the right rail, centred --- */
+    .view{left:240px;right:312px;padding-top:34px;padding-bottom:44px;
+      padding-inline:max(28px, calc((100% - 1300px)/2))}
+    .view.full{left:240px;right:312px;padding:0}
+    /* login / boot / flows hide the nav → let content use the whole width (no rails) */
+    .screen:has(.nav.hide) .view{left:0;right:0}
+
+    /* --- right rail: "Trekkers to follow" + quick links, fills the empty right side --- */
+    .deskrail{display:block;position:absolute;top:0;right:0;bottom:0;width:312px;overflow-y:auto;
+      border-left:1px solid var(--stroke);background:var(--bg);padding:26px 18px 30px;scrollbar-width:none}
+    .deskrail::-webkit-scrollbar{display:none}
+    .screen:has(.nav.hide) .deskrail{display:none}     /* hide on flows/detail screens */
+    .dr-card{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:15px 15px 13px;margin-bottom:16px}
+    .dr-head{font-size:14px;font-weight:600;margin:0 0 8px;color:var(--text)}
+    .dr-row{display:flex;align-items:center;gap:11px;padding:8px 0}
+    .dr-av{flex:none;cursor:pointer}
+    .dr-tx{flex:1;min-width:0;cursor:pointer}
+    .dr-tx b{display:block;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .dr-tx small{display:block;font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .dr-follow{all:unset;box-sizing:border-box;cursor:pointer;flex:none;font-size:12px;font-weight:700;color:#fff;background:var(--accent);padding:6px 14px;border-radius:999px}
+    .dr-follow.on{background:transparent;color:var(--muted);border:1px solid var(--stroke)}
+    .dr-all{display:inline-block;margin-top:8px;font-size:12.5px;font-weight:600;color:var(--accent2);cursor:pointer}
+    .dr-links a{display:flex;align-items:center;gap:10px;padding:9px 6px;font-size:12.5px;font-weight:600;color:var(--muted-strong);cursor:pointer;text-decoration:none}
+    .dr-links a:hover{color:var(--text)}
+    .dr-links a .msr{font-size:18px;color:var(--muted)}
+    .dr-foot{margin-top:14px;padding:0 6px;font-size:11px;color:var(--muted)}
+    /* keep the floating + / cart buttons clear of the right rail */
+    .fab{right:calc(312px + 22px);bottom:30px}
+    .screen:has(.nav.hide) .fab{right:calc(22px + var(--safe-right))}
 
     /* mobile swipe-rows of cards become a wrap grid that fills the width */
     .hrow{flex-wrap:wrap;overflow:visible;margin:0;padding:0}
@@ -5309,6 +5336,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   <div class="fab cart-fab" id="cartFab" onclick="go('cart')" style="display:none"><span class="msr">shopping_bag</span><span class="cart-badge">0</span></div>
 
   <nav class="nav hide" id="nav">
+    <a class="nav-brand" onclick="go('home')"><img src="icons/logo.svg" alt="Tripomonk"/><span>tripomonk</span></a>
     <button data-t="home" onclick="go('home')"><span class="ic" data-i="home"></span>Home</button>
     <button data-t="explore" onclick="go('explore')"><span class="ic" data-i="treks"></span>Treks</button>
     <button class="nav-center" data-t="community" onclick="go('community')"><span class="ic" data-i="community"></span></button>
@@ -5323,6 +5351,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
       </div>
     </div>
   </nav>
+  <aside class="deskrail" id="deskRail" aria-label="Suggestions"></aside>
 
 </div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -5349,6 +5378,14 @@ if('serviceWorker' in navigator){
     }).catch(()=>{});
   });
 }
+/* desktop right rail (suggestions + links) — renders once on wide screens, and when the
+   window is resized up to desktop width. No-op on phones (guarded inside the function). */
+(function(){
+  function fire(){try{window.renderDeskRail&&renderDeskRail();}catch(e){}}
+  if(document.readyState==='complete')setTimeout(fire,1200);
+  else addEventListener('load',()=>setTimeout(fire,1200));
+  let t;addEventListener('resize',()=>{clearTimeout(t);t=setTimeout(fire,350);});
+})();
 </script>
 <script>
 /* Dismiss the boot/loading screen once the shell has painted. A hard cap guarantees it
