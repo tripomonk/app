@@ -3073,6 +3073,17 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
     background:var(--card2);color:var(--text);font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer}
   .happ .hact button.ok{background:var(--accent);border-color:var(--accent);color:#fff}
   .happ .hact button.no{background:rgba(255,90,110,.12);border-color:rgba(255,90,110,.3);color:#ff5a6e}
+  /* approve / reject feedback — admin SEES whether the change landed */
+  .happ{transition:border-color .3s,box-shadow .3s,opacity .3s}
+  .happ.rev-working{opacity:.7}
+  .happ.rev-working [data-hstat]{animation:hstatPulse .7s ease-in-out infinite}
+  @keyframes hstatPulse{50%{opacity:.3}}
+  .happ.rev-ok{border-color:rgba(15,157,88,.55);box-shadow:0 0 0 2px rgba(15,157,88,.28)}
+  .happ.rev-no{border-color:rgba(255,90,110,.5);box-shadow:0 0 0 2px rgba(255,90,110,.24)}
+  .happ.rev-ok [data-hstat],.happ.rev-no [data-hstat]{animation:revPop .5s ease}
+  @keyframes revPop{0%{transform:scale(.85)}55%{transform:scale(1.14)}100%{transform:scale(1)}}
+  .happ.rev-fail{border-color:rgba(255,90,110,.65);animation:revShake .45s ease}
+  @keyframes revShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
 
   /* ---- settings toggle switch ---- */
   .tgl{flex:none;width:44px;height:26px;border-radius:999px;background:var(--card2);border:1px solid var(--stroke2);

@@ -9138,7 +9138,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='495';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='496';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -12156,8 +12156,8 @@ function admHostAppCard(a){
       const links=[a.instagram?'<a href="'+esc(instaUrl(a.instagram))+'" target="_blank" rel="noopener">Instagram</a>':'',
                    a.youtube?'<a href="'+esc(a.youtube)+'" target="_blank" rel="noopener">YouTube</a>':'',
                    a.website?'<a href="'+esc(a.website)+'" target="_blank" rel="noopener">Website</a>':''].filter(Boolean).join(' · ');
-      return '<div class="happ">'
-        +'<b>'+esc(a.full_name)+'</b> <span class="hstat '+esc(a.status)+'" style="margin:0 0 0 6px;padding:3px 8px;font-size:10px">'+esc(a.status)+'</span>'
+      return '<div class="happ" data-happ="'+esc(a.id)+'">'
+        +'<b>'+esc(a.full_name)+'</b> <span class="hstat '+esc(a.status)+'" data-hstat="'+esc(a.id)+'" style="margin:0 0 0 6px;padding:3px 8px;font-size:10px">'+esc(a.status)+'</span>'
         +'<div class="hmeta">'
         +esc(a.mobile||'')+(a.city?' · '+esc(a.city):'')+(a.followers?' · '+esc(a.followers)+' followers':'')+'<br>'
         +(links||'<i style="color:var(--muted2)">no links given</i>')+'<br>'
@@ -12211,21 +12211,51 @@ function adminTripCard(t){
     +'</div>'
   +'</div>';
 }
+/* animate a host card's status chip: 'working' (pulse), a real status (settle green/red),
+   or 'fail' (red shake). Visible feedback so the admin SEES whether the change landed. */
+function hostRowAnim(id,state){
+  const card=document.querySelector('.happ[data-happ="'+(window.CSS&&CSS.escape?CSS.escape(String(id)):id)+'"]');
+  if(!card)return;
+  const chip=card.querySelector('[data-hstat]');
+  card.classList.remove('rev-working','rev-ok','rev-no','rev-fail');
+  if(state==='working'){card.classList.add('rev-working');return;}
+  if(state==='fail'){card.classList.add('rev-fail');return;}
+  card.classList.add(state==='approved'?'rev-ok':'rev-no');
+  if(chip){chip.className='hstat '+state;chip.textContent=state;}
+}
 async function reviewHost(id,status,name){
   if(!isAdminUser()){note('Admins only.','Not allowed');return;}
   if(!(await askConfirm((status==='approved'?'Approve ':'Reject ')+name+'?',status==='approved'?'Approve host':'Reject host')))return;
   const sb=getSupaClient();if(!sb)return;
-  /* .select() matters: an RLS-blocked update returns 0 rows and NO error */
-  const r=await sb.from('host_applications')
-    .update({status:status,reviewed_at:new Date().toISOString()}).eq('id',id).select('user_id');
-  if(r.error||!r.data||!r.data.length){
-    note('Could not update: '+((r.error&&r.error.message)||'no rows changed — check the admin policy.'),'Error');return;
+  hostRowAnim(id,'working');
+  let done=false,reason='';
+  /* 1) service-role admin fn — bypasses RLS entirely (works if the admin fn is deployed with
+        set_host_app_status AND the guard exempts service_role). */
+  try{const r=await adminCall('set_host_app_status',{id,status});if(r&&r.ok)done=true;else reason=(r&&r.error)||'';}
+  catch(e){reason=String((e&&e.message)||e);}
+  /* 2) fallback: direct owner write, and READ BACK the real status. This is what surfaces the
+        truth — a 0-row result means the UPDATE policy is missing; a row whose status did NOT
+        change means the host_app_guard trigger reverted it (it doesn't see you as admin). */
+  if(!done){
+    const r=await sb.from('host_applications')
+      .update({status:status,reviewed_at:new Date().toISOString()}).eq('id',id).select('id,status');
+    if(r.error)reason=r.error.message||r.error.code||reason;
+    else if(!r.data||!r.data.length)reason='0 rows changed — the admin UPDATE policy is missing. Run SQL-FIX-host-approval.sql.';
+    else if(r.data[0].status!==status)reason='The database reverted the status to "'+r.data[0].status+'" — the host_app_guard trigger isn\'t recognising your login as admin. Re-run the latest SQL-FIX-host-approval.sql.';
+    else done=true;
   }
-  /* the public badge is synced by the host_status_sync DB trigger — doing it from
-     here silently updated 0 rows, because the admin does not own that profile row */
-  await note(name+(status==='approved'?' is now a Verified Host.':' was rejected.'),'Done');
+  if(!done){
+    hostRowAnim(id,'fail');
+    const mail=(typeof userEmail==='function'?(userEmail()||''):'');
+    note(reason+(mail?('\n\nSigned in as: '+mail):''),'Could not '+(status==='approved'?'approve':'reject')+' '+name);
+    return;
+  }
+  /* success — play the animation, patch the cache in place, then re-render so counts update */
+  hostRowAnim(id,status);
+  const a=(_appsCache||[]).find(x=>String(x.id)===String(id));if(a)a.status=status;
   _ovCache=null;
-  renderAdminHosts(true);      /* status changed — refetch, don't reuse the cached list */
+  toast(name+(status==='approved'?' is now a Verified Host ✓':' was '+status));
+  setTimeout(()=>{if(adminTab==='Hosts')renderAdminHosts(true);},820);
 }
 
 /* ============================================================
