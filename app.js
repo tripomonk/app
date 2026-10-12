@@ -9227,7 +9227,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='504';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='505';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -12685,16 +12685,24 @@ async function reviewTrip(id,status,title,fromDetail){
   if(!isAdminUser()){note('Admins only.','Not allowed');return;}
   const verb=status==='live'?'Publish':status==='draft'?'Unpublish':'Reject';
   if(!(await askConfirm(verb+' "'+title+'"?',verb+' trip')))return;
-  const sb=getSupaClient();const uid=sb?await authUid():null;
+  const sb=getSupaClient();
   if(!sb){note('Backend not connected.','Error');return;}
-  const r=await sb.from('host_trips').update({status:status}).eq('id',id).select('id');
-  if(r.error){note('Could not update: '+r.error.message,'Error');return;}
-  if(!r.data||!r.data.length){
-    /* the update ran but changed nothing — almost always the admin RLS policy:
-       the DB checks the JWT email, which must equal the owner email exactly. */
-    note('The database rejected this change. It only allows the owner account ('
-      +'vikasupadhyay9@gmail.com) to publish trips. You are signed in as '
-      +(getUserEmail()||'an unknown account')+'. Sign in with the owner email and try again.','Not allowed by server');
+  /* Two ways this works: (1) the service-role admin fn (bypasses RLS + the host_trip_guard
+     trigger); (2) a direct owner write once SQL-FIX-host-trips.sql adds the "admin publishes"
+     policy. Try the fn, fall back to the direct write. Read back the ACTUAL status so a guard
+     that silently reverted it is caught, not reported as success. */
+  let done2=false,reason='';
+  try{const er=await adminCall('set_host_trip_status',{id,status});if(er&&er.ok)done2=true;else reason=(er&&er.error)||'';}
+  catch(e){reason=String((e&&e.message)||e);}
+  if(!done2){
+    const r=await sb.from('host_trips').update({status:status}).eq('id',id).select('id,status');
+    if(r.error)reason=r.error.message||r.error.code||reason;
+    else if(!r.data||!r.data.length)reason='0 rows changed — run SQL-FIX-host-trips.sql in Supabase (adds the admin-publish policy).';
+    else if(r.data[0].status!==status)reason='The database reverted the status to "'+r.data[0].status+'" — the host_trip_guard trigger isn\'t recognising your login as admin. Re-run the latest SQL-FIX-host-trips.sql.';
+    else done2=true;
+  }
+  if(!done2){
+    note(reason+'\n\nSigned in as: '+(getUserEmail()||'unknown')+'. The DB only lets the owner account publish trips — run SQL-FIX-host-trips.sql, or deploy the updated admin function.','Could not '+verb.toLowerCase()+' trip');
     return;
   }
   const done={live:'is now live.',draft:'moved back to draft.',rejected:'was rejected.'}[status]||'updated.';
