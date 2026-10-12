@@ -4211,7 +4211,7 @@ function fitCarousels(root){
 function addCarouselArrows(root){
   try{
     if(typeof matchMedia==='function' && !matchMedia('(min-width:1024px)').matches)return;
-    (root||document).querySelectorAll('.car-track, .suggest-rail').forEach(scroller=>{
+    (root||document).querySelectorAll('.car-track, .suggest-rail, .gc-row').forEach(scroller=>{
       if(scroller._arrowed)return;
       if(scroller.scrollWidth<=scroller.clientWidth+12){        /* not scrollable (or not laid out yet) */
         if(!scroller._arrowRetry){scroller._arrowRetry=1;setTimeout(()=>addCarouselArrows(root),500);}
@@ -4219,16 +4219,22 @@ function addCarouselArrows(root){
       }
       const mount=scroller.classList.contains('car-track')?scroller.closest('.car'):scroller.parentElement;
       if(!mount)return;
+      if(getComputedStyle(mount).position==='static')mount.style.position='relative';
       scroller._arrowed=true;mount.classList.add('car-has-arrows');
-      const yc=scroller.offsetTop+scroller.clientHeight/2;      /* vertical centre of the rail */
+      /* position each arrow over the scroller's own box (rect-based, so it works even when the
+         mount is a big grid container — e.g. the gift-card view). */
+      const place=b=>{const mr=mount.getBoundingClientRect(),sr=scroller.getBoundingClientRect();
+        b.style.top=(sr.top-mr.top+sr.height/2)+'px';
+        b.style.left=(b.classList.contains('car-prev')?(sr.left-mr.left+6):(sr.left-mr.left+sr.width-40))+'px';};
       const mk=dir=>{const b=document.createElement('button');b.type='button';
-        b.className='car-arrow '+(dir==='prev'?'car-prev':'car-next');b.style.top=yc+'px';
+        b.className='car-arrow '+(dir==='prev'?'car-prev':'car-next');
         b.setAttribute('aria-label',dir==='prev'?'Previous':'Next');
         b.innerHTML='<span class="msr">'+(dir==='prev'?'chevron_left':'chevron_right')+'</span>';
         b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();
-          scroller.scrollBy({left:(dir==='prev'?-1:1)*Math.max(220,Math.round(scroller.clientWidth*.85)),behavior:'smooth'});});
+          scroller.scrollBy({left:(dir==='prev'?-1:1)*Math.max(220,Math.round(scroller.clientWidth*.8)),behavior:'smooth'});});
         return b;};
-      mount.appendChild(mk('prev'));mount.appendChild(mk('next'));
+      const prev=mk('prev'),next=mk('next');mount.appendChild(prev);mount.appendChild(next);place(prev);place(next);
+      if(!mount._arrowResize){mount._arrowResize=1;addEventListener('resize',()=>{try{mount.querySelectorAll('.car-arrow').forEach(place);}catch(e){}});}
     });
   }catch(e){}
 }
@@ -6018,6 +6024,8 @@ function renderGiftCards(){
       gcCenter(row,want,false);
       gcFocusRail(row,'.gc-card',i=>{if(i!==_giftSel){_giftSel=i;renderGiftAmts();}});
     });
+    /* desktop two-column layout: give the design carousel ← → arrows (renderGiftCards doesn't hydrate) */
+    try{if(typeof addCarouselArrows==='function')setTimeout(()=>addCarouselArrows(document),160);}catch(e){}
   }
   renderGiftAmts();
 }
@@ -9219,7 +9227,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='501';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='504';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>

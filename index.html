@@ -1103,8 +1103,9 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   .amlogout .amt{color:#ff7a7a}
   .amsignin .amt{color:var(--accent2)}
   /* gift cards — immersive premium picker */
-  .giftcards-view{padding:0;background:#08080c;color:#fff;overflow:hidden}
+  .giftcards-view{padding:0;background:#08080c;color:#fff;overflow-x:hidden;overflow-y:auto}
   .giftcards-view.active{display:flex;flex-direction:column}
+  .gc-right{display:contents}   /* transparent on mobile; becomes the right column on desktop */
   .gc-glow{position:absolute;top:20%;left:50%;transform:translateX(-50%);width:150%;height:55%;pointer-events:none;z-index:0;
     background:radial-gradient(closest-side, rgba(240,190,80,.28), rgba(240,150,40,.08) 55%, transparent 75%)}
   .gc-top{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:center;padding:calc(var(--safe-top) + 12px) 18px 2px}
@@ -1118,7 +1119,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   .gc-head h1{font-size:22px;font-weight:700;margin:0 0 6px;letter-spacing:-.3px}
   .gc-head p{font-size:12.5px;color:rgba(255,255,255,.6);margin:0;line-height:1.5}
   .gc-row{position:relative;z-index:2;display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;
-    padding:24px 0;-webkit-overflow-scrolling:touch;flex:1;align-items:center}
+    padding:24px 0;-webkit-overflow-scrolling:touch;flex:1 0 auto;align-items:center}
   .gc-row::-webkit-scrollbar{display:none}
   /* spacers let the FIRST and LAST cards snap to dead centre (11% each side, minus the leading gap) */
   .gc-row::before,.gc-row::after{content:'';flex:0 0 calc(11% - 14px)}
@@ -3898,10 +3899,21 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
     .nf-links a:hover{background:rgba(127,160,255,.08);color:var(--text)}
     .nf-links a .msr{font-size:18px;color:var(--muted)}
 
-    /* --- gift cards: it's an immersive full-screen MOBILE view. On desktop, don't stretch it
-           — render the whole thing as a centred ~480px column so it looks exactly like mobile
-           (full-height black backdrop, portrait card carousel, amounts below). --- */
-    .giftcards-view{padding:0 max(18px,calc((100% - 480px)/2))}
+    /* --- gift cards: web-oriented TWO-COLUMN layout on desktop (card design preview on the
+           left, purchase panel on the right), instead of a narrow mobile column. --- */
+    #giftCards.active{display:grid;align-content:center;overflow:hidden auto;column-gap:clamp(32px,5vw,72px);row-gap:0;
+      grid-template-columns:minmax(0,1fr) minmax(340px,440px);
+      grid-template-rows:auto auto 1fr;
+      grid-template-areas:"top top" "head head" "card right";
+      padding:28px max(48px, calc((100% - 1480px)/2))}
+    .giftcards-view .gc-top{grid-area:top;align-self:start}
+    .giftcards-view .gc-head{grid-area:head;text-align:center;margin:4px 0 10px}
+    .giftcards-view .gc-row{grid-area:card;align-self:center;padding:0}
+    .giftcards-view .gc-card{flex:0 0 clamp(400px, 44vw, 700px)}
+    .giftcards-view .gc-right{display:flex;flex-direction:column;justify-content:center;gap:2px;grid-area:right;text-align:left}
+    .giftcards-view .gc-amts{justify-content:flex-start}
+    .giftcards-view .gc-perk{margin-left:0}
+    .giftcards-view .gc-cta{padding:10px 0 0}
   }
 </style>
 </head>
@@ -4351,14 +4363,16 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
       <p>Pick a design &amp; amount — you'll get a code to redeem or gift.</p>
     </div>
     <div class="gc-row" id="gcRow"></div>
-    <div class="gc-amt-wrap">
-      <div class="gc-name" id="gcName"></div>
-      <div class="gc-perk" id="gcPerk"></div>
-      <div class="gc-amts" id="gcAmts"></div>
-    </div>
-    <div class="gc-cta">
-      <button class="btn gc-redeem" id="gcBuyBtn" onclick="buyGiftCard()">Buy gift card</button>
-      <button type="button" class="gc-link" onclick="go('wallet')"><span class="msr">account_balance_wallet</span> Redeem a code / view wallet</button>
+    <div class="gc-right">
+      <div class="gc-amt-wrap">
+        <div class="gc-name" id="gcName"></div>
+        <div class="gc-perk" id="gcPerk"></div>
+        <div class="gc-amts" id="gcAmts"></div>
+      </div>
+      <div class="gc-cta">
+        <button class="btn gc-redeem" id="gcBuyBtn" onclick="buyGiftCard()">Buy gift card</button>
+        <button type="button" class="gc-link" onclick="go('wallet')"><span class="msr">account_balance_wallet</span> Redeem a code / view wallet</button>
+      </div>
     </div>
   </section>
 
