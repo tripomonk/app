@@ -21,7 +21,8 @@ a{color:#9fc0ff}</style>
     var p = location.pathname.replace(/\/+$/, '');
     var m = p.match(/^\/trip\/([^/]+)$/);
     var mt = p.match(/^\/t\/([^/]+)$/);
-    var dest = m ? '/#trip=' + m[1] : mt ? '/#trek=' + mt[1] : '/';
+    var mc = p.match(/^\/circle\/([^/]+)$/);   /* trip-circle invite link */
+    var dest = m ? '/#trip=' + m[1] : mt ? '/#trek=' + mt[1] : mc ? '/#circle=' + mc[1] : '/';
     location.replace(dest);
   } catch (e) {
     location.replace('/');

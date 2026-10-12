@@ -3047,7 +3047,12 @@ function handleDeepLink(){
   if(mt){const key=decodeURIComponent(mt[1]);setTimeout(()=>{try{openHostTripBySlug(key);}catch(e){}},400);return;}
   /* legacy host-trip link: #htrip=<id> (keep working for already-shared links) */
   const mh=h.match(/#htrip=([^&]+)/);
-  if(mh){const id=decodeURIComponent(mh[1]);setTimeout(()=>{try{openHostTripDetail(id);}catch(e){}},400);}
+  if(mh){const id=decodeURIComponent(mh[1]);setTimeout(()=>{try{openHostTripDetail(id);}catch(e){}},400);return;}
+  /* trip-circle invite link: #circle=<code|id> (404.html maps /circle/<code> → here) */
+  const mc=h.match(/#circle=([^&]+)/);
+  if(mc){const key=decodeURIComponent(mc[1]);setTimeout(()=>{try{openCircle(key);}catch(e){}},400);return;}
+  /* resume a circle the user was joining when they were sent to sign in */
+  try{const pc=localStorage.getItem('tmk_pending_circle');if(pc&&typeof isLoggedIn==='function'&&isLoggedIn()){localStorage.removeItem('tmk_pending_circle');setTimeout(()=>{try{openCircle(pc);}catch(e){}},500);}}catch(e){}
 }
 /* Wishlist — saved trek names per account on this device (the heart used to be decorative
    and the Wishlist screen always showed the same three treks). */
@@ -4073,6 +4078,221 @@ function _railPopularTreks(){
       +'<a class="dr-all" onclick="go(\'explore\')">Browse all treks</a></div>';
   }catch(e){return '';}
 }
+
+/* ================= TRIP CIRCLES (Community 2.0, Phase 1) ================= */
+async function circlesCall(action,payload){
+  const sb=getSupaClient();
+  if(!sb)return{ok:false,error:'Backend not connected.'};
+  let token=SB&&SB.SUPABASE_ANON_KEY;
+  try{const{data:{session}}=await sb.auth.getSession();if(session)token=session.access_token;}catch(e){}
+  try{
+    const r=await fetch(SB.SUPABASE_URL+'/functions/v1/circles',{method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+token,apikey:SB.SUPABASE_ANON_KEY},
+      body:JSON.stringify(Object.assign({action,name:(typeof myName==='function'?myName():'')},payload||{}))});
+    return await r.json().catch(()=>({ok:false,error:'Bad response'}));
+  }catch(e){return{ok:false,error:String(e&&e.message||e)};}
+}
+let _commView='feed';
+function setCommView(v){
+  _commView=v||'feed';
+  const sec=document.getElementById('community');if(!sec)return;
+  sec.classList.remove('cv-feed','cv-circles','cv-join','cv-buddies','cv-host');
+  sec.classList.add('cv-'+_commView);
+  const nav=document.getElementById('commNav');
+  if(nav)nav.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.cv===_commView));
+  const panel=document.getElementById('commPanel');if(!panel)return;
+  if(_commView==='feed'){panel.innerHTML='';return;}
+  if(_commView==='host'){panel.innerHTML=tcHostPanel();hydrate(panel);return;}
+  if(_commView==='buddies'){panel.innerHTML=tcBuddiesPanel();hydrate(panel);return;}
+  if(_commView==='join'){panel.innerHTML='<div class="tc-head"><b>Join a Trip</b></div><div id="tcJoinList"><div class="skel skel-card" style="height:150px"></div></div>';hydrate(panel);renderJoinList();return;}
+  if(_commView==='circles'){renderCirclesTab(panel);return;}
+}
+function tcTiles(){
+  return '<div class="tc-tiles">'
+    +'<div class="tc-tile" onclick="openCircleCreate()"><span class="msr">groups</span><b>Travel Together</b><small>Have your people? Make a circle.</small></div>'
+    +'<div class="tc-tile" onclick="setCommView(\'buddies\')"><span class="msr">travel_explore</span><b>Find Buddies</b><small>No group yet? Match with trekkers.</small></div>'
+    +'<div class="tc-tile" onclick="setCommView(\'join\')"><span class="msr">hiking</span><b>Join a Trip</b><small>Hop onto a group already going.</small></div>'
+    +'<div class="tc-tile" onclick="setCommView(\'host\')"><span class="msr">auto_awesome</span><b>Host a Trip</b><small>Bring your community along.</small></div>'
+    +'</div>';
+}
+async function renderCirclesTab(panel){
+  if(typeof isLoggedIn==='function'&&!isLoggedIn()){panel.innerHTML=tcTiles()+(typeof communityGate==='function'?communityGate():'');hydrate(panel);return;}
+  panel.innerHTML='<div class="tc-head" style="margin-top:2px"><b>What do you want to do?</b></div>'+tcTiles()
+    +'<div class="tc-head"><b>My Trip Circles</b><a onclick="openCircleCreate()">+ Create</a></div>'
+    +'<div id="tcMine"><div class="skel skel-card" style="height:90px"></div></div>';
+  hydrate(panel);
+  const r=await circlesCall('list_my_circles',{});
+  const box=document.getElementById('tcMine');if(!box)return;
+  const list=(r&&r.ok&&r.circles)||[];
+  if(!list.length){box.innerHTML='<div class="empty" style="padding:18px 0"><p>No trip circles yet. Create one, or join a trip.</p></div>';return;}
+  box.innerHTML=list.map(circleCard).join('');hydrate(box);
+}
+function circleCard(c){
+  const cc=c.counts||{total:0};const pct=Math.min(100,Math.round((cc.total/(c.max_members||1))*100));
+  const when=fmtCircleDate(c);
+  return '<div class="tc-card" onclick="openCircle(\''+jsq(c.id)+'\')">'
+    +(c.trek_img?'<div class="tc-ph" style="background-image:url(\''+esc(c.trek_img)+'\')">'+(when?'<span class="tc-when">'+esc(when)+'</span>':'')+'</div>':'')
+    +'<div class="tc-bd"><h4>'+esc(c.trek_name)+'</h4><div class="tc-sub">'+esc(c.creator_name)+' · '+esc(c.visibility==='private'?'Private':'Open')+(c.status&&c.status!=='forming'?' · '+esc(c.status):'')+'</div>'
+    +'<div class="tc-prog"><i style="width:'+pct+'%"></i></div>'
+    +'<div class="tc-progtx"><span>'+cc.total+' / '+c.max_members+' joined</span><span>'+(cc.booked||0)+' booked</span></div>'
+    +'</div></div>';
+}
+function fmtCircleDate(c){
+  if(!c||!c.start_date)return '';
+  try{const s=new Date(c.start_date+'T00:00:00');const o={day:'numeric',month:'short'};
+    if(c.end_date&&c.end_date!==c.start_date){const e=new Date(c.end_date+'T00:00:00');return s.toLocaleDateString('en-IN',o)+' – '+e.toLocaleDateString('en-IN',o);}
+    return s.toLocaleDateString('en-IN',o);}catch(e){return '';}
+}
+async function renderJoinList(){
+  const box=document.getElementById('tcJoinList');if(!box)return;
+  const r=await circlesCall('list_public_circles',{});
+  const list=(r&&r.ok&&r.circles)||[];
+  if(!list.length){box.innerHTML='<div class="empty" style="padding:18px 0"><p>No open trips yet. Be the first — create a Trip Circle.</p><button class="btn" style="max-width:220px;margin:8px auto 0" onclick="openCircleCreate()">Create Trip Circle</button></div>';hydrate(box);return;}
+  box.innerHTML=list.map(circleCard).join('');hydrate(box);
+}
+function tcBuddiesPanel(){
+  return '<div class="tc-head"><b>Find Travel Buddies</b></div>'
+    +'<div class="empty" style="padding:10px 0 18px"><p>Match with trekkers heading to the same trip (coming soon). For now, discover trekkers like you.</p>'
+    +'<button class="btn" style="max-width:230px;margin:8px auto 0" onclick="go(\'peopleSearch\')">Discover trekkers</button></div>';
+}
+function tcHostPanel(){
+  return '<div class="tc-head"><b>Host a Trip</b></div>'
+    +'<div class="empty" style="padding:10px 0 18px"><p><b>You bring the people. Tripomonk handles operations.</b><br>Transport, stay, permits, trek captain, safety &amp; payments — all handled.</p>'
+    +'<button class="btn" style="max-width:230px;margin:10px auto 0" onclick="(typeof openHosts===\'function\')?openHosts():go(\'explore\')">Become a host</button></div>';
+}
+/* ---- Create ---- */
+let _cc={trek:'',region:'',img:'',date:null,endDate:null,vis:'community',min:4,max:15,invite:{},_batches:[]};
+let _ccFollowers=null;
+function openCircleCreate(trekName){
+  if(typeof isLoggedIn==='function'&&!isLoggedIn()){_loginReturn='community';go('login');return;}
+  _cc={trek:'',region:'',img:'',date:null,endDate:null,vis:'community',min:4,max:15,invite:{},_batches:[]};
+  _ccFollowers=null;
+  go('circleCreate');renderCCBody();loadMyFollowers();
+  if(trekName)setTimeout(()=>ccPickTrek(trekName),60);
+}
+async function loadMyFollowers(){
+  _ccFollowers=[];
+  const sb=getSupaClient();if(sb){try{
+    let{data}=await sb.from('follows').select('follower_id,follower_name').ilike('following_name',myName());
+    _ccFollowers=(data||[]).filter(r=>r.follower_id).map(r=>({id:r.follower_id,name:r.follower_name||'Trekker'}));
+  }catch(e){}}
+  if(document.getElementById('ccInv'))renderCCInvite();
+}
+function renderCCBody(){
+  const b=document.getElementById('ccBody');if(!b)return;
+  b.innerHTML=
+    '<div class="cc-sec"><label>1 · Choose a trek</label>'
+      +'<div class="cc-search"><span class="msr" style="color:var(--muted)">search</span><input id="ccTrekSearch" placeholder="Search treks…" oninput="renderCCTrekPicks(this.value)"/></div>'
+      +'<div class="cc-pick" id="ccTrekPicks"></div></div>'
+    +'<div class="cc-sec" id="ccDateSec" style="display:none"><label>2 · Choose a date</label><div class="cc-pick" id="ccDatePicks"></div></div>'
+    +'<div class="cc-sec"><label>3 · Who can join?</label><div class="cc-pick">'
+      +'<span class="tap sel" id="ccVisC" onclick="ccSetVis(\'community\')">Open to community</span>'
+      +'<span class="tap" id="ccVisP" onclick="ccSetVis(\'private\')">Friends &amp; followers</span></div></div>'
+    +'<div class="cc-sec"><label>4 · Group size</label><div style="display:flex;gap:30px">'
+      +'<div><small style="color:var(--muted);font-size:11px">Minimum</small><div class="cc-num"><button onclick="ccNum(\'min\',-1)">−</button><b id="ccMin">4</b><button onclick="ccNum(\'min\',1)">+</button></div></div>'
+      +'<div><small style="color:var(--muted);font-size:11px">Maximum</small><div class="cc-num"><button onclick="ccNum(\'max\',-1)">−</button><b id="ccMax">15</b><button onclick="ccNum(\'max\',1)">+</button></div></div>'
+      +'</div></div>'
+    +'<div class="cc-sec"><label>5 · Invite your followers <small style="color:var(--muted2);font-weight:400">(optional)</small></label><div class="cc-inv" id="ccInv"><div class="empty" style="padding:14px 0"><p style="font-size:12.5px">Loading…</p></div></div></div>'
+    +'<button class="btn" id="ccGo" onclick="submitCircle()" style="margin-bottom:30px">Create Trip Circle</button>';
+  hydrate(b);renderCCTrekPicks('');renderCCInvite();
+}
+function renderCCTrekPicks(q){
+  const box=document.getElementById('ccTrekPicks');if(!box)return;
+  q=(q||'').trim().toLowerCase();
+  let list=(typeof treks!=='undefined'?treks:[]).filter(t=>t&&t.n);
+  if(q)list=list.filter(t=>String(t.n).toLowerCase().includes(q)||String(t.region||'').toLowerCase().includes(q));
+  else list=list.filter(t=>!t.soon);
+  list=list.slice(0,12);
+  box.innerHTML=list.map(t=>'<span class="tap'+(_cc.trek===t.n?' sel':'')+'" onclick="ccPickTrek(\''+jsq(t.n)+'\')">'+esc(t.n)+'</span>').join('')||'<small style="color:var(--muted)">No treks match.</small>';
+}
+function ccPickTrek(n){
+  const t=(typeof treks!=='undefined'?treks:[]).find(x=>x.n===n);if(!t)return;
+  _cc.trek=n;_cc.region=t.region||'';_cc.img=t.img||t.photo||'';_cc.date=null;_cc.endDate=null;
+  const si=document.getElementById('ccTrekSearch');renderCCTrekPicks(si?si.value:'');
+  const sec=document.getElementById('ccDateSec'),dp=document.getElementById('ccDatePicks');
+  const batches=(t.batches||[]).filter(Boolean);
+  if(sec)sec.style.display='';
+  if(batches.length){_cc._batches=batches.map(ccBatchDate);if(dp)dp.innerHTML=_cc._batches.slice(0,12).map((d,i)=>'<span class="tap" onclick="ccPickDate('+i+')" data-bi="'+i+'">'+esc(d.label)+'</span>').join('');}
+  else{_cc._batches=[];if(dp)dp.innerHTML='<small style="color:var(--muted)">No fixed departures listed — the circle will be dateless; set the date with your group.</small>';}
+}
+function ccBatchDate(b){
+  let start=typeof b==='string'?b:(b&&(b.start||b.date||b.from)||'');let end=(b&&(b.end||b.to))||'';
+  let label='Date';try{if(start){const s=new Date(start+'T00:00:00');const o={day:'numeric',month:'short'};label=s.toLocaleDateString('en-IN',o);if(end&&end!==start){const e=new Date(end+'T00:00:00');label+=' – '+e.toLocaleDateString('en-IN',o);}}}catch(e){label=String(start||'Date');}
+  return{start,end,label};
+}
+function ccPickDate(i){const d=(_cc._batches||[])[i];if(!d)return;_cc.date=d.start||null;_cc.endDate=d.end||d.start||null;document.querySelectorAll('#ccDatePicks .tap').forEach(el=>el.classList.toggle('sel',+el.dataset.bi===i));}
+function ccSetVis(v){_cc.vis=v;const c=document.getElementById('ccVisC'),p=document.getElementById('ccVisP');if(c)c.classList.toggle('sel',v==='community');if(p)p.classList.toggle('sel',v==='private');}
+function ccNum(k,d){_cc[k]=Math.max(2,Math.min(50,(_cc[k]||(k==='min'?4:15))+d));if(_cc.min>_cc.max){if(k==='min')_cc.max=_cc.min;else _cc.min=_cc.max;}const mn=document.getElementById('ccMin'),mx=document.getElementById('ccMax');if(mn)mn.textContent=_cc.min;if(mx)mx.textContent=_cc.max;}
+function renderCCInvite(){
+  const box=document.getElementById('ccInv');if(!box)return;
+  if(_ccFollowers===null){box.innerHTML='<div class="empty" style="padding:14px 0"><p style="font-size:12.5px">Loading…</p></div>';return;}
+  if(!_ccFollowers.length){box.innerHTML='<div class="empty" style="padding:14px 0"><p style="font-size:12.5px">No followers yet — share the invite link after you create the circle.</p></div>';return;}
+  box.innerHTML=_ccFollowers.map(f=>'<div class="mrow'+(_cc.invite[f.id]?' sel':'')+'" onclick="ccToggleInvite(\''+jsq(f.id)+'\')" data-fid="'+esc(f.id)+'">'+avatar(f.name,36)+'<div class="tc-mtx"><b>'+esc(properName(f.name))+'</b></div><span class="ck msr">check</span></div>').join('');
+  hydrate(box);
+}
+function ccToggleInvite(id){if(_cc.invite[id])delete _cc.invite[id];else _cc.invite[id]=((_ccFollowers||[]).find(f=>f.id===id)||{}).name||'Trekker';renderCCInvite();}
+async function submitCircle(){
+  if(!_cc.trek){note('Pick a trek first.','Choose a trek');return;}
+  const btn=document.getElementById('ccGo');if(btn){btn.disabled=true;btn.textContent='Creating…';}
+  const ids=Object.keys(_cc.invite),names={};ids.forEach(i=>names[i]=_cc.invite[i]);
+  const r=await circlesCall('create_circle',{trek_name:_cc.trek,trek_region:_cc.region,trek_img:_cc.img,start_date:_cc.date,end_date:_cc.endDate,visibility:_cc.vis,min_members:_cc.min,max_members:_cc.max,invite_user_ids:ids,invite_names:names});
+  if(btn){btn.disabled=false;btn.textContent='Create Trip Circle';}
+  if(!r||!r.ok){note((r&&r.error)||'Could not create the circle.','Error');return;}
+  toast('Trip Circle created');openCircle(r.circle.id);
+}
+/* ---- Circle page ---- */
+let _circleCur=null,_circleBookCtx=null;
+async function openCircle(idOrCode){
+  go('circle');
+  const body=document.getElementById('circleBody');
+  if(body){body.innerHTML='<div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Trip Circle</h1></div><div class="skel skel-card" style="height:150px"></div>';hydrate(body);}
+  const isCode=idOrCode&&/^[A-Z0-9]{5,10}$/.test(String(idOrCode));
+  const r=await circlesCall('get_circle',isCode?{invite_code:idOrCode}:{id:idOrCode});
+  if(!r||!r.ok){if(body){body.innerHTML='<div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Trip Circle</h1></div><div class="empty"><p>'+esc((r&&r.error)||'Could not load this trip circle.')+'</p></div>';hydrate(body);}return;}
+  _circleCur=r;renderCirclePage(r);
+}
+function renderCirclePage(r){
+  const body=document.getElementById('circleBody');if(!body)return;
+  const c=r.circle,cc=r.counts||{total:0},pct=Math.min(100,Math.round((cc.total/(c.max_members||1))*100));
+  const when=fmtCircleDate(c),confirmed=c.status==='confirmed'||c.status==='booked';
+  let h='<div class="tc-hero" style="background-image:url(\''+esc(c.trek_img||'')+'\')">'
+    +'<div class="rb round tc-back" onclick="back()"><span class="ic" data-i="back"></span></div>'
+    +'<div class="tc-htx"><h1>'+esc(c.trek_name)+'</h1><small>'+(when?esc(when)+' · ':'')+'by '+esc(c.creator_name)+'</small></div></div>';
+  if(confirmed)h+='<div class="tc-confirm"><b>Trip Circle Confirmed!</b><small>Your group reached the minimum — Tripomonk takes it from here.</small></div>';
+  h+='<div class="tc-prog"><i style="width:'+pct+'%"></i></div><div class="tc-progtx"><span><b style="color:var(--text)">'+cc.total+'</b> / '+c.max_members+' joined</span><span>min '+c.min_members+'</span></div>';
+  h+='<div class="tc-stat"><div><b>'+cc.total+'</b><small>Joined</small></div><div><b>'+(cc.booked||0)+'</b><small>Booked</small></div><div><b>'+(cc.pending||0)+'</b><small>Pending</small></div></div>';
+  h+='<div class="tc-actions">';
+  if(r.amMember){
+    h+='<button class="pri" onclick="circleBook()">'+(r.myStatus==='booked'?'View trip':'Book my spot')+'</button><button onclick="circleShare()">Share</button>';
+    if(r.amCreator)h+='<button onclick="circleShare()">Invite</button>';
+    else h+='<button onclick="circleLeave()">Leave</button>';
+  }else{
+    h+='<button class="pri" onclick="circleJoin()">'+(c.visibility==='private'?'Accept &amp; join':'Join this trip')+'</button><button onclick="circleShare()">Share</button>';
+  }
+  h+='</div>';
+  const mem=(r.members||[]).filter(m=>m.status!=='left'&&m.status!=='cancelled');
+  h+='<div class="tc-head"><b>Members ('+mem.length+')</b></div>';
+  h+=mem.map(m=>'<div class="tc-member">'+avatar(m.user_name,38)+'<div class="tc-mtx"><b>'+esc(properName(m.user_name))+'</b>'+(m.role==='creator'?'<small style="color:var(--muted);display:block;font-size:11px">Organizer</small>':'')+'</div><span class="tc-chip '+esc(m.status)+'">'+esc(tcStatusLabel(m.status))+'</span></div>').join('');
+  body.innerHTML=h;hydrate(body);
+}
+function tcStatusLabel(s){return {booked:'Booked',booking_pending:'Payment pending',joined:'Joined',invited:'Invited'}[s]||s;}
+async function circleJoin(){
+  const c=_circleCur&&_circleCur.circle;if(!c)return;
+  if(typeof isLoggedIn==='function'&&!isLoggedIn()){try{localStorage.setItem('tmk_pending_circle',c.invite_code||c.id);}catch(e){}_loginReturn='community';note('Sign in to join this trip.','Join');go('login');return;}
+  const r=await circlesCall('join',{circle_id:c.id});
+  if(!r||!r.ok){note((r&&r.error)||'Could not join.','Error');return;}
+  toast('You’re in!');openCircle(c.id);
+}
+async function circleLeave(){const c=_circleCur&&_circleCur.circle;if(!c)return;if(!(await askConfirm('Leave this trip circle?','Leave')))return;const r=await circlesCall('leave',{circle_id:c.id});if(!r||!r.ok){note((r&&r.error)||'Could not leave.','Error');return;}toast('You left the circle');openCircle(c.id);}
+function circleBook(){const c=_circleCur&&_circleCur.circle;if(!c)return;_circleBookCtx=c.id;if(typeof openDetailByName==='function')openDetailByName(c.trek_name);}
+function circleShare(){
+  const c=_circleCur&&_circleCur.circle;if(!c)return;
+  const code=c.invite_code||c.id,url=(location.origin||'https://app.tripomonk.com')+'/circle/'+code;
+  const txt='🏔️ '+c.trek_name+(fmtCircleDate(c)?'\n'+fmtCircleDate(c):'')+'\n\nJoin '+c.creator_name+'’s Trip Circle on Tripomonk.\n'+url;
+  if(navigator.share){navigator.share({title:'Tripomonk · '+c.trek_name,text:txt,url:url}).catch(()=>{});}
+  else{try{navigator.clipboard.writeText(url);toast('Invite link copied');}catch(e){try{prompt('Copy this invite link:',url);}catch(e2){}}}
+}
+
 function personRow(p){
   const sn=jsq(p.n);
   const shared=sharedPrefs(p.prefs);
@@ -9227,7 +9447,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='505';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='506';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -11445,7 +11665,7 @@ function go(id){const el=document.getElementById(id);if(!el)return;
   if(id==='travellers'){trav(0);prefillTravellers();}
   if(id==='review')syncReview();
   if(id==='payment')refreshPayQuote();
-  if(id==='community')renderFeed();
+  if(id==='community'){renderFeed();if(typeof setCommView==='function')setCommView(_commView||'feed');}
   if(id==='person')renderPerson();
   if(id==='search')renderSearch();
   if(id==='planner')renderPlanner();
