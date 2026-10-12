@@ -4105,7 +4105,9 @@ function setCommView(v){
   if(_commView==='feed'){panel.innerHTML='';return;}
   if(_commView==='host'){panel.innerHTML=tcHostPanel();hydrate(panel);return;}
   if(_commView==='buddies'){panel.innerHTML=tcBuddiesPanel();hydrate(panel);return;}
-  if(_commView==='join'){panel.innerHTML='<div class="tc-head"><b>Join a Trip</b></div><div id="tcJoinList"><div class="skel skel-card" style="height:150px"></div></div>';hydrate(panel);renderJoinList();return;}
+  if(_commView==='join'){panel.innerHTML='<div class="tc-head"><b>Join a Trip</b></div>'
+    +'<div class="cc-search"><span class="msr" style="color:var(--muted)">search</span><input id="tcJoinQ" placeholder="Search by trek or region…" oninput="_tcJoinDeb()"/></div>'
+    +'<div id="tcJoinList"><div class="skel skel-card" style="height:150px"></div></div>';hydrate(panel);renderJoinList();return;}
   if(_commView==='circles'){renderCirclesTab(panel);return;}
 }
 function tcTiles(){
@@ -4144,12 +4146,27 @@ function fmtCircleDate(c){
     if(c.end_date&&c.end_date!==c.start_date){const e=new Date(c.end_date+'T00:00:00');return s.toLocaleDateString('en-IN',o)+' – '+e.toLocaleDateString('en-IN',o);}
     return s.toLocaleDateString('en-IN',o);}catch(e){return '';}
 }
+let _tcJoinT=null,_tcJoinCache=null,_tcJoinSeq=0;
+/* keystrokes filter the CACHED list synchronously — no async in the type path, so no
+   response-ordering race can repaint a stale (unfiltered) list over a filtered one. */
+function _tcJoinDeb(){clearTimeout(_tcJoinT);_tcJoinT=setTimeout(_tcJoinPaint,180);}
+function _tcJoinPaint(){
+  const box=document.getElementById('tcJoinList');if(!box)return;
+  const q=((document.getElementById('tcJoinQ')||{}).value||'').trim().toLowerCase();
+  let list=_tcJoinCache||[];
+  if(q)list=list.filter(c=>[c.trek_name,c.trek_region,c.creator_name].some(x=>String(x||'').toLowerCase().includes(q)));
+  if(!list.length){box.innerHTML='<div class="empty" style="padding:18px 0"><p>'+(q?'No open trips match your search.':'No open trips yet. Be the first — create a Trip Circle.')+'</p>'+(q?'':'<button class="btn" style="max-width:220px;margin:8px auto 0" onclick="openCircleCreate()">Create Trip Circle</button>')+'</div>';hydrate(box);return;}
+  box.innerHTML=list.map(circleCard).join('');hydrate(box);
+}
 async function renderJoinList(){
   const box=document.getElementById('tcJoinList');if(!box)return;
+  const seq=++_tcJoinSeq;   /* only the newest fetch may populate the cache */
+  box.innerHTML='<div class="empty" style="padding:18px 0"><p>Loading open trips…</p></div>';
   const r=await circlesCall('list_public_circles',{});
-  const list=(r&&r.ok&&r.circles)||[];
-  if(!list.length){box.innerHTML='<div class="empty" style="padding:18px 0"><p>No open trips yet. Be the first — create a Trip Circle.</p><button class="btn" style="max-width:220px;margin:8px auto 0" onclick="openCircleCreate()">Create Trip Circle</button></div>';hydrate(box);return;}
-  box.innerHTML=list.map(circleCard).join('');hydrate(box);
+  if(seq!==_tcJoinSeq)return;
+  _tcJoinCache=(r&&r.ok&&r.circles)||[];
+  _tcJoinPaint();
+  return;
 }
 function tcBuddiesPanel(){
   return '<div class="tc-head"><b>Find Travel Buddies</b></div>'
@@ -4265,7 +4282,7 @@ function renderCirclePage(r){
   h+='<div class="tc-actions">';
   if(r.amMember){
     h+='<button class="pri" onclick="circleBook()">'+(r.myStatus==='booked'?'View trip':'Book my spot')+'</button><button onclick="circleShare()">Share</button>';
-    if(r.amCreator)h+='<button onclick="circleShare()">Invite</button>';
+    if(r.amCreator)h+='<button onclick="openCircleInvite()">Invite</button>';
     else h+='<button onclick="circleLeave()">Leave</button>';
   }else{
     h+='<button class="pri" onclick="circleJoin()">'+(c.visibility==='private'?'Accept &amp; join':'Join this trip')+'</button><button onclick="circleShare()">Share</button>';
@@ -4303,6 +4320,30 @@ function circleShare(){
   const txt='🏔️ '+c.trek_name+(fmtCircleDate(c)?'\n'+fmtCircleDate(c):'')+'\n\nJoin '+c.creator_name+'’s Trip Circle on Tripomonk.\n'+url;
   if(navigator.share){navigator.share({title:'Tripomonk · '+c.trek_name,text:txt,url:url}).catch(()=>{});}
   else{try{navigator.clipboard.writeText(url);toast('Invite link copied');}catch(e){try{prompt('Copy this invite link:',url);}catch(e2){}}}
+}
+/* ---- post-creation invite picker (#circleInvite) ---- */
+let _ciSel={};
+function openCircleInvite(){
+  const c=_circleCur&&_circleCur.circle;if(!c)return;
+  _ciSel={};go('circleInvite');renderCIInvite();loadMyFollowers().then(()=>renderCIInvite()).catch(()=>{});
+}
+function renderCIInvite(){
+  const box=document.getElementById('ciInv');if(!box)return;
+  if(_ccFollowers===null){box.innerHTML='<div class="empty" style="padding:14px 0"><p style="font-size:12.5px">Loading…</p></div>';return;}
+  if(!_ccFollowers.length){box.innerHTML='<div class="empty" style="padding:14px 0"><p style="font-size:12.5px">No followers yet — use Share to send the invite link instead.</p></div>';return;}
+  box.innerHTML=_ccFollowers.map(f=>'<div class="mrow'+(_ciSel[f.id]?' sel':'')+'" onclick="ciToggle(\''+jsq(f.id)+'\')">'+avatar(f.name,36)+'<div class="tc-mtx"><b>'+esc(properName(f.name))+'</b></div><span class="ck msr">check</span></div>').join('');
+  hydrate(box);
+}
+function ciToggle(id){if(_ciSel[id])delete _ciSel[id];else _ciSel[id]=((_ccFollowers||[]).find(f=>f.id===id)||{}).name||'Trekker';renderCIInvite();}
+async function sendCircleInvites(){
+  const c=_circleCur&&_circleCur.circle;if(!c)return;
+  const ids=Object.keys(_ciSel);if(!ids.length){note('Select at least one person, or use Share for a link.','Pick people');return;}
+  const names={};ids.forEach(i=>names[i]=_ciSel[i]);
+  const btn=document.getElementById('ciGo');if(btn){btn.disabled=true;btn.textContent='Sending…';}
+  const r=await circlesCall('invite',{circle_id:c.id,user_ids:ids,names:names});
+  if(btn){btn.disabled=false;btn.textContent='Send invites';}
+  if(!r||!r.ok){note((r&&r.error)||'Could not send invites.','Error');return;}
+  toast('Invited '+(r.invited||ids.length));openCircle(c.id);
 }
 
 function personRow(p){
@@ -9459,7 +9500,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='507';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='508';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>

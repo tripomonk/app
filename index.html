@@ -4326,6 +4326,14 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
     <div id="circleBody"></div>
   </section>
 
+  <!-- INVITE TO TRIP CIRCLE -->
+  <section class="view flow" id="circleInvite" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Invite people</h1></div>
+    <p style="font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 14px">Pick followers to invite. They'll get an invite to accept.</p>
+    <div class="cc-inv" id="ciInv" style="max-height:none"><div class="empty" style="padding:14px 0"><p style="font-size:12.5px">Loading…</p></div></div>
+    <button class="btn" id="ciGo" onclick="sendCircleInvites()" style="margin:16px 0 30px">Send invites</button>
+  </section>
+
   <!-- PEOPLE SEARCH -->
   <section class="view flow" id="peopleSearch" data-nonav>
     <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>Find Trekkers</h1></div>
