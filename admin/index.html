@@ -274,6 +274,7 @@
     <div class="nav-i" data-sec="staff"><span class="ic">🛡️</span> Staff</div>
     <div class="side-sec">Community</div>
     <div class="nav-i" data-sec="community"><span class="ic">📷</span> Posts</div>
+    <div class="nav-i" data-sec="circles"><span class="ic">🫂</span> Trip Circles</div>
     <div class="nav-i" data-sec="reviews"><span class="ic">⭐</span> Reviews</div>
     <div class="side-sec">Growth</div>
     <div class="nav-i" data-sec="home"><span class="ic">🏠</span> Home &amp; features</div>
@@ -312,10 +313,10 @@ const OWNER="vikasupadhyay9@gmail.com";
 /* role → sections a staff member may see (owner/super sees everything). Mirrors the app's
    ROLE_TABS. 'captain' has NO console access (they use the in-app check-in only). */
 const ROLE_SECTIONS={
-  operations:['dashboard','bookings','treks','destinations','departures','packing','gear','permits','support','vendors','users','crm','hosts','guides'],
+  operations:['dashboard','bookings','treks','destinations','departures','packing','gear','permits','support','vendors','users','crm','hosts','guides','circles'],
   finance:['dashboard','bookings','payments','users'],
   content:['dashboard','treks','destinations','packing','home','reviews'],
-  community:['dashboard','community','reviews','support','users'],
+  community:['dashboard','community','circles','reviews','support','users'],
 };
 function allowedFor(sec){return ROLE==='owner'||(ROLE_SECTIONS[ROLE]&&ROLE_SECTIONS[ROLE].indexOf(sec)>=0);}
 const sb=window.supabase.createClient(CFG.URL,CFG.ANON);
@@ -340,6 +341,12 @@ async function adminCall(action,data){
   const { data:{session} }=await sb.auth.getSession();
   const token=session?session.access_token:CFG.ANON;
   try{const res=await fetch(CFG.URL+'/functions/v1/admin',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token,apikey:CFG.ANON},body:JSON.stringify(Object.assign({action},data||{}))});return await res.json();}catch(e){return {error:String(e&&e.message||e)};}
+}
+/* same pattern, but the Trip Circles edge fn (owner JWT). list_all_circles returns forbidden for non-owners. */
+async function circlesCall(action,data){
+  const { data:{session} }=await sb.auth.getSession();
+  const token=session?session.access_token:CFG.ANON;
+  try{const res=await fetch(CFG.URL+'/functions/v1/circles',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token,apikey:CFG.ANON},body:JSON.stringify(Object.assign({action},data||{}))});return await res.json();}catch(e){return {error:String(e&&e.message||e)};}
 }
 /* _navSeq bumps on every section switch. A load that finishes after the admin has moved on
    never resolves, so a slow section can't paint over the one now on screen. */
@@ -453,6 +460,7 @@ const SEC={
   guides:['Guides','Trek leaders',renderGuides],
   staff:['Staff','Team & roles',renderStaff],
   community:['Community posts','Moderate',renderCommunity],
+  circles:['Trip Circles','Group trips, members & refunds',renderCircles],
   reviews:['Reviews','Add & manage',renderReviews],
   home:['Home & features','Featured trek & rails',renderHome],
   training:['Training','Who is training',renderTraining],
@@ -1536,6 +1544,93 @@ async function renderCommunity(){const {rows,error}=await qtbl('community_posts'
 async function postFeature(id,f){const r=await adminCall('feature_post',{id,featured:f==='true'||f===true});toast(r&&r.error?('Failed: '+r.error):'Updated');if(!(r&&r.error))renderCommunity();}
 async function postStatus(id,status){const r=await adminCall('set_post_status',{id,status});toast(r&&r.error?('Failed: '+r.error):(status==='live'?'Approved ✓':status==='rejected'?'Rejected':'Hidden'));if(!(r&&r.error))renderCommunity();}
 function postDel(id){confirmDo('Delete this post permanently?',async()=>{const r=await adminCall('delete_post',{id});toast(r&&r.error?('Failed: '+r.error):'Deleted');if(!(r&&r.error))renderCommunity();});}
+/* TRIP CIRCLES — group trips, members, cancel/refund. All via the `circles` edge fn (owner JWT). */
+let _circlesCache=null,_circleKpi=null,_circleStatus='all',_circleQ='',_circleCur=null;
+const _CIRCLE_TAG={forming:'warn',confirmed:'ok',booked:'ok',closed:'neutral',cancelled:'bad'};
+const _MEMBER_TAG={invited:'neutral',interested:'neutral',joined:'warn',booking_pending:'warn',booked:'ok',left:'neutral',cancelled:'bad'};
+async function renderCircles(){
+  const seq=_navSeq;
+  const r=await circlesCall('list_all_circles',{});
+  if(seq!==_navSeq)return;
+  if(!r||!r.ok){$('#content').innerHTML='<div class="panel"><div class="empty">'+(r&&r.error==='forbidden'?'Trip Circles is owner-only — sign in with the owner account.':('Could not load circles'+(r&&r.error?': '+esc(r.error):'.')))+'</div></div>';return;}
+  _circlesCache=r.circles||[];_circleKpi=r.kpi||{};_circleCur=null;
+  paintCircles();
+}
+function circleRowsHtml(){
+  const q=_circleQ.trim().toLowerCase();
+  let list=(_circlesCache||[]).slice();
+  if(_circleStatus!=='all')list=list.filter(c=>c.status===_circleStatus);
+  if(q)list=list.filter(c=>[c.trek_name,c.trek_region,c.creator_name].some(x=>String(x||'').toLowerCase().includes(q)));
+  if(!list.length)return '<div class="empty">No circles match.</div>';
+  const badge=c=>`<span class="tag ${_CIRCLE_TAG[c.status]||'neutral'}">${esc(c.status)}</span>`;
+  const row=c=>{const cn=c.counts||{};return `<tr onclick="openCircle('${jsv(c.id)}')" style="cursor:pointer"><td><b>${esc(c.trek_name||'Untitled')}</b>${c.visibility==='private'?' <span class="tag neutral">private</span>':''}</td><td class="muted">${esc(c.creator_name||'—')}</td><td class="muted">${dshort(c.start_date)}${c.end_date?' – '+dshort(c.end_date):''}</td><td>${badge(c)}</td><td class="muted">${cn.total||0}/${c.max_members||0} · min ${c.min_members||0}</td><td class="muted">${cn.booked||0}</td></tr>`;};
+  return wrapTbl(`<table class="tbl"><thead><tr><th>Trek</th><th>Organizer</th><th>Dates</th><th>Status</th><th>Members</th><th>Booked</th></tr></thead><tbody>${list.map(row).join('')}</tbody></table>`);
+}
+function filterCircles(){const el=$('#circleRows');if(el)el.innerHTML=circleRowsHtml();}
+function paintCircles(){
+  const k=_circleKpi||{};
+  const chip=(v,label)=>`<button class="btn2 sm ${v===_circleStatus?'pri':''}" onclick="_circleStatus='${v}';paintCircles()">${label}${v!=='all'&&k[v]?` (${k[v]})`:''}</button>`;
+  $('#content').innerHTML=`
+    <div class="panel">
+      <div class="kpis">${kpi('Forming',k.forming||0,'⏳','#c79a10')}${kpi('Confirmed',k.confirmed||0,'✅','#1e8f5f')}${kpi('Cancelled',k.cancelled||0,'🛑','#b4433a')}</div>
+      <div class="tbar"><button class="btn2" onclick="circleExpire(true)">Preview expirations</button><button class="btn2 danger" onclick="circleExpire(false)">Run expire + refund</button></div>
+      <p class="desc">Under-min circles past their start date are auto-cancelled and fully refunded by a daily job. Preview shows what would happen right now, without changing anything.</p>
+      <div class="tbar"><input class="grow" id="cQ" placeholder="Search trek, region or organizer…" value="${esc(_circleQ)}" oninput="_circleQ=this.value;filterCircles()"/><span class="spacer"></span>${['all','forming','confirmed','cancelled'].map(v=>chip(v,v[0].toUpperCase()+v.slice(1))).join('')}</div>
+      <div id="circleRows">${circleRowsHtml()}</div>
+    </div>`;
+  const inp=$('#cQ');if(inp&&_circleQ){inp.focus();try{inp.setSelectionRange(inp.value.length,inp.value.length);}catch(e){}}
+}
+async function openCircle(id){
+  $('#content').innerHTML='<div class="panel"><div class="skel" style="width:40%;margin-bottom:12px"></div><div class="skel" style="width:70%"></div></div>';
+  const r=await circlesCall('get_circle',{id});
+  if(!r||!r.ok){$('#content').innerHTML='<div class="panel"><button class="btn2 sm" onclick="paintCircles()">← Back</button><div class="empty">'+esc((r&&r.error)||'Not found')+'</div></div>';return;}
+  _circleCur=r;paintCircleDetail();
+}
+function paintCircleDetail(){
+  const c=_circleCur.circle||{},cn=_circleCur.counts||{},mem=_circleCur.members||[];
+  const active=['joined','booking_pending','booked'];
+  const mbadge=s=>`<span class="tag ${_MEMBER_TAG[s]||'neutral'}">${esc(String(s||'').replace(/_/g,' '))}</span>`;
+  const mrow=m=>`<tr><td><div class="u">${avc(m.user_name)}<b>${esc(m.user_name||'Trekker')}</b>${m.role==='creator'?' <span class="muted" style="font-size:11px">(organizer)</span>':''}</div></td><td>${mbadge(m.status)}</td><td>${(m.role!=='creator'&&m.user_id&&active.indexOf(m.status)>=0)?`<button class="btn2 sm danger" onclick="circleRemove('${jsv(c.id)}','${jsv(m.user_id)}','${jsv(m.user_name||'')}')">Remove</button>`:''}</td></tr>`;
+  const sorted=mem.slice().sort((a,b)=>active.indexOf(b.status)-active.indexOf(a.status));
+  $('#content').innerHTML=`
+    <div class="panel">
+      <button class="btn2 sm" onclick="paintCircles()">← All circles</button>
+      <div class="tbar" style="margin-top:12px"><h2 style="margin:0">${esc(c.trek_name||'')}</h2><span class="tag ${_CIRCLE_TAG[c.status]||'neutral'}">${esc(c.status)}</span><span class="spacer"></span>${c.status!=='cancelled'?`<button class="btn2 danger" onclick="circleCancel('${jsv(c.id)}')">Cancel circle${(cn.booked||0)?' + refund '+cn.booked:''}</button>`:''}</div>
+      <p class="desc">${esc(c.creator_name||'')} · ${dshort(c.start_date)}${c.end_date?' – '+dshort(c.end_date):''}${c.trek_region?' · '+esc(c.trek_region):''}${c.visibility==='private'?' · Private':''}${c.invite_code?' · code '+esc(c.invite_code):''}</p>
+      <div class="kpis">${kpi('Joined',(cn.total||0)+' / '+(c.max_members||0),'👥','var(--accent)')}${kpi('Booked',cn.booked||0,'🎫','#1e8f5f')}${kpi('Min to confirm',c.min_members||0,'🎯','#c79a10')}</div>
+    </div>
+    <div class="panel"><h2>Members (${mem.length})</h2>${mem.length?wrapTbl(`<table class="tbl"><thead><tr><th>Name</th><th>Status</th><th></th></tr></thead><tbody>${sorted.map(mrow).join('')}</tbody></table>`):'<div class="empty">No members yet.</div>'}</div>`;
+}
+function circleCancel(id){
+  const booked=((_circleCur&&_circleCur.counts)||{}).booked||0;
+  confirmDo(booked?('Cancel this circle and REFUND '+booked+' booked member'+(booked!==1?'s':'')+' (wallet + card back to source)? This cannot be undone.'):'Cancel this circle? This cannot be undone.',async()=>{
+    const r=await circlesCall('cancel_circle',{circle_id:id});
+    if(!r||!r.ok){toast('Failed: '+((r&&r.error)||'error'));return;}
+    toast(r.refund_errors?'Cancelled — a refund failed, will retry':(booked?'Cancelled + refunds issued':'Circle cancelled'));
+    renderCircles();
+  });
+}
+function circleRemove(cid,uid,name){
+  confirmDo('Remove '+(name||'this member')+' from the circle?',async()=>{
+    const r=await circlesCall('remove_member',{circle_id:cid,user_id:uid});
+    if(!r||!r.ok){toast('Failed: '+((r&&r.error)||'error'));return;}
+    toast('Removed');openCircle(cid);
+  });
+}
+function circleExpire(dry){
+  const run=async()=>{
+    const r=await circlesCall('expire_circles',{dry_run:!!dry});
+    if(!r||!r.ok){toast('Failed: '+((r&&r.error)||'error'));return;}
+    const n=r.expired||0;
+    if(!n){modal('<h3>'+(dry?'Preview':'Done')+'</h3><p class="muted" style="font-size:13.5px">No circles are due to expire right now.</p><div class="actions"><button class="btn2 pri" onclick="closeOv()">OK</button></div>');return;}
+    const anyErr=(r.results||[]).some(x=>(x.refunds||[]).some(f=>f.error));
+    const lines=(r.results||[]).map(x=>`<tr><td>${esc(x.trek||'?')}</td><td class="muted">${x.members||0} booked</td><td>${(x.refunds||[]).some(f=>f.error)?'<span class="tag bad">refund error</span>':(dry?'<span class="tag neutral">preview</span>':'<span class="tag ok">done</span>')}</td></tr>`).join('');
+    modalW(`<h3>${dry?'Would cancel '+n+' circle'+(n!==1?'s':''):'Cancelled '+n+' circle'+(n!==1?'s':'')}${anyErr?' — with refund errors':''}</h3><table class="tbl"><thead><tr><th>Trek</th><th>Booked</th><th></th></tr></thead><tbody>${lines}</tbody></table><div class="actions"><button class="btn2 pri" onclick="closeOv()">${dry?'Close':'Done'}</button></div>`);
+    if(!dry)renderCircles();
+  };
+  if(dry)run();
+  else confirmDo('Run auto-expire now? This CANCELS every under-min circle past its start date and REFUNDS booked members — real money moves. Preview first if unsure.',run);
+}
 /* REVIEWS */
 async function renderReviews(){const {rows,error}=await qtbl('reviews',b=>b.order('created_at',{ascending:false}).limit(200));if(error){$('#content').innerHTML='<div class="panel"><div class="empty">Reviews table not deployed — run <b>SQL-add-reviews.sql</b>.</div></div>';return;}
   $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Reviews</h2><span class="spacer"></span><button class="btn2" onclick="bulkOpen('reviews')">⬆ Bulk upload</button><button class="btn2 pri" onclick="reviewAdd()">+ Add review</button></div>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Author</th><th>Trek</th><th>Rating</th><th>Review</th><th></th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${esc(r.author)}</b></td><td class="muted">${esc(r.trek||'')}</td><td style="color:var(--yellow)">${'★'.repeat(r.rating||5)}</td><td class="muted">${esc((r.body||'').slice(0,90))}</td><td><button class="btn2 sm danger" onclick="reviewDel('${jsv(r.id)}')">Delete</button></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No reviews yet.</div>'}</div>`;}
