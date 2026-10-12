@@ -261,7 +261,8 @@ footer a.lk{color:var(--gold-lt)}
 <footer>
   <div class="fb"><img src="/icons/logo.svg" alt="" style="width:30px;height:30px;border-radius:8px;vertical-align:-8px;margin-right:7px"/>tri<b style="font-weight:600">pomonk</b></div>
   <small>Dev Deepawali 2026 · Varanasi, Uttar Pradesh<br>
-  Questions? <a class="lk" href="https://wa.me/918924813959" target="_blank" rel="noopener">WhatsApp us</a> · <a class="lk" href="/">Explore all journeys</a></small>
+  Questions? <a class="lk" href="https://wa.me/918924813959" target="_blank" rel="noopener">WhatsApp us</a> · <a class="lk" href="/">Explore all journeys</a><br>
+  © <span id="ddYr">2026</span> Tripomonk Travel Pvt. Ltd.</small>
 </footer>
 
 <!-- BOOKING SHEET -->
@@ -358,6 +359,7 @@ footer a.lk{color:var(--gold-lt)}
   document.querySelectorAll('.reveal').forEach(function(n){io.observe(n);});
 
   /* countdown */
+  var ddY=document.getElementById('ddYr');if(ddY)ddY.textContent=new Date().getFullYear();  /* copyright year, always current */
   var target=new Date('2026-11-24T18:00:00+05:30').getTime();
   function pad(n){return (n<10?'0':'')+n;}
   function tick(){var d=target-Date.now();if(d<0)d=0;var s=Math.floor(d/1000);
