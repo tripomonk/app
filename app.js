@@ -2214,10 +2214,10 @@ const ADMIN_ROLES=['super','operations','finance','content','community'];
 const ROLE_LABEL={super:'Super Admin',operations:'Operations',finance:'Finance',content:'Content',community:'Community',captain:'Trek Captain'};
 const ROLE_TABS={
   super:null,   /* null = every tab */
-  operations:['Overview','Bookings','Users','CRM','Treks','Destinations','Departures','Packing','Guides','Gear','Permits','Support','Vendors','Staff'],
+  operations:['Overview','Bookings','Users','CRM','Treks','Destinations','Departures','Packing','Guides','Gear','Permits','Support','Vendors','Circles','Staff'],
   finance:['Overview','Bookings','Users','Payments'],
   content:['Overview','Treks','Destinations','Home','Reviews'],
-  community:['Overview','Users','Community','Reviews','Hosts','Support']
+  community:['Overview','Users','Community','Circles','Reviews','Hosts','Support']
 };
 function currentAdminRole(){
   if(isAdminUser())return 'super';
@@ -8037,12 +8037,12 @@ function trekToRow(t){return {name:t.n,region:t.region,img:(t.img||'').split('?'
   hero_video:(t.hvid||'').trim()||null,hero_use_video:!!t.hvideo,
   guide_id:(t.guide_id!=null&&t.guide_id!=='')?t.guide_id:null};}
 let editIdx=-1, adminTab='Treks', depTrek=null, _admHub=true;
-const ADM_TAB_IC={Overview:'dashboard',Bookings:'receipt_long',Users:'group',CRM:'contacts',Payments:'account_balance',Treks:'landscape',Home:'home',Destinations:'travel_explore',Departures:'event',Packing:'checklist',Guides:'hiking',Gear:'backpack',Permits:'description',Support:'support_agent',Vendors:'storefront',Community:'forum',Reviews:'reviews',Hosts:'groups',Training:'fitness_center',AI:'smart_toy',Staff:'badge',Settings:'settings'};
-const ADM_TABS=['Overview','Bookings','Users','CRM','Payments','Treks','Home','Destinations','Departures','Packing','Guides','Gear','Permits','Support','Vendors','Community','Reviews','Hosts','Training','AI','Staff','Settings'];
+const ADM_TAB_IC={Overview:'dashboard',Bookings:'receipt_long',Users:'group',CRM:'contacts',Payments:'account_balance',Treks:'landscape',Home:'home',Destinations:'travel_explore',Departures:'event',Packing:'checklist',Guides:'hiking',Gear:'backpack',Permits:'description',Support:'support_agent',Vendors:'storefront',Community:'forum',Circles:'diversity_3',Reviews:'reviews',Hosts:'groups',Training:'fitness_center',AI:'smart_toy',Staff:'badge',Settings:'settings'};
+const ADM_TABS=['Overview','Bookings','Users','CRM','Payments','Treks','Home','Destinations','Departures','Packing','Guides','Gear','Permits','Support','Vendors','Community','Circles','Reviews','Hosts','Training','AI','Staff','Settings'];
 /* one-line description per section, shown on the hub card */
 const ADM_TAB_DESC={Overview:'Today at a glance',Bookings:'Who has booked',Users:'Travellers & members',CRM:'Customer 360 timeline',AI:'Automated messages & rules',Payments:'Transactions, refunds & payouts',Treks:'Add & edit treks, prices, tags',
   Home:'Featured trek & popular rail',Departures:'Batch dates & seats',Packing:'Per-trek packing lists',
-  Guides:'Your trek leaders',Gear:'Rental inventory & status',Permits:'Forest & park permit requests',Support:'Customer chats & tickets',Vendors:'Partner operators & listings',Community:'Moderate posts',Reviews:'Add & manage reviews',Hosts:'Applications & host trips',Training:'Who is training',
+  Guides:'Your trek leaders',Gear:'Rental inventory & status',Permits:'Forest & park permit requests',Support:'Customer chats & tickets',Vendors:'Partner operators & listings',Community:'Moderate posts',Circles:'Group trips, members & refunds',Reviews:'Add & manage reviews',Hosts:'Applications & host trips',Training:'Who is training',
   Staff:'Team roles & captains',Settings:'App build & admin'};
 /* Was a horizontally-SWIPED tab strip — sections off the right edge were invisible and
    the gesture read as flaky. Now a card GRID: tap a card to open that section behind a
@@ -8071,6 +8071,7 @@ function renderAdmin(){
   else if(adminTab==='Support')renderAdminSupport();
   else if(adminTab==='Vendors')renderAdminVendors();
   else if(adminTab==='Community')renderAdminCommunity();
+  else if(adminTab==='Circles')renderAdminCircles();
   else if(adminTab==='Treks')renderAdminTreks();
   else if(adminTab==='Home')renderAdminHome();
   else if(adminTab==='Destinations')renderAdminDestinations();
@@ -8092,7 +8093,7 @@ const ADM_GROUPS=[
   ['Gear',['Gear']],
   ['Operations',['Permits','Support','Vendors']],
   ['People',['Users','CRM','Hosts','Guides','Staff']],
-  ['Community',['Community','Reviews']],
+  ['Community',['Community','Circles','Reviews']],
   ['Growth',['Home','Training']],
   ['System',['AI','Settings']]
 ];
@@ -9500,7 +9501,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='508';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='509';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -12443,6 +12444,131 @@ async function submitHostApp(){
 
 /* ---- admin: review host applications ---- */
 const instaUrl=h=>{h=String(h||'').trim();if(/^https?:/i.test(h))return h;return 'https://instagram.com/'+h.replace(/^@/,'');};
+
+/* ============================================================
+   ADMIN · TRIP CIRCLES — see every group trip, its members, and run cancel/refund ops.
+   All reads + writes go through the `circles` edge fn (owner JWT via circlesCall), never
+   direct client writes — same reason the rest of Trip Circles does (RLS stays restrictive).
+   ============================================================ */
+let _admCirclesCache=null,_admCircleKpi=null,_admCircleStatus='All',_admCircleQ='',_admCircleCur=null;
+const _ADM_CIRCLE_SC={forming:'#c9821a',confirmed:'#1f9d55',booked:'#2563eb',closed:'#6b7280',cancelled:'#b4433a'};
+const _ADM_MEMBER_SC={invited:'#8a6d1a',interested:'#8a6d1a',joined:'#2563eb',booking_pending:'#c9821a',booked:'#1f9d55',left:'#6b7280',cancelled:'#b4433a'};
+function admCircleBadge(s,map){const c=((map||_ADM_CIRCLE_SC)[s])||'#6b7280';return '<span style="display:inline-block;padding:2px 9px;border-radius:999px;font-size:10.5px;font-weight:700;color:'+c+';background:'+c+'22;text-transform:capitalize">'+esc(String(s||'').replace(/_/g,' '))+'</span>';}
+function admCircleDate(c){
+  const f=d=>{if(!d)return '';const t=new Date(String(d).length<=10?d+'T00:00:00':d);return isNaN(t)?'':t.toLocaleDateString('en-GB',{day:'numeric',month:'short'});};
+  const a=f(c.start_date),b=f(c.end_date);return a?((b&&b!==a)?a+' – '+b:a):'No date set';
+}
+async function renderAdminCircles(force){
+  const box=document.getElementById('adminBody');if(!box)return;
+  if(typeof circlesCall!=='function'){box.innerHTML='<div class="note2">Trip Circles backend not available.</div>';return;}
+  if(_admCircleCur)return renderAdmCircleDetail(box);
+  if(force)_admCirclesCache=null;
+  if(_admCirclesCache===null){
+    box.innerHTML='<div class="skel skel-card" style="height:92px"></div><div class="skel skel-card" style="height:72px"></div><div class="skel skel-card" style="height:72px"></div>';
+    const r=await circlesCall('list_all_circles',{});
+    if(adminTab!=='Circles')return;
+    if(!r||!r.ok){box.innerHTML='<div class="empty"><p>Could not load circles'+(r&&r.error?': '+esc(r.error):'')+'.</p><button class="btn" style="max-width:180px;margin:10px auto 0" onclick="renderAdminCircles(true)">Retry</button></div>';hydrate(box);return;}
+    _admCirclesCache=r.circles||[];_admCircleKpi=r.kpi||{};
+  }
+  if(adminTab!=='Circles')return;
+  renderAdmCircleList(box);
+}
+function renderAdmCircleList(box){
+  box=box||document.getElementById('adminBody');if(!box)return;
+  const k=_admCircleKpi||{};
+  const chip=(v,n)=>'<button class="adm-chip '+(v===_admCircleStatus?'on':'')+'" onclick="_admCircleStatus=\''+v+'\';renderAdmCircleList()">'+esc(v)+(n?'<span class="adm-pill">'+n+'</span>':'')+'</button>';
+  const q=_admCircleQ.trim().toLowerCase();
+  let list=(_admCirclesCache||[]).slice();
+  if(_admCircleStatus!=='All')list=list.filter(c=>c.status===_admCircleStatus.toLowerCase());
+  if(q)list=list.filter(c=>[c.trek_name,c.trek_region,c.creator_name].some(x=>String(x||'').toLowerCase().includes(q)));
+  box.innerHTML=
+    '<div class="adm-kgrid">'
+    +'<div class="adm-kpi '+((k.forming||0)?'warn':'')+'"><b>'+(k.forming||0)+'</b><small>Forming</small></div>'
+    +'<div class="adm-kpi"><b>'+(k.confirmed||0)+'</b><small>Confirmed</small></div>'
+    +'<div class="adm-kpi"><b>'+(k.cancelled||0)+'</b><small>Cancelled</small></div>'
+    +'</div>'
+    +'<div class="hact" style="margin:0 0 12px"><button onclick="admCircleExpire(true)">Preview expirations</button><button class="no" onclick="admCircleExpire(false)">Run expire + refund</button></div>'
+    +'<div class="adm-search"><span class="msr">search</span><input placeholder="Search by trek, region or organizer…" value="'+esc(_admCircleQ)+'" oninput="_admCircleQ=this.value;renderAdmCircleList()"></div>'
+    +'<div class="adm-chips">'+['All','Forming','Confirmed','Cancelled'].map(v=>chip(v,v==='All'?0:(k[v.toLowerCase()]||0))).join('')+'</div>'
+    +'<div class="adm-count">'+list.length+' circle'+(list.length!==1?'s':'')+'</div>'
+    +(list.length?list.map(admCircleRow).join(''):'<div class="empty"><p>No circles match.</p></div>');
+  hydrate(box);
+}
+function admCircleRow(c){
+  const cn=c.counts||{},max=c.max_members||0,min=c.min_members||0;
+  const pct=max?Math.min(100,Math.round(((cn.total||0)/max)*100)):0;
+  return '<div class="happ" style="cursor:pointer" onclick="openAdminCircle(\''+jsq(c.id)+'\')">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b>'+esc(c.trek_name||'Untitled')+'</b>'+admCircleBadge(c.status)+'</div>'
+    +'<div style="font-size:12px;color:var(--muted);margin:3px 0 7px">'+esc(c.creator_name||'—')+' · '+admCircleDate(c)+(c.visibility==='private'?' · Private':'')+'</div>'
+    +'<div class="tc-prog" style="margin:0 0 5px"><i style="width:'+pct+'%"></i></div>'
+    +'<div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted)"><span>'+(cn.total||0)+' / '+max+' joined · min '+min+'</span><span>'+(cn.booked||0)+' booked</span></div>'
+    +'</div>';
+}
+async function openAdminCircle(id){
+  _admCircleCur={loading:true,id:id};renderAdmCircleDetail();
+  const r=await circlesCall('get_circle',{id:id});
+  if(adminTab!=='Circles')return;
+  _admCircleCur=(!r||!r.ok)?{error:(r&&r.error)||'Not found'}:r;
+  renderAdmCircleDetail();
+}
+function admCircleBack(){_admCircleCur=null;renderAdminCircles();}
+function renderAdmCircleDetail(box){
+  box=box||document.getElementById('adminBody');if(!box)return;
+  const back='<button onclick="admCircleBack()" style="all:unset;cursor:pointer;color:var(--accent);font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:4px;margin:0 0 14px"><span class="msr" style="font-size:18px">arrow_back</span>All circles</button>';
+  if(!_admCircleCur||_admCircleCur.loading){box.innerHTML=back+'<div class="skel skel-card" style="height:120px"></div><div class="skel skel-card" style="height:90px"></div>';hydrate(box);return;}
+  if(_admCircleCur.error){box.innerHTML=back+'<div class="empty"><p>'+esc(_admCircleCur.error)+'</p></div>';hydrate(box);return;}
+  const c=_admCircleCur.circle||{},cn=_admCircleCur.counts||{},mem=_admCircleCur.members||[];
+  const max=c.max_members||0,min=c.min_members||0;const pct=max?Math.min(100,Math.round(((cn.total||0)/max)*100)):0;
+  const active=['joined','booking_pending','booked'];
+  const rows=mem.slice().sort((a,b)=>active.indexOf(b.status)-active.indexOf(a.status)).map(m=>
+    '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--stroke)">'
+    +'<div style="flex:1;min-width:0"><b style="font-size:13.5px">'+esc(properName(m.user_name||'Trekker'))+'</b>'+(m.role==='creator'?' <span style="font-size:10px;color:var(--muted)">(organizer)</span>':'')+'</div>'
+    +admCircleBadge(m.status,_ADM_MEMBER_SC)
+    +((m.role!=='creator'&&m.user_id&&active.indexOf(m.status)>=0)?'<button onclick="admCircleRemoveMember(\''+jsq(c.id)+'\',\''+jsq(m.user_id)+'\',\''+jsq(m.user_name||'')+'\')" style="all:unset;cursor:pointer;color:#b4433a;font-size:11.5px;font-weight:600;margin-left:6px">Remove</button>':'')
+    +'</div>').join('');
+  box.innerHTML=back
+    +'<div class="happ">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:16px">'+esc(c.trek_name||'')+'</b>'+admCircleBadge(c.status)+'</div>'
+    +'<div style="font-size:12.5px;color:var(--muted);margin:4px 0 10px">'+esc(c.creator_name||'')+' · '+admCircleDate(c)+(c.trek_region?' · '+esc(c.trek_region):'')+(c.visibility==='private'?' · Private':'')+'</div>'
+    +'<div class="tc-prog" style="margin:0 0 6px"><i style="width:'+pct+'%"></i></div>'
+    +'<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted)"><span>'+(cn.total||0)+' / '+max+' joined · min '+min+'</span><span>'+(cn.booked||0)+' booked · '+(cn.invited||0)+' invited</span></div>'
+    +(c.invite_code?'<div style="font-size:11.5px;color:var(--muted);margin-top:8px">Invite code <b style="color:var(--text)">'+esc(c.invite_code)+'</b></div>':'')
+    +'</div>'
+    +'<div class="adm-count" style="margin-top:14px">Members ('+mem.length+')</div>'
+    +(rows||'<div class="empty"><p>No members yet.</p></div>')
+    +(c.status!=='cancelled'
+      ?'<div class="hact" style="margin-top:18px"><button class="no" onclick="admCircleCancel(\''+jsq(c.id)+'\')">Cancel circle'+((cn.booked||0)?' + refund '+(cn.booked):'')+'</button></div>'
+      :'<div class="note2" style="margin-top:18px">This circle is cancelled.</div>');
+  hydrate(box);
+}
+async function admCircleCancel(id){
+  const booked=((_admCircleCur&&_admCircleCur.counts)||{}).booked||0;
+  const msg=booked?('Cancel this circle and REFUND '+booked+' booked member'+(booked!==1?'s':'')+' (wallet + card to source)? This cannot be undone.'):'Cancel this circle? This cannot be undone.';
+  if(!(await askConfirm(msg,'Cancel circle')))return;
+  const r=await circlesCall('cancel_circle',{circle_id:id});
+  if(!r||!r.ok){note((r&&r.error)||'Could not cancel.','Error');return;}
+  if(r.refund_errors)note('Circle cancelled, but a refund failed — check Razorpay; the daily job will retry.','Refund issue');
+  else toast(booked?'Cancelled + refunds issued':'Circle cancelled');
+  _admCircleCur=null;_admCirclesCache=null;renderAdminCircles();
+}
+async function admCircleRemoveMember(cid,uid,name){
+  if(!(await askConfirm('Remove '+properName(name||'this member')+' from the circle?','Remove member')))return;
+  const r=await circlesCall('remove_member',{circle_id:cid,user_id:uid});
+  if(!r||!r.ok){note((r&&r.error)||'Could not remove.','Error');return;}
+  toast('Removed');_admCirclesCache=null;openAdminCircle(cid);
+}
+async function admCircleExpire(dry){
+  if(!dry&&!(await askConfirm('Run auto-expire now? This CANCELS every under-min circle past its start date and REFUNDS booked members — real money moves. Preview first if unsure.','Run expire + refund')))return;
+  const r=await circlesCall('expire_circles',{dry_run:!!dry});
+  if(!r||!r.ok){note((r&&r.error)||'Could not run.','Error');return;}
+  const n=r.expired||0;
+  if(!n){note('No circles are due to expire right now.','Expire');return;}
+  const anyErr=(r.results||[]).some(x=>(x.refunds||[]).some(f=>f.error));
+  let s=(dry?'Would cancel ':'Cancelled ')+n+' circle'+(n!==1?'s':'')+': '
+    +(r.results||[]).map(x=>(x.trek||'?')+' ('+(x.members||0)+' booked'+((x.refunds||[]).some(f=>f.error)?', refund error':'')+')').join(', ');
+  note(s,dry?'Preview — nothing changed':(anyErr?'Done — with refund errors':'Done'));
+  if(!dry){_admCirclesCache=null;renderAdminCircles();}
+}
 
 /* Hosts is three different jobs — reviewing applications, browsing approved hosts and
    publishing their trips. At a handful of each they fitted in one list; at a few hundred
