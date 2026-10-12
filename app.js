@@ -4161,11 +4161,11 @@ function tcHostPanel(){
     +'<button class="btn" style="max-width:230px;margin:10px auto 0" onclick="(typeof openHosts===\'function\')?openHosts():go(\'explore\')">Become a host</button></div>';
 }
 /* ---- Create ---- */
-let _cc={trek:'',region:'',img:'',date:null,endDate:null,vis:'community',min:4,max:15,invite:{},_batches:[]};
+let _tcc={trek:'',region:'',img:'',date:null,endDate:null,vis:'community',min:4,max:15,invite:{},_batches:[]};
 let _ccFollowers=null;
 function openCircleCreate(trekName){
   if(typeof isLoggedIn==='function'&&!isLoggedIn()){_loginReturn='community';go('login');return;}
-  _cc={trek:'',region:'',img:'',date:null,endDate:null,vis:'community',min:4,max:15,invite:{},_batches:[]};
+  _tcc={trek:'',region:'',img:'',date:null,endDate:null,vis:'community',min:4,max:15,invite:{},_batches:[]};
   _ccFollowers=null;
   go('circleCreate');renderCCBody();loadMyFollowers();
   if(trekName)setTimeout(()=>ccPickTrek(trekName),60);
@@ -4203,39 +4203,39 @@ function renderCCTrekPicks(q){
   if(q)list=list.filter(t=>String(t.n).toLowerCase().includes(q)||String(t.region||'').toLowerCase().includes(q));
   else list=list.filter(t=>!t.soon);
   list=list.slice(0,12);
-  box.innerHTML=list.map(t=>'<span class="tap'+(_cc.trek===t.n?' sel':'')+'" onclick="ccPickTrek(\''+jsq(t.n)+'\')">'+esc(t.n)+'</span>').join('')||'<small style="color:var(--muted)">No treks match.</small>';
+  box.innerHTML=list.map(t=>'<span class="tap'+(_tcc.trek===t.n?' sel':'')+'" onclick="ccPickTrek(\''+jsq(t.n)+'\')">'+esc(t.n)+'</span>').join('')||'<small style="color:var(--muted)">No treks match.</small>';
 }
 function ccPickTrek(n){
   const t=(typeof treks!=='undefined'?treks:[]).find(x=>x.n===n);if(!t)return;
-  _cc.trek=n;_cc.region=t.region||'';_cc.img=t.img||t.photo||'';_cc.date=null;_cc.endDate=null;
+  _tcc.trek=n;_tcc.region=t.region||'';_tcc.img=t.img||t.photo||'';_tcc.date=null;_tcc.endDate=null;
   const si=document.getElementById('ccTrekSearch');renderCCTrekPicks(si?si.value:'');
   const sec=document.getElementById('ccDateSec'),dp=document.getElementById('ccDatePicks');
   const batches=(t.batches||[]).filter(Boolean);
   if(sec)sec.style.display='';
-  if(batches.length){_cc._batches=batches.map(ccBatchDate);if(dp)dp.innerHTML=_cc._batches.slice(0,12).map((d,i)=>'<span class="tap" onclick="ccPickDate('+i+')" data-bi="'+i+'">'+esc(d.label)+'</span>').join('');}
-  else{_cc._batches=[];if(dp)dp.innerHTML='<small style="color:var(--muted)">No fixed departures listed — the circle will be dateless; set the date with your group.</small>';}
+  if(batches.length){_tcc._batches=batches.map(ccBatchDate);if(dp)dp.innerHTML=_tcc._batches.slice(0,12).map((d,i)=>'<span class="tap" onclick="ccPickDate('+i+')" data-bi="'+i+'">'+esc(d.label)+'</span>').join('');}
+  else{_tcc._batches=[];if(dp)dp.innerHTML='<small style="color:var(--muted)">No fixed departures listed — the circle will be dateless; set the date with your group.</small>';}
 }
 function ccBatchDate(b){
   let start=typeof b==='string'?b:(b&&(b.start||b.date||b.from)||'');let end=(b&&(b.end||b.to))||'';
   let label='Date';try{if(start){const s=new Date(start+'T00:00:00');const o={day:'numeric',month:'short'};label=s.toLocaleDateString('en-IN',o);if(end&&end!==start){const e=new Date(end+'T00:00:00');label+=' – '+e.toLocaleDateString('en-IN',o);}}}catch(e){label=String(start||'Date');}
   return{start,end,label};
 }
-function ccPickDate(i){const d=(_cc._batches||[])[i];if(!d)return;_cc.date=d.start||null;_cc.endDate=d.end||d.start||null;document.querySelectorAll('#ccDatePicks .tap').forEach(el=>el.classList.toggle('sel',+el.dataset.bi===i));}
-function ccSetVis(v){_cc.vis=v;const c=document.getElementById('ccVisC'),p=document.getElementById('ccVisP');if(c)c.classList.toggle('sel',v==='community');if(p)p.classList.toggle('sel',v==='private');}
-function ccNum(k,d){_cc[k]=Math.max(2,Math.min(50,(_cc[k]||(k==='min'?4:15))+d));if(_cc.min>_cc.max){if(k==='min')_cc.max=_cc.min;else _cc.min=_cc.max;}const mn=document.getElementById('ccMin'),mx=document.getElementById('ccMax');if(mn)mn.textContent=_cc.min;if(mx)mx.textContent=_cc.max;}
+function ccPickDate(i){const d=(_tcc._batches||[])[i];if(!d)return;_tcc.date=d.start||null;_tcc.endDate=d.end||d.start||null;document.querySelectorAll('#ccDatePicks .tap').forEach(el=>el.classList.toggle('sel',+el.dataset.bi===i));}
+function ccSetVis(v){_tcc.vis=v;const c=document.getElementById('ccVisC'),p=document.getElementById('ccVisP');if(c)c.classList.toggle('sel',v==='community');if(p)p.classList.toggle('sel',v==='private');}
+function ccNum(k,d){_tcc[k]=Math.max(2,Math.min(50,(_tcc[k]||(k==='min'?4:15))+d));if(_tcc.min>_tcc.max){if(k==='min')_tcc.max=_tcc.min;else _tcc.min=_tcc.max;}const mn=document.getElementById('ccMin'),mx=document.getElementById('ccMax');if(mn)mn.textContent=_tcc.min;if(mx)mx.textContent=_tcc.max;}
 function renderCCInvite(){
   const box=document.getElementById('ccInv');if(!box)return;
   if(_ccFollowers===null){box.innerHTML='<div class="empty" style="padding:14px 0"><p style="font-size:12.5px">Loading…</p></div>';return;}
   if(!_ccFollowers.length){box.innerHTML='<div class="empty" style="padding:14px 0"><p style="font-size:12.5px">No followers yet — share the invite link after you create the circle.</p></div>';return;}
-  box.innerHTML=_ccFollowers.map(f=>'<div class="mrow'+(_cc.invite[f.id]?' sel':'')+'" onclick="ccToggleInvite(\''+jsq(f.id)+'\')" data-fid="'+esc(f.id)+'">'+avatar(f.name,36)+'<div class="tc-mtx"><b>'+esc(properName(f.name))+'</b></div><span class="ck msr">check</span></div>').join('');
+  box.innerHTML=_ccFollowers.map(f=>'<div class="mrow'+(_tcc.invite[f.id]?' sel':'')+'" onclick="ccToggleInvite(\''+jsq(f.id)+'\')" data-fid="'+esc(f.id)+'">'+avatar(f.name,36)+'<div class="tc-mtx"><b>'+esc(properName(f.name))+'</b></div><span class="ck msr">check</span></div>').join('');
   hydrate(box);
 }
-function ccToggleInvite(id){if(_cc.invite[id])delete _cc.invite[id];else _cc.invite[id]=((_ccFollowers||[]).find(f=>f.id===id)||{}).name||'Trekker';renderCCInvite();}
+function ccToggleInvite(id){if(_tcc.invite[id])delete _tcc.invite[id];else _tcc.invite[id]=((_ccFollowers||[]).find(f=>f.id===id)||{}).name||'Trekker';renderCCInvite();}
 async function submitCircle(){
-  if(!_cc.trek){note('Pick a trek first.','Choose a trek');return;}
+  if(!_tcc.trek){note('Pick a trek first.','Choose a trek');return;}
   const btn=document.getElementById('ccGo');if(btn){btn.disabled=true;btn.textContent='Creating…';}
-  const ids=Object.keys(_cc.invite),names={};ids.forEach(i=>names[i]=_cc.invite[i]);
-  const r=await circlesCall('create_circle',{trek_name:_cc.trek,trek_region:_cc.region,trek_img:_cc.img,start_date:_cc.date,end_date:_cc.endDate,visibility:_cc.vis,min_members:_cc.min,max_members:_cc.max,invite_user_ids:ids,invite_names:names});
+  const ids=Object.keys(_tcc.invite),names={};ids.forEach(i=>names[i]=_tcc.invite[i]);
+  const r=await circlesCall('create_circle',{trek_name:_tcc.trek,trek_region:_tcc.region,trek_img:_tcc.img,start_date:_tcc.date,end_date:_tcc.endDate,visibility:_tcc.vis,min_members:_tcc.min,max_members:_tcc.max,invite_user_ids:ids,invite_names:names});
   if(btn){btn.disabled=false;btn.textContent='Create Trip Circle';}
   if(!r||!r.ok){note((r&&r.error)||'Could not create the circle.','Error');return;}
   toast('Trip Circle created');openCircle(r.circle.id);
