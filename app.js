@@ -3507,6 +3507,7 @@ function finishBooking(id,serverBooking,bookingReq,name,total,advanceAmt){
       document.getElementById('scName').textContent=t.n;
       cart.useWallet=null;
       showTicket(b);go('success');
+      if(typeof tcLinkBooking==='function')tcLinkBooking(b);   /* link to a trip circle if booked from one */
 }
 function showTicket(b){const t=treks.find(x=>x.n===b.trek)||cart.trek;
   document.getElementById('tkPh').style.backgroundImage=`url('${b.img||t.img}')`;
@@ -4284,7 +4285,18 @@ async function circleJoin(){
   toast('You’re in!');openCircle(c.id);
 }
 async function circleLeave(){const c=_circleCur&&_circleCur.circle;if(!c)return;if(!(await askConfirm('Leave this trip circle?','Leave')))return;const r=await circlesCall('leave',{circle_id:c.id});if(!r||!r.ok){note((r&&r.error)||'Could not leave.','Error');return;}toast('You left the circle');openCircle(c.id);}
-function circleBook(){const c=_circleCur&&_circleCur.circle;if(!c)return;_circleBookCtx=c.id;if(typeof openDetailByName==='function')openDetailByName(c.trek_name);}
+function circleBook(){const c=_circleCur&&_circleCur.circle;if(!c)return;_circleBookCtx={id:c.id,trek:c.trek_name};if(typeof openDetailByName==='function')openDetailByName(c.trek_name);}
+/* after a booking completes, link it to the circle the user came from (trek must match),
+   flip their status to booked, and auto-confirm the circle when the minimum is booked. */
+async function tcLinkBooking(b){
+  try{
+    const ctx=_circleBookCtx;if(!ctx||!ctx.id)return;
+    if(ctx.trek&&b&&b.trek&&String(ctx.trek).toLowerCase()!==String(b.trek).toLowerCase())return;
+    _circleBookCtx=null;
+    const r=await circlesCall('set_member_status',{circle_id:ctx.id,status:'booked',booking_id:b&&b.id});
+    if(r&&r.ok&&r.circle_status==='confirmed')setTimeout(()=>{try{toast('Your trip circle is confirmed!');}catch(e){}},1000);
+  }catch(e){}
+}
 function circleShare(){
   const c=_circleCur&&_circleCur.circle;if(!c)return;
   const code=c.invite_code||c.id,url=(location.origin||'https://app.tripomonk.com')+'/circle/'+code;
@@ -9447,7 +9459,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='506';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='507';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
