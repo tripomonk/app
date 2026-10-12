@@ -60,6 +60,18 @@
   .fnav{display:flex;flex-wrap:wrap;gap:16px}
   .fnav a{color:var(--muted)}
   .fnav a:hover{color:var(--text)}
+  /* enquiry form */
+  .enq{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+  .enq input,.enq textarea{width:100%;background:var(--card);border:1px solid var(--stroke);border-radius:12px;
+    padding:13px 15px;color:var(--text);font:inherit;font-size:15px;outline:none;resize:vertical}
+  .enq input:focus,.enq textarea:focus{border-color:var(--accent2)}
+  .enq input::placeholder,.enq textarea::placeholder{color:var(--muted)}
+  .enq .btn{justify-content:center}
+  .enq-msg{font-size:13.5px;min-height:1px;display:none}
+  .enq-msg.show{display:block}
+  .enq-msg.ok{color:#2fbf8f}
+  .enq-msg.err{color:#ff7a7a}
+  @media(prefers-color-scheme:light){.enq-msg.ok{color:#0b7a44}.enq-msg.err{color:#c62828}}
   @media(prefers-color-scheme:light){
     :root{--bg:#f5f7fb;--card:#fff;--stroke:rgba(16,32,58,.1);--text:#102038;--muted:rgba(16,32,58,.7)}
     header{background:rgba(245,247,251,.85)}
@@ -121,6 +133,18 @@
       <p class="lead" style="margin-bottom:22px">Open Tripomonk and find your next Himalayan adventure.</p>
       <a class="btn" href="https://app.tripomonk.com">Open the App</a>
     </div></div></section>
+
+    <section id="contact"><div class="wrap">
+      <h2>Have a question?</h2>
+      <p class="lead">Send a quick enquiry — we'll reply on WhatsApp.</p>
+      <form id="enqForm" class="enq" novalidate>
+        <input id="enqName" placeholder="Your name" autocomplete="name" maxlength="60"/>
+        <input id="enqEmail" type="email" placeholder="Email (optional)" autocomplete="email" maxlength="120"/>
+        <textarea id="enqMsg" rows="3" placeholder="What would you like to know?" maxlength="600"></textarea>
+        <div class="enq-msg" id="enqBox" role="status" aria-live="polite"></div>
+        <button class="btn" type="submit">Send enquiry</button>
+      </form>
+    </div></section>
   </main>
 
   <footer><div class="wrap fcols">
@@ -136,7 +160,30 @@
       <a href="mailto:tripomonk@gmail.com">Contact</a>
     </div>
   </div>
-  <div class="wrap" style="margin-top:18px;font-size:12.5px;opacity:.75">© 2026 Tripomonk. All rights reserved.</div>
+  <div class="wrap" style="margin-top:18px;font-size:12.5px;opacity:.75">© <span id="yr">2026</span> Tripomonk. All rights reserved.</div>
   </footer>
+<script>
+  /* copyright year — always current, never goes stale */
+  (function(){var y=document.getElementById('yr');if(y)y.textContent=new Date().getFullYear();})();
+  /* enquiry form: validate (error messages) then open WhatsApp (success message) */
+  (function(){
+    var f=document.getElementById('enqForm');if(!f)return;
+    var box=document.getElementById('enqBox');
+    function show(m,ok){box.textContent=m;box.className='enq-msg show '+(ok?'ok':'err');}
+    f.addEventListener('submit',function(e){
+      e.preventDefault();
+      var name=(document.getElementById('enqName').value||'').trim();
+      var email=(document.getElementById('enqEmail').value||'').trim();
+      var msg=(document.getElementById('enqMsg').value||'').trim();
+      if(name.length<2){show('Please enter your name.',false);return;}
+      if(email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){show('Please enter a valid email, or leave it blank.',false);return;}
+      if(msg.length<5){show('Tell us a little more about your question.',false);return;}
+      var text='Hi Tripomonk! '+msg+'\n\n— '+name+(email?(' ('+email+')'):'');
+      var url='https://wa.me/918924813959?text='+encodeURIComponent(text);
+      show('Thanks, '+name+'! Opening WhatsApp to send your enquiry…',true);
+      try{window.open(url,'_blank','noopener');}catch(e2){location.href=url;}
+    });
+  })();
+</script>
 </body>
 </html>
