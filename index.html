@@ -3967,6 +3967,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   .batch.on .calb .mo{color:#fff}                              /* month label 6.2:1 (was 3.7) */
   .pr-was{color:var(--muted)}                                  /* struck-out old price (was 3.5) */
   .nav-foot{display:none}                                      /* desktop-only sidebar footer */
+  .nav-tc{display:none}                                        /* desktop-only Trip Circles widget */
   .nav-brand{display:none}                                     /* desktop-only sidebar logo */
   .deskrail{display:none}                                      /* desktop-only right rail */
   .car-arrow{display:none}                                     /* desktop-only carousel arrows */
@@ -4070,6 +4071,19 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
       font-size:12.5px;font-weight:600;cursor:pointer;text-decoration:none}
     .nf-links a:hover{background:rgba(127,160,255,.08);color:var(--text)}
     .nf-links a .msr{font-size:18px;color:var(--muted)}
+    /* left sidebar Trip Circles widget (fills the space above the footer) */
+    .nav-tc{display:block;margin-top:18px;padding-top:14px;border-top:1px solid var(--stroke)}
+    .nav-tc-h{display:flex;align-items:center;justify-content:space-between;margin:0 2px 8px}
+    .nav-tc-h b{font-size:12px;font-weight:700;color:var(--muted-strong);text-transform:uppercase;letter-spacing:.3px}
+    .nav-tc-h a{font-size:11.5px;font-weight:700;color:var(--accent2);cursor:pointer}
+    .nav-tc-list{display:flex;flex-direction:column;gap:4px}
+    .nav-tc-sk{height:48px;border-radius:11px;background:var(--card);border:1px solid var(--stroke);opacity:.5}
+    .nav-tc-item,.nav-tc-cta{display:flex;align-items:center;gap:10px;padding:10px;border-radius:11px;background:var(--card);border:1px solid var(--stroke);cursor:pointer;text-decoration:none;transition:border-color .15s}
+    .nav-tc-item:hover,.nav-tc-cta:hover{border-color:var(--accent)}
+    .nav-tc-item .msr,.nav-tc-cta .msr{font-size:19px;color:var(--accent2);flex:none}
+    .nav-tc-tx{display:flex;flex-direction:column;min-width:0}
+    .nav-tc-tx b{font-size:12.5px;font-weight:600;color:var(--text);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .nav-tc-tx small{font-size:11px;color:var(--muted);margin-top:2px}
 
     /* --- gift cards: web-oriented TWO-COLUMN layout on desktop (card design preview on the
            left, purchase panel on the right), instead of a narrow mobile column. --- */
@@ -5586,6 +5600,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
     <button class="nav-center" data-t="community" onclick="go('community')"><span class="ic" data-i="community"></span></button>
     <button data-t="bookings" onclick="go('bookings')"><span class="ic" data-i="bookings"></span>Bookings</button>
     <button data-t="profile" onclick="go('profile')"><span class="ic" data-i="user"></span>Profile</button>
+    <div class="nav-tc" id="navTC"></div>
     <div class="nav-foot">
       <a class="nf-promo" onclick="openDevDiwali()"><span class="msr">local_fire_department</span><span class="nf-promo-tx"><b>Dev Deepawali 2026</b><small>Reserve your Varanasi trip</small></span></a>
       <div class="nf-links">
@@ -5625,7 +5640,7 @@ if('serviceWorker' in navigator){
 /* desktop right rail (suggestions + links) — renders once on wide screens, and when the
    window is resized up to desktop width. No-op on phones (guarded inside the function). */
 (function(){
-  function fire(){try{window.renderDeskRail&&renderDeskRail();}catch(e){}}
+  function fire(){try{window.renderDeskRail&&renderDeskRail();}catch(e){}try{window.renderNavTC&&renderNavTC();}catch(e){}}
   if(document.readyState==='complete')setTimeout(fire,1200);
   else addEventListener('load',()=>setTimeout(fire,1200));
   let t;addEventListener('resize',()=>{clearTimeout(t);t=setTimeout(fire,350);});

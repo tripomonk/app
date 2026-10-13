@@ -4061,6 +4061,7 @@ async function renderDeskRail(force){
     list=list.slice(0,6);
     if(!list.length){box.innerHTML='';_deskRailDone=true;return;}
     try{await loadAuthorPhotos(list.map(p=>p.n));}catch(e){}
+    let circlesCard='';try{const cr=(typeof circlesCall==='function')?await circlesCall('list_public_circles',{}):null;circlesCard=_railCircles(((cr&&cr.ok&&cr.circles)||[]).slice(0,3));}catch(e){}
     const rows=list.map(p=>{const sn=jsq(p.n),on=isFollowing(p.n);
       return '<div class="dr-row" data-dr="'+esc(p.n)+'">'
         +'<div class="dr-av" onclick="openPerson(\''+sn+'\')">'+avatar(p.n,40)+'</div>'
@@ -4069,6 +4070,7 @@ async function renderDeskRail(force){
       +'</div>';}).join('');
     box.innerHTML='<div class="dr-card"><div class="dr-head">Trekkers to follow</div>'+rows
       +'<a class="dr-all" onclick="go(\'peopleSearch\')">See all trekkers</a></div>'
+      +circlesCard
       +_railPopularTreks()
       +'<div class="dr-foot">© Tripomonk · guided Himalayan treks</div>';
     hydrate(box);
@@ -4091,6 +4093,32 @@ function _railPopularTreks(){
     return '<div class="dr-card"><div class="dr-head">Popular treks</div><div class="dr-links">'+rows+'</div>'
       +'<a class="dr-all" onclick="go(\'explore\')">Browse all treks</a></div>';
   }catch(e){return '';}
+}
+/* right-rail "Trip Circles to join" card (desktop) — open community circles people can hop on */
+function _railCircles(list){
+  if(!list||!list.length)return '';
+  const rows=list.map(c=>{const cc=c.counts||{};const when=(typeof fmtCircleDate==='function')?fmtCircleDate(c):'';
+    return '<a class="dr-trek" onclick="openCircle(\''+jsq(c.id)+'\')"><span class="msr">diversity_3</span>'
+      +'<span class="dr-trek-tx"><b>'+esc(c.trek_name)+'</b><small>'+(when?esc(when)+' · ':'')+(cc.total||0)+'/'+(c.max_members||0)+' joined</small></span></a>';}).join('');
+  return '<div class="dr-card"><div class="dr-head">Trip Circles to join</div><div class="dr-links">'+rows+'</div>'
+    +'<a class="dr-all" onclick="go(\'community\');setTimeout(function(){if(typeof setCommView===\'function\')setCommView(\'join\')},60)">See all trips</a></div>';
+}
+/* LEFT sidebar (desktop) Trip Circles widget — the user's active circles, else a "travel together" CTA */
+async function renderNavTC(){
+  try{
+    if(typeof matchMedia==='function' && !matchMedia('(min-width:1024px)').matches)return;
+    const box=document.getElementById('navTC');if(!box)return;
+    const cta='<a class="nav-tc-cta" onclick="go(\'community\');setTimeout(function(){if(typeof setCommView===\'function\')setCommView(\'circles\')},60)"><span class="msr">diversity_3</span><span class="nav-tc-tx"><b>Trip Circles</b><small>Plan a group trip together</small></span></a>';
+    const head='<div class="nav-tc-h"><b>Trip Circles</b><a onclick="event.stopPropagation();openCircleCreate()">+ New</a></div>';
+    if(typeof isLoggedIn==='function'&&!isLoggedIn()){box.innerHTML=cta;hydrate(box);return;}
+    box.innerHTML=head+'<div class="nav-tc-list"><div class="nav-tc-sk"></div></div>';hydrate(box);
+    const r=(typeof circlesCall==='function')?await circlesCall('list_my_circles',{}):null;
+    if(!document.getElementById('navTC'))return;
+    const list=((r&&r.ok&&r.circles)||[]).filter(c=>c.status!=='cancelled'&&c.status!=='closed'&&(typeof isCircleExpired!=='function'||!isCircleExpired(c))).slice(0,3);
+    if(!list.length){box.innerHTML=cta;hydrate(box);return;}
+    box.innerHTML=head+'<div class="nav-tc-list">'+list.map(c=>'<a class="nav-tc-item" onclick="openCircle(\''+jsq(c.id)+'\')"><span class="msr">diversity_3</span><span class="nav-tc-tx"><b>'+esc(c.trek_name)+'</b><small>'+((c.counts||{}).total||0)+'/'+(c.max_members||0)+' joined</small></span></a>').join('')+'</div>';
+    hydrate(box);
+  }catch(e){}
 }
 
 /* ================= TRIP CIRCLES (Community 2.0, Phase 1) ================= */
@@ -9856,7 +9884,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='524';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='525';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
