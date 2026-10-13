@@ -4157,7 +4157,9 @@ function _tcJoinPaint(){
   const q=((document.getElementById('tcJoinQ')||{}).value||'').trim().toLowerCase();
   let list=_tcJoinCache||[];
   if(q)list=list.filter(c=>[c.trek_name,c.trek_region,c.creator_name].some(x=>String(x||'').toLowerCase().includes(q)));
-  if(!list.length){box.innerHTML='<div class="empty" style="padding:18px 0"><p>'+(q?'No open trips match your search.':'No open trips yet. Be the first — create a Trip Circle.')+'</p>'+(q?'':'<button class="btn" style="max-width:220px;margin:8px auto 0" onclick="openCircleCreate()">Create Trip Circle</button>')+'</div>';hydrate(box);return;}
+  if(!list.length){box.innerHTML=q
+    ?tcEmpty('search_off','No trips match','Try another trek or region — or start your own.','<button class="btn" style="max-width:220px;margin:12px auto 0" onclick="openCircleCreate()">Create Trip Circle</button>')
+    :tcEmpty('hiking','No open trips yet','Be the first — start a trip circle and others can hop on.','<button class="btn" style="max-width:220px;margin:12px auto 0" onclick="openCircleCreate()">Create Trip Circle</button>');hydrate(box);return;}
   box.innerHTML=list.map(circleCard).join('');hydrate(box);
 }
 async function renderJoinList(){
@@ -4175,6 +4177,8 @@ async function renderJoinList(){
    and messaging systems, no new relationship table). Ranked server-side by the circles fn. */
 let _buddyPrefs={trek:'',level:'',city:''},_buddyMatches=null,_buddyBusy=false;
 function cap(s){s=String(s||'');return s?s[0].toUpperCase()+s.slice(1):s;}
+/* warm, consistent empty state for the Community 2.0 surfaces */
+function tcEmpty(icon,title,sub,btn){return '<div class="tc-empty"><div class="tc-empty-ic"><span class="msr">'+icon+'</span></div><b>'+esc(title)+'</b>'+(sub?'<p>'+sub+'</p>':'')+(btn||'')+'</div>';}
 function tcBuddiesPanel(){
   if(typeof isLoggedIn==='function'&&!isLoggedIn()){
     return '<div class="tc-head"><b>Find Travel Buddies</b></div>'
@@ -4214,7 +4218,7 @@ function renderBuddyResults(){
   const box=document.getElementById('buddyResults');if(!box)return;
   if(_buddyMatches===null){box.innerHTML='';return;}
   const list=(_buddyMatches||[]).filter(m=>typeof isBlocked!=='function'||!isBlocked(m.user_name));
-  if(!list.length){box.innerHTML='<div class="empty" style="padding:16px 0"><p>No matches yet. Try a different trek, or add a few interests in your profile — more trekkers join every day.</p><button class="btn" style="max-width:220px;margin:8px auto 0" onclick="go(\'peopleSearch\')">Discover trekkers</button></div>';hydrate(box);return;}
+  if(!list.length){box.innerHTML=tcEmpty('travel_explore','No matches yet','Try a different trek, or add a few interests to your profile — more trekkers join every day.','<button class="btn" style="max-width:220px;margin:12px auto 0" onclick="go(\'peopleSearch\')">Discover trekkers</button>');hydrate(box);return;}
   box.innerHTML='<div class="tc-head" style="margin-top:4px"><b>'+list.length+' match'+(list.length!==1?'es':'')+'</b></div>'+list.map(buddyCard).join('');
   hydrate(box);
 }
@@ -4472,13 +4476,20 @@ function renderCirclePage(r){
   if(confirmed)h+='<div class="tc-confirm"><b>Trip Circle Confirmed!</b><small>Your group reached the minimum — Tripomonk takes it from here.</small></div>';
   h+='<div class="tc-prog"><i style="width:'+pct+'%"></i></div><div class="tc-progtx"><span><b style="color:var(--text)">'+cc.total+'</b> / '+c.max_members+' joined</span><span>min '+c.min_members+'</span></div>';
   h+='<div class="tc-stat"><div><b>'+cc.total+'</b><small>Joined</small></div><div><b>'+(cc.booked||0)+'</b><small>Booked</small></div><div><b>'+(cc.pending||0)+'</b><small>Pending</small></div></div>';
+  if(!confirmed){
+    const need=Math.max(0,(c.min_members||0)-(cc.booked||0));
+    h+='<div class="tc-nudge"><span class="msr">'+(need>0?'bolt':'check_circle')+'</span>'+(need>0?('<b>'+need+' more</b> '+(need===1?'spot':'spots')+' booked to confirm this trip'):'Minimum reached — confirming now')+'</div>';
+  }
   h+='<div class="tc-actions">';
   if(r.amMember){
-    h+='<button class="pri" onclick="circleBook()">'+(r.myStatus==='booked'?'View trip':'Book my spot')+'</button><button onclick="circleShare()">Share</button>';
-    if(r.amCreator)h+='<button onclick="openCircleInvite()">Invite</button>';
-    else h+='<button onclick="circleLeave()">Leave</button>';
+    h+='<button class="pri tc-act-full" onclick="circleBook()">'+(r.myStatus==='booked'?'View trip':'Book my spot')+'</button>';
+    h+='<div class="tc-act-row"><button onclick="circleShare()"><span class="msr">ios_share</span>Share</button>';
+    if(r.amCreator)h+='<button onclick="openCircleInvite()"><span class="msr">person_add</span>Invite</button>';
+    else h+='<button onclick="circleLeave()"><span class="msr">logout</span>Leave</button>';
+    h+='</div>';
   }else{
-    h+='<button class="pri" onclick="circleJoin()">'+(c.visibility==='private'?'Accept &amp; join':'Join this trip')+'</button><button onclick="circleShare()">Share</button>';
+    h+='<button class="pri tc-act-full" onclick="circleJoin()">'+(c.visibility==='private'?'Accept &amp; join':'Join this trip')+'</button>';
+    h+='<div class="tc-act-row"><button onclick="circleShare()"><span class="msr">ios_share</span>Share</button></div>';
   }
   h+='</div>';
   const mem=(r.members||[]).filter(m=>m.status!=='left'&&m.status!=='cancelled');
@@ -9715,7 +9726,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='513';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='515';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
