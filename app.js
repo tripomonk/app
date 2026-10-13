@@ -3053,8 +3053,19 @@ function handleDeepLink(){
   /* trip-circle invite link: #circle=<code|id> (404.html maps /circle/<code> → here) */
   const mc=h.match(/#circle=([^&]+)/);
   if(mc){const key=decodeURIComponent(mc[1]);setTimeout(()=>{try{openCircle(key);}catch(e){}},400);return;}
-  /* resume a circle the user was joining when they were sent to sign in */
-  try{const pc=localStorage.getItem('tmk_pending_circle');if(pc&&typeof isLoggedIn==='function'&&isLoggedIn()){localStorage.removeItem('tmk_pending_circle');setTimeout(()=>{try{openCircle(pc);}catch(e){}},500);}}catch(e){}
+  /* resume a circle the user was joining when they were sent to sign in — open + auto-join */
+  try{const pc=localStorage.getItem('tmk_pending_circle');if(pc&&typeof isLoggedIn==='function'&&isLoggedIn()){localStorage.removeItem('tmk_pending_circle');setTimeout(()=>{try{resumePendingCircle(pc);}catch(e){}},500);}}catch(e){}
+}
+/* after sign-up from an invite link: open the circle, then auto-join a community one so the
+   new member lands inside the trip (private circles still need an accepted invite). */
+async function resumePendingCircle(key){
+  await openCircle(key);
+  try{
+    const r=_circleCur;
+    if(r&&r.ok&&!r.amMember&&r.circle&&r.circle.visibility!=='private'&&typeof isLoggedIn==='function'&&isLoggedIn()){
+      await circleJoin();
+    }
+  }catch(e){}
 }
 /* Wishlist — saved trek names per account on this device (the heart used to be decorative
    and the Wishlist screen always showed the same three treks). */
@@ -4450,10 +4461,10 @@ function ccPickTrek(n){
   const batches=(t.batches||[]).filter(Boolean);
   /* only future company departures — a past date can't be used for a new circle anyway */
   _tcc._batches=(batches.length?batches.map(ccBatchDate):[]).filter(d=>!d.start||d.start>=today);
-  let h=_tcc._batches.length?'':'<div style="font-size:12px;color:var(--muted);width:100%;margin-bottom:4px">No fixed company departures for this trek — pick your own date.</div>';
+  let h=_tcc._batches.length?'':'<div style="font-size:12px;color:var(--muted);width:100%;margin-bottom:4px">'+(t.soon?'This trek isn’t open for booking yet — your circle will gather demand, and we’ll notify everyone when it opens. Pick a tentative date.':'No fixed company departures for this trek — pick your own date.')+'</div>';
   h+=_tcc._batches.slice(0,12).map((d,i)=>'<span class="tap" onclick="ccPickDate('+i+')" data-bi="'+i+'">'+esc(d.label)+'</span>').join('');
   h+='<span class="tap" id="ccCustomChip" onclick="ccCustomToggle()"><span class="msr" style="font-size:15px;vertical-align:-3px">event</span> Your own date</span>';
-  h+='<div id="ccCustomRow" class="cc-custom" hidden><label>Start date<input type="date" id="ccCustomStart" min="'+today+'" onchange="ccCustomSet()"></label><label>End date<input type="date" id="ccCustomEnd" min="'+today+'" onchange="ccCustomSet()"></label></div>';
+  h+='<div id="ccCustomRow" class="cc-custom" hidden><label>Start date<input type="text" inputmode="numeric" maxlength="10" id="ccCustomStart" placeholder="DD/MM/YYYY" oninput="ccDateMask(this)"></label><label>End date<input type="text" inputmode="numeric" maxlength="10" id="ccCustomEnd" placeholder="DD/MM/YYYY" oninput="ccDateMask(this)"></label></div>';
   dp.innerHTML=h;
   if(!_tcc._batches.length)ccCustomToggle();   /* no company dates → open the custom picker right away */
 }
@@ -4470,12 +4481,25 @@ function ccCustomToggle(){
   document.querySelectorAll('#ccDatePicks .tap').forEach(el=>el.classList.toggle('sel',el.id==='ccCustomChip'));
   ccCustomSet();
 }
+/* type a date as DD/MM/YYYY — auto-insert the slashes as they go */
+function ccDateMask(el){
+  let v=(el.value||'').replace(/\D/g,'').slice(0,8);
+  if(v.length>=5)v=v.slice(0,2)+'/'+v.slice(2,4)+'/'+v.slice(4);
+  else if(v.length>=3)v=v.slice(0,2)+'/'+v.slice(2);
+  el.value=v;ccCustomSet();
+}
+/* DD/MM/YYYY → ISO (YYYY-MM-DD), or null if incomplete/invalid */
+function parseDMY(s){
+  const m=String(s||'').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);if(!m)return null;
+  const d=+m[1],mo=+m[2],y=+m[3];if(mo<1||mo>12||d<1||d>31)return null;
+  const dt=new Date(y,mo-1,d);if(dt.getFullYear()!==y||dt.getMonth()!==mo-1||dt.getDate()!==d)return null;
+  return y+'-'+String(mo).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+}
 function ccCustomSet(){
-  const sEl=document.getElementById('ccCustomStart'),eEl=document.getElementById('ccCustomEnd');
-  const s=((sEl||{}).value||'').trim(),e=((eEl||{}).value||'').trim();
-  if(eEl&&s)eEl.min=s;                               /* end can't be before start */
+  const s=parseDMY((document.getElementById('ccCustomStart')||{}).value);
+  const e=parseDMY((document.getElementById('ccCustomEnd')||{}).value);
   _tcc.date=s||null;
-  _tcc.endDate=(e&&(!s||e>=s))?e:null;               /* keep end only when it's valid — no auto-fill */
+  _tcc.endDate=(e&&(!s||e>=s))?e:null;               /* keep end only when valid — no auto-fill */
 }
 function ccSetVis(v){_tcc.vis=v;const c=document.getElementById('ccVisC'),p=document.getElementById('ccVisP');if(c)c.classList.toggle('sel',v==='community');if(p)p.classList.toggle('sel',v==='private');}
 function ccNum(k,d){_tcc[k]=Math.max(2,Math.min(50,(_tcc[k]||(k==='min'?4:15))+d));if(_tcc.min>_tcc.max){if(k==='min')_tcc.max=_tcc.min;else _tcc.min=_tcc.max;}const mn=document.getElementById('ccMin'),mx=document.getElementById('ccMax');if(mn)mn.textContent=_tcc.min;if(mx)mx.textContent=_tcc.max;}
@@ -4518,31 +4542,41 @@ function renderCirclePage(r){
     +'<div class="rb round tc-back" onclick="back()"><span class="ic" data-i="back"></span></div>'
     +'<div class="tc-htx"><h1>'+esc(c.trek_name)+'</h1><small>'+(when?esc(when)+' · ':'')+'by '+esc(c.creator_name)+'</small></div></div>';
   if(confirmed)h+='<div class="tc-confirm"><b>Trip Circle Confirmed!</b><small>Your group reached the minimum — Tripomonk takes it from here.</small></div>';
+  const bookable=(typeof circleTrekBookable==='function')?circleTrekBookable(c):true;
   h+='<div class="tc-prog"><i style="width:'+pct+'%"></i></div><div class="tc-progtx"><span><b style="color:var(--text)">'+cc.total+'</b> / '+c.max_members+' joined</span><span>min '+c.min_members+'</span></div>';
-  h+='<div class="tc-stat"><div><b>'+cc.total+'</b><small>Joined</small></div><div><b>'+(cc.booked||0)+'</b><small>Booked</small></div><div><b>'+(cc.pending||0)+'</b><small>Pending</small></div></div>';
+  if(bookable)h+='<div class="tc-stat"><div><b>'+cc.total+'</b><small>Joined</small></div><div><b>'+(cc.booked||0)+'</b><small>Booked</small></div><div><b>'+(cc.pending||0)+'</b><small>Pending</small></div></div>';
+  else h+='<div class="tc-stat"><div><b>'+cc.total+'</b><small>Interested</small></div><div><b>'+(cc.pending||0)+'</b><small>Requested</small></div><div><b>'+(cc.invited||0)+'</b><small>Invited</small></div></div>';
   if(!confirmed){
-    const need=Math.max(0,(c.min_members||0)-(cc.booked||0));
-    h+='<div class="tc-nudge"><span class="msr">'+(need>0?'bolt':'check_circle')+'</span>'+(need>0?('<b>'+need+' more</b> '+(need===1?'spot':'spots')+' booked to confirm this trip'):'Minimum reached — confirming now')+'</div>';
+    if(bookable){
+      const need=Math.max(0,(c.min_members||0)-(cc.booked||0));
+      h+='<div class="tc-nudge"><span class="msr">'+(need>0?'bolt':'check_circle')+'</span>'+(need>0?('<b>'+need+' more</b> '+(need===1?'spot':'spots')+' booked to confirm this trip'):'Minimum reached — confirming now')+'</div>';
+    }else{
+      const want=cc.total||0;
+      h+='<div class="tc-nudge"><span class="msr">campaign</span>Bookings aren’t open for this trek yet — <b>'+want+'</b> '+(want===1?'person wants':'people want')+' it. Request a spot and we’ll notify everyone when it opens.</div>';
+    }
   }
   h+='<div class="tc-actions">';
   if(r.amMember){
-    h+='<button class="pri tc-act-full" onclick="circleBook()">'+(r.myStatus==='booked'?'View trip':'Book my spot')+'</button>';
+    if(bookable)h+='<button class="pri tc-act-full" onclick="circleBook()">'+(r.myStatus==='booked'?'View trip':'Book my spot')+'</button>';
+    else if(r.myStatus==='booking_pending')h+='<button class="pri tc-act-full tc-act-done" onclick="note(\'You\\u2019re on the list — we\\u2019ll notify you when bookings open.\',\'Requested\')"><span class="msr">check</span>On the waitlist</button>';
+    else h+='<button class="pri tc-act-full" onclick="circleRequest()">Request a spot</button>';
     h+='<div class="tc-act-row"><button onclick="circleShare()"><span class="msr">ios_share</span>Share</button>';
     if(r.amCreator)h+='<button onclick="openCircleInvite()"><span class="msr">person_add</span>Invite</button>';
     else h+='<button onclick="circleLeave()"><span class="msr">logout</span>Leave</button>';
     h+='</div>';
   }else{
-    h+='<button class="pri tc-act-full" onclick="circleJoin()">'+(c.visibility==='private'?'Accept &amp; join':'Join this trip')+'</button>';
+    if(bookable)h+='<button class="pri tc-act-full" onclick="circleJoin()">'+(c.visibility==='private'?'Accept &amp; join':'Join this trip')+'</button>';
+    else h+='<button class="pri tc-act-full" onclick="circleRequest()">Request a spot</button>';
     h+='<div class="tc-act-row"><button onclick="circleShare()"><span class="msr">ios_share</span>Share</button></div>';
   }
   h+='</div>';
   const mem=(r.members||[]).filter(m=>m.status!=='left'&&m.status!=='cancelled');
   h+='<div class="tc-head"><b>Members ('+mem.length+')</b></div>';
-  h+=mem.map(m=>'<div class="tc-member">'+avatar(m.user_name,38)+'<div class="tc-mtx"><b>'+esc(properName(m.user_name))+'</b>'+(m.role==='creator'?'<small style="color:var(--muted);display:block;font-size:11px">Organizer</small>':'')+'</div><span class="tc-chip '+esc(m.status)+'">'+esc(tcStatusLabel(m.status))+'</span></div>').join('');
+  h+=mem.map(m=>'<div class="tc-member">'+avatar(m.user_name,38)+'<div class="tc-mtx"><b>'+esc(properName(m.user_name))+'</b>'+(m.role==='creator'?'<small style="color:var(--muted);display:block;font-size:11px">Organizer</small>':'')+'</div><span class="tc-chip '+esc(m.status)+'">'+esc(tcStatusLabel(m.status,bookable))+'</span></div>').join('');
   if(!r.amCreator)h+='<div style="text-align:center;margin-top:18px"><button onclick="reportCircle(\''+jsq(c.id)+'\',\''+jsq(c.creator_name||'')+'\')" style="background:none;border:0;color:var(--muted);font-size:12.5px;font-weight:700;cursor:pointer">Report this circle</button></div>';
   body.innerHTML=h;hydrate(body);
 }
-function tcStatusLabel(s){return {booked:'Booked',booking_pending:'Payment pending',joined:'Joined',invited:'Invited'}[s]||s;}
+function tcStatusLabel(s,bookable){if(bookable===false&&s==='booking_pending')return 'Requested';return {booked:'Booked',booking_pending:'Payment pending',joined:'Joined',invited:'Invited'}[s]||s;}
 async function circleJoin(){
   const c=_circleCur&&_circleCur.circle;if(!c)return;
   if(typeof isLoggedIn==='function'&&!isLoggedIn()){try{localStorage.setItem('tmk_pending_circle',c.invite_code||c.id);}catch(e){}_loginReturn='community';note('Sign in to join this trip.','Join');go('login');return;}
@@ -4552,6 +4586,23 @@ async function circleJoin(){
 }
 async function circleLeave(){const c=_circleCur&&_circleCur.circle;if(!c)return;if(!(await askConfirm('Leave this trip circle?','Leave')))return;const r=await circlesCall('leave',{circle_id:c.id});if(!r||!r.ok){note((r&&r.error)||'Could not leave.','Error');return;}toast('You left the circle');openCircle(c.id);}
 function circleBook(){const c=_circleCur&&_circleCur.circle;if(!c)return;_circleBookCtx={id:c.id,trek:c.trek_name};if(typeof openDetailByName==='function')openDetailByName(c.trek_name);}
+/* a circle's trek is "bookable" only when it's a live catalogue trek — "Coming Soon" treks
+   and custom (off-catalogue) trips can't be booked yet, so those circles gather DEMAND instead. */
+function circleTrekBookable(c){
+  if(!c||!c.trek_name)return false;
+  const t=(typeof treks!=='undefined'?treks:[]).find(x=>String(x.n).toLowerCase()===String(c.trek_name).toLowerCase());
+  return !!(t&&!t.soon);
+}
+/* "Request a spot" on a not-yet-bookable trip: join (if needed) + mark as a booking request
+   (status booking_pending) so Tripomonk sees the demand and can open bookings. */
+async function circleRequest(){
+  const c=_circleCur&&_circleCur.circle;if(!c)return;
+  if(typeof isLoggedIn==='function'&&!isLoggedIn()){try{localStorage.setItem('tmk_pending_circle',c.invite_code||c.id);}catch(e){}_loginReturn='community';note('Sign in to request a spot.','Request a spot');go('login');return;}
+  if(!(_circleCur&&_circleCur.amMember)){const j=await circlesCall('join',{circle_id:c.id});if(!j||!j.ok){note((j&&j.error)||'Could not join.','Error');return;}}
+  const r=await circlesCall('set_member_status',{circle_id:c.id,status:'booking_pending'});
+  if(!r||!r.ok){note((r&&r.error)||'Could not register your request.','Error');return;}
+  toast('You’re on the list — we’ll notify you when bookings open.');openCircle(c.id);
+}
 /* after a booking completes, link it to the circle the user came from (trek must match),
    flip their status to booked, and auto-confirm the circle when the minimum is booked. */
 async function tcLinkBooking(b){
@@ -4578,10 +4629,12 @@ function openCircleInvite(){
 }
 function renderCIInvite(){
   const box=document.getElementById('ciInv');if(!box)return;
-  if(_ccFollowers===null){box.innerHTML='<div class="empty" style="padding:14px 0"><p style="font-size:12.5px">Loading…</p></div>';return;}
-  if(!_ccFollowers.length){box.innerHTML='<div class="empty" style="padding:14px 0"><p style="font-size:12.5px">No followers yet — use Share to send the invite link instead.</p></div>';return;}
-  box.innerHTML=_ccFollowers.map(f=>'<div class="mrow'+(_ciSel[f.id]?' sel':'')+'" onclick="ciToggle(\''+jsq(f.id)+'\')">'+avatar(f.name,36)+'<div class="tc-mtx"><b>'+esc(properName(f.name))+'</b></div><span class="ck msr">check</span></div>').join('');
-  hydrate(box);
+  /* first-class "anyone with the link" option — works for people who aren't on the app yet */
+  let h='<div class="ci-link" onclick="circleShare()"><div class="ci-link-ic"><span class="msr">link</span></div><div class="tc-mtx"><b>Invite anyone with a link</b><small>Share on WhatsApp or copy — they can open it, sign up and join.</small></div><span class="msr">ios_share</span></div>';
+  if(_ccFollowers===null)h+='<div class="empty" style="padding:10px 0"><p style="font-size:12.5px">Loading your followers…</p></div>';
+  else if(!_ccFollowers.length)h+='<div class="empty" style="padding:8px 0"><p style="font-size:12.5px">You have no followers to pick from yet — the link above works for anyone.</p></div>';
+  else h+='<div class="ci-sub">Or pick from your followers</div>'+_ccFollowers.map(f=>'<div class="mrow'+(_ciSel[f.id]?' sel':'')+'" onclick="ciToggle(\''+jsq(f.id)+'\')">'+avatar(f.name,36)+'<div class="tc-mtx"><b>'+esc(properName(f.name))+'</b></div><span class="ck msr">check</span></div>').join('');
+  box.innerHTML=h;hydrate(box);
 }
 function ciToggle(id){if(_ciSel[id])delete _ciSel[id];else _ciSel[id]=((_ccFollowers||[]).find(f=>f.id===id)||{}).name||'Trekker';renderCIInvite();}
 async function sendCircleInvites(){
@@ -7578,7 +7631,7 @@ function paintPlanner(){
       }
       /* only the latest answer keeps its refine chips active, so old turns don't clutter */
       if(i===_planMsgs.length-1&&m.followups&&m.followups.length){
-        extra+='<div class="pl-follows">'+m.followups.map(f=>`<button class="pl-follow" onclick="plannerFollow(this)"><span class="msr">tune</span><span class="pl-follow-t">${esc(f)}</span></button>`).join('')+'</div>';
+        extra+='<div class="pl-follows">'+m.followups.map(plFollowStr).filter(Boolean).map(f=>`<button class="pl-follow" onclick="plannerFollow(this)"><span class="msr">tune</span><span class="pl-follow-t">${esc(f)}</span></button>`).join('')+'</div>';
       }
     }
     return bubble+extra;
@@ -7622,6 +7675,9 @@ function plCircleChip(c){
   return '<div class="pl-circ" onclick="openCircle(\''+jsq(c.id)+'\')"><div class="pl-circ-tx"><b>'+esc(c.trek_name)+'</b><small>'+(when?esc(when)+' · ':'')+esc(c.creator_name||'')+' · '+(cc.total||0)+'/'+(c.max_members||0)+' joined</small></div><span class="msr">chevron_right</span></div>';
 }
 /* tap a suggested refinement → sends it as the next message */
+/* the AI sometimes returns refine chips as objects ({text|label|q|…}) instead of strings —
+   coerce to a plain string so chips never render "[object Object]" */
+function plFollowStr(f){return (typeof f==='string')?f:((f&&(f.text||f.label||f.q||f.question||f.title||f.value))||'');}
 function plannerFollow(b){if(_planBusy||_planTyping)return;const t=b&&b.querySelector('.pl-follow-t');const q=t?t.textContent.trim():'';if(q)sendPlan(q);}
 /* fallback refinement chips (used when the AI didn't supply its own followups) */
 function plDefaultFollowups(ctx){ctx=ctx||{};
@@ -7665,7 +7721,7 @@ async function sendPlan(text){
   _planBusy=false;
   let full,recs=[],brief='',follow=[];
   if(chit){full=chit;}
-  else if(res){full=res.reply||'Here are some options:';recs=plNormalizeRecs(res);brief=res.brief||plBrief(_tripCtx).join(' · ');follow=Array.isArray(res.followups)?res.followups.slice(0,3):[];}
+  else if(res){full=res.reply||'Here are some options:';recs=plNormalizeRecs(res);brief=res.brief||plBrief(_tripCtx).join(' · ');follow=(Array.isArray(res.followups)?res.followups:[]).map(plFollowStr).filter(Boolean).slice(0,3);}
   else{const tf=plTravelFaq(ql);if(tf){full=tf;}else{const out=plRecommend(ql,_tripCtx);full=out.reply;recs=out.recs;brief=out.brief;}}
   if(!follow.length&&recs.length)follow=plDefaultFollowups(_tripCtx);   /* always offer a next step */
   recs.forEach(r=>_planShown.add(r.name));
@@ -9800,7 +9856,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='521';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='524';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
