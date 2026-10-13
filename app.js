@@ -2940,6 +2940,7 @@ function openDetail(i){const t=treks[i];if(!t)return;
   renderDetailGetting(t);
   refreshGearReco(t);          /* recommended gear, selected for this trek */
   renderDetailNews(t.n);
+  if(typeof renderTrekSocial==='function')renderTrekSocial(t,'dSocial');   /* Who's going + Travel with your people */
   go('detail');
 }
 /* ============================================================
@@ -2973,6 +2974,7 @@ function renderTrip(t){
   g('tripPickup').innerHTML=pickupBlockHTML(t);
   g('tripHl').innerHTML=hlHTML(t);
   g('tripRevPrev').innerHTML=reviewPreviewHTML(t);
+  if(typeof renderTrekSocial==='function')renderTrekSocial(t,'tripSocial');   /* Who's going + Travel with your people */
   syncFav(g('tripFav'),t);
   /* sticky booking bar */
   const cta=g('tripCta'),cap=g('tripCtaCap'),pr=g('tripCtaPrice');
@@ -4211,7 +4213,7 @@ async function buddyFind(){
 function renderBuddyResults(){
   const box=document.getElementById('buddyResults');if(!box)return;
   if(_buddyMatches===null){box.innerHTML='';return;}
-  const list=_buddyMatches;
+  const list=(_buddyMatches||[]).filter(m=>typeof isBlocked!=='function'||!isBlocked(m.user_name));
   if(!list.length){box.innerHTML='<div class="empty" style="padding:16px 0"><p>No matches yet. Try a different trek, or add a few interests in your profile — more trekkers join every day.</p><button class="btn" style="max-width:220px;margin:8px auto 0" onclick="go(\'peopleSearch\')">Discover trekkers</button></div>';hydrate(box);return;}
   box.innerHTML='<div class="tc-head" style="margin-top:4px"><b>'+list.length+' match'+(list.length!==1?'es':'')+'</b></div>'+list.map(buddyCard).join('');
   hydrate(box);
@@ -4247,10 +4249,127 @@ function buddyConnect(n,btn){
   toast('Connected with '+properName(n));
   openChat(n);                                                  /* …and open the DM to say hi */
 }
+
+/* ============================================================
+   WHO'S GOING + TRAVEL WITH YOUR PEOPLE (Phase 3) — on every trek/trip detail.
+   Pure frontend: trip_interests has public read + own insert/delete RLS (shipped in
+   Phase 1), so interest is a direct client write; "people you follow going" cross-refs
+   interested names with the existing follow state. No edge-fn / SQL change.
+   ============================================================ */
+async function renderTrekSocial(t,boxId){
+  boxId=boxId||'dSocial';
+  const box=document.getElementById(boxId);if(!box||!t||!t.n)return;
+  const trek=t.n;box.dataset.trek=trek;
+  box.innerHTML='<div id="'+boxId+'Going" class="tsoc-going"><div class="skel" style="height:58px;border-radius:14px"></div></div>'+trekTravelWith(trek,boxId);
+  const sb=(typeof getSupaClient==='function')?getSupaClient():null;
+  const goBox=document.getElementById(boxId+'Going');
+  if(!sb){if(goBox)paintWhosGoing(boxId,trek,0,[],[],false);return;}
+  let rows=[];try{const{data}=await sb.from('trip_interests').select('user_id,user_name').eq('trek_name',trek).limit(300);rows=data||[];}catch(e){rows=[];}
+  if(box.dataset.trek!==trek)return;   /* user opened a different trek meanwhile */
+  const myUid=(currentUser&&currentUser.id)||null;
+  const amIn=myUid?rows.some(r=>r.user_id===myUid):false;
+  const names=[...new Set(rows.filter(r=>r.user_name&&(!myUid||r.user_id!==myUid)).map(r=>r.user_name))];
+  const followed=names.filter(n=>typeof isFollowing==='function'&&isFollowing(n));
+  paintWhosGoing(boxId,trek,rows.length,names,followed,amIn);
+  try{if(typeof loadAuthorPhotos==='function'&&names.length){await loadAuthorPhotos(names.slice(0,8));if(box.dataset.trek===trek)paintWhosGoing(boxId,trek,rows.length,names,followed,amIn);}}catch(e){}
+  /* open community circles already forming for this trek → a one-tap Join */
+  try{if(typeof circlesCall==='function'){const cr=await circlesCall('list_public_circles',{filters:{trek_name:trek}});if(box.dataset.trek===trek){const cbox=document.getElementById(boxId+'Circles');const list=(cr&&cr.ok&&cr.circles)||[];if(cbox&&list.length)cbox.innerHTML='<div class="tsoc-circ" onclick="joinFromTrek(\''+jsq(trek)+'\')"><span class="msr">groups_2</span><div><b>'+list.length+' trip circle'+(list.length!==1?'s':'')+' forming</b><small>Join a group already going</small></div><span class="msr" style="margin-left:auto">chevron_right</span></div>';}}}catch(e){}
+}
+function paintWhosGoing(boxId,trek,count,names,followed,amIn){
+  const box=document.getElementById(boxId+'Going');if(!box)return;
+  const stack=names.slice(0,5).map((n,i)=>'<span class="tsoc-av" style="z-index:'+(9-i)+'" onclick="event.stopPropagation();openPerson(\''+jsq(n)+'\')">'+avatar(n,34)+'</span>').join('');
+  const headline=count>0?('<b>'+count+'</b> trekker'+(count!==1?'s':'')+' interested'):'Be the first to show interest';
+  const foll=followed.length?'<div class="tsoc-foll"><span class="msr">group</span>'+followed.length+' '+(followed.length===1?'person you follow is':'people you follow are')+' going</div>':'';
+  box.innerHTML='<div class="tsoc-head"><span class="msr">hiking</span>Who’s going</div>'
+    +'<div class="tsoc-row">'+(stack?'<div class="tsoc-stack">'+stack+'</div>':'')+'<div class="tsoc-tx">'+headline+foll+'</div></div>'
+    +'<button class="tsoc-int'+(amIn?' on':'')+'" onclick="toggleTrekInterest(\''+jsq(trek)+'\',this)">'+(amIn?'<span class="msr">check</span> You’re interested':'I’m interested')+'</button>';
+}
+function trekTravelWith(trek,boxId){
+  return '<div class="tsoc-twp"><div class="tsoc-head"><span class="msr">diversity_3</span>Travel with your people</div>'
+    +'<p>Don’t go solo — form a group or match with trekkers for this trip. Tripomonk handles the rest.</p>'
+    +'<div class="tsoc-acts"><button onclick="openCircleCreate(\''+jsq(trek)+'\')"><span class="msr">groups</span>Create a circle</button>'
+    +'<button onclick="buddyFromTrek(\''+jsq(trek)+'\')"><span class="msr">travel_explore</span>Find buddies</button></div>'
+    +'<div id="'+boxId+'Circles"></div></div>';
+}
+async function toggleTrekInterest(trek,btn){
+  if(typeof isLoggedIn==='function'&&!isLoggedIn()){_loginReturn='detail';go('login');return;}
+  const sb=(typeof getSupaClient==='function')?getSupaClient():null;
+  const uid=(currentUser&&currentUser.id)||null;
+  if(!sb||!uid){toast('Sign in to show interest');return;}
+  const on=!!(btn&&btn.classList.contains('on'));
+  if(btn)btn.disabled=true;
+  try{
+    if(on)await sb.from('trip_interests').delete().eq('user_id',uid).eq('trek_name',trek);
+    else await sb.from('trip_interests').upsert({user_id:uid,user_name:myName(),trek_name:trek},{onConflict:'user_id,trek_name'});
+    if(typeof logEvent==='function')logEvent(on?'trek_uninterest':'trek_interest',{trek});
+  }catch(e){}
+  if(btn)btn.disabled=false;
+  const outer=btn&&btn.closest('[id$="Going"]');const bid=outer?outer.id.replace(/Going$/,''):'dSocial';
+  const t=(cart&&cart.trek&&cart.trek.n===trek)?cart.trek:{n:trek};
+  renderTrekSocial(t,bid);
+}
+/* jump from a trek page into the buddy / join flows with this trek pre-filled */
+function buddyFromTrek(trek){
+  _buddyPrefs.trek=trek||'';_buddyMatches=null;
+  go('community');if(typeof setCommView==='function')setCommView('buddies');
+}
+function joinFromTrek(trek){
+  go('community');if(typeof setCommView==='function')setCommView('join');
+  setTimeout(()=>{const q=document.getElementById('tcJoinQ');if(q){q.value=trek||'';if(typeof _tcJoinDeb==='function')_tcJoinDeb();}},60);
+}
 function tcHostPanel(){
-  return '<div class="tc-head"><b>Host a Trip</b></div>'
-    +'<div class="empty" style="padding:10px 0 18px"><p><b>You bring the people. Tripomonk handles operations.</b><br>Transport, stay, permits, trek captain, safety &amp; payments — all handled.</p>'
-    +'<button class="btn" style="max-width:230px;margin:10px auto 0" onclick="(typeof openHosts===\'function\')?openHosts():go(\'explore\')">Become a host</button></div>';
+  const explain='<div class="tc-head"><b>Host a Trip</b></div>'
+    +'<div class="tsoc-twp" style="margin-bottom:12px"><p style="margin:0 0 10px;color:var(--text);font-size:13.5px"><b>You bring the people. Tripomonk handles operations.</b><br>Transport, stay, permits, trek captain, safety &amp; payments — all handled. You earn on every seat you fill.</p>'
+    +'<div style="font-size:11.5px;color:var(--muted)">Profit-share: after on-ground costs, 90% to you, 10% to Tripomonk — agreed up front in onboarding.</div></div>';
+  if(typeof isLoggedIn==='function'&&!isLoggedIn())
+    return explain+'<button class="btn" onclick="go(\'login\')">Sign in to host</button>';
+  /* load host status once, then re-render this panel so the adaptive hub shows the right card */
+  if(!_hostLoaded&&typeof loadHostApp==='function'){loadHostApp().then(()=>{if(_commView==='host')setCommView('host');}).catch(()=>{});}
+  const approved=!!(_hostApp&&_hostApp.status==='approved');
+  return explain
+    +'<div id="tcHostHub">'+(typeof hostHubCard==='function'?hostHubCard():'')+'</div>'
+    +(approved?'<button class="btn" style="margin-top:4px" onclick="openHostTrip()">+ List a new trip</button>':'');
+}
+/* ============================================================
+   MY TRAVEL (Phase 4) — a profile hub for the social-travel side: my trip circles,
+   upcoming trips, interests + quick links to Bookings / Host dashboard. Reuses
+   list_my_circles, getBookings/bookingCard, getPrefs and host status — no new backend.
+   ============================================================ */
+function openMyTravel(){
+  if(typeof isLoggedIn==='function'&&!isLoggedIn()){_loginReturn='myTravel';go('login');return;}
+  go('myTravel');renderMyTravel();
+}
+async function renderMyTravel(){
+  const box=document.getElementById('mtBody');if(!box)return;
+  if(!_hostLoaded&&typeof loadHostApp==='function')loadHostApp().catch(()=>{});
+  const ints=(typeof getPrefs==='function'?(getPrefs()||[]):[]);
+  const interests=Array.isArray(ints)?ints.filter(x=>typeof x==='string'):[];
+  const bs=(typeof getBookings==='function'?getBookings():[]);
+  const up=bs.filter(b=>typeof bookingIsPast!=='function'||!bookingIsPast(b))
+             .sort((a,b)=>(((typeof bookingStartISO==='function'&&bookingStartISO(a))||'9999')).localeCompare(((typeof bookingStartISO==='function'&&bookingStartISO(b))||'9999')));
+  const sec=(title,extra,inner)=>'<div class="mt-sec"><div class="tc-head"><b>'+title+'</b>'+(extra||'')+'</div>'+inner+'</div>';
+  const intHtml=interests.length
+    ?('<div class="mt-chips">'+interests.map(p=>'<span class="mt-chip">'+esc(p)+'</span>').join('')+'</div>')
+    :'<div class="empty" style="padding:6px 0"><p style="font-size:13px">No interests yet — add a few for better matches.</p></div>';
+  const upHtml=up.length
+    ?('<div class="bk-list">'+up.slice(0,3).map(bookingCard).join('')+'</div>'+(up.length>3?'<a class="mt-seeall" onclick="go(\'bookings\')">See all '+up.length+' trips →</a>':''))
+    :'<div class="empty" style="padding:6px 0"><p style="font-size:13px">No upcoming trips. <a style="color:var(--accent2);cursor:pointer" onclick="go(\'explore\')">Browse treks →</a></p></div>';
+  const link=(icn,label,onc)=>'<div class="mrow" onclick="'+onc+'"><span class="ic"><span class="msr" style="font-size:20px">'+icn+'</span></span><span class="t">'+label+'</span><span class="ch">'+ic('back',16)+'</span></div>';
+  box.innerHTML=
+    sec('My Trip Circles','<a onclick="openCircleCreate()">+ Create</a>','<div id="mtCircles"><div class="skel skel-card" style="height:88px"></div></div>')
+    +sec('Upcoming trips','',upHtml)
+    +sec('My interests','<a onclick="go(\'onboarding\')">Edit</a>',intHtml)
+    +'<div class="mt-links">'+link('confirmation_number','My Bookings',"go('bookings')")
+      +((_hostApp&&_hostApp.status==='approved')?link('landscape','Host Dashboard',"openHostDash()"):'')
+      +link('travel_explore','Find Travel Buddies',"buddyFromTrek('')")
+    +'</div>';
+  hydrate(box);
+  const r=(typeof circlesCall==='function')?await circlesCall('list_my_circles',{}):null;
+  const cb=document.getElementById('mtCircles');if(!cb)return;
+  const list=(r&&r.ok&&r.circles)||[];
+  cb.innerHTML=list.length?list.map(circleCard).join('')
+    :'<div class="empty" style="padding:6px 0"><p style="font-size:13px">No trip circles yet. <a style="color:var(--accent2);cursor:pointer" onclick="openCircleCreate()">Create one →</a></p></div>';
+  hydrate(cb);
 }
 /* ---- Create ---- */
 let _tcc={trek:'',region:'',img:'',date:null,endDate:null,vis:'community',min:4,max:15,invite:{},_batches:[]};
@@ -4365,6 +4484,7 @@ function renderCirclePage(r){
   const mem=(r.members||[]).filter(m=>m.status!=='left'&&m.status!=='cancelled');
   h+='<div class="tc-head"><b>Members ('+mem.length+')</b></div>';
   h+=mem.map(m=>'<div class="tc-member">'+avatar(m.user_name,38)+'<div class="tc-mtx"><b>'+esc(properName(m.user_name))+'</b>'+(m.role==='creator'?'<small style="color:var(--muted);display:block;font-size:11px">Organizer</small>':'')+'</div><span class="tc-chip '+esc(m.status)+'">'+esc(tcStatusLabel(m.status))+'</span></div>').join('');
+  if(!r.amCreator)h+='<div style="text-align:center;margin-top:18px"><button onclick="reportCircle(\''+jsq(c.id)+'\',\''+jsq(c.creator_name||'')+'\')" style="background:none;border:0;color:var(--muted);font-size:12.5px;font-weight:700;cursor:pointer">Report this circle</button></div>';
   body.innerHTML=h;hydrate(body);
 }
 function tcStatusLabel(s){return {booked:'Booked',booking_pending:'Payment pending',joined:'Joined',invited:'Invited'}[s]||s;}
@@ -5143,6 +5263,7 @@ async function loadProfileFromServer(){
     }
   }catch(e){}
   await loadFollowsFromServer();
+  if(typeof loadBlocksFromServer==='function')loadBlocksFromServer();   /* sync blocks across devices */
   loadCart();   /* cart is keyed per account — swap to this user's one */
   planPull();   /* training plan follows the account, not the device */
   _profileLoadedFor=currentUser.id;
@@ -5208,7 +5329,7 @@ async function _loadNotifsRemote(){
     return (data||[]).filter(n=>dis.indexOf(String(n.id))<0);   /* hide anything swiped away */
   });
 }
-const NOTIF_ICON={like:'favorite',comment:'chat_bubble',follow:'person_add',mention:'alternate_email',admin:'campaign',message:'sms'};
+const NOTIF_ICON={like:'favorite',comment:'chat_bubble',follow:'person_add',mention:'alternate_email',admin:'campaign',message:'sms',circle:'diversity_3'};
 /* Magic-UI style icon tiles: an emoji on a coloured rounded square per type */
 const NOTIF_STYLE={like:{e:'💗',c:'#FF3D71'},comment:{e:'💬',c:'#1E86FF'},follow:{e:'👤',c:'#FFB800'},mention:{e:'📣',c:'#00C9A7'},admin:{e:'📣',c:'#2f6bff'},message:{e:'✉️',c:'#2f6bff'}};
 function notifDesc(n){
@@ -5219,6 +5340,7 @@ function notifDesc(n){
   if(n.type==='mention')return 'mentioned you '+p;
   if(n.type==='message')return 'messaged you '+p;
   if(n.type==='admin')return p||'sent you a message';
+  if(n.type==='circle')return p||'trip circle update';
   return 'interacted with you';
 }
 function notifText(n){
@@ -5229,6 +5351,7 @@ function notifText(n){
   if(n.type==='mention')return `<b>${who}</b> mentioned you: ${n.preview?'“'+esc(n.preview)+'”':''}`;
   if(n.type==='message')return `<b>${who}</b> messaged you${n.preview?': “'+esc(n.preview)+'”':''}`;
   if(n.type==='admin')return `<b>Tripomonk</b> ${n.preview?'“'+esc(n.preview)+'”':'sent you a message'}`;
+  if(n.type==='circle')return n.preview?esc(n.preview):`<b>Trip Circles</b> update`;
   return `<b>${who}</b> interacted with you`;
 }
 let _lastUnread=-1;
@@ -5614,7 +5737,7 @@ async function renderPerson(){if(!curPerson){go('community');return;}const p=get
       ${(me?getSavedBio():(bioByName[p.n]||''))?`<p class="pbio">${esc(me?getSavedBio():bioByName[p.n])}</p>`:''}
       <div class="pstats"><div><b>${posts.length}</b><small>Posts</small></div><div onclick="openFollowList('followers','${jsq(p.n)}')"><b id="pFlwr" data-person="${esc(p.n)}" data-base="${base}">${flwr.toLocaleString()}</b><small>Followers</small></div><div onclick="openFollowList('following','${jsq(p.n)}')"><b>${Number(following).toLocaleString()}</b><small>Following</small></div></div>
       ${me?'':`<div class="profile-actions" style="margin:14px 0 0"><button class="${isFollowing(p.n)?'on':''}${(!isFollowing(p.n)&&hasRequested(p.n))?' req':''}" data-follow="${esc(p.n)}" onclick="followAction('${jsq(p.n)}')">${followBtnLabel(p.n)}</button><button onclick="${isBlocked(p.n)?`note('Unblock ${jsq(properName(p.n))} first.','Blocked')`:(canSeePerson(p.n)?`openChat('${jsq(p.n)}')`:`note('Follow this private account to message them.','Private account')`)}">Message</button></div>
-      <div style="text-align:center;margin-top:10px"><button onclick="toggleBlock('${jsq(p.n)}')" style="background:none;border:0;color:${isBlocked(p.n)?'var(--accent2)':'#ff6b6b'};font-size:12.5px;font-weight:700;cursor:pointer">${isBlocked(p.n)?'Unblock':'Block'} ${esc(properName(p.n))}</button></div>`}
+      <div style="text-align:center;margin-top:10px;display:flex;gap:16px;justify-content:center"><button onclick="toggleBlock('${jsq(p.n)}')" style="background:none;border:0;color:${isBlocked(p.n)?'var(--accent2)':'#ff6b6b'};font-size:12.5px;font-weight:700;cursor:pointer">${isBlocked(p.n)?'Unblock':'Block'} ${esc(properName(p.n))}</button><button onclick="reportUser('${jsq(p.n)}')" style="background:none;border:0;color:var(--muted);font-size:12.5px;font-weight:700;cursor:pointer">Report</button></div>`}
       <div style="margin-top:12px">${socialLinks(me?getSavedSocials():socialsByName[p.n])}</div>
     </div>
     ${(_personMode==='host')?'<div class="pmode-chip"><span class="msr">cottage</span> Host profile</div>':''}
@@ -6564,6 +6687,7 @@ function renderProfile(){document.getElementById('pCover').style.backgroundImage
   const pb=document.getElementById('profileBio');
   if(pb){const bio=(_hostApp&&_hostApp.bio)||'';pb.textContent=bio;pb.style.display=bio?'':'none';}
   let rows=socialLinks(getSavedSocials())+fitnessProfileCard()
+    +(isLoggedIn()?'<div class="mrow" onclick="openMyTravel()"><span class="ic"><span class="msr" style="font-size:20px">explore</span></span><span class="t">My Travel</span><span class="ch">'+ic('back',16)+'</span></div>':'')
     +'<div id="hostHub">'+hostHubCard()+'</div>'
     +'<div id="guideHub">'+guideHubCard()+'</div>'   /* trek-leader dashboard, guides only */
     +'<div id="staffHub">'+staffHubCard()+'</div>';   /* admin / trip-captain, staff only */
@@ -6966,6 +7090,7 @@ async function blockUser(n){
   if(!n||n==='Tripomonk Team'||n===myName()||n==='You')return;
   if(!(await askConfirm('Block '+properName(n)+'? They won’t be able to message or call you, and you won’t see their chat or posts.','Block '+properName(n)+'?')))return;
   const l=blockedSet(),k=String(n).toLowerCase();if(l.indexOf(k)<0)l.push(k);setBlockedSet(l);
+  try{if(typeof circlesCall==='function')circlesCall('block_user',{name:n});}catch(e){}   /* enforce server-side too (buddy matches, circle joins) */
   toast(properName(n)+' blocked');
   if(cur==='chat')go('messages');else if(cur==='person')renderPerson();
   if(typeof renderFeedIfOpen==='function')renderFeedIfOpen();
@@ -6973,9 +7098,25 @@ async function blockUser(n){
 async function unblockUser(n){
   if(!n)return;
   setBlockedSet(blockedSet().filter(x=>x!==String(n).toLowerCase()));
+  try{if(typeof circlesCall==='function')circlesCall('unblock_user',{name:n});}catch(e){}
   toast(properName(n)+' unblocked');
   if(cur==='chat')renderChat();else if(cur==='person')renderPerson();
 }
+/* pull server-side blocks into the local set on login so blocks follow the user across devices */
+async function loadBlocksFromServer(){
+  try{if(typeof circlesCall!=='function')return;const r=await circlesCall('list_blocks',{});
+    if(r&&r.ok&&Array.isArray(r.blocked)){const s=new Set(blockedSet());r.blocked.forEach(n=>s.add(String(n).toLowerCase()));setBlockedSet([...s]);}
+  }catch(e){}
+}
+/* report a person or a circle to Tripomonk's team (admin reviews in the console) */
+async function reportTo(opts){
+  if(typeof isLoggedIn==='function'&&!isLoggedIn()){go('login');return;}
+  const who=opts.reported_user?properName(opts.reported_user):'this trip circle';
+  if(!(await askConfirm('Report '+who+' to Tripomonk? Our team will review it.','Report')))return;
+  try{const r=await circlesCall('report',opts);if(r&&r.ok)toast('Reported — thank you, we’ll review it.');else note((r&&r.error)||'Could not send the report.','Error');}catch(e){note('Could not send the report.','Error');}
+}
+function reportUser(n){reportTo({reported_user:n});}
+function reportCircle(id,creatorName){reportTo({circle_id:id,reported_user:creatorName||''});}
 function toggleBlock(n){return isBlocked(n)?unblockUser(n):blockUser(n);}
 /* chat header ⋮ menu */
 async function chatMenu(){
@@ -9574,7 +9715,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='510';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='513';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>

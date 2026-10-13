@@ -3610,6 +3610,35 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   .buddy-shared .msr{font-size:13px}
   .buddy-btn{all:unset;cursor:pointer;flex:none;font-size:12.5px;font-weight:700;color:#fff;background:var(--accent);border-radius:999px;padding:8px 15px;text-align:center}
   .buddy-btn.on{background:var(--card);color:var(--accent);border:1px solid var(--accent)}
+  /* Who's going + Travel with your people (trek detail) */
+  .tsoc-going,.tsoc-twp{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:14px;margin-bottom:12px}
+  .tsoc-head{display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:700;color:var(--text);margin-bottom:10px}
+  .tsoc-head .msr{font-size:19px;color:var(--accent2)}
+  .tsoc-row{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  .tsoc-stack{display:flex;flex:none}
+  .tsoc-av{display:inline-block;margin-left:-10px;border-radius:50%;border:2px solid var(--card);cursor:pointer}
+  .tsoc-av:first-child{margin-left:0}
+  .tsoc-tx{flex:1;min-width:0;font-size:13px;color:var(--muted)}
+  .tsoc-tx b{color:var(--text);font-size:15px}
+  .tsoc-foll{display:flex;align-items:center;gap:5px;margin-top:4px;font-size:12px;color:var(--accent2);font-weight:600}
+  .tsoc-foll .msr{font-size:15px}
+  .tsoc-int{all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;width:100%;font-size:13.5px;font-weight:700;color:#fff;background:var(--accent);border-radius:12px;padding:11px}
+  .tsoc-int.on{background:rgba(31,157,85,.14);color:#1f9d55}
+  .tsoc-int .msr{font-size:18px}
+  .tsoc-twp>p{font-size:12.5px;color:var(--muted);margin:-4px 0 12px;line-height:1.5}
+  .tsoc-acts{display:flex;gap:10px}
+  .tsoc-acts button{all:unset;box-sizing:border-box;flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;font-size:12.5px;font-weight:700;color:var(--text);background:var(--bg2);border:1px solid var(--stroke);border-radius:12px;padding:12px 8px;text-align:center}
+  .tsoc-acts button .msr{font-size:22px;color:var(--accent2)}
+  .tsoc-circ{display:flex;align-items:center;gap:10px;margin-top:10px;padding:11px 12px;border-radius:12px;background:rgba(47,107,255,.08);border:1px solid rgba(47,107,255,.2);cursor:pointer}
+  .tsoc-circ>.msr{font-size:20px;color:var(--accent2)}
+  .tsoc-circ b{display:block;font-size:13px;color:var(--text)}
+  .tsoc-circ small{font-size:11.5px;color:var(--muted)}
+  /* My Travel (profile hub) */
+  .mt-sec{margin-bottom:22px}
+  .mt-chips{display:flex;flex-wrap:wrap;gap:8px}
+  .mt-chip{font-size:12.5px;font-weight:600;padding:7px 12px;border-radius:999px;background:var(--card);border:1px solid var(--stroke);color:var(--text)}
+  .mt-seeall{display:block;margin-top:10px;font-size:13px;color:var(--accent2);cursor:pointer}
+  .mt-links{margin-top:4px}
   #community #feed{display:flex;flex-direction:column;gap:14px;padding-bottom:8px}
   #community .post{margin-bottom:0;border-radius:24px;border:1px solid rgba(255,255,255,.13);background:linear-gradient(180deg,rgba(255,255,255,.105),rgba(255,255,255,.045));box-shadow:0 20px 48px -34px rgba(0,0,0,.9);overflow:hidden;backdrop-filter:blur(22px)}
   html.light #community .post{background:rgba(255,255,255,.88);border-color:rgba(16,32,58,.1);box-shadow:0 20px 40px -34px rgba(16,32,58,.55)}
@@ -4137,6 +4166,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
     <div class="blk reveal" id="dGearBlk" style="display:none"><div id="dGear"></div></div>
     <div class="blk reveal" id="dNewsBlk" style="display:none"><h2>News &amp; Alerts</h2><div id="dNews"></div></div>
     <div class="blk reveal"><h2 style="display:flex;justify-content:space-between;align-items:center">Reviews <a style="font-size:12px;color:var(--accent2);cursor:pointer" onclick="go('reviews')">See all →</a></h2><div id="dRevPrev"></div></div>
+    <div class="blk reveal"><div id="dSocial"></div></div>
     <div style="padding:10px 16px calc(var(--safe-bottom) + 28px)">
       <button class="btn" id="dCta" onclick="go('selectDate')">View Dates &amp; Price&nbsp; →</button>
       <button class="wa-btn sm" style="margin-top:10px" onclick="wa('Hi Tripomonk, I have a question about this trek before I book. Can you help?')"><svg class="wa-ic" viewBox="0 0 24 24" width="18" height="18"><path fill="#fff" d="M12 2a10 10 0 0 0-8.53 15.2L2 22l4.94-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-2.93.77.78-2.86-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.14c-.25-.12-1.46-.72-1.69-.8-.22-.08-.39-.12-.55.13-.16.25-.63.8-.78.97-.14.16-.29.18-.53.06-.25-.12-1.04-.38-1.98-1.22-.73-.65-1.23-1.46-1.37-1.71-.14-.25-.02-.38.11-.5.11-.11.25-.29.37-.43.13-.14.17-.25.25-.41.08-.16.04-.31-.02-.43-.06-.12-.55-1.33-.76-1.82-.2-.48-.4-.41-.55-.42h-.47c-.16 0-.43.06-.65.31-.22.25-.86.84-.86 2.05s.88 2.38 1 2.54c.12.16 1.73 2.64 4.19 3.7.59.25 1.04.4 1.4.51.59.19 1.12.16 1.54.1.47-.07 1.46-.6 1.66-1.17.21-.58.21-1.07.14-1.17-.06-.11-.22-.17-.47-.29Z"/></svg> Have a doubt? Chat on WhatsApp</button>
@@ -4164,6 +4194,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
     <div class="blk reveal"><h2>Pickup &amp; drop-off</h2><div id="tripPickup"></div></div>
     <div class="blk reveal"><h2>Trip highlights</h2><div class="hl-pills" id="tripHl"></div></div>
     <div class="blk reveal"><h2 style="display:flex;justify-content:space-between;align-items:center">Reviews <a style="font-size:12px;color:var(--accent2);cursor:pointer" onclick="go('reviews')">See all →</a></h2><div id="tripRevPrev"></div></div>
+    <div class="blk reveal"><div id="tripSocial"></div></div>
     <div class="trip-cta-bar">
       <div class="trip-cta-price"><small id="tripCtaCap">from</small><b id="tripCtaPrice"></b></div>
       <button class="btn" id="tripCta" onclick="if(cart.trek)openTourDepart(cart.trek.idx)">Book this trip&nbsp; →</button>
@@ -4387,6 +4418,12 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   <section class="view" id="bookings" data-tab="bookings">
     <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>My Bookings</h1></div>
     <div id="bookList"></div>
+  </section>
+
+  <!-- MY TRAVEL (Phase 4) -->
+  <section class="view flow" id="myTravel" data-nonav>
+    <div class="bar"><div class="rb round" onclick="back()"><span class="ic" data-i="back"></span></div><h1>My Travel</h1></div>
+    <div id="mtBody" style="padding:6px 16px calc(var(--safe-bottom) + 40px)"></div>
   </section>
 
   <!-- WISHLIST -->
