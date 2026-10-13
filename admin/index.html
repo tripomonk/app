@@ -61,7 +61,16 @@
   .top{height:64px;background:var(--panel);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:16px;padding:0 24px;position:sticky;top:0;z-index:5}
   .top h1{font-size:18px;margin:0;font-weight:700}.top .sub{color:var(--muted);font-size:12.5px}
   .spacer{flex:1}
-  .searchbar{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:0 12px;height:38px;width:240px;max-width:30vw}
+  .searchbar{position:relative;display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:0 12px;height:38px;width:280px;max-width:32vw}
+  .gs-pop{position:absolute;top:44px;left:0;right:0;max-height:70vh;overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 30px 70px -30px rgba(0,0,0,.6);padding:6px;z-index:120}
+  .gs-group{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);padding:9px 10px 5px}
+  .gs-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;cursor:pointer}
+  .gs-row:hover{background:var(--panel2)}
+  .gs-ic{width:30px;height:30px;flex:none;border-radius:8px;display:grid;place-items:center;font-size:16px;background:var(--panel2)}
+  .gs-tx{min-width:0;display:flex;flex-direction:column}
+  .gs-tx b{font-size:13px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .gs-tx small{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .gs-empty{padding:14px 12px;color:var(--muted);font-size:12.5px;text-align:center}
   .searchbar input{border:0;background:none;outline:none;font-size:13px;width:100%;color:var(--ink)}
   .pill{background:rgba(61,220,151,.14);color:var(--ok);border:1px solid rgba(61,220,151,.3);border-radius:20px;padding:5px 11px;font-size:11px;font-weight:700}
   .bell{position:relative;background:none;border:0;font-size:19px;line-height:1;cursor:pointer;padding:6px;border-radius:10px;color:var(--ink)}
@@ -84,6 +93,20 @@
   .kpi .val{font-size:26px;font-weight:800;margin-top:6px;font-variant-numeric:tabular-nums}
   .kpi .chg{font-size:12px;margin-top:4px;color:var(--muted)}
   .grid2{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;margin-bottom:20px}
+  /* "Needs your attention" command-center */
+  .att-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  @media(max-width:1100px){.att-grid{grid-template-columns:repeat(2,1fr)}}
+  .att-card{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:11px;padding:13px;border-radius:14px;background:var(--panel2);border:1px solid var(--line);transition:border-color .15s,transform .1s}
+  .att-card:hover{border-color:var(--accent)}
+  .att-card:active{transform:scale(.98)}
+  .att-card.on{border-color:var(--bad);background:linear-gradient(135deg,rgba(224,70,70,.12),transparent)}
+  .att-ic{font-size:22px;flex:none;line-height:1}
+  .att-tx{flex:1;min-width:0;display:flex;flex-direction:column}
+  .att-tx b{font-size:13px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .att-tx small{font-size:11px;color:var(--muted);margin-top:1px}
+  .att-n{flex:none;min-width:26px;height:26px;padding:0 8px;border-radius:999px;display:grid;place-items:center;font-size:13px;font-weight:800;background:var(--bad);color:#fff}
+  .att-clear{display:flex;align-items:center;gap:16px}
+  .att-clear-ic{font-size:34px;flex:none}
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:var(--shadow);min-width:0;margin-bottom:16px}
   .panel h2{font-size:15px;margin:0 0 2px}.panel .desc{color:var(--muted);font-size:12px;margin:0 0 14px}
   .tbl{width:100%;border-collapse:collapse;font-size:13px}
@@ -111,6 +134,11 @@
   .gv-rate{flex:1;min-width:0}.gv-rate small{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
   .gv-rate b{display:block;font-size:19px;font-weight:800;color:var(--ink);margin-top:2px}.gv-rate b i{font-style:normal;font-size:12px;font-weight:600;color:var(--muted)}
   .tbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+  .bulk-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;border-radius:12px;background:linear-gradient(135deg,rgba(47,107,255,.14),transparent);border:1px solid var(--accent)}
+  .bulk-bar b{font-size:13px;color:var(--ink)}
+  .bk-ck{width:16px;height:16px;cursor:pointer;accent-color:var(--accent)}
+  .page-foot{text-align:center;padding:14px 0 2px;color:var(--muted);font-size:12.5px}
+  .page-foot .btn2{margin-left:8px}
   .tbar input,.tbar select{height:38px;border:1px solid var(--line);border-radius:10px;padding:0 12px;font-size:13px;outline:none;background:var(--panel2);color:var(--ink)}
   .tbar input.grow{flex:1;min-width:180px}
   .btn2{height:38px;border:1px solid var(--line);background:var(--panel2);border-radius:10px;padding:0 14px;font-size:13px;font-weight:600;cursor:pointer;color:var(--ink)}
@@ -162,6 +190,12 @@
   }
   .drawer .panel-r{position:absolute;top:0;right:0;bottom:0;width:440px;max-width:94vw;background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding:22px}
   .dh{display:flex;align-items:center;gap:12px;margin-bottom:16px}.dh .av-s{width:48px;height:48px;font-size:16px}
+  .bd-grid{display:flex;flex-direction:column;gap:2px;margin-bottom:18px}
+  .bd-row{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:10px 2px;border-bottom:1px solid var(--line)}
+  .bd-row span{color:var(--muted);font-size:12.5px;flex:none}
+  .bd-row b{font-size:13.5px;color:var(--ink);text-align:right;word-break:break-word}
+  .bd-acts{display:flex;flex-wrap:wrap;gap:8px}
+  .bd-acts .btn2{flex:1;min-width:120px;text-align:center;text-decoration:none}
   .ua-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
   .ua-stat{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center}
   .ua-stat b{display:block;font-size:17px}.ua-stat small{color:var(--muted);font-size:11px}
@@ -291,7 +325,7 @@
       <button class="menu-btn" id="menuBtn">☰</button>
       <div><h1 id="secTitle">Overview</h1><div class="sub" id="secSub">At a glance</div></div>
       <div class="spacer"></div>
-      <div class="searchbar"><span>🔎</span><input id="globalSearch" placeholder="Jump to section…"/></div>
+      <div class="searchbar"><span>🔎</span><input id="globalSearch" autocomplete="off" placeholder="Search people, bookings, sections…" oninput="gsDeb()" onfocus="gsDeb()"/><div class="gs-pop" id="gsPop" hidden></div></div>
       <button class="bell" id="bellBtn" title="Notifications">🔔<span class="bell-dot" id="bellDot" hidden></span></button>
       <div class="notif-pop" id="notifPop" hidden></div>
       <div class="pill">● live</div>
@@ -521,7 +555,38 @@ function startNotifs(){
   document.addEventListener('click',e=>{const p=$('#notifPop');if(p&&!p.hidden&&!e.target.closest('#notifPop')&&!e.target.closest('#bellBtn'))p.hidden=true;});
   loadNotifs();if(_notifTimer)clearInterval(_notifTimer);_notifTimer=setInterval(loadNotifs,60000);
 }
-$('#globalSearch').addEventListener('keydown',e=>{if(e.key!=='Enter')return;const v=e.target.value.toLowerCase();const hit=Object.keys(SEC).find(k=>SEC[k][0].toLowerCase().includes(v));if(hit)select(hit);});
+/* ---- Global search: people + bookings + sections, with a live results dropdown ---- */
+let _gsT=null,_gsProfiles=null,_gsRows=[];
+async function gsEnsureProfiles(){if(_gsProfiles)return _gsProfiles;try{const{data}=await sb.from('profiles').select('id,name,username,photo,is_host').limit(3000);_gsProfiles=data||[];}catch(e){_gsProfiles=[];}return _gsProfiles;}
+function gsDeb(){clearTimeout(_gsT);_gsT=setTimeout(gsRun,180);}
+function gsSecIcon(k){try{return $('.nav-i[data-sec="'+k+'"] .ic').textContent||'📂';}catch(e){return '📂';}}
+async function gsRun(){
+  const inp=$('#globalSearch'),pop=$('#gsPop');if(!inp||!pop)return;
+  const q=(inp.value||'').trim().toLowerCase();
+  if(q.length<2){pop.hidden=true;pop.innerHTML='';_gsRows=[];return;}
+  const secs=Object.keys(SEC).filter(k=>allowedFor(k)&&(SEC[k][0].toLowerCase().includes(q)||(SEC[k][1]||'').toLowerCase().includes(q))).slice(0,4);
+  const [profs,bk]=await Promise.all([gsEnsureProfiles(),allowedFor('bookings')?getBookings():Promise.resolve([])]);
+  if((inp.value||'').trim().toLowerCase()!==q)return;   /* a newer keystroke superseded this */
+  const people=(profs||[]).filter(p=>p.name&&((p.name+' '+(p.username||'')).toLowerCase().includes(q))).slice(0,6);
+  const books=(bk||[]).filter(b=>((b.name||'')+' '+(b.phone||'')+' '+(b.email||'')+' '+(b.trek||b.title||'')).toLowerCase().includes(q)).slice(0,6);
+  _gsRows=[];
+  let h='';
+  if(secs.length){h+='<div class="gs-group">Sections</div>';secs.forEach(k=>{const i=_gsRows.length;_gsRows.push(['sec',k]);h+=`<div class="gs-row" data-i="${i}" onclick="gsGo(${i})"><span class="gs-ic">${gsSecIcon(k)}</span><div class="gs-tx"><b>${esc(SEC[k][0])}</b><small>${esc(SEC[k][1]||'')}</small></div></div>`;});}
+  if(people.length){h+='<div class="gs-group">People</div>';people.forEach(p=>{const i=_gsRows.length;_gsRows.push(['person',p.name]);h+=`<div class="gs-row" data-i="${i}" onclick="gsGo(${i})">${avc(p.name,p.photo)}<div class="gs-tx"><b>${esc(p.name)}</b><small>${p.username?'@'+esc(p.username):''}${p.is_host?' · host':''}</small></div></div>`;});}
+  if(books.length){h+='<div class="gs-group">Bookings</div>';books.forEach(b=>{const i=_gsRows.length;_gsRows.push(['booking',b.name||'']);h+=`<div class="gs-row" data-i="${i}" onclick="gsGo(${i})"><span class="gs-ic">🧾</span><div class="gs-tx"><b>${esc(b.name||'Guest')}</b><small>${esc(b.trek||b.title||'')}${b.date?' · '+esc(b.date):''}</small></div></div>`;});}
+  pop.innerHTML=h||('<div class="gs-empty">No matches for "'+esc(q)+'"</div>');
+  pop.hidden=false;
+}
+function gsGo(i){
+  const row=_gsRows[i];if(!row)return;
+  $('#gsPop').hidden=true;$('#globalSearch').value='';_gsRows=[];
+  const [kind,val]=row;
+  if(kind==='sec')select(val);
+  else if(kind==='person'){if(typeof crmOpen==='function')crmOpen(val);else select('users');}
+  else if(kind==='booking'){select('bookings');setTimeout(()=>{const bi=$('#bkq');if(bi){bi.value=val;bi.dispatchEvent(new Event('input'));}},220);}
+}
+$('#globalSearch').addEventListener('keydown',e=>{if(e.key==='Escape'){$('#gsPop').hidden=true;e.target.blur();}else if(e.key==='Enter'){if(_gsRows.length)gsGo(0);}});
+document.addEventListener('click',e=>{const p=$('#gsPop');if(p&&!p.hidden&&!e.target.closest('.searchbar'))p.hidden=true;});
 
 /* shared */
 async function getBookings(force){if(_bk&&!force)return _bk;const r=await adminCall('list_bookings');_bk=(r&&Array.isArray(r.rows))?r.rows:(r&&Array.isArray(r.bookings))?r.bookings:(Array.isArray(r)?r:[]);return _bk;}
@@ -533,8 +598,38 @@ async function tblCount(t,eq){try{let b=sb.from(t).select('id');if(eq)b=b.eq(eq[
 function wrapTbl(h){return `<div style="overflow-x:auto">${h}</div>`;}
 
 /* DASHBOARD */
+/* count rows where a column is NOT a value (e.g. support tickets not yet resolved) */
+async function tblCountNot(t,col,val){try{const {data}=await sb.from(t).select('id').neq(col,val).limit(5000);return (data||[]).length;}catch(e){return 0;}}
+/* "Needs your attention" — every open ops queue with a live count + one-click jump. Role-aware. */
+async function dashAttention(){
+  const [hostApps,hostTrips,guideApps,vendors,permits,support,reports]=await Promise.all([
+    tblCount('host_applications',['status','pending']),
+    tblCount('host_trips',['status','draft']),
+    tblCount('guide_applications',['status','pending']),
+    tblCount('vendors',['status','pending']),
+    tblCount('permit_applications',['status','pending']),
+    tblCountNot('support_tickets','status','resolved'),
+    tblCount('post_reports'),
+  ]);
+  let circleReports=0;try{const r=await circlesCall('list_reports',{});if(r&&r.ok)circleReports=(r.reports||[]).filter(x=>x.status==='open').length;}catch(e){}
+  const all=[
+    {label:'Host applications',sub:'review & approve',sec:'hosts',n:hostApps,ic:'🧗'},
+    {label:'Host trips to review',sub:'publish or reject',sec:'hosts',n:hostTrips,ic:'🗺️'},
+    {label:'Guide applications',sub:'evaluate',sec:'guides',n:guideApps,ic:'🥾'},
+    {label:'Permit requests',sub:'process',sec:'permits',n:permits,ic:'📄'},
+    {label:'Vendor requests',sub:'approve',sec:'vendors',n:vendors,ic:'🏪'},
+    {label:'Open support tickets',sub:'reply & resolve',sec:'support',n:support,ic:'💬'},
+    {label:'Reported posts',sub:'moderate',sec:'community',n:reports,ic:'🚩'},
+    {label:'Trip circle reports',sub:'review',sec:'circles',n:circleReports,ic:'🫂'},
+  ].filter(r=>allowedFor(r.sec));
+  const open=all.filter(r=>r.n>0);
+  const card=r=>`<button class="att-card${r.n>0?' on':''}" onclick="select('${r.sec}')"><span class="att-ic">${r.ic}</span><span class="att-tx"><b>${r.label}</b><small>${r.sub}</small></span><span class="att-n">${r.n}</span></button>`;
+  if(!open.length) return `<div class="panel att-clear"><span class="att-clear-ic">✅</span><div><h2 style="margin:0">You're all caught up</h2><p class="desc" style="margin:2px 0 0">No pending host, guide, permit, vendor, support or moderation items right now.</p></div></div>`;
+  return `<div class="panel"><div class="tbar"><h2 style="margin:0">Needs your attention</h2><span class="spacer"></span><span class="tag bad">${open.reduce((a,r)=>a+r.n,0)} open</span></div><div class="att-grid">${open.map(card).join('')}</div></div>`;
+}
 async function renderDashboard(){
   const c=$('#content');
+  const att=await dashAttention();
   const [bk,prof,hosts,trips]=await Promise.all([getBookings(),tblCount('profiles'),tblCount('host_applications'),tblCount('host_trips',['status','live'])]);
   const rev=bk.filter(isPaid).reduce((a,b)=>a+paidOf(b),0),paidN=bk.filter(isPaid).length;
   const days=[];for(let i=13;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push(d);}
@@ -542,37 +637,94 @@ async function renderDashboard(){
   bk.forEach(b=>{const k=(b.created_at||'').slice(0,10);if(k in byDay)byDay[k]++;});
   const series=days.map(d=>byDay[key(d)]),labels=days.map((d,i)=>i%2===0?d.getDate():'');
   const recent=bk.slice().sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')).slice(0,8);
-  c.innerHTML=`<div class="kpis">${kpi('Total bookings',bk.length,'🧾','var(--accent)','all time')}${kpi('Revenue collected',INR(rev),'💰','#1e8f5f',paidN+' paid')}${kpi('Members',prof,'👥','#6a4bff','registered')}${kpi('Live host trips',trips,'🎒','#c79a10',hosts+' applications')}</div>
+  const today=new Date().toISOString().slice(0,10),mon=today.slice(0,7);
+  const bookedToday=bk.filter(b=>(b.created_at||'').slice(0,10)===today).length;
+  const revMonth=bk.filter(b=>isPaid(b)&&(b.created_at||'').slice(0,7)===mon).reduce((a,b)=>a+paidOf(b),0);
+  c.innerHTML=att
+  +`<div class="kpis">${kpi('Total bookings',bk.length,'🧾','var(--accent)',bookedToday+' today')}${kpi('Revenue collected',INR(rev),'💰','#1e8f5f',INR(revMonth)+' this month')}${kpi('Members',prof,'👥','#6a4bff','registered')}${kpi('Live host trips',trips,'🎒','#c79a10',hosts+' applications')}</div>
   <div class="grid2"><div class="panel"><h2>Bookings — last 14 days</h2><p class="desc">${paidN} paid of ${bk.length} total</p>${bars(series,labels)}</div>
     <div class="panel"><h2>Quick numbers</h2><p class="desc">Snapshot</p><table class="tbl"><tbody>
+      <tr><td>Booked today</td><td style="text-align:right"><b>${bookedToday}</b></td></tr>
+      <tr><td>Revenue this month</td><td style="text-align:right"><b>${INR(revMonth)}</b></td></tr>
       <tr><td>Avg booking value</td><td style="text-align:right"><b>${INR(paidN?Math.round(rev/paidN):0)}</b></td></tr>
       <tr><td>Paid bookings</td><td style="text-align:right"><b>${paidN}</b></td></tr>
       <tr><td>Cancelled / refunded</td><td style="text-align:right"><b>${bk.length-paidN}</b></td></tr>
-      <tr><td>Host applications</td><td style="text-align:right"><b>${hosts}</b></td></tr>
     </tbody></table></div></div>
-  <div class="panel"><h2>Recent bookings</h2><p class="desc">Latest reservations</p>${recent.length?bkTable(recent):'<div class="empty">No bookings yet.</div>'}</div>`;
+  <div class="panel"><div class="tbar"><h2 style="margin:0">Recent bookings</h2><span class="spacer"></span><button class="btn2 sm" onclick="renderDashboard()">↻ Refresh</button></div><p class="desc">Latest reservations</p>${recent.length?bkTable(recent):'<div class="empty">No bookings yet.</div>'}</div>`;
 }
 /* BOOKINGS */
 function stTag(b){const s=(b.status||'confirmed').toLowerCase();const cls=/cancel/.test(s)?'bad':/refund/.test(s)?'warn':/pending/.test(s)?'neutral':'ok';return `<span class="tag ${cls}">${esc(b.status||'Confirmed')}</span>`;}
-function bkTable(list,acts){return wrapTbl(`<table class="tbl"><thead><tr><th>Guest</th><th>Trek</th><th>Date</th><th>Pax</th><th>Paid</th><th>Captain</th><th>Status</th>${acts?'<th></th>':'<th>Booked</th>'}</tr></thead><tbody>
-  ${list.map(b=>`<tr><td><div class="u">${avc(b.name)}<div><b>${esc(b.name||'Guest')}</b><br><small class="muted">${esc(b.phone||b.email||'')}</small></div></div></td><td data-l="Trek">${esc(b.trek||b.title||'—')}</td><td data-l="Date">${esc(b.date||'—')}</td><td data-l="Pax">${esc(b.pax||1)}</td><td data-l="Paid"><b>${INR(paidOf(b))}</b>${Number(b.wallet_used)>0?`<br><small class="muted">${Number(b.wallet_used)>=paidOf(b)?'all from wallet':INR(b.wallet_used)+' wallet'}</small>`:''}</td><td data-l="Captain" class="muted">${esc(b.captain||'—')}</td><td data-l="Status">${stTag(b)}</td>
+function bkTable(list,acts){return wrapTbl(`<table class="tbl"><thead><tr>${acts?'<th style="width:36px"><input type="checkbox" id="bkCkAll" onclick="bkSelAll(this)"></th>':''}<th>Guest</th><th>Trek</th><th>Date</th><th>Pax</th><th>Paid</th><th>Captain</th><th>Status</th>${acts?'<th></th>':'<th>Booked</th>'}</tr></thead><tbody>
+  ${list.map(b=>`<tr>${acts?`<td><input type="checkbox" class="bk-ck" value="${jsv(b.id)}" onclick="event.stopPropagation();bkSelToggle()"></td>`:''}<td onclick="openBooking('${jsv(b.id)}')" style="cursor:pointer" title="View booking"><div class="u">${avc(b.name)}<div><b>${esc(b.name||'Guest')}</b><br><small class="muted">${esc(b.phone||b.email||'')}</small></div></div></td><td data-l="Trek">${esc(b.trek||b.title||'—')}</td><td data-l="Date">${esc(b.date||'—')}</td><td data-l="Pax">${esc(b.pax||1)}</td><td data-l="Paid"><b>${INR(paidOf(b))}</b>${Number(b.wallet_used)>0?`<br><small class="muted">${Number(b.wallet_used)>=paidOf(b)?'all from wallet':INR(b.wallet_used)+' wallet'}</small>`:''}</td><td data-l="Captain" class="muted">${esc(b.captain||'—')}</td><td data-l="Status">${stTag(b)}</td>
     ${acts?`<td><div class="row-acts"><button class="btn2 sm" onclick="bkAction('${jsv(b.id)}','confirm')">Confirm</button><button class="btn2 sm" onclick="bkAssign('${jsv(b.id)}')">Captain</button><button class="btn2 sm danger" onclick="bkAction('${jsv(b.id)}','refund')">Refund</button></div></td>`:`<td data-l="Booked" class="muted">${dshort(b.created_at)}</td>`}</tr>`).join('')}</tbody></table>`);}
-async function renderBookings(){
-  const bk=(await getBookings()).slice().sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
-  $('#content').innerHTML=`<div class="panel"><div class="tbar"><input class="grow" id="bkq" placeholder="Search guest, trek, phone…"/><select id="bkf"><option value="">All statuses</option><option>Confirmed</option><option>Pending</option><option>Cancelled</option><option>Refunded</option></select><button class="btn2" onclick="exportCSV()">Export CSV</button></div><div id="bkT"></div></div>`;
-  const paint=r=>$('#bkT').innerHTML=r.length?bkTable(r,true):'<div class="empty">No matching bookings.</div>';
-  const apply=()=>{const q=$('#bkq').value.toLowerCase(),f=$('#bkf').value.toLowerCase();paint(bk.filter(b=>(!q||((b.name||'')+' '+(b.trek||'')+' '+(b.phone||'')+' '+(b.email||'')).toLowerCase().includes(q))&&(!f||(b.status||'confirmed').toLowerCase()===f)));};
-  $('#bkq').oninput=apply;$('#bkf').onchange=apply;paint(bk);
+/* render-pagination: cap the DOM to a page, append more on demand — opens instantly even with
+   thousands of rows, while search/filter still scan the full set. */
+const PAGE=50;
+function pageFooter(total,shown,moreFn){
+  if(total<=shown)return total>PAGE?`<div class="page-foot">All ${total} shown</div>`:'';
+  return `<div class="page-foot">Showing ${shown} of ${total} <button class="btn2 sm" onclick="${moreFn}">Load ${Math.min(PAGE,total-shown)} more</button></div>`;
 }
+let _bkSel=new Set(),_bkPage=PAGE,_bkFiltered=[];
+function bkPaint(){const el=$('#bkT');if(!el)return;const r=_bkFiltered,slice=r.slice(0,_bkPage);el.innerHTML=r.length?(bkTable(slice,true)+pageFooter(r.length,slice.length,'bkMore()')):'<div class="empty">No matching bookings.</div>';bkSyncChecks();}
+function bkMore(){_bkPage+=PAGE;bkPaint();}
+async function renderBookings(){
+  _bkSel=new Set();_bkPage=PAGE;
+  const bk=(await getBookings()).slice().sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
+  $('#content').innerHTML=`<div class="panel"><div class="tbar"><input class="grow" id="bkq" placeholder="Search guest, trek, phone…"/><select id="bkf"><option value="">All statuses</option><option>Confirmed</option><option>Pending</option><option>Cancelled</option><option>Refunded</option></select><button class="btn2" onclick="exportCSV()">Export CSV</button></div><div id="bkBulk" class="bulk-bar" hidden></div><div id="bkT"></div></div>`;
+  const apply=()=>{_bkPage=PAGE;const q=$('#bkq').value.toLowerCase(),f=$('#bkf').value.toLowerCase();_bkFiltered=bk.filter(b=>(!q||((b.name||'')+' '+(b.trek||'')+' '+(b.phone||'')+' '+(b.email||'')).toLowerCase().includes(q))&&(!f||(b.status||'confirmed').toLowerCase()===f));bkPaint();};
+  $('#bkq').oninput=apply;$('#bkf').onchange=apply;_bkFiltered=bk;bkPaint();
+}
+function bkSyncChecks(){document.querySelectorAll('.bk-ck').forEach(c=>{c.checked=_bkSel.has(c.value);});bkBulkBar();}
+function bkSelToggle(){_bkSel=new Set([...document.querySelectorAll('.bk-ck:checked')].map(c=>c.value));bkBulkBar();}
+function bkSelAll(cb){document.querySelectorAll('.bk-ck').forEach(c=>{c.checked=cb.checked;});bkSelToggle();}
+function bkClearSel(){_bkSel=new Set();document.querySelectorAll('.bk-ck,#bkCkAll').forEach(c=>c.checked=false);bkBulkBar();}
+function bkBulkBar(){const bar=$('#bkBulk');if(!bar)return;const n=_bkSel.size;if(!n){bar.hidden=true;bar.innerHTML='';const all=$('#bkCkAll');if(all)all.checked=false;return;}
+  bar.hidden=false;bar.innerHTML=`<b>${n} selected</b><span class="spacer"></span><button class="btn2 sm pri" onclick="bkBulkConfirm()">Confirm all</button><button class="btn2 sm" onclick="bkBulkAssign()">Assign captain</button><button class="btn2 sm" onclick="bkBulkExport()">Export selected</button><button class="btn2 sm" onclick="bkClearSel()">Clear</button>`;}
+async function bkBulkConfirm(){const ids=[..._bkSel];if(!ids.length)return;confirmDo('Mark '+ids.length+' booking'+(ids.length!==1?'s':'')+' as Confirmed?',async()=>{let ok=0;for(const id of ids){const r=await adminCall('update_booking',{id,status:'Confirmed'});if(!(r&&r.error)){ok++;const b=(_bk||[]).find(x=>String(x.id)===String(id));if(b)b.status='Confirmed';}}toast('Confirmed '+ok+' of '+ids.length);_bkSel=new Set();select('bookings');});}
+function bkBulkAssign(){const ids=[..._bkSel];if(!ids.length)return;modal(`<h3>Assign captain to ${ids.length} booking${ids.length!==1?'s':''}</h3><div class="fld"><label>Captain name</label><input id="bcapName" placeholder="e.g. Rohit Negi"/></div><div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="bcapGo">Assign</button></div>`);$('#bcapGo').onclick=async()=>{const name=$('#bcapName').value.trim();if(!name)return;closeOv();let ok=0;for(const id of ids){const r=await adminCall('update_booking',{id,captain:name});if(!(r&&r.error)){ok++;const b=(_bk||[]).find(x=>String(x.id)===String(id));if(b)b.captain=name;}}toast('Captain assigned to '+ok+' bookings');_bkSel=new Set();select('bookings');};}
+function bkBulkExport(){const ids=new Set(_bkSel);const sel=(_bk||[]).filter(b=>ids.has(String(b.id)));admExport('tripomonk-bookings-selected.csv',['Name','Trek','Date','Pax','Total','Paid','Status','Captain','Booked','PaymentID'],sel.map(b=>[b.name,b.trek||b.title,b.date,b.pax,b.total,paidOf(b),b.status,b.captain,(b.created_at||'').slice(0,10),b.payment_id||b.id]));}
 async function bkAction(id,kind){const map={confirm:'Confirmed',cancel:'Cancelled',refund:'Refunded'};
   const b0=(_bk||[]).find(x=>String(x.id)===String(id))||{};const w=Number(b0.wallet_used)||0,cash=Math.max(0,paidOf(b0)-w);
   /* the Refund button only moves the wallet part — the UPI/card part is refunded from the Razorpay dashboard */
   const msg=kind==='refund'?('Mark this booking as Refunded?'+(w>0?'\n\n'+INR(w)+' paid from the wallet goes back to the customer’s wallet automatically.':'')+(cash>0?'\n\nRefund the '+INR(cash)+' paid by UPI/card in your Razorpay dashboard (payment '+(b0.payment_id||b0.id||'—')+') — this button does not move that money.':'')):('Mark this booking as '+map[kind]+'?');
   confirmDo(msg,async()=>{const r=await adminCall('update_booking',{id,status:map[kind]});if(r&&r.error){toast('Failed: '+r.error);return;}
     const b=(_bk||[]).find(x=>String(x.id)===String(id));if(b)b.status=map[kind];
-    toast('Booking '+map[kind].toLowerCase()+(r&&r.wallet_refunded?' · '+INR(r.wallet_refunded)+' returned to the wallet':''));select('bookings');});}
-function bkAssign(id){modal(`<h3>Assign trip captain</h3><div class="fld"><label>Captain name</label><input id="capName" placeholder="e.g. Rohit Negi"/></div><div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="capGo">Assign</button></div>`);$('#capGo').onclick=async()=>{const name=$('#capName').value.trim();if(!name)return;closeOv();const r=await adminCall('update_booking',{id,captain:name});if(r&&r.error){toast('Failed: '+r.error);return;}const b=(_bk||[]).find(x=>String(x.id)===String(id));if(b)b.captain=name;toast('Captain assigned');select('bookings');};}
-function exportCSV(){const bk=_bk||[];const head=['Name','Trek','Date','Pax','Total','Paid','Status','Captain','Booked','PaymentID'];const rows=bk.map(b=>[b.name,b.trek||b.title,b.date,b.pax,b.total,paidOf(b),b.status,b.captain,(b.created_at||'').slice(0,10),b.payment_id||b.id]);const csv=[head].concat(rows).map(r=>r.map(x=>'"'+String(x==null?'':x).replace(/"/g,'""')+'"').join(',')).join('\r\n');const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download='tripomonk-bookings.csv';a.click();}
+    toast('Booking '+map[kind].toLowerCase()+(r&&r.wallet_refunded?' · '+INR(r.wallet_refunded)+' returned to the wallet':''));closeOv();select('bookings');});}
+function bkAssign(id){modal(`<h3>Assign trip captain</h3><div class="fld"><label>Captain name</label><input id="capName" placeholder="e.g. Rohit Negi"/></div><div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="capGo">Assign</button></div>`);$('#capGo').onclick=async()=>{const name=$('#capName').value.trim();if(!name)return;closeOv();const r=await adminCall('update_booking',{id,captain:name});if(r&&r.error){toast('Failed: '+r.error);return;}const b=(_bk||[]).find(x=>String(x.id)===String(id));if(b)b.captain=name;toast('Captain assigned');closeOv();select('bookings');};}
+/* full booking record in the slide-over drawer — every field + every action in one place */
+function openBooking(id){
+  const b=(_bk||[]).find(x=>String(x.id)===String(id));if(!b)return;
+  const d=$('#drawer'),body=$('#drawerBody');if(!d||!body)return;d.classList.add('show');
+  const w=Number(b.wallet_used)||0,paid=paidOf(b),ph=String(b.phone||'').replace(/\D/g,'');
+  const line=(l,v)=>`<div class="bd-row"><span>${l}</span><b>${v}</b></div>`;
+  body.innerHTML=`<div class="dh">${avc(b.name)}<div><b style="font-size:16px">${esc(b.name||'Guest')}</b><br><small class="muted">${esc(b.phone||b.email||'')}</small></div><span class="spacer"></span>${stTag(b)}<button class="btn2" onclick="closeOv()">Close</button></div>
+   <div class="bd-grid">
+     ${line('Trek / Trip',esc(b.trek||b.title||'—'))}
+     ${line('Date',esc(b.date||'—'))}
+     ${line('Travellers',esc(b.pax||1))}
+     ${line('Total',INR(b.total))}
+     ${line('Paid',INR(paid)+(w>0?' <small class="muted">('+INR(w)+' from wallet)</small>':''))}
+     ${line('Trip captain',esc(b.captain||'— not assigned'))}
+     ${line('Booked on',dshort(b.created_at))}
+     ${line('Payment ID',esc(b.payment_id||b.id||'—'))}
+     ${b.email?line('Email',esc(b.email)):''}
+   </div>
+   <div class="bd-acts">
+     <button class="btn2 pri" onclick="bkAction('${jsv(id)}','confirm')">Confirm</button>
+     <button class="btn2" onclick="bkAssign('${jsv(id)}')">Assign captain</button>
+     ${ph?`<a class="btn2" href="https://wa.me/${ph}" target="_blank" rel="noopener">WhatsApp guest</a>`:''}
+     <button class="btn2 danger" onclick="bkAction('${jsv(id)}','refund')">Refund</button>
+     <button class="btn2 danger" onclick="bkAction('${jsv(id)}','cancel')">Cancel</button>
+   </div>`;
+}
+/* reusable CSV export — any section can call admExport(filename, headerArray, rowsOfArrays) */
+function admExport(filename,head,rows){
+  const esc1=x=>'"'+String(x==null?'':x).replace(/"/g,'""')+'"';
+  const csv=[head].concat(rows||[]).map(r=>r.map(esc1).join(',')).join('\r\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download=filename;a.click();
+  if(typeof toast==='function')toast('Exported '+(rows?rows.length:0)+' rows');
+}
+function exportCSV(){const bk=_bk||[];admExport('tripomonk-bookings.csv',['Name','Trek','Date','Pax','Total','Paid','Status','Captain','Booked','PaymentID'],bk.map(b=>[b.name,b.trek||b.title,b.date,b.pax,b.total,paidOf(b),b.status,b.captain,(b.created_at||'').slice(0,10),b.payment_id||b.id]));}
 /* PAYMENTS */
 async function renderPayments(){const bk=await getBookings(),paid=bk.filter(isPaid),rev=paid.reduce((a,b)=>a+paidOf(b),0),ref=bk.filter(b=>/refund/i.test(b.status||'')).reduce((a,b)=>a+paidOf(b),0);
   $('#content').innerHTML=`<div class="kpis">${kpi('Collected',INR(rev),'💰','#1e8f5f','')}${kpi('Transactions',paid.length,'🔁','var(--accent)','')}${kpi('Refunded',INR(ref),'↩️','#c79a10','')}${kpi('Avg value',INR(paid.length?Math.round(rev/paid.length):0),'📈','#6a4bff','')}</div><div class="panel"><div class="tbar"><span class="muted">${paid.length} paid transactions</span><span class="spacer"></span><button class="btn2" onclick="exportCSV()">Export CSV</button></div>${bkTable(bk.slice().sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')),true)}</div>`;}
@@ -983,6 +1135,9 @@ function vendView(id){const v=(_vendors||[]).find(x=>String(x.id)===String(id));
     <div class="actions" style="margin-top:14px"><button class="btn2" onclick="closeOv()">Close</button><button class="btn2 danger" onclick="closeOv();vendSet('${jsv(v.id)}','rejected')">Reject</button><button class="btn2 pri" onclick="closeOv();vendSet('${jsv(v.id)}','approved')">Approve</button></div>`);}
 async function vendSet(id,st){const {error}=await sb.from('vendors').update({status:st}).eq('id',id);toast(error?('Failed: '+error.message):('Vendor '+st));if(!error)renderVendors();}
 /* USERS + activity */
+let _uExport=[],_uPage=PAGE,_uPaintFn=null;
+function admExportUsers(){admExport('tripomonk-users.csv',['Name','Username','Type','Last active'],_uExport);}
+function uMore(){_uPage+=PAGE;if(_uPaintFn)_uPaintFn();}
 async function renderUsers(){const seq=_navSeq;const {rows}=await qtbl('profiles',b=>b.select('id,name,username,photo,is_host').order('name'));
   /* last-active per user from app_events (best-effort — section still works if analytics isn't deployed) */
   const lastAct={};let hasEvents=false;
@@ -991,7 +1146,7 @@ async function renderUsers(){const seq=_navSeq;const {rows}=await qtbl('profiles
   if(seq!==_navSeq)return;   /* admin moved to another section while this loaded */
   const DAY=86400000,now=Date.now();
   const activeWithin=(uid,d)=>{const t=lastAct[uid];return t&&(now-new Date(t).getTime())<=d*DAY;};
-  $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Users</h2><span class="spacer"></span><span class="muted" id="uCount">${rows.length} members</span></div>
+  $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Users</h2><span class="spacer"></span><span class="muted" id="uCount">${rows.length} members</span><button class="btn2" onclick="admExportUsers()">Export CSV</button></div>
     <div class="tbar"><input class="grow" id="uq" placeholder="Search name or @username…"/>
       <select id="uType" class="btn2"><option value="all">All types</option><option value="host">Hosts</option><option value="trekker">Trekkers</option></select>
       <select id="uAct" class="btn2" ${hasEvents?'':'disabled title="Deploy SQL-add-user-analytics.sql"'}><option value="any">Any activity</option><option value="7">Active last 7 days</option><option value="30">Active last 30 days</option><option value="never">Never active</option></select>
@@ -1002,9 +1157,12 @@ async function renderUsers(){const seq=_navSeq;const {rows}=await qtbl('profiles
     if(ty==='host')l=l.filter(u=>u.is_host); if(ty==='trekker')l=l.filter(u=>!u.is_host);
     if(ac==='7')l=l.filter(u=>activeWithin(u.id,7)); else if(ac==='30')l=l.filter(u=>activeWithin(u.id,30)); else if(ac==='never')l=l.filter(u=>!lastAct[u.id]);
     if(so==='active')l=l.slice().sort((a,b)=>String(lastAct[b.id]||'').localeCompare(String(lastAct[a.id]||'')));
+    _uExport=l.map(u=>[u.name||'',u.username?'@'+u.username:'',u.is_host?'Host':'Trekker',lastAct[u.id]?new Date(lastAct[u.id]).toISOString().slice(0,10):'']);
     $('#uCount').textContent=l.length+' of '+rows.length+' members';
-    $('#uT').innerHTML=l.length?wrapTbl(`<table class="tbl"><thead><tr><th>Member</th><th>Username</th><th>Type</th><th>Last active</th><th></th></tr></thead><tbody>${l.map(u=>`<tr><td><div class="u">${avc(u.name,u.photo)}<b>${esc(u.name||'Trekker')}</b></div></td><td data-l="Username" class="muted">${u.username?'@'+esc(u.username):'—'}</td><td data-l="Type">${u.is_host?'<span class="tag ok">Host</span>':'<span class="tag neutral">Trekker</span>'}</td><td data-l="Last active" class="muted">${lastAct[u.id]?timeAgo(lastAct[u.id]):'—'}</td><td style="text-align:right"><button class="btn2 sm" onclick="openActivity('${jsv(u.id)}','${jsv(u.name)}','${jsv(u.photo||'')}')">Activity</button></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No users match.</div>';};
-  ['uq','uType','uAct','uSort'].forEach(id=>{const el=$('#'+id);el.oninput=paint;el.onchange=paint;});paint();}
+    const slice=l.slice(0,_uPage);
+    $('#uT').innerHTML=l.length?(wrapTbl(`<table class="tbl"><thead><tr><th>Member</th><th>Username</th><th>Type</th><th>Last active</th><th></th></tr></thead><tbody>${slice.map(u=>`<tr><td><div class="u">${avc(u.name,u.photo)}<b>${esc(u.name||'Trekker')}</b></div></td><td data-l="Username" class="muted">${u.username?'@'+esc(u.username):'—'}</td><td data-l="Type">${u.is_host?'<span class="tag ok">Host</span>':'<span class="tag neutral">Trekker</span>'}</td><td data-l="Last active" class="muted">${lastAct[u.id]?timeAgo(lastAct[u.id]):'—'}</td><td style="text-align:right"><button class="btn2 sm" onclick="openActivity('${jsv(u.id)}','${jsv(u.name)}','${jsv(u.photo||'')}')">Activity</button></td></tr>`).join('')}</tbody></table>`)+pageFooter(l.length,slice.length,'uMore()')):'<div class="empty">No users match.</div>';};
+  _uPaintFn=paint;
+  ['uq','uType','uAct','uSort'].forEach(id=>{const el=$('#'+id);el.oninput=()=>{_uPage=PAGE;paint();};el.onchange=()=>{_uPage=PAGE;paint();};});paint();}
 const SCR={home:'Home',explore:'Explore treks',search:'Search',community:'Community',bookings:'Bookings',profile:'Profile',messages:'Messages',chat:'Chat',detail:'Trek details',trip:'Road trip',person:'A profile',wishlist:'Wishlist',payment:'Payment',selectDate:'Choose dates',notifications:'Notifications'};
 const scL=s=>SCR[s]||s||'App';
 const EVL={login:'Signed in',view_trek:'Viewed a trek',booking:'Made a booking',message:'Sent a message',follow:'Followed someone',story_view:'Watched a story',post:'Created a post'};
@@ -1238,6 +1396,7 @@ async function guideRosterList(){
   try{const r=await adminCall('list_guides',{});if(r&&Array.isArray(r.rows))return r.rows;}catch(e){}
   const q=await qtbl('guides',b=>b.select('id,application_id,name,photo,bio,city,state,region,languages,experience,certifications,years,treks_led,instagram,verified,user_id,sort,created_at').limit(200));return q.rows||[];   /* fallback: public columns only (day_rate comes via the admin edge fn) */
 }
+function admExportGuides(){const list=_guideRoster||[];admExport('tripomonk-guides.csv',['Name','Region','Day rate','Verified','Certified','Mobile'],list.map(g=>[g.name||'',g.region||g.location||'',g.day_rate||'',g.verified?'yes':'no',g.certified?'yes':'no',g.mobile||g.phone||'']));}
 async function renderGuides(){
   _guideApps=await guideAppList();
   _guideRoster=await guideRosterList();
@@ -1310,7 +1469,7 @@ function applyGuideFilters(){
 }
 function guideRosterPanel(){
   const back='<button class="btn2" onclick="renderGuides()">&larr; Back</button>';
-  return '<div class="panel"><div class="tbar">'+back+'<h2 style="margin:0 0 0 10px">Trek leaders</h2><span class="spacer"></span><button class="btn2" onclick="bulkOpen(\'guides\')">⬆ Bulk upload</button><button class="btn2 pri" onclick="guideAdd()">+ Add guide</button></div>'
+  return '<div class="panel"><div class="tbar">'+back+'<h2 style="margin:0 0 0 10px">Trek leaders</h2><span class="spacer"></span><button class="btn2" onclick="admExportGuides()">Export CSV</button><button class="btn2" onclick="bulkOpen(\'guides\')">⬆ Bulk upload</button><button class="btn2 pri" onclick="guideAdd()">+ Add guide</button></div>'
     +'<p class="desc">Who\'s available for a date and at what rate — filter below, then tap a guide.</p>'
     +'<div class="gr-filters">'
       +'<label class="gr-f"><span>Available on</span><input type="date" id="grDate" value="'+esc(_grFilter.date||'')+'" onchange="applyGuideFilters()"></label>'
@@ -1579,6 +1738,7 @@ function circleRowsHtml(){
   return wrapTbl(`<table class="tbl"><thead><tr><th>Trek</th><th>Organizer</th><th>Dates</th><th>Status</th><th>Members</th><th>Booked</th></tr></thead><tbody>${list.map(row).join('')}</tbody></table>`);
 }
 function filterCircles(){const el=$('#circleRows');if(el)el.innerHTML=circleRowsHtml();}
+function admExportCircles(){const list=_circlesCache||[];admExport('tripomonk-trip-circles.csv',['Trek','Organizer','Status','Visibility','Start','End','Joined','Booked','Min','Max'],list.map(c=>{const cn=c.counts||{};return [c.trek_name||'',c.creator_name||'',c.status||'',c.visibility||'',(c.start_date||'').slice(0,10),(c.end_date||'').slice(0,10),cn.total||0,cn.booked||0,c.min_members||0,c.max_members||0];}));}
 function paintCircles(){
   const k=_circleKpi||{};
   const chip=(v,label)=>`<button class="btn2 sm ${v===_circleStatus?'pri':''}" onclick="_circleStatus='${v}';paintCircles()">${label}${v!=='all'&&k[v]?` (${k[v]})`:''}</button>`;
@@ -1586,7 +1746,7 @@ function paintCircles(){
     ${circleReportsHtml()}
     <div class="panel">
       <div class="kpis">${kpi('Forming',k.forming||0,'⏳','#c79a10')}${kpi('Confirmed',k.confirmed||0,'✅','#1e8f5f')}${kpi('Cancelled',k.cancelled||0,'🛑','#b4433a')}</div>
-      <div class="tbar"><button class="btn2" onclick="circleExpire(true)">Preview expirations</button><button class="btn2 danger" onclick="circleExpire(false)">Run expire + refund</button></div>
+      <div class="tbar"><button class="btn2" onclick="circleExpire(true)">Preview expirations</button><button class="btn2 danger" onclick="circleExpire(false)">Run expire + refund</button><span class="spacer"></span><button class="btn2" onclick="admExportCircles()">Export CSV</button></div>
       <p class="desc">Under-min circles past their start date are auto-cancelled and fully refunded by a daily job. Preview shows what would happen right now, without changing anything.</p>
       <div class="tbar"><input class="grow" id="cQ" placeholder="Search trek, region or organizer…" value="${esc(_circleQ)}" oninput="_circleQ=this.value;filterCircles()"/><span class="spacer"></span>${['all','forming','confirmed','cancelled'].map(v=>chip(v,v[0].toUpperCase()+v.slice(1))).join('')}</div>
       <div id="circleRows">${circleRowsHtml()}</div>
@@ -1653,8 +1813,11 @@ function circleExpire(dry){
   else confirmDo('Run auto-expire now? This CANCELS every under-min circle past its start date and REFUNDS booked members — real money moves. Preview first if unsure.',run);
 }
 /* REVIEWS */
+let _reviewsCache=[];
+function admExportReviews(){admExport('tripomonk-reviews.csv',['Author','Trek','Rating','Review','Date'],_reviewsCache.map(r=>[r.author,r.trek||'',r.rating||'',r.body||'',(r.created_at||'').slice(0,10)]));}
 async function renderReviews(){const {rows,error}=await qtbl('reviews',b=>b.order('created_at',{ascending:false}).limit(200));if(error){$('#content').innerHTML='<div class="panel"><div class="empty">Reviews table not deployed — run <b>SQL-add-reviews.sql</b>.</div></div>';return;}
-  $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Reviews</h2><span class="spacer"></span><button class="btn2" onclick="bulkOpen('reviews')">⬆ Bulk upload</button><button class="btn2 pri" onclick="reviewAdd()">+ Add review</button></div>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Author</th><th>Trek</th><th>Rating</th><th>Review</th><th></th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${esc(r.author)}</b></td><td class="muted">${esc(r.trek||'')}</td><td style="color:var(--yellow)">${'★'.repeat(r.rating||5)}</td><td class="muted">${esc((r.body||'').slice(0,90))}</td><td><button class="btn2 sm danger" onclick="reviewDel('${jsv(r.id)}')">Delete</button></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No reviews yet.</div>'}</div>`;}
+  _reviewsCache=rows;
+  $('#content').innerHTML=`<div class="panel"><div class="tbar"><h2 style="margin:0">Reviews</h2><span class="spacer"></span><button class="btn2" onclick="admExportReviews()">Export CSV</button><button class="btn2" onclick="bulkOpen('reviews')">⬆ Bulk upload</button><button class="btn2 pri" onclick="reviewAdd()">+ Add review</button></div>${rows.length?wrapTbl(`<table class="tbl"><thead><tr><th>Author</th><th>Trek</th><th>Rating</th><th>Review</th><th></th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${esc(r.author)}</b></td><td class="muted">${esc(r.trek||'')}</td><td style="color:var(--yellow)">${'★'.repeat(r.rating||5)}</td><td class="muted">${esc((r.body||'').slice(0,90))}</td><td><button class="btn2 sm danger" onclick="reviewDel('${jsv(r.id)}')">Delete</button></td></tr>`).join('')}</tbody></table>`):'<div class="empty">No reviews yet.</div>'}</div>`;}
 function reviewAdd(){modal(`<h3>Add a review</h3><div class="fld"><label>Author</label><input id="rvA"/></div><div class="fld"><label>Trek</label><input id="rvT"/></div><div class="fld"><label>Rating (1–5)</label><input id="rvR" type="number" min="1" max="5" value="5"/></div><div class="fld"><label>Review</label><textarea id="rvB"></textarea></div><div class="actions"><button class="btn2" onclick="closeOv()">Cancel</button><button class="btn2 pri" id="rvGo">Publish</button></div>`);$('#rvGo').onclick=async()=>{const author=$('#rvA').value.trim(),body=$('#rvB').value.trim();if(!author||!body)return;const {data:{session}}=await sb.auth.getSession();closeOv();const {error}=await sb.from('reviews').insert({author,trek:$('#rvT').value.trim(),rating:Math.max(1,Math.min(5,parseInt($('#rvR').value)||5)),body,user_id:session?session.user.id:null});toast(error?('Failed: '+error.message):'Published');if(!error)renderReviews();};}
 function reviewDel(id){confirmDo('Delete this review?',async()=>{const {error}=await sb.from('reviews').delete().eq('id',id);toast(error?('Failed: '+error.message):'Deleted');if(!error)renderReviews();});}
 /* ===== Bulk upload (Excel / CSV) — Treks · Guides · Reviews ===== */
