@@ -1545,7 +1545,7 @@ async function postFeature(id,f){const r=await adminCall('feature_post',{id,feat
 async function postStatus(id,status){const r=await adminCall('set_post_status',{id,status});toast(r&&r.error?('Failed: '+r.error):(status==='live'?'Approved ✓':status==='rejected'?'Rejected':'Hidden'));if(!(r&&r.error))renderCommunity();}
 function postDel(id){confirmDo('Delete this post permanently?',async()=>{const r=await adminCall('delete_post',{id});toast(r&&r.error?('Failed: '+r.error):'Deleted');if(!(r&&r.error))renderCommunity();});}
 /* TRIP CIRCLES — group trips, members, cancel/refund. All via the `circles` edge fn (owner JWT). */
-let _circlesCache=null,_circleKpi=null,_circleStatus='all',_circleQ='',_circleCur=null;
+let _circlesCache=null,_circleKpi=null,_circleStatus='all',_circleQ='',_circleCur=null,_circleReports=null;
 const _CIRCLE_TAG={forming:'warn',confirmed:'ok',booked:'ok',closed:'neutral',cancelled:'bad'};
 const _MEMBER_TAG={invited:'neutral',interested:'neutral',joined:'warn',booking_pending:'warn',booked:'ok',left:'neutral',cancelled:'bad'};
 async function renderCircles(){
@@ -1554,7 +1554,19 @@ async function renderCircles(){
   if(seq!==_navSeq)return;
   if(!r||!r.ok){$('#content').innerHTML='<div class="panel"><div class="empty">'+(r&&r.error==='forbidden'?'Trip Circles is owner-only — sign in with the owner account.':('Could not load circles'+(r&&r.error?': '+esc(r.error):'.')))+'</div></div>';return;}
   _circlesCache=r.circles||[];_circleKpi=r.kpi||{};_circleCur=null;
+  try{const rr=await circlesCall('list_reports',{});_circleReports=(rr&&rr.ok&&rr.reports)||[];}catch(e){_circleReports=[];}
   paintCircles();
+}
+function circleReportsHtml(){
+  const open=(_circleReports||[]).filter(r=>r.status==='open');
+  if(!open.length)return '';
+  const row=r=>`<tr><td class="muted">${timeAgo(r.created_at)}</td><td>${r.reported_user?('<b>'+esc(r.reported_user)+'</b>'):'<span class="muted">circle</span>'}</td><td class="muted">${esc(r.reason||'—')}</td><td class="muted">${esc(r.reporter_name||'')}</td><td><button class="btn2 sm" onclick="resolveReport('${jsv(r.id)}','reviewed')">Reviewed</button><button class="btn2 sm danger" onclick="resolveReport('${jsv(r.id)}','dismissed')">Dismiss</button></td></tr>`;
+  return `<div class="panel"><div class="tbar"><h2 style="margin:0">Reports</h2><span class="spacer"></span><span class="tag bad">${open.length} open</span></div>${wrapTbl(`<table class="tbl"><thead><tr><th>When</th><th>Reported</th><th>Reason</th><th>By</th><th></th></tr></thead><tbody>${open.map(row).join('')}</tbody></table>`)}</div>`;
+}
+async function resolveReport(id,status){
+  const r=await circlesCall('resolve_report',{report_id:id,status});
+  if(r&&r.ok){_circleReports=(_circleReports||[]).map(x=>x.id===id?Object.assign({},x,{status}):x);toast('Report '+status);paintCircles();}
+  else toast('Failed: '+((r&&r.error)||'error'));
 }
 function circleRowsHtml(){
   const q=_circleQ.trim().toLowerCase();
@@ -1571,6 +1583,7 @@ function paintCircles(){
   const k=_circleKpi||{};
   const chip=(v,label)=>`<button class="btn2 sm ${v===_circleStatus?'pri':''}" onclick="_circleStatus='${v}';paintCircles()">${label}${v!=='all'&&k[v]?` (${k[v]})`:''}</button>`;
   $('#content').innerHTML=`
+    ${circleReportsHtml()}
     <div class="panel">
       <div class="kpis">${kpi('Forming',k.forming||0,'⏳','#c79a10')}${kpi('Confirmed',k.confirmed||0,'✅','#1e8f5f')}${kpi('Cancelled',k.cancelled||0,'🛑','#b4433a')}</div>
       <div class="tbar"><button class="btn2" onclick="circleExpire(true)">Preview expirations</button><button class="btn2 danger" onclick="circleExpire(false)">Run expire + refund</button></div>
@@ -1595,7 +1608,7 @@ function paintCircleDetail(){
   $('#content').innerHTML=`
     <div class="panel">
       <button class="btn2 sm" onclick="paintCircles()">← All circles</button>
-      <div class="tbar" style="margin-top:12px"><h2 style="margin:0">${esc(c.trek_name||'')}</h2><span class="tag ${_CIRCLE_TAG[c.status]||'neutral'}">${esc(c.status)}</span><span class="spacer"></span>${c.status!=='cancelled'?`<button class="btn2 danger" onclick="circleCancel('${jsv(c.id)}')">Cancel circle${(cn.booked||0)?' + refund '+cn.booked:''}</button>`:''}</div>
+      <div class="tbar" style="margin-top:12px"><h2 style="margin:0">${esc(c.trek_name||'')}</h2><span class="tag ${_CIRCLE_TAG[c.status]||'neutral'}">${esc(c.status)}</span><span class="spacer"></span>${c.status!=='cancelled'?`<button class="btn2 danger" onclick="circleCancel('${jsv(c.id)}')">Cancel circle${(cn.booked||0)?' + refund '+cn.booked:''}</button>`:''}<button class="btn2 danger" onclick="circleDelete('${jsv(c.id)}')">Delete</button></div>
       <p class="desc">${esc(c.creator_name||'')} · ${dshort(c.start_date)}${c.end_date?' – '+dshort(c.end_date):''}${c.trek_region?' · '+esc(c.trek_region):''}${c.visibility==='private'?' · Private':''}${c.invite_code?' · code '+esc(c.invite_code):''}</p>
       <div class="kpis">${kpi('Joined',(cn.total||0)+' / '+(c.max_members||0),'👥','var(--accent)')}${kpi('Booked',cn.booked||0,'🎫','#1e8f5f')}${kpi('Min to confirm',c.min_members||0,'🎯','#c79a10')}</div>
     </div>
@@ -1608,6 +1621,14 @@ function circleCancel(id){
     if(!r||!r.ok){toast('Failed: '+((r&&r.error)||'error'));return;}
     toast(r.refund_errors?'Cancelled — a refund failed, will retry':(booked?'Cancelled + refunds issued':'Circle cancelled'));
     renderCircles();
+  });
+}
+function circleDelete(id){
+  const booked=((_circleCur&&_circleCur.counts)||{}).booked||0;
+  confirmDo('PERMANENTLY delete this circle and all its members?'+(booked?(' The '+booked+' booked member'+(booked!==1?'s':'')+' will be refunded first.'):'')+' This cannot be undone.',async()=>{
+    const r=await circlesCall('delete_circle',{circle_id:id});
+    if(!r||!r.ok){toast('Failed: '+((r&&r.error)||'error'));return;}
+    toast('Circle deleted');_circleCur=null;renderCircles();
   });
 }
 function circleRemove(cid,uid,name){
