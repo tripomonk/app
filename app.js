@@ -4104,7 +4104,7 @@ function setCommView(v){
   const panel=document.getElementById('commPanel');if(!panel)return;
   if(_commView==='feed'){panel.innerHTML='';return;}
   if(_commView==='host'){panel.innerHTML=tcHostPanel();hydrate(panel);return;}
-  if(_commView==='buddies'){panel.innerHTML=tcBuddiesPanel();hydrate(panel);return;}
+  if(_commView==='buddies'){panel.innerHTML=tcBuddiesPanel();hydrate(panel);if(typeof buddyLevel==='function')buddyLevel(_buddyPrefs.level);if(typeof renderBuddyResults==='function')renderBuddyResults();return;}
   if(_commView==='join'){panel.innerHTML='<div class="tc-head"><b>Join a Trip</b></div>'
     +'<div class="cc-search"><span class="msr" style="color:var(--muted)">search</span><input id="tcJoinQ" placeholder="Search by trek or region…" oninput="_tcJoinDeb()"/></div>'
     +'<div id="tcJoinList"><div class="skel skel-card" style="height:150px"></div></div>';hydrate(panel);renderJoinList();return;}
@@ -4168,10 +4168,84 @@ async function renderJoinList(){
   _tcJoinPaint();
   return;
 }
+/* ---- Find Travel Buddies (Phase 2). Match on trek + experience + city + shared interests
+   (profiles.prefs). "Connect" = follow + open a DM (decision D1 — reuses the existing follow
+   and messaging systems, no new relationship table). Ranked server-side by the circles fn. */
+let _buddyPrefs={trek:'',level:'',city:''},_buddyMatches=null,_buddyBusy=false;
+function cap(s){s=String(s||'');return s?s[0].toUpperCase()+s.slice(1):s;}
 function tcBuddiesPanel(){
+  if(typeof isLoggedIn==='function'&&!isLoggedIn()){
+    return '<div class="tc-head"><b>Find Travel Buddies</b></div>'
+      +(typeof communityGate==='function'?communityGate()
+        :'<div class="empty" style="padding:12px 0"><p>Sign in to match with trekkers like you.</p><button class="btn" style="max-width:200px;margin:8px auto 0" onclick="go(\'login\')">Sign in</button></div>');
+  }
   return '<div class="tc-head"><b>Find Travel Buddies</b></div>'
-    +'<div class="empty" style="padding:10px 0 18px"><p>Match with trekkers heading to the same trip (coming soon). For now, discover trekkers like you.</p>'
-    +'<button class="btn" style="max-width:230px;margin:8px auto 0" onclick="go(\'peopleSearch\')">Discover trekkers</button></div>';
+    +'<p class="buddy-intro">Tell us what you\'re planning — we\'ll match you with trekkers like you. Connecting follows them and opens a chat.</p>'
+    +'<div class="cc-sec"><label>Experience</label><div class="cc-pick">'
+      +['','beginner','intermediate','experienced'].map(v=>'<span class="tap" data-bl="'+v+'" onclick="buddyLevel(\''+v+'\')">'+(v?cap(v):'Any')+'</span>').join('')
+    +'</div></div>'
+    +'<div class="cc-sec"><label>Trek <span style="color:var(--muted);font-weight:400">(optional)</span></label><div class="cc-search"><span class="msr" style="color:var(--muted)">terrain</span><input id="buddyTrek" value="'+esc(_buddyPrefs.trek)+'" placeholder="e.g. Kedarkantha — or leave blank"/></div></div>'
+    +'<div class="cc-sec"><label>Your city <span style="color:var(--muted);font-weight:400">(optional)</span></label><div class="cc-search"><span class="msr" style="color:var(--muted)">location_city</span><input id="buddyCity" value="'+esc(_buddyPrefs.city)+'" placeholder="e.g. Dehradun"/></div></div>'
+    +'<button class="btn" id="buddyGo" onclick="buddyFind()">Find buddies</button>'
+    +'<div id="buddyResults" style="margin-top:14px"></div>';
+}
+function buddyLevel(v){_buddyPrefs.level=v||'';document.querySelectorAll('#commPanel [data-bl]').forEach(e=>e.classList.toggle('sel',e.dataset.bl===_buddyPrefs.level));}
+async function buddyFind(){
+  if(typeof isLoggedIn==='function'&&!isLoggedIn()){_loginReturn='community';go('login');return;}
+  if(_buddyBusy)return;_buddyBusy=true;
+  _buddyPrefs.trek=((document.getElementById('buddyTrek')||{}).value||'').trim();
+  _buddyPrefs.city=((document.getElementById('buddyCity')||{}).value||'').trim();
+  const btn=document.getElementById('buddyGo');if(btn){btn.disabled=true;btn.textContent='Finding…';}
+  const box=document.getElementById('buddyResults');if(box)box.innerHTML='<div class="skel skel-card" style="height:74px"></div><div class="skel skel-card" style="height:74px"></div>';
+  const filters={trek_name:_buddyPrefs.trek,city:_buddyPrefs.city,experience_level:_buddyPrefs.level};
+  try{
+    await circlesCall('set_buddy_prefs',filters);           /* opt in — make me discoverable too */
+    const r=await circlesCall('buddy_match',{filters});
+    _buddyMatches=(r&&r.ok&&r.matches)||[];
+    try{if(typeof loadAuthorPhotos==='function')await loadAuthorPhotos(_buddyMatches.map(m=>m.user_name));}catch(e){}
+  }catch(e){_buddyMatches=[];}
+  if(btn){btn.disabled=false;btn.textContent='Find buddies';}
+  _buddyBusy=false;
+  if(_commView==='buddies')renderBuddyResults();
+}
+function renderBuddyResults(){
+  const box=document.getElementById('buddyResults');if(!box)return;
+  if(_buddyMatches===null){box.innerHTML='';return;}
+  const list=_buddyMatches;
+  if(!list.length){box.innerHTML='<div class="empty" style="padding:16px 0"><p>No matches yet. Try a different trek, or add a few interests in your profile — more trekkers join every day.</p><button class="btn" style="max-width:220px;margin:8px auto 0" onclick="go(\'peopleSearch\')">Discover trekkers</button></div>';hydrate(box);return;}
+  box.innerHTML='<div class="tc-head" style="margin-top:4px"><b>'+list.length+' match'+(list.length!==1?'es':'')+'</b></div>'+list.map(buddyCard).join('');
+  hydrate(box);
+}
+function buddyCard(m){
+  const nm=m.user_name,sn=jsq(nm);
+  const ctx=[];
+  if(m.trek_name)ctx.push('Wants '+esc(m.trek_name));
+  if(m.city)ctx.push(esc(m.city));
+  if(m.experience_level)ctx.push(esc(cap(m.experience_level)));
+  const shared=m.shared_count?(m.shared_count+' shared interest'+(m.shared_count!==1?'s':'')):'';
+  return '<div class="buddy-card" data-bd="'+esc(nm)+'">'
+    +'<div class="buddy-av" onclick="openPerson(\''+sn+'\')">'+avatar(nm,46)+'</div>'
+    +'<div class="buddy-tx" onclick="openPerson(\''+sn+'\')">'
+      +'<div class="buddy-top"><b>'+esc(properName(nm))+'</b><span class="buddy-pct">'+m.match+'%</span></div>'
+      +'<small>'+(m.seeker?'<span class="buddy-seek">● looking now</span> ':'')+(ctx.join(' · ')||'Tripomonk trekker')+'</small>'
+      +(shared?'<small class="buddy-shared"><span class="msr">favorite</span> '+shared+'</small>':'')
+    +'</div>'
+    +'<button class="buddy-btn'+(isFollowing(nm)?' on':'')+'" onclick="buddyConnect(\''+sn+'\',this)">'+buddyBtnLabel(nm)+'</button>'
+    +'</div>';
+}
+function buddyBtnLabel(n){return isFollowing(n)?'Message':(hasRequested(n)?'Requested':(isPrivatePerson(n)?'Request':'Connect'));}
+function buddyConnect(n,btn){
+  if(typeof isLoggedIn==='function'&&!isLoggedIn()){_loginReturn='community';go('login');return;}
+  if(isFollowing(n)){openChat(n);return;}                       /* already connected → message */
+  if(typeof isPrivatePerson==='function'&&isPrivatePerson(n)){
+    followAction(n);                                            /* private → send follow request */
+    if(btn){btn.textContent=buddyBtnLabel(n);btn.classList.toggle('on',isFollowing(n));}
+    return;
+  }
+  toggleFollow(n);                                              /* public → follow… */
+  if(btn){btn.textContent='Message';btn.classList.add('on');}
+  toast('Connected with '+properName(n));
+  openChat(n);                                                  /* …and open the DM to say hi */
 }
 function tcHostPanel(){
   return '<div class="tc-head"><b>Host a Trip</b></div>'
@@ -9500,7 +9574,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='509';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='510';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
