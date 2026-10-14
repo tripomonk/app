@@ -4964,7 +4964,7 @@ function postCard(p){
    </div>
    ${p.trek?`<div class="ig-trek" onclick="openDetailByName('${jsq(p.trek)}')">${ic('pin',13)} ${esc(p.trek)}</div>`:''}
    ${media.length?`<div class="car"${(()=>{const u=mediaFitUrl(media[0]);return u&&_carRatio[u]!=null?` style="aspect-ratio:${_carRatio[u]}"`:'';})()} ondblclick="dblLike('${p.id}',this)"><div class="car-track" onscroll="carScroll(this)">${media.map(mediaItem).join('')}</div>${dots}<div class="heart-burst">${ic('like',96)}</div></div>`:''}
-   ${textOnly?`<div class="ig-textpost">${linkifyMentions(esc(p.txt))}</div>`:''}
+   ${textOnly?`<div class="ig-textpost">${linkifyMentions(esc(p.txt.replace(/^🔁\s*/,'')))}</div>`:''}
    ${p.trek?`<div class="ig-book" onclick="openDetailByName('${jsq(p.trek)}')"><span class="msr">confirmation_number</span><span>View trip &amp; book</span><span class="ig-book-go">${ic('back',15)}</span></div>`:''}
    ${tagged}
    <div class="ig-actions" style="display:flex;align-items:center;justify-content:space-between">
@@ -4975,7 +4975,7 @@ function postCard(p){
      </div>
      <span class="ig-ic ig-save${isSavedPost(p.id)?' on':''}" onclick="toggleSavePost('${p.id}',this)" title="Save post"><span class="msr" style="font-size:23px">${isSavedPost(p.id)?'bookmark':'bookmark_border'}</span></span>
    </div>
-   ${(!textOnly&&p.txt)?`<div class="ig-cap ${p.txt.length>120?'clamp':''}" onclick="this.classList.remove('clamp')"><b onclick="event.stopPropagation();openPerson('${sn}')">${esc(handleFor(p.n))}</b> ${linkifyMentions(esc(p.txt))}</div>`:''}
+   ${(!textOnly&&p.txt)?`<div class="ig-cap ${p.txt.length>120?'clamp':''}" onclick="this.classList.remove('clamp')"><b onclick="event.stopPropagation();openPerson('${sn}')">${esc(handleFor(p.n))}</b> ${linkifyMentions(esc(p.txt.replace(/^🔁\s*/,'')))}</div>`:''}
    <div class="ig-comments" onclick="openComments('${p.id}')">${nc?`View all ${nc} comment${nc>1?'s':''}`:'Add a comment…'}</div>
    <div class="ig-time">${p.when}</div>
   </div>`;}
@@ -4992,11 +4992,11 @@ function taggedHTML(p){
 async function repostPost(id){
   if(!isLoggedIn()){note('Please sign in to repost.','Sign in required').then(()=>{_loginReturn='community';go('login');});return;}
   const orig=postById(id);if(!orig){note('Post not found.','Error');return;}
-  if((orig.txt||'').startsWith('🔁')){note('This is already a repost.','Heads up');return;}
+  if(/^(?:🔁\s*)?Reposted from /.test(orig.txt||'')){note('This is already a repost.','Heads up');return;}
   if(!(await askConfirm('Repost this to your community feed?','Repost')))return;
   const authorName=getSavedName()||(getUserEmail()?getUserEmail().split('@')[0]:'You');
   const post={id:'p'+Date.now(),uid:currentUser.id,n:authorName,when:'just now',
-    txt:'🔁 Reposted from '+orig.n+(orig.txt?': '+orig.txt.replace(/^🔁[^:]*:\s*/,''):''),
+    txt:'Reposted from '+orig.n+(orig.txt?': '+orig.txt.replace(/^(?:🔁\s*)?Reposted from [^:]*:\s*/,''):''),
     imgs:orig.imgs||[],likes:0,comments:[],trek:orig.trek||'',tagged:[]};
   userPosts.unshift(post);savePosts();
   await savePostRemote(post);
@@ -9993,7 +9993,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='533';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='534';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
