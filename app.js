@@ -1406,7 +1406,7 @@ function renderSplashRing(){
   if(col) col.style.display='none';
   host.style.display='';
   const inner=document.createElement('div'); host.innerHTML=''; host.appendChild(inner);
-  host._ring = tmkRing(inner, { images:imgs, imageWidth:158, imageHeight:300, spacing:4, speed:3, direction:'left', tilt:-5, perspective:1250, cornerRadius:20, innerDim:2.8 });
+  host._ring = tmkRing(inner, { images:imgs, imageWidth:158, imageHeight:300, spacing:1, speed:3, direction:'left', tilt:-5, perspective:1250, cornerRadius:20, innerDim:2.8 });
 }
 function initLoginBg(){
   const bg=document.getElementById('loginBg');
@@ -9993,7 +9993,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='530';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='531';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
