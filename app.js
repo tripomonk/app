@@ -4504,18 +4504,23 @@ async function renderMyTravel(){
   const bs=(typeof getBookings==='function'?getBookings():[]);
   const up=bs.filter(b=>typeof bookingIsPast!=='function'||!bookingIsPast(b))
              .sort((a,b)=>(((typeof bookingStartISO==='function'&&bookingStartISO(a))||'9999')).localeCompare(((typeof bookingStartISO==='function'&&bookingStartISO(b))||'9999')));
-  const sec=(title,extra,inner)=>'<div class="mt-sec"><div class="tc-head"><b>'+title+'</b>'+(extra||'')+'</div>'+inner+'</div>';
+  /* standard app section header (same as home's .sec) + a grounded empty-state card, so
+     My Travel reads like the rest of the app instead of bare floating text. */
+  const head=(title,extra)=>'<div class="sec" style="margin:20px 2px 11px"><h2>'+title+'</h2>'+(extra||'')+'</div>';
+  const empty=(icn,title,sub,cta)=>'<div class="mt-empty"><span class="msr">'+icn+'</span><b>'+title+'</b><small>'+sub+'</small>'+(cta?'<a onclick="'+cta[1]+'">'+cta[0]+'</a>':'')+'</div>';
   const intHtml=interests.length
     ?('<div class="mt-chips">'+interests.map(p=>'<span class="mt-chip">'+esc(p)+'</span>').join('')+'</div>')
-    :'<div class="empty" style="padding:6px 0"><p style="font-size:13px">No interests yet — add a few for better matches.</p></div>';
+    :empty('interests','No interests yet',"Add a few and we'll match you with the right treks and trek-mates.",['Add interests',"go('onboarding')"]);
   const upHtml=up.length
     ?('<div class="bk-list">'+up.slice(0,3).map(bookingCard).join('')+'</div>'+(up.length>3?'<a class="mt-seeall" onclick="go(\'bookings\')">See all '+up.length+' trips →</a>':''))
-    :'<div class="empty" style="padding:6px 0"><p style="font-size:13px">No upcoming trips. <a style="color:var(--accent2);cursor:pointer" onclick="go(\'explore\')">Browse treks →</a></p></div>';
+    :empty('hiking','No upcoming trips','When you book a trek, it shows up here with your dates and details.',['Browse treks',"go('explore')"]);
   const link=(icn,label,onc)=>'<div class="mrow" onclick="'+onc+'"><span class="ic"><span class="msr" style="font-size:20px">'+icn+'</span></span><span class="t">'+label+'</span><span class="ch">'+ic('back',16)+'</span></div>';
   box.innerHTML=
-    sec('My Trip Circles','<a onclick="openCircleCreate()">+ Create</a>','<div id="mtCircles"><div class="skel skel-card" style="height:88px"></div></div>')
-    +sec('Upcoming trips','',upHtml)
-    +sec('My interests','<a onclick="go(\'onboarding\')">Edit</a>',intHtml)
+    head('My Trip Circles','<a onclick="openCircleCreate()">+ Create</a>')
+    +'<div id="mtCircles"><div class="skel skel-card" style="height:88px"></div></div>'
+    +head('Upcoming trips')+upHtml
+    +head('My interests','<a onclick="go(\'onboarding\')">Edit</a>')+intHtml
+    +head('More')
     +'<div class="mt-links">'+link('confirmation_number','My Bookings',"go('bookings')")
       +((_hostApp&&_hostApp.status==='approved')?link('landscape','Host Dashboard',"openHostDash()"):'')
       +link('travel_explore','Find Travel Buddies',"buddyFromTrek('')")
@@ -4525,7 +4530,7 @@ async function renderMyTravel(){
   const cb=document.getElementById('mtCircles');if(!cb)return;
   const list=(r&&r.ok&&r.circles)||[];
   cb.innerHTML=list.length?list.map(circleCard).join('')
-    :'<div class="empty" style="padding:6px 0"><p style="font-size:13px">No trip circles yet. <a style="color:var(--accent2);cursor:pointer" onclick="openCircleCreate()">Create one →</a></p></div>';
+    :empty('diversity_3','No trip circles yet','Plan a trek with friends, or meet new trek-mates — create a circle and invite people along.',['Create a circle',"openCircleCreate()"]);
   hydrate(cb);
 }
 /* ---- Create ---- */
@@ -9988,7 +9993,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='532';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='533';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
