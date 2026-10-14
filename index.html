@@ -1385,8 +1385,9 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   @keyframes collageDrift{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
   @media(prefers-reduced-motion:reduce){#splash .splash-collage{animation:none}#splash .sm-tile{animation-duration:.01s;filter:none;transform:none;opacity:1}}
   /* 3D photo ring as the welcome-splash centerpiece (sits behind the veil + text) */
-  #splash .splash-ring{position:absolute;inset:0;z-index:0;display:flex;align-items:center;justify-content:center;padding-bottom:196px}
-  #splash .splash-ring .tmk-ring{height:430px;background:none;border-radius:0;overflow:visible}
+  #splash .splash-ring{position:absolute;inset:0;z-index:0;display:flex;align-items:center;justify-content:center;
+    padding-top:calc(var(--safe-top) + 92px);padding-bottom:188px}
+  #splash .splash-ring .tmk-ring{height:412px;background:none;border-radius:0;overflow:visible}
   #splash .splash-veil{position:absolute;inset:0;z-index:0;pointer-events:none;
     background:linear-gradient(180deg,rgba(8,17,30,.30) 0%,rgba(8,17,30,.12) 26%,rgba(8,17,30,.72) 62%,var(--bg) 88%)}
   .splash .c{position:relative;z-index:1}
