@@ -2630,19 +2630,6 @@ function tmkRing(el, opts){
   return { el, start, stop, destroy(){ stop(); try{io&&io.disconnect();}catch(_e){} el.innerHTML=''; delete el._ring; } };
 }
 
-function renderHomeRing(){
-  const el=document.getElementById('homeRing'), sec=document.getElementById('homeRingSec');
-  if(!el || el._ring) return;                                   // build once; IO handles pause/resume
-  const pool = (typeof treks!=='undefined' ? treks : []).filter(t=>t && t.img && (typeof isTour!=='function' || !isTour(t)));
-  const feat = pool.filter(t=>t.feat||t.pop);
-  const src = (feat.length>=6 ? feat : pool);
-  const seen=new Set(), imgs=[];
-  for(const t of src){ if(seen.has(t.img)) continue; seen.add(t.img); imgs.push({src:t.img, idx:t.idx}); if(imgs.length>=8) break; }
-  if(imgs.length < 4){ if(sec) sec.style.display='none'; return; }
-  if(sec) sec.style.display='';
-  el._ring = tmkRing(el, { images:imgs, imageWidth:150, imageHeight:224, spacing:4, speed:3, direction:'left', tilt:-4, perspective:1300, cornerRadius:18, innerDim:2.5 });
-}
-
 function renderHome(){
   const hav=document.getElementById('homeUserAv');
   if(hav)setAvatarEl(hav,getSavedName()||'Explorer',getSavedPhoto());
@@ -2658,7 +2645,6 @@ function renderHome(){
   makeCoverflow('homeList',list,trekCardCF,(t)=>openDetail(t.idx));
   renderHomeTours();   /* Road Trips & Tours rail (hidden until a tour exists) */
   renderInspire('homeInspire');   /* rotating travel quotes + trek fun facts, below Trek News */
-  renderHomeRing();               /* 3D photo ring showcase (builds once, pauses off-screen) */
   /* paint the host slot now (CTA), then swap in the rail if any trips are live */
   renderHomeHosts();
   renderGiftHome();
@@ -6927,12 +6913,21 @@ function renderProfile(){document.getElementById('pCover').style.backgroundImage
   const trekCount=new Set(bs.map(b=>b.trek)).size;
   const following=followCount();
   const ps=document.getElementById('pStats');
-  if(ps){ps.innerHTML=[
-    ['grid_view',(_myPostCount>=0?_myPostCount:'…'),'Posts',"go('profile')",'pStatPosts'],
-    ['group',(_myFollowerCount>=0?_myFollowerCount.toLocaleString('en-IN'):'…'),'Followers',"openFollowList('followers')",'pStatFlwr'],
-    ['person_add',(_myFollowingCount>=0?_myFollowingCount:following),'Following',"openFollowList('following')",'pStatFollowing'],
-    ['landscape',trekCount,'Treks',"go('bookings')",'']
-  ].map(s=>`<div class="pstat" onclick="${s[3]}"><b${s[4]?` id="${s[4]}"`:''}>${s[1]}</b><small>${s[2]}</small></div>`).join('');hydrate(ps);}
+  if(ps){
+    if(!isLoggedIn()){
+      /* a guest has no account, so Posts/Followers/Following/Treks are meaningless and the
+         counts just hang on "…". Show one clear sign-in prompt instead. */
+      ps.innerHTML=`<div class="pref-prompt" style="grid-column:1/-1;margin:0" onclick="go('login')"><span class="msr">how_to_reg</span><div><b>Sign in to see your stats</b><small>Your posts, followers, following &amp; treks show up here once you're in</small></div><span class="msr" style="margin-left:auto">chevron_right</span></div>`;
+    } else {
+      ps.innerHTML=[
+        ['grid_view',(_myPostCount>=0?_myPostCount:'…'),'Posts',"go('profile')",'pStatPosts'],
+        ['group',(_myFollowerCount>=0?_myFollowerCount.toLocaleString('en-IN'):'…'),'Followers',"openFollowList('followers')",'pStatFlwr'],
+        ['person_add',(_myFollowingCount>=0?_myFollowingCount:following),'Following',"openFollowList('following')",'pStatFollowing'],
+        ['landscape',trekCount,'Treks',"go('bookings')",'']
+      ].map(s=>`<div class="pstat" onclick="${s[3]}"><b${s[4]?` id="${s[4]}"`:''}>${s[1]}</b><small>${s[2]}</small></div>`).join('');
+    }
+    hydrate(ps);
+  }
   if(isLoggedIn())loadMyCounts();
   renderProfileGallery();
   /* the profile is now social: only the hosting hub + social links + a guest sign-in
@@ -9993,7 +9988,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='531';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='532';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
