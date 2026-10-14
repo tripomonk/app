@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded',()=>{a11yClickables(document);
   /* parts of a screen render later (weather, rails, gift designs…) — re-apply to the visible screen, debounced */
   let _a11yT=null;try{new MutationObserver(()=>{clearTimeout(_a11yT);_a11yT=setTimeout(()=>{const v=document.querySelector('.view.active');if(v)a11yClickables(v);},250);})
     .observe(document.body,{childList:true,subtree:true});}catch(e){}});
-function hydrate(root){(root||document).querySelectorAll('[data-i]').forEach(el=>{el.innerHTML=ic(el.dataset.i,+el.dataset.sz||20);el.removeAttribute('data-i');});a11yClickables(root);fitCarousels(root);if(typeof addCarouselArrows==='function')addCarouselArrows(root);if(typeof animateTrekScores==='function')animateTrekScores();}
+function hydrate(root){(root||document).querySelectorAll('[data-i]').forEach(el=>{el.innerHTML=ic(el.dataset.i,+el.dataset.sz||20);el.removeAttribute('data-i');});a11yClickables(root);fitCarousels(root);if(typeof addCarouselArrows==='function')addCarouselArrows(root);if(typeof animateTrekScores==='function')animateTrekScores();if(typeof tswUpgradeAll==='function')tswUpgradeAll(root);}
 
 /* ---------- data ---------- */
 const U='https://images.unsplash.com/photo-';
@@ -7426,7 +7426,7 @@ function renderNotifPrefs(){
   const box=document.getElementById('notifPrefsBody');if(!box)return;
   const p=getNotifPrefs();
   box.innerHTML='<p class="host-note" style="margin:0 0 14px">Choose what appears in your notifications. Turning one off hides it from the bell too.</p>'
-    +NOTIF_PREFS.map(n=>`<div class="mrow" onclick="setNotifPref('${n[0]}',${!p[n[0]]})"><span class="ic"><span class="msr" style="font-size:20px">${n[2]}</span></span><span class="t">${n[1]}</span><span class="tgl ${p[n[0]]?'on':''}"><i></i></span></div>`).join('');
+    +NOTIF_PREFS.map(n=>`<div class="mrow" onclick="tswRow('ntf_${n[0]}')"><span class="ic"><span class="msr" style="font-size:20px">${n[2]}</span></span><span class="t">${n[1]}</span><span class="tsw" id="ntf_${n[0]}" data-tsw data-on="${p[n[0]]?1:0}" data-key="${n[0]}" data-cb="tswNotifPref" data-label="${n[1]}"></span></div>`).join('');
   hydrate(box);
 }
 /* ---------- Language ---------- */
@@ -7472,20 +7472,20 @@ function renderSettings(){
   const tp=document.getElementById('themePick');
   if(tp)tp.innerHTML=opts.map(o=>`<div class="tp ${cur2===o[0]?'on':''}" onclick="setTheme('${o[0]}')"><span class="msr">${o[1]}</span><small>${o[2]}</small></div>`).join('');
   /* sounds must be mutable — an app you can't silence is one people close */
-  const soundRow=`<div class="mrow" onclick="setSound(!soundOn())">
+  const soundRow=`<div class="mrow" onclick="tswRow('soundToggle')">
     <span class="ic"><span class="msr" style="font-size:20px">volume_up</span></span>
     <span class="t">Sound effects</span>
-    <span class="tgl ${soundOn()?'on':''}" id="soundToggle"><i></i></span></div>`;
+    <span class="tsw" id="soundToggle" data-tsw data-on="${soundOn()?1:0}" data-cb="tswSound" data-label="Sound effects"></span></div>`;
   /* set/change a password for the current account (signed-in users only) */
   const pwRow=isLoggedIn()?`<div class="mrow" onclick="setMyPassword()">
     <span class="ic"><span class="msr" style="font-size:20px">password</span></span>
     <span class="t"><b style="display:block;font-size:13.5px">Password &amp; sign-in</b><small style="color:var(--muted)">Set a password to sign in without Google</small></span>
     <span class="ch" style="transform:scaleX(-1)">${ic('back',16)}</span></div>`:'';
   /* private account: gate posts + messaging + calls behind an approved follow */
-  const privRow=isLoggedIn()?`<div class="mrow" onclick="togglePrivateAccount()">
+  const privRow=isLoggedIn()?`<div class="mrow" onclick="tswRow('privToggle')">
     <span class="ic"><span class="msr" style="font-size:20px">lock</span></span>
     <span class="t"><b style="display:block;font-size:13.5px">Private account</b><small style="color:var(--muted)">You approve followers; only they see your posts & can message or call you</small></span>
-    <span class="tgl ${isPrivateAccount()?'on':''}" id="privToggle"><i></i></span></div>
+    <span class="tsw" id="privToggle" data-tsw data-on="${isPrivateAccount()?1:0}" data-cb="tswPrivate" data-label="Private account"></span></div>
     <div class="mrow" onclick="go('followRequests')">
     <span class="ic"><span class="msr" style="font-size:20px">group_add</span></span>
     <span class="t">Follow requests</span>
@@ -9884,7 +9884,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='525';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='527';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -12080,6 +12080,258 @@ function stopAllMedia(){
     if(hh&&cart.trek&&!hh.querySelector('.hero-play'))renderHero(hh,cart.trek);
   });
 }
+/* ============================================================================
+   TmkSwitch — premium spring toggle.
+   A role="switch" button that flips on click anywhere. 38x22 track, 14px knob
+   4px in from every edge, travels 16px. Transform + opacity ONLY: travel/stretch/
+   squash are transforms, colour is a layer faded in by opacity. The moving knob is
+   a 3-piece capsule (two round caps + a bar scaled between them) so it never turns
+   into an ellipse. One continuous flight sampled to ~40 keyframes and handed to the
+   Web Animations API (one animation per moving element). Interruptible, press-aware,
+   reduced-motion safe. Feel = {stretch, squash, bounce, duration}; presets below.
+   ========================================================================== */
+const TSW_PRESETS = {
+  balanced:{stretch:0.2, squash:0.1,  bounce:0.3, duration:720},
+  firm:    {stretch:0,   squash:0,    bounce:0,   duration:220},
+  elastic: {stretch:1,   squash:0.22, bounce:0.8, duration:1100}
+};
+const TSW_DIM = { KNOB:14, TRAVEL:16, INSET:4, TRACK_W:38, RING:1 };
+function tswReduced(){ try{ return matchMedia('(prefers-reduced-motion:reduce)').matches; }catch(e){ return false; } }
+
+/* Damped spring response 0->1 over the unit interval, driven by one "bounce"
+   number: 0 = critically damped (no overshoot), ->1 overshoots and wobbles.
+   Tuned to be essentially at rest by u=1. Returns progress p[] and a normalised
+   speed v[] (|dp|, peak = 1) used to drive the stretch. */
+function tswSpring(bounce, n){
+  const b   = Math.max(0, Math.min(0.97, bounce));
+  const zeta = b<=0 ? 1 : (1 - b);                 // damping ratio
+  const wn   = b<=0 ? 6.2 : (6 + b*7);             // natural frequency over the unit duration
+  const wd   = wn * Math.sqrt(Math.max(1e-4, 1 - zeta*zeta));
+  const p = new Array(n);
+  for(let i=0;i<n;i++){
+    const u = i/(n-1);
+    p[i] = (b<=0)
+      ? 1 - (1 + wn*u)*Math.exp(-wn*u)
+      : 1 - Math.exp(-zeta*wn*u)*(Math.cos(wd*u) + (zeta*wn/wd)*Math.sin(wd*u));
+  }
+  p[0]=0; p[n-1]=1;                                // pin the ends; keep the overshoot between
+  const v = new Array(n); let mx=1e-6;
+  for(let i=0;i<n;i++){ const a=p[Math.max(0,i-1)], c=p[Math.min(n-1,i+1)]; v[i]=Math.abs(c-a); if(v[i]>mx)mx=v[i]; }
+  for(let i=0;i<n;i++) v[i]/=mx;
+  return {p, v};
+}
+
+/* The widest an edge swings past rest, as a fraction of travel, for a given bounce
+   (sampled once). Used to lower bounce until the shape stays inside the track. */
+function tswOvershoot(bounce){
+  const {p} = tswSpring(bounce, 48); let mx=1;
+  for(let i=0;i<p.length;i++) if(p[i]>mx) mx=p[i];
+  return mx - 1;
+}
+
+function TmkSwitch(opts){
+  opts = opts || {};
+  const feel = (opts.feel && typeof opts.feel==='object')
+    ? opts.feel : (TSW_PRESETS[opts.feel] || TSW_PRESETS.balanced);
+  const pressFeedback = opts.pressFeedback !== false;
+  const pressAmount   = (opts.pressAmount==null) ? 0.83 : Math.max(0, Math.min(1, opts.pressAmount));
+  let checked = !!opts.checked;
+
+  const el = opts.el || document.createElement('button');
+  el.classList.add('tsw');
+  try{ el.type='button'; }catch(e){}
+  el.setAttribute('role','switch');
+  el.setAttribute('aria-checked', checked?'true':'false');
+  if(!el.hasAttribute('tabindex')) el.setAttribute('tabindex','0');   // focusable even as a <span>
+  if(opts.ariaLabel) el.setAttribute('aria-label', opts.ariaLabel);
+  el.innerHTML =
+    '<span class="tsw-fill"></span>'+
+    '<span class="tsw-knob">'+
+      '<span class="tsw-capA"><i></i></span>'+
+      '<span class="tsw-bar"><i></i></span>'+
+      '<span class="tsw-capB"><i></i></span>'+
+    '</span>'+
+    '<span class="tsw-ring"></span>';
+  const knob = el.querySelector('.tsw-knob'),
+        capB = el.querySelector('.tsw-capB'),
+        bar  = el.querySelector('.tsw-bar');
+
+  const T = TSW_DIM;
+  // knob group left-edge translateX at rest: off=0, on=TRAVEL. capsule occupies
+  // [tx, tx+KNOB] at rest; capB & bar add the stretch S locally.
+  function restLeft(on){ return on ? T.TRAVEL : 0; }
+  function paintStatic(tx, S, sy, dir){
+    knob.style.transform = 'translateX('+tx+'px) scaleY('+sy+')';
+    capB.style.transform = 'translateX('+(dir*S)+'px)';
+    bar.style.transform  = 'translateX('+(dir<0?-S:0)+'px) scaleX('+S+')';
+  }
+  function setRest(on){ paintStatic(restLeft(on), 0, 1, 1); }
+  setRest(checked);
+
+  let anims = [];
+  function cancelAnims(){ anims.forEach(a=>{ try{a.cancel();}catch(e){} }); anims=[]; }
+  // Read the knob's current on-screen translateX so a new flight (or a release)
+  // continues from the exact pose — a mid-flight tap reverses without a jump.
+  function curTX(node, fallback){
+    try{ const m = new DOMMatrixReadOnly(getComputedStyle(node).transform); if(!isNaN(m.m41)) return m.m41; }catch(e){}
+    return fallback;
+  }
+
+  function settleTo(on){
+    checked = on;
+    setRest(on);
+    if(opts.onSettle) try{ opts.onSettle(on); }catch(e){}
+  }
+
+  // Build and run one continuous flight to `toChecked`, starting from wherever the
+  // knob is right now. aria + colour fade flip at the start (in the click).
+  function flight(toChecked){
+    const fromLeft = curTX(knob, restLeft(checked));
+    cancelAnims();
+
+    // flip state + start the 180ms colour fade immediately
+    checked = toChecked;
+    el.setAttribute('aria-checked', checked?'true':'false');
+    if(opts.onChange) try{ opts.onChange(checked); }catch(e){}
+
+    if(tswReduced() || feel.duration<=0){ settleTo(toChecked); return; }
+
+    const toLeft = restLeft(toChecked);
+    const dir = (toLeft - fromLeft) >= 0 ? 1 : -1;
+
+    // Lower bounce until the widest edge swing fits the 4px gap (less the 1px ring).
+    let bounce = feel.bounce;
+    const gap = T.INSET - T.RING;                        // px of slack beyond rest, each side
+    const maxSwingPx = gap;                              // trailing edge must not cross the ring
+    while(bounce>0 && tswOvershoot(bounce)*Math.abs(toLeft-fromLeft) > maxSwingPx) bounce -= 0.05;
+    bounce = Math.max(0, bounce);
+
+    const N = 40;
+    const {p, v} = tswSpring(bounce, N);
+    const stretchMax = feel.stretch * T.KNOB;            // max extra length in px
+    const calmBlend  = Math.min(1, bounce/0.5);          // 0 (calm) -> 1 (at bounce 0.5)
+    const kkf=[], ckf=[], bkf=[];
+    for(let i=0;i<N;i++){
+      let tx = fromLeft + (toLeft - fromLeft)*p[i];
+      // stretch follows the speed: longest when fastest, round again once slowed
+      let S = stretchMax * v[i];
+      S = Math.min(S, 0.8*Math.abs(toLeft-fromLeft) || 0.8*T.TRAVEL);
+      // calm feels (bounce<0.5): also cap at 60% of the distance still to go so the
+      // front edge never reaches the wall and waits — smooth min, faded out by 0.5.
+      if(bounce < 0.5){
+        const toGo = Math.abs(toLeft - tx);
+        const lim  = 0.6*toGo;
+        const soft = -Math.log(Math.exp(-S*4) + Math.exp(-lim*4))/4;   // smooth min (no corner)
+        S = soft*(1-calmBlend) + S*calmBlend;
+      }
+      if(S<0) S=0;
+      // keep the trailing edge inside the ring (safety belt; track also clips)
+      tx = Math.max(-gap, Math.min(T.TRAVEL+gap, tx));
+      // squash: flattens with length, then springs back past full as it releases
+      const sN = stretchMax>0 ? Math.min(1, S/stretchMax) : 0;
+      const dv = (i>0 ? v[i]-v[i-1] : 0);                // >0 stretching, <0 releasing
+      const release = dv<0 ? Math.min(1, -dv*6) : 0;
+      const sy = 1 - feel.squash*sN + feel.squash*0.6*release;
+      kkf.push({ transform:'translateX('+tx.toFixed(3)+'px) scaleY('+sy.toFixed(4)+')' });
+      ckf.push({ transform:'translateX('+(dir*S).toFixed(3)+'px)' });
+      bkf.push({ transform:'translateX('+((dir<0?-S:0)).toFixed(3)+'px) scaleX('+S.toFixed(3)+')' });
+    }
+    const timing = { duration:feel.duration, easing:'linear', fill:'both' };
+    const a1 = knob.animate(kkf, timing),
+          a2 = capB.animate(ckf, timing),
+          a3 = bar.animate(bkf, timing);
+    anims = [a1,a2,a3];
+    a1.onfinish = ()=>{ if(anims[0]===a1){ anims=[]; settleTo(toChecked); } };
+  }
+
+  // Press feedback: on pointer-down lean toward where it is about to go and hold.
+  // Release commits from that pose (flight reads it); dragging off springs back.
+  let pressing = false, leaned = false;
+  function lean(){
+    if(!pressFeedback || tswReduced() || feel.duration<=0) return;
+    cancelAnims();
+    const from = curTX(knob, restLeft(checked));
+    const dir  = checked ? -1 : 1;                       // about to travel this way
+    const dist = pressAmount * T.KNOB * 0.22 * dir;      // knob leans ~its own fraction
+    const to   = Math.max(-(T.INSET-T.RING), Math.min(T.TRAVEL+(T.INSET-T.RING), from+dist));
+    const a = knob.animate(
+      [{transform:'translateX('+from+'px)'},{transform:'translateX('+to+'px)'}],
+      {duration:150, easing:'cubic-bezier(.2,.9,.3,1)', fill:'both'});
+    anims=[a]; leaned=true;
+  }
+  function springBack(){
+    if(!leaned){ return; }
+    leaned=false; const from = curTX(knob, restLeft(checked)); cancelAnims();
+    const a = knob.animate(
+      [{transform:'translateX('+from+'px)'},{transform:'translateX('+restLeft(checked)+'px)'}],
+      {duration:220, easing:'cubic-bezier(.2,.9,.25,1)', fill:'both'});
+    anims=[a]; a.onfinish=()=>{ if(anims[0]===a){ anims=[]; setRest(checked); } };
+  }
+
+  el.addEventListener('pointerdown', e=>{ if(el.getAttribute('aria-disabled')==='true')return; pressing=true; lean(); });
+  el.addEventListener('pointerup',   e=>{ pressing=false; });
+  el.addEventListener('pointercancel', e=>{ pressing=false; springBack(); });
+  el.addEventListener('pointerleave',e=>{ if(pressing){ pressing=false; springBack(); } });
+  el.addEventListener('click', e=>{ if(el.getAttribute('aria-disabled')==='true')return; e.stopPropagation(); leaned=false; flight(!checked); });
+  el.addEventListener('keydown', e=>{ if(e.key===' '||e.key==='Enter'){ e.preventDefault(); flight(!checked); } });
+
+  const api = {
+    el,
+    get checked(){ return checked; },
+    set(v){ const nv=!!v; if(nv!==checked) flight(nv); return api; },
+    toggle(){ flight(!checked); return api; },
+    // set state with no animation (e.g. external/programmatic sync)
+    sync(v){ const nv=!!v; cancelAnims(); checked=nv; el.setAttribute('aria-checked',nv?'true':'false'); setRest(nv); return api; },
+    disabled(v){ el.setAttribute('aria-disabled', v?'true':'false'); return api; }
+  };
+  el._tsw = api;
+  return api;
+}
+
+/* Upgrade declarative placeholders: <span data-tsw data-on="1" data-cb="fnName"
+   data-label="..."></span>. The callback (global fn name) is called with the new
+   boolean on every change; it must NOT re-render the view (that would kill the
+   animation) — just update the backing store. Returns the list of apis made. */
+function tswUpgradeAll(root){
+  const scope = root || document;
+  const out = [];
+  scope.querySelectorAll('[data-tsw]').forEach(ph=>{
+    if(ph._tsw) return;                                  // already upgraded (keeps the .tsw class)
+    const on  = ph.getAttribute('data-on')==='1' || ph.getAttribute('data-on')==='true';
+    const cbN = ph.getAttribute('data-cb')||'';
+    const lab = ph.getAttribute('data-label')||'';
+    const feel= ph.getAttribute('data-feel')||'balanced';
+    const api = TmkSwitch({ el:ph, checked:on, ariaLabel:lab, feel:feel,
+      onChange(v){ const f=window[cbN]; if(typeof f==='function') try{ f(v, api); }catch(e){} } });
+    if(ph.getAttribute('data-disabled')==='1') api.disabled(true);
+    out.push(api);
+  });
+  return out;
+}
+
+/* A whole settings row is tappable: forward the tap to its switch (which animates
+   + fires onChange). The switch's own click is stopPropagation'd so a direct tap on
+   it doesn't double-fire through the row. */
+function tswRow(id){ const el=document.getElementById(id); if(el&&el._tsw) el._tsw.toggle(); }
+/* onChange handlers — persist + side effects ONLY, never re-render the view (a
+   re-render rebuilds the switch element and kills the flight mid-animation). */
+function tswSound(v){ setSound(!!v); }                       // persists + previews a blip
+function tswNotifPref(v, api){
+  const k = api && api.el ? api.el.getAttribute('data-key') : '';
+  if(!k) return;
+  const p = getNotifPrefs(); p[k] = !!v;
+  try{ localStorage.setItem('tmk_notifprefs', JSON.stringify(p)); }catch(e){}
+  if(typeof refreshNotifBadge==='function') refreshNotifBadge();
+}
+async function tswPrivate(v){
+  if(!isLoggedIn()){ note('Sign in to change this.','Sign in required'); return; }
+  const p = getPrefs()||{}; p.private = !!v;
+  try{ localStorage.setItem(prefKey(), JSON.stringify(p)); }catch(e){}
+  privateByName[myName()] = !!p.private;
+  toast(p.private?'Your account is now private':'Your account is now public');
+  try{ const sb=getSupaClient(); const uid=sb?await authUid():null; if(sb&&uid) await sb.from('profiles').update({prefs:p}).eq('id',uid); }catch(e){}
+}
+
 function go(id){const el=document.getElementById(id);if(!el)return;
   stopAllMedia();
   if(id==='captain'&&!isStaffUser()){note('Trip Captain access is for staff only.','Restricted');return;}
@@ -12238,7 +12490,7 @@ document.addEventListener('pointerdown',e=>{const t=e.target.closest(TAP);if(!t)
 (function(){const d=document.getElementById('detail');if(d)d.addEventListener('scroll',function(){const h=document.getElementById('dHero');if(h)h.style.transform='translateY('+(this.scrollTop*0.25)+'px)';});})();
 
 /* expose */
-Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,renderPlanner,sendPlan,plannerChip,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,editAvatarTap,openPhotoChoice,closePhotoChoice,openAvatarSheet,closeAvatarSheet,pickAvatar,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,submitNewPassword,toggleResetPw,cancelReset,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,permitWebsite,applyPermit,openPermitCountry,permitBackToCountries,filterByCity,getDirections,addStaff,removeStaff,setStaffRole,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab,openReviewModal,closeReviewModal,submitReview,setRevStars,adminAddReview,adminDelReview,toggleSavePost,renderEmergency,renderSavedPosts,followAction,requestCall,declineCall,allowCallMsg,togglePrivateAccount,renderFollowRequests,acceptFollowReq,declineFollowReq,admToggleHl,filterAdminHub,admAssignCaptain,admChangeBatch,admRefund,admCancelBooking,admInvoice,renderAdminUsers,paintUsers,admNotifyUser,renderAdminPayments,admPayFilter,admExportCSV,admRevenueCSV,renderAdminGear,gearAdj,gearAddItem,gearDelItem,gearSeed,renderAdminCommunity,admDeletePost,admFeaturePost,renderAdminPermits,permSet,renderAdminSupport,ticketReply,ticketResolve,raiseTicket,renderAdminCRM,crmSearch,crmOpen,renderAdminAI,saveAiCfg,renderAdminVendors,vendorSet,openVendorDash,renderVendorDash,applyVendor,vendorAddListing,vendorToggleListing,vendorDelListing,renderBecomeGuide,submitGuideApplication,renderGuideDash,renderGuidePublic,guideScan,guideStopScan,guideVerify,openGuideProfile,openGuideApply,openGuides,renderGuidesList,openHostTrips,guideEditRate,guideSaveRate,guideSetBrush,guideToggleRange,guideCalNav,guideDayTap});
+Object.assign(window,{go,back,openDetail,setHomeFilter,filterByRegion,filterByDiff,filterAll,pickF,resetFilters,applyFilters,selBatch,trav,checkTravellers,selPay,confirmBooking,openTicket,setPk,togPk,captainLogin,captainExit,captainVerify,captainTestLast,downloadItinerary,shareTrek,toggleFav,selCommTab,likePost,addPost,calPick,doSearch,renderPlanner,sendPlan,plannerChip,wa,downloadChecklist,togGear,gearEnquire,connectWatch,openNav,toggleNav,recenterNav,adminLogin,adminExit,newTrek,editTrek,delTrek,saveTrek,closeAdminForm,saveAdminKey,setAdminTab,addBatch,delBatch,saveSettings,sendOtp,sendPhoneOtp,verifyOtp,resendOtp,continueAsGuest,signOut,saveProfile,epPickPhoto,editAvatarTap,openPhotoChoice,closePhotoChoice,openAvatarSheet,closeAvatarSheet,pickAvatar,startJourney,authTab,otpBoxInput,otpBoxKey,socialLogin,passwordAuth,togglePw,forgotPassword,submitNewPassword,toggleResetPw,cancelReset,searchPeople,renderPeopleResults,openPerson,toggleFollow,suggestFollow,rmPostPic,bookActivity,carScroll,deletePost,repostPost,openNews,openNewsDetail,dblLike,openDetailByName,toggleTagPerson,pkAddItem,pkDelItem,savePackingAdmin,dismissAlert,cfTapCard,cfOpenCard,setTheme,renderMessages,openChat,renderChat,sendChat,openPackingFor,renderPermits,permitWebsite,applyPermit,openPermitCountry,permitBackToCountries,filterByCity,getDirections,addStaff,removeStaff,setStaffRole,togglePref,savePrefs,skipOnboarding,capScan,capStopScan,setProfTab,openReviewModal,closeReviewModal,submitReview,setRevStars,adminAddReview,adminDelReview,toggleSavePost,renderEmergency,renderSavedPosts,followAction,requestCall,declineCall,allowCallMsg,togglePrivateAccount,renderFollowRequests,acceptFollowReq,declineFollowReq,admToggleHl,filterAdminHub,admAssignCaptain,admChangeBatch,admRefund,admCancelBooking,admInvoice,renderAdminUsers,paintUsers,admNotifyUser,renderAdminPayments,admPayFilter,admExportCSV,admRevenueCSV,renderAdminGear,gearAdj,gearAddItem,gearDelItem,gearSeed,renderAdminCommunity,admDeletePost,admFeaturePost,renderAdminPermits,permSet,renderAdminSupport,ticketReply,ticketResolve,raiseTicket,renderAdminCRM,crmSearch,crmOpen,renderAdminAI,saveAiCfg,renderAdminVendors,vendorSet,openVendorDash,renderVendorDash,applyVendor,vendorAddListing,vendorToggleListing,vendorDelListing,renderBecomeGuide,submitGuideApplication,renderGuideDash,renderGuidePublic,guideScan,guideStopScan,guideVerify,openGuideProfile,openGuideApply,openGuides,renderGuidesList,openHostTrips,guideEditRate,guideSaveRate,guideSetBrush,guideToggleRange,guideCalNav,guideDayTap,TmkSwitch,tswUpgradeAll,tswRow,tswSound,tswNotifPref,tswPrivate});
 
 /* init */
 applyTheme();   /* dark / light / system theme */
