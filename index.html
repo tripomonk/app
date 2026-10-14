@@ -1384,6 +1384,9 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
     100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0) brightness(1)}}
   @keyframes collageDrift{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
   @media(prefers-reduced-motion:reduce){#splash .splash-collage{animation:none}#splash .sm-tile{animation-duration:.01s;filter:none;transform:none;opacity:1}}
+  /* 3D photo ring as the welcome-splash centerpiece (sits behind the veil + text) */
+  #splash .splash-ring{position:absolute;inset:0;z-index:0;display:flex;align-items:center;justify-content:center;padding-bottom:196px}
+  #splash .splash-ring .tmk-ring{height:430px;background:none;border-radius:0;overflow:visible}
   #splash .splash-veil{position:absolute;inset:0;z-index:0;pointer-events:none;
     background:linear-gradient(180deg,rgba(8,17,30,.30) 0%,rgba(8,17,30,.12) 26%,rgba(8,17,30,.72) 62%,var(--bg) 88%)}
   .splash .c{position:relative;z-index:1}
@@ -3106,6 +3109,18 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
     transition:transform .2s cubic-bezier(.3,1.4,.5,1),background .2s}
   .tgl.on{background:var(--accent);border-color:var(--accent)}
   .tgl.on i{transform:translateX(18px);background:#fff}
+  /* ===== 3D photo ring showcase (vanilla port of the Originkit RoundCarousel) ===== */
+  .tmk-ring-sec{margin:24px 0 6px}
+  .tmk-ring{position:relative;width:100%;height:300px;display:flex;align-items:center;justify-content:center;
+    overflow:hidden;border-radius:20px;touch-action:pan-y;cursor:grab;-webkit-tap-highlight-color:transparent;
+    background:radial-gradient(120% 90% at 50% 18%,rgba(47,107,255,.12),transparent 62%)}
+  .tmk-ring.dragging{cursor:grabbing}
+  .tmk-ring-tilt{transform-style:preserve-3d}
+  .tmk-ring-stage{position:relative;transform-style:preserve-3d;will-change:transform}
+  .tmk-ring-face{position:absolute;inset:0;transform-style:preserve-3d}
+  .tmk-ring-img{position:absolute;inset:0;overflow:hidden;background-size:cover;background-position:center;
+    backface-visibility:hidden;box-shadow:0 16px 40px rgba(0,0,0,.42)}
+  .tmk-ring-hint{text-align:center;font-size:11.5px;color:var(--muted2);margin-top:-2px}
   /* ===== TmkSwitch — spring toggle (transform/opacity only, 3-piece capsule) ===== */
   .tsw{position:relative;display:inline-block;flex:none;width:38px;height:22px;padding:0;margin:0;border:0;
     background:var(--card2);border-radius:999px;cursor:pointer;vertical-align:middle;overflow:hidden;
@@ -4149,6 +4164,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   <section class="view full active" id="splash" data-nonav>
     <div class="splash" id="splashBg">
       <div class="splash-collage" id="splashCollage"></div>
+      <div class="splash-ring" id="splashRing"></div>
       <div class="splash-veil"></div>
       <div class="top"><img src="icons/logo.svg" alt="Tripomonk" style="width:50px;height:50px;border-radius:13px"/></div>
       <div class="sub">Dream. Trek. Discover.</div>
@@ -4195,6 +4211,11 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
     <div id="gcHome"></div>
     <div class="sec" style="margin-top:20px"><h2>Trek News &amp; Alerts</h2><a onclick="go('news')">View all</a></div>
     <div id="homeNews"></div>
+    <div class="tmk-ring-sec" id="homeRingSec" style="display:none">
+      <div class="sec"><h2>The Himalaya, in motion</h2></div>
+      <div id="homeRing"></div>
+      <div class="tmk-ring-hint">Drag to spin · tap a photo to open the trek</div>
+    </div>
     <div class="sec" style="margin-top:22px"><h2>A little trail inspiration</h2></div>
     <div id="homeInspire" class="inspire"></div>
   </section>

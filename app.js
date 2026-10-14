@@ -1395,6 +1395,19 @@ function renderSplashCollage(){
   }
   box.innerHTML=html;
 }
+/* 3D photo ring as the welcome-splash centerpiece — decorative (no tap-to-open, so it never
+   bypasses "Start Your Journey"). Falls back to the masonry collage when photos are sparse. */
+function renderSplashRing(){
+  const host=document.getElementById('splashRing'), col=document.getElementById('splashCollage');
+  if(!host){ renderSplashCollage(); return; }
+  if(host._ring) return;                                           // build once
+  const imgs=[...new Set((treks||[]).map(t=>t.img).filter(Boolean))].slice(0,8).map(src=>({src}));  // no idx → tap inert
+  if(imgs.length<4){ renderSplashCollage(); return; }              // keep a visual on sparse data
+  if(col) col.style.display='none';
+  host.style.display='';
+  const inner=document.createElement('div'); host.innerHTML=''; host.appendChild(inner);
+  host._ring = tmkRing(inner, { images:imgs, imageWidth:158, imageHeight:300, spacing:4, speed:3, direction:'left', tilt:-5, perspective:1250, cornerRadius:20, innerDim:2.8 });
+}
 function initLoginBg(){
   const bg=document.getElementById('loginBg');
   const obg=document.getElementById('otpBg');
@@ -2535,6 +2548,101 @@ function planTypeStart(){
     }catch(e){el.textContent=full;}
   })();
 }
+/* ---- 3D photo ring (vanilla port of the Originkit RoundCarousel) --------------------
+   Trek photos arranged on a cylinder: auto-spins, drag + inertia, tap the front photo to
+   open that trek. Transform-only. Pauses when scrolled off-screen or the home view is
+   hidden (IntersectionObserver), and never auto-spins under prefers-reduced-motion — both
+   to keep the home screen from draining battery. */
+function tmkRing(el, opts){
+  opts = opts || {};
+  const images = (opts.images || []).filter(im => im && im.src);
+  if(!el || images.length < 2){ if(el) el.innerHTML=''; return null; }
+  const count = images.length;
+  const iw = opts.imageWidth || 150, ih = opts.imageHeight || 224;
+  const spacing = opts.spacing!=null?opts.spacing:4;
+  const speed = opts.speed!=null?opts.speed:3;
+  const dir = opts.direction==='right'?1:-1;
+  const sensitivity = opts.sensitivity!=null?opts.sensitivity:4;
+  const tilt = opts.tilt!=null?opts.tilt:-4;
+  const perspective = opts.perspective || 1300;
+  const radiusCss = opts.cornerRadius!=null?opts.cornerRadius:18;
+  const innerDim = opts.innerDim!=null?opts.innerDim:2.5;
+  const angle = 360/count;
+  const factor = 1 + spacing*0.15;
+  const radius = (iw*factor)/(2*Math.tan(Math.PI/count));       // same ring math as the React original
+  const degPerSec = speed*6*dir;
+  const reduce = (()=>{try{return matchMedia('(prefers-reduced-motion:reduce)').matches;}catch(e){return false;}})();
+  const safeUrl = (u)=> (typeof cssUrl==='function') ? cssUrl(u) : String(u||'').replace(/['"()\\]/g,'');
+
+  el.classList.add('tmk-ring');
+  el.style.perspective = perspective+'px';
+  const tiltW = document.createElement('div'); tiltW.className='tmk-ring-tilt'; tiltW.style.transform='rotateX('+tilt+'deg)';
+  const stage = document.createElement('div'); stage.className='tmk-ring-stage'; stage.style.width=iw+'px'; stage.style.height=ih+'px';
+  images.forEach((im,i)=>{
+    const face=document.createElement('div'); face.className='tmk-ring-face';
+    face.style.transform='rotateY('+(i*angle)+'deg) translateZ('+radius+'px)';
+    const front=document.createElement('div'); front.className='tmk-ring-img';
+    front.style.borderRadius=radiusCss+'px'; front.style.backgroundImage="url('"+safeUrl(im.src)+"')";
+    const back=document.createElement('div'); back.className='tmk-ring-img';
+    back.style.borderRadius=radiusCss+'px'; back.style.transform='rotateY(180deg)';
+    back.style.backgroundImage="url('"+safeUrl(im.src)+"')"; back.style.filter='brightness('+(innerDim/10)+')';
+    face.appendChild(front); face.appendChild(back); stage.appendChild(face);
+  });
+  tiltW.appendChild(stage); el.innerHTML=''; el.appendChild(tiltW);
+
+  let rotY=0, vel=0, last=0, raf=0, running=false, active=false, onScreen=false;
+  function apply(){ stage.style.transform='translateZ('+(-radius)+'px) rotateY('+rotY+'deg)'; }
+  apply();
+  function draw(now){
+    const dt = last?(now-last)/1000:0; last=now;
+    const f = Math.min(dt,0.1);
+    if(!active){
+      if(Math.abs(vel)>0.02){ rotY += vel*f; vel *= 0.94; }
+      else if(!reduce){ rotY += degPerSec*f; }
+      else { apply(); running=false; raf=0; return; }        // reduced-motion + settled → go idle
+    }
+    apply();
+    raf = requestAnimationFrame(draw);
+  }
+  function start(){ if(running || !onScreen) return; running=true; last=0; raf=requestAnimationFrame(draw); }
+  function stop(){ running=false; if(raf) cancelAnimationFrame(raf); raf=0; }
+
+  let io=null;
+  try{
+    io = new IntersectionObserver((ents)=>{ onScreen = ents.some(e=>e.isIntersecting); if(onScreen) start(); else stop(); }, {threshold:0.1});
+    io.observe(el);
+  }catch(e){ onScreen=true; start(); }
+
+  let downX=0, moved=0, downT=0;
+  el.addEventListener('pointerdown', e=>{ try{el.setPointerCapture(e.pointerId);}catch(_e){} active=true; downX=e.clientX; moved=0; downT=Date.now(); vel=0; el.classList.add('dragging'); start(); });
+  el.addEventListener('pointermove', e=>{ if(!active)return; const dx=e.clientX-downX; downX=e.clientX; const k=0.3*sensitivity; rotY += dx*k; vel = dx*k*60; moved += Math.abs(dx); });
+  function up(e){ if(!active)return; active=false; try{el.releasePointerCapture(e.pointerId);}catch(_e){} el.classList.remove('dragging');
+    if(moved < 8 && (Date.now()-downT) < 400) openFront();      // a tap (not a drag) opens the front trek
+    if(!running) start();
+  }
+  el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+  function openFront(){
+    let bi=0, bd=1e9;
+    for(let i=0;i<count;i++){ const a=(((i*angle+rotY)%360)+360)%360; const d=Math.min(a,360-a); if(d<bd){bd=d;bi=i;} }
+    const idx = images[bi] && images[bi].idx;
+    if(idx!=null && idx!=='' && typeof openDetail==='function') openDetail(Number(idx));
+  }
+  return { el, start, stop, destroy(){ stop(); try{io&&io.disconnect();}catch(_e){} el.innerHTML=''; delete el._ring; } };
+}
+
+function renderHomeRing(){
+  const el=document.getElementById('homeRing'), sec=document.getElementById('homeRingSec');
+  if(!el || el._ring) return;                                   // build once; IO handles pause/resume
+  const pool = (typeof treks!=='undefined' ? treks : []).filter(t=>t && t.img && (typeof isTour!=='function' || !isTour(t)));
+  const feat = pool.filter(t=>t.feat||t.pop);
+  const src = (feat.length>=6 ? feat : pool);
+  const seen=new Set(), imgs=[];
+  for(const t of src){ if(seen.has(t.img)) continue; seen.add(t.img); imgs.push({src:t.img, idx:t.idx}); if(imgs.length>=8) break; }
+  if(imgs.length < 4){ if(sec) sec.style.display='none'; return; }
+  if(sec) sec.style.display='';
+  el._ring = tmkRing(el, { images:imgs, imageWidth:150, imageHeight:224, spacing:4, speed:3, direction:'left', tilt:-4, perspective:1300, cornerRadius:18, innerDim:2.5 });
+}
+
 function renderHome(){
   const hav=document.getElementById('homeUserAv');
   if(hav)setAvatarEl(hav,getSavedName()||'Explorer',getSavedPhoto());
@@ -2550,6 +2658,7 @@ function renderHome(){
   makeCoverflow('homeList',list,trekCardCF,(t)=>openDetail(t.idx));
   renderHomeTours();   /* Road Trips & Tours rail (hidden until a tour exists) */
   renderInspire('homeInspire');   /* rotating travel quotes + trek fun facts, below Trek News */
+  renderHomeRing();               /* 3D photo ring showcase (builds once, pauses off-screen) */
   /* paint the host slot now (CTA), then swap in the rail if any trips are live */
   renderHomeHosts();
   renderGiftHome();
@@ -9884,7 +9993,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='527';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='529';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -12499,8 +12608,8 @@ loadCart();     /* adventure cart (per account) */
 /* just came back from a sign-out hard reset → show a clean, logged-out login screen */
 try{if(sessionStorage.getItem('tmk_logged_out')){sessionStorage.removeItem('tmk_logged_out');go('login');}}catch(e){}
 initAuth();     /* restore login session if user was previously signed in */
-/* plain background behind the photo collage (no full-bleed image) */
-renderSplashCollage();
+/* 3D photo ring as the welcome-splash centerpiece (falls back to the masonry collage) */
+renderSplashRing();
 initLoginBg();
 renderHomeChips();renderHome();renderQuick();
 hydrate();
