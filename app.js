@@ -2902,37 +2902,39 @@ function forecastStrip(days){
     +`<span class="fc-tl">${d.tmin!=null?Math.round(d.tmin)+'°':''}</span>`
     +`</div>`;}).join('')+'</div>';
 }
+/* one compact fact tile: icon on top, value, then label. Used for the scannable grid. */
+function dTile(icon,label,val,cls){
+  const glyph=String(icon||'').indexOf('msr:')===0 ? '<span class="msr">'+icon.slice(4)+'</span>' : ic(icon,19);
+  return '<div class="dfact-tile'+(cls?' '+cls:'')+'"><span class="dfact-tic">'+glyph+'</span><b>'+esc(val==null||val===''?'-':val)+'</b><small>'+esc(label)+'</small></div>';
+}
 function factsHTML(t,live){
   const fc=(live&&live.days)?forecastStrip(live.days):'';
-  const tempRow=(live&&live.tmin!=null&&live.tmax!=null)
-    ? dRow('temp','Temperature today',Math.round(live.tmin)+'° to '+Math.round(live.tmax)+'°C')
-    : dRow('temp','Temperature (typical)',t.temp);
-  /* no live reading = no air-quality row at all, rather than a made-up number */
-  const aqiRow=(live&&live.aqi!=null)
-    ? dRow('air','Air quality today',aqiBand(live.aqi)+' · '+live.aqi,'good')
-    : '';
+  const tempVal=(live&&live.tmin!=null&&live.tmax!=null)?(Math.round(live.tmin)+'° to '+Math.round(live.tmax)+'°C'):(t.temp||'-');
+  const tempLabel=(live&&live.tmin!=null)?'Temp today':'Temp (typical)';
+  /* no live reading = no air-quality tile at all, rather than a made-up number */
+  const aqiTile=(live&&live.aqi!=null)?[['air','Air quality',aqiBand(live.aqi)+' · '+live.aqi]]:[];
+  const grid=(tiles)=>'<div class="dfact-grid">'+tiles.map((x,i)=>dTile(x[0],x[1],x[2],(tiles.length%2&&i===tiles.length-1)?'span2':'')).join('')+'</div>';
+  const sub=(title)=>'<div class="dfact-sub">'+title+'</div>';
   if(isTour(t)){
     /* road trips get a TRIP-appropriate set, no elevation/fitness/railhead trek placeholders */
     const pk=pickupInfo(t);
     return fc
-      +dRow('calendar','Best time',t.best)
-      +dRow('altitude','Level',t.lvl)
-      +dRow('clock','Duration',t.dur)
-      +tempRow+aqiRow
-      +dRow('community','Group size',(KNOW[0]&&KNOW[0][1])||'8–15','gsep')
-      +dRow('user','Min age',(KNOW[1]&&KNOW[1][1])||'10+ yrs')
-      +dRow('pin','Pickup',pk.city,'gsep')
-      +(pk.drop?dRow('pin','Drop-off',pk.drop):'');
+      +grid([['calendar','Best time',t.best],['altitude','Level',t.lvl],['clock','Duration',t.dur],
+             ['temp',tempLabel,tempVal],['community','Group size',(KNOW[0]&&KNOW[0][1])||'8–15'],
+             ['user','Min age',(KNOW[1]&&KNOW[1][1])||'10+ yrs']].concat(aqiTile))
+      +sub('Getting there')+'<div class="dfacts">'
+        +dRow('pin','Pickup',pk.city)
+        +(pk.drop?dRow('pin','Drop-off',pk.drop):'')+'</div>';
   }
   const b=baseInfo(t);
   return fc
-    +dRow('altitude','Elevation',t.elev)
-    +dRow('cloud','Climate',t.climate)
-    +tempRow+aqiRow
-    +KNOW.map((k,i)=>dRow(k[0],k[2],k[1],i===0?'gsep':'')).join('')
-    +dRow('pin','Base town',b.town,'gsep')
-    +dRow('distance','Nearest rail',b.rail)
-    +dRow('msr:flight','Airport',b.air);
+    +grid([['altitude','Elevation',t.elev],['cloud','Climate',t.climate],['msr:hiking','Difficulty',t.lvl],
+           ['community','Group size',(KNOW[0]&&KNOW[0][1])||'8–15'],['user','Min age',(KNOW[1]&&KNOW[1][1])||'10+ yrs'],
+           ['temp',tempLabel,tempVal]].concat(aqiTile))
+    +sub('Getting there')+'<div class="dfacts">'
+      +dRow('pin','Base town',b.town)
+      +dRow('distance','Nearest rail',b.rail)
+      +dRow('msr:flight','Airport',b.air)+'</div>';
 }
 function renderDetailFacts(t){
   const box=document.getElementById('dFacts');if(!box)return;
@@ -9998,7 +10000,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='535';   /* bump with the service-worker CACHE version, lets the admin confirm the phone is on the latest code */
+const APP_BUILD='536';   /* bump with the service-worker CACHE version, lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
