@@ -1,5 +1,5 @@
 /* ============================================================
-   Tripomonk app v2 — logic (icons, data, screens, booking, QR, captain)
+   Tripomonk app v2, logic (icons, data, screens, booking, QR, captain)
    Edit the data arrays below to change treks/packing/community.
    ============================================================ */
 
@@ -81,7 +81,7 @@ const IMAP={menu:'menu',bell:'notifications',search:'search',sliders:'tune',back
   cloud:'partly_cloudy_day',air:'air',temp:'device_thermostat',flame:'whatshot',hills:'landscape_2',
   monitor:'monitor_heart',spo2:'spo2',steps:'directions_walk',fire:'local_fire_department',speed:'speed',watch:'watch',
   camera:'photo_camera',close:'close',photo:'image',powerbank:'battery_charging_full',trash:'delete',message:'send',lock2:'lock',repeat:'repeat'};
-/* a few icons render poorly in the Material font — use crisp inline SVGs instead */
+/* a few icons render poorly in the Material font, use crisp inline SVGs instead */
 const SVGIC={
   backpack:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9.5 3.2A2.5 2.5 0 0 1 14.5 3.2 6 6 0 0 1 18 8.6V19a2 2 0 0 1-2 2h-1v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5H8a2 2 0 0 1-2-2V8.6a6 6 0 0 1 3.5-5.4Zm.5.9A5 5 0 0 0 8.2 6h7.6A5 5 0 0 0 14 4.1a1.5 1.5 0 0 0-4 0ZM10 16h4v5h-4z"/><path d="M6 11H4.6a1.6 1.6 0 0 0-1.6 1.6V16h3zM18 11h1.4a1.6 1.6 0 0 1 1.6 1.6V16h-3z"/></svg>'
 };
@@ -104,7 +104,7 @@ function a11yClickables(root){const R=root||document;
 document.addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const el=e.target;
   if(el&&el.getAttribute&&el.getAttribute('role')==='button'&&el.hasAttribute('onclick')&&!/^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(el.tagName)){e.preventDefault();el.click();}});
 document.addEventListener('DOMContentLoaded',()=>{a11yClickables(document);
-  /* parts of a screen render later (weather, rails, gift designs…) — re-apply to the visible screen, debounced */
+  /* parts of a screen render later (weather, rails, gift designs…), re-apply to the visible screen, debounced */
   let _a11yT=null;try{new MutationObserver(()=>{clearTimeout(_a11yT);_a11yT=setTimeout(()=>{const v=document.querySelector('.view.active');if(v)a11yClickables(v);},250);})
     .observe(document.body,{childList:true,subtree:true});}catch(e){}});
 function hydrate(root){(root||document).querySelectorAll('[data-i]').forEach(el=>{el.innerHTML=ic(el.dataset.i,+el.dataset.sz||20);el.removeAttribute('data-i');});a11yClickables(root);fitCarousels(root);if(typeof addCarouselArrows==='function')addCarouselArrows(root);if(typeof animateTrekScores==='function')animateTrekScores();if(typeof tswUpgradeAll==='function')tswUpgradeAll(root);}
@@ -133,149 +133,149 @@ const treks=[
   {n:"Valley of Flowers",region:"Uttarakhand",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Valley_of_flowers_national_park%2C_Uttarakhand%2C_India_03_%28edit%29.jpg/1280px-Valley_of_flowers_national_park%2C_Uttarakhand%2C_India_03_%28edit%29.jpg",credit:"Original: Rohit Sharma Derivative work: UnpetitproleX · CC BY-SA 4.0 · Wikimedia Commons",r:4.9,rev:"2.0k",lvl:"Moderate",days:6,alt:"14,100 ft",dist:"38 km",best:"Jul – Sep",price:9499,
    desc:"A UNESCO World Heritage site that bursts into hundreds of alpine flowers in the monsoon, paired with Hemkund Sahib."},
   {n:"Hampta Pass",region:"Himachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Mesmerising_beauty_of_Hampta_pass_on_Chandrataal_Trek_Himachal_India.jpg/1280px-Mesmerising_beauty_of_Hampta_pass_on_Chandrataal_Trek_Himachal_India.jpg",credit:"Photos Worldwide · CC0 · Wikimedia Commons",r:4.7,rev:"890",lvl:"Moderate",days:5,alt:"14,100 ft",dist:"26 km",best:"Jun – Sep",price:9999,soon:true,
-   desc:"A dramatic crossover trek from the green Kullu valley to the barren landscapes of Lahaul — a trek of two worlds."},
+   desc:"A dramatic crossover trek from the green Kullu valley to the barren landscapes of Lahaul, a trek of two worlds."},
   {n:"Har Ki Dun",region:"Uttarakhand",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Entering_Har_Ki_Dun.JPG/1280px-Entering_Har_Ki_Dun.JPG",credit:"Omkar · CC BY-SA 4.0 · Wikimedia Commons",r:4.8,rev:"740",lvl:"Moderate",days:7,alt:"11,700 ft",dist:"44 km",best:"Apr – Jun",price:10499,
-   desc:"The 'Valley of Gods' — ancient villages, the Swargarohini massif and gentle river-side camps."},
+   desc:"The 'Valley of Gods', ancient villages, the Swargarohini massif and gentle river-side camps."},
   {n:"Nag Tibba",region:"Uttarakhand",img:"https://upload.wikimedia.org/wikipedia/commons/b/b3/Nag_Tibba_04.jpg",credit:"Bhuwan Mahajan · CC BY-SA 4.0 · Wikimedia Commons",r:4.6,rev:"1.5k",lvl:"Easy",days:2,alt:"9,915 ft",dist:"16 km",best:"Oct – Mar",price:3499,
-   desc:"The perfect weekend trek from Dehradun — summit views of the Bandarpunch range in a single night out."},
+   desc:"The perfect weekend trek from Dehradun, summit views of the Bandarpunch range in a single night out."},
   {n:"Roopkund",region:"Uttarakhand",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Roopkund_Lake.jpg/1280px-Roopkund_Lake.jpg",credit:"Schwiki · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"410",lvl:"Difficult",days:8,alt:"15,750 ft",dist:"53 km",best:"May – Jun",price:13999,
-   desc:"The mysterious skeleton lake — a demanding high-altitude classic for experienced trekkers."},
+   desc:"The mysterious skeleton lake, a demanding high-altitude classic for experienced trekkers."},
   {n:"Yulla Kanda",region:"Himachal",img:U+"1606898296502-40d8c37e994b",r:4.8,rev:"New",lvl:"Moderate",days:5,alt:"11,700 ft",dist:"18 km",best:"May – Oct",price:10500,dep:"Shimla",
-   desc:"A quiet Kinnaur trail to the Yulla Kanda meadow, home to a Lord Krishna temple believed to be the highest of its kind. Apple orchards and cedar give way to open ridges with Kinner Kailash across the valley — and because Kinnaur sits in the rain shadow, it walks well right through the monsoon."},
+   desc:"A quiet Kinnaur trail to the Yulla Kanda meadow, home to a Lord Krishna temple believed to be the highest of its kind. Apple orchards and cedar give way to open ridges with Kinner Kailash across the valley, and because Kinnaur sits in the rain shadow, it walks well right through the monsoon."},
   /* ---- Coming soon (other regions) ---- */
-  {n:"Triund",region:"Himachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Triund_%2822356802630%29.jpg/1280px-Triund_%2822356802630%29.jpg",credit:"Ashish Gupta from Noida, India · CC BY 2.0 · Wikimedia Commons",r:4.6,rev:"—",lvl:"Easy",days:2,alt:"9,350 ft",dist:"14 km",best:"Mar – Jun",price:4999,soon:true,desc:"A short, scenic ridge trek above McLeod Ganj with sweeping views of the Dhauladhar range."},
-  {n:"Bhrigu Lake",region:"Himachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Bhrigu_Lake_by_Ahmad_Faiz_Mustafa_%281%29.jpg/1280px-Bhrigu_Lake_by_Ahmad_Faiz_Mustafa_%281%29.jpg",credit:"In Transit · CC BY 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:4,alt:"14,100 ft",dist:"25 km",best:"May – Oct",price:9499,soon:true,desc:"High-altitude alpine lake above Manali, reached through rolling meadows."},
-  {n:"Kashmir Great Lakes",region:"Kashmir",img:"https://upload.wikimedia.org/wikipedia/commons/3/30/Kashmir_Great_Lakes.jpg",credit:"Prajna Prabhu · CC0 · Wikimedia Commons",r:4.9,rev:"—",lvl:"Moderate",days:7,alt:"13,800 ft",dist:"72 km",best:"Jul – Sep",price:16999,soon:true,desc:"India's most beautiful trek — a string of alpine lakes set in emerald meadows."},
-  {n:"Tarsar Marsar",region:"Kashmir",img:"https://upload.wikimedia.org/wikipedia/commons/e/e5/Tarsar_Marsar_Trek.jpg",credit:"Riteshmishera951150 · CC0 · Wikimedia Commons",r:4.8,rev:"—",lvl:"Moderate",days:6,alt:"13,000 ft",dist:"48 km",best:"Jul – Sep",price:15499,soon:true,desc:"Twin almond-shaped alpine lakes in the Kashmir valley, surrounded by wildflowers."},
-  {n:"Markha Valley",region:"Ladakh",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Kongmaru_La_Pass%2C_Markha_Valley_trek%2C_Ladakh%2C_India_%282018%29.jpg/1280px-Kongmaru_La_Pass%2C_Markha_Valley_trek%2C_Ladakh%2C_India_%282018%29.jpg",credit:"Chris Hunkeler from Carlsbad, California, USA · CC BY-SA 2.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Difficult",days:7,alt:"17,060 ft",dist:"65 km",best:"Jun – Sep",price:18999,soon:true,desc:"A classic Ladakh teahouse trek through remote villages and high passes."},
-  {n:"Chadar Trek",region:"Ladakh",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Chadar_trek_image_2.jpg/1280px-Chadar_trek_image_2.jpg",credit:"Goutam1962 · CC BY-SA 4.0 · Wikimedia Commons",r:4.8,rev:"—",lvl:"Difficult",days:9,alt:"11,150 ft",dist:"62 km",best:"Jan – Feb",price:24999,soon:true,desc:"The legendary walk on the frozen Zanskar river — a true winter expedition."},
-  {n:"Goecha La",region:"Sikkim",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Indian_hikers_with_country_flag_on_hills_of_Goecha_La_Trek%2C_in_West_Sikkim_district_of_Sikkim%2C_photographed_by_Yogabrata_Chakraborty%2C_on_October_18%2C_2021.jpg/1280px-Indian_hikers_with_country_flag_on_hills_of_Goecha_La_Trek%2C_in_West_Sikkim_district_of_Sikkim%2C_photographed_by_Yogabrata_Chakraborty%2C_on_October_18%2C_2021.jpg",credit:"Billjones94 · CC BY-SA 4.0 · Wikimedia Commons",r:4.8,rev:"—",lvl:"Difficult",days:10,alt:"16,200 ft",dist:"90 km",best:"Apr – May",price:21999,soon:true,desc:"Up close with Kanchenjunga, the world's third-highest peak, through rhododendron forest."},
-  {n:"Sandakphu",region:"Sikkim",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Abies_densa_foliage%2C_Sandakphu%2C_Singalila_National_Park%2C_Sikkim.jpg/1280px-Abies_densa_foliage%2C_Sandakphu%2C_Singalila_National_Park%2C_Sikkim.jpg",credit:"Debojyoti Dey · CC BY-SA 4.0 · Wikimedia Commons",r:4.6,rev:"—",lvl:"Moderate",days:6,alt:"11,930 ft",dist:"50 km",best:"Oct – Dec",price:13499,soon:true,desc:"Walk the Singalila ridge for views of four of the five highest peaks on earth."}
+  {n:"Triund",region:"Himachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Triund_%2822356802630%29.jpg/1280px-Triund_%2822356802630%29.jpg",credit:"Ashish Gupta from Noida, India · CC BY 2.0 · Wikimedia Commons",r:4.6,rev:"",lvl:"Easy",days:2,alt:"9,350 ft",dist:"14 km",best:"Mar – Jun",price:4999,soon:true,desc:"A short, scenic ridge trek above McLeod Ganj with sweeping views of the Dhauladhar range."},
+  {n:"Bhrigu Lake",region:"Himachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Bhrigu_Lake_by_Ahmad_Faiz_Mustafa_%281%29.jpg/1280px-Bhrigu_Lake_by_Ahmad_Faiz_Mustafa_%281%29.jpg",credit:"In Transit · CC BY 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:4,alt:"14,100 ft",dist:"25 km",best:"May – Oct",price:9499,soon:true,desc:"High-altitude alpine lake above Manali, reached through rolling meadows."},
+  {n:"Kashmir Great Lakes",region:"Kashmir",img:"https://upload.wikimedia.org/wikipedia/commons/3/30/Kashmir_Great_Lakes.jpg",credit:"Prajna Prabhu · CC0 · Wikimedia Commons",r:4.9,rev:"",lvl:"Moderate",days:7,alt:"13,800 ft",dist:"72 km",best:"Jul – Sep",price:16999,soon:true,desc:"India's most beautiful trek, a string of alpine lakes set in emerald meadows."},
+  {n:"Tarsar Marsar",region:"Kashmir",img:"https://upload.wikimedia.org/wikipedia/commons/e/e5/Tarsar_Marsar_Trek.jpg",credit:"Riteshmishera951150 · CC0 · Wikimedia Commons",r:4.8,rev:"",lvl:"Moderate",days:6,alt:"13,000 ft",dist:"48 km",best:"Jul – Sep",price:15499,soon:true,desc:"Twin almond-shaped alpine lakes in the Kashmir valley, surrounded by wildflowers."},
+  {n:"Markha Valley",region:"Ladakh",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Kongmaru_La_Pass%2C_Markha_Valley_trek%2C_Ladakh%2C_India_%282018%29.jpg/1280px-Kongmaru_La_Pass%2C_Markha_Valley_trek%2C_Ladakh%2C_India_%282018%29.jpg",credit:"Chris Hunkeler from Carlsbad, California, USA · CC BY-SA 2.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Difficult",days:7,alt:"17,060 ft",dist:"65 km",best:"Jun – Sep",price:18999,soon:true,desc:"A classic Ladakh teahouse trek through remote villages and high passes."},
+  {n:"Chadar Trek",region:"Ladakh",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Chadar_trek_image_2.jpg/1280px-Chadar_trek_image_2.jpg",credit:"Goutam1962 · CC BY-SA 4.0 · Wikimedia Commons",r:4.8,rev:"",lvl:"Difficult",days:9,alt:"11,150 ft",dist:"62 km",best:"Jan – Feb",price:24999,soon:true,desc:"The legendary walk on the frozen Zanskar river, a true winter expedition."},
+  {n:"Goecha La",region:"Sikkim",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Indian_hikers_with_country_flag_on_hills_of_Goecha_La_Trek%2C_in_West_Sikkim_district_of_Sikkim%2C_photographed_by_Yogabrata_Chakraborty%2C_on_October_18%2C_2021.jpg/1280px-Indian_hikers_with_country_flag_on_hills_of_Goecha_La_Trek%2C_in_West_Sikkim_district_of_Sikkim%2C_photographed_by_Yogabrata_Chakraborty%2C_on_October_18%2C_2021.jpg",credit:"Billjones94 · CC BY-SA 4.0 · Wikimedia Commons",r:4.8,rev:"",lvl:"Difficult",days:10,alt:"16,200 ft",dist:"90 km",best:"Apr – May",price:21999,soon:true,desc:"Up close with Kanchenjunga, the world's third-highest peak, through rhododendron forest."},
+  {n:"Sandakphu",region:"Sikkim",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Abies_densa_foliage%2C_Sandakphu%2C_Singalila_National_Park%2C_Sikkim.jpg/1280px-Abies_densa_foliage%2C_Sandakphu%2C_Singalila_National_Park%2C_Sikkim.jpg",credit:"Debojyoti Dey · CC BY-SA 4.0 · Wikimedia Commons",r:4.6,rev:"",lvl:"Moderate",days:6,alt:"11,930 ft",dist:"50 km",best:"Oct – Dec",price:13499,soon:true,desc:"Walk the Singalila ridge for views of four of the five highest peaks on earth."}
 ,
   /* ---- imported from All-treks sheet (coming soon) ---- */
-  {n:"Hemkund Sahib",region:"Uttarakhand",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Hemkund_Sahib_and_Lokpal_Lake.jpg/1280px-Hemkund_Sahib_and_Lokpal_Lake.jpg",credit:"Harshit SR · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:6,alt:"15,200 ft",dist:"—",best:"May – Oct",price:12000,soon:true,dep:"Rishikesh",desc:"A 6-day moderate trek in Uttarakhand, topping out at 15,200 ft. Best time to go: May – Oct."},
-  {n:"Dayara Bugyal",region:"Uttarakhand",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/En_route_to_Dayara_Bugyal_at_Gui_camp_03.jpg/1280px-En_route_to_Dayara_Bugyal_at_Gui_camp_03.jpg",credit:"Satdeep Gill · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:5,alt:"12,100 ft",dist:"—",best:"May – Jun, Oct – Nov",price:10500,soon:true,dep:"Dehradun",desc:"A 5-day moderate trek in Uttarakhand, topping out at 12,100 ft. Best time to go: May – Jun, Oct – Nov."},
-  {n:"Kuari Pass",region:"Uttarakhand",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Dunagiri_from_Kuari_Pass.jpg/1280px-Dunagiri_from_Kuari_Pass.jpg",credit:"Sumodm · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:6,alt:"12,500 ft",dist:"—",best:"Mar – Jun, Oct – Feb",price:12000,soon:true,dep:"Rishikesh",desc:"A 6-day moderate trek in Uttarakhand, topping out at 12,500 ft. Best time to go: Mar – Jun, Oct – Feb."},
-  {n:"Chopta Chandrashila",region:"Uttarakhand",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Chandrashila_Panorama.jpg/1280px-Chandrashila_Panorama.jpg",credit:"Drashokk · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:3,alt:"13,100 ft",dist:"—",best:"Apr – Jun, Sep – Nov",price:7500,soon:true,dep:"Rishikesh",desc:"A 3-day easy trek in Uttarakhand, topping out at 13,100 ft. Best time to go: Apr – Jun, Sep – Nov."},
-  {n:"Pangarchulla Peak",region:"Uttarakhand",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Pangarchulla_Peak.jpg/1280px-Pangarchulla_Peak.jpg",credit:"ShwethaSulegai · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Difficult",days:7,alt:"15,100 ft",dist:"—",best:"Apr – May",price:13500,soon:true,dep:"Dehradun",desc:"A 7-day difficult trek in Uttarakhand, topping out at 15,100 ft. Best time to go: Apr – May."},
-  {n:"Satopanth Lake",region:"Uttarakhand",img:U+"1714744715493-ad89b7ff503e",r:4.7,rev:"—",lvl:"Difficult",days:8,alt:"15,100 ft",dist:"—",best:"May – Jun, Sep – Oct",price:15500,soon:true,dep:"Dehradun",desc:"A 8-day difficult trek in Uttarakhand, topping out at 15,100 ft. Best time to go: May – Jun, Sep – Oct."},
-  {n:"Bali Pass",region:"Uttarakhand",img:U+"1513614835783-51537729c8ba",r:4.7,rev:"—",lvl:"Difficult",days:8,alt:"16,200 ft",dist:"—",best:"May – Jun, Sep – Oct",price:15500,soon:true,dep:"Dehradun",desc:"A 8-day difficult trek in Uttarakhand, topping out at 16,200 ft. Best time to go: May – Jun, Sep – Oct."},
-  {n:"Dodital Darwa Pass",region:"Uttarakhand",img:U+"1732510951898-416631a45e35",r:4.7,rev:"—",lvl:"Moderate",days:7,alt:"13,500 ft",dist:"—",best:"Apr – Jun, Sep – Nov",price:13500,soon:true,dep:"Dehradun",desc:"A 7-day moderate trek in Uttarakhand, topping out at 13,500 ft. Best time to go: Apr – Jun, Sep – Nov."},
-  {n:"Gaumukh Tapovan",region:"Uttarakhand",img:U+"1714744715493-ad89b7ff503e",r:4.7,rev:"—",lvl:"Difficult",days:8,alt:"14,600 ft",dist:"—",best:"May – Jun, Sep – Oct",price:15500,soon:true,dep:"Dehradun",desc:"A 8-day difficult trek in Uttarakhand, topping out at 14,600 ft. Best time to go: May – Jun, Sep – Oct."},
-  {n:"Pindari Glacier",region:"Uttarakhand",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Pindari_glacier%2C_Uttarakhand%2C_India.jpg/1280px-Pindari_glacier%2C_Uttarakhand%2C_India.jpg",credit:"Yann (talk) · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:7,alt:"12,300 ft",dist:"—",best:"Apr – Jun, Sep – Oct",price:13500,soon:true,dep:"Kathgodam",desc:"A 7-day moderate trek in Uttarakhand, topping out at 12,300 ft. Best time to go: Apr – Jun, Sep – Oct."},
-  {n:"Kedartal",region:"Uttarakhand",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/Kedartal.jpg/1280px-Kedartal.jpg",credit:"Peter Andersen · CC BY-SA 3.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Difficult",days:7,alt:"15,500 ft",dist:"—",best:"May – Jun, Sep – Oct",price:13500,soon:true,dep:"Dehradun",desc:"A 7-day difficult trek in Uttarakhand, topping out at 15,500 ft. Best time to go: May – Jun, Sep – Oct."},
-  {n:"Rupin Pass",region:"Uttarakhand",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/Male_Plumbeous_Water_Redstart_at_Rupin_Pass_02.jpg/1280px-Male_Plumbeous_Water_Redstart_at_Rupin_Pass_02.jpg",credit:"Fossegrimx · CC BY 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Difficult",days:8,alt:"15,250 ft",dist:"—",best:"May – Jun, Sep – Oct",price:15500,soon:true,dep:"Dehradun",desc:"A 8-day difficult trek in Uttarakhand, topping out at 15,250 ft. Best time to go: May – Jun, Sep – Oct."},
-  {n:"Phulara Ridge",region:"Uttarakhand",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Phulara_ridge.jpg/1280px-Phulara_ridge.jpg",credit:"Pathaharapathik · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:6,alt:"12,100 ft",dist:"—",best:"May – Jun, Sep – Nov",price:12000,soon:true,dep:"Dehradun",desc:"A 6-day moderate trek in Uttarakhand, topping out at 12,100 ft. Best time to go: May – Jun, Sep – Nov."},
-  {n:"Borasu Pass",region:"Uttarakhand",img:"https://upload.wikimedia.org/wikipedia/commons/8/86/Borasupass22.jpg",r:4.7,rev:"—",lvl:"Difficult",days:8,alt:"17,224 ft",dist:"—",best:"May – Jun, Sep – Oct",price:15500,soon:true,dep:"Dehradun",desc:"A 8-day difficult trek in Uttarakhand, topping out at 17,224 ft. Best time to go: May – Jun, Sep – Oct."},
-  {n:"Beas Kund",region:"Himachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Beas_kund_holy_place.jpg/1280px-Beas_kund_holy_place.jpg",credit:"Gaurav Dhingra · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:3,alt:"12,700 ft",dist:"—",best:"May – Oct",price:7500,soon:true,dep:"Manali",desc:"A 3-day easy trek in Himachal, topping out at 12,700 ft. Best time to go: May – Oct."},
-  {n:"Pin Parvati Pass",region:"Himachal",img:U+"1606898296502-40d8c37e994b",r:4.7,rev:"—",lvl:"Difficult",days:11,alt:"17,450 ft",dist:"—",best:"Jul – Sep",price:20000,soon:true,dep:"Manali",desc:"A 11-day difficult trek in Himachal, topping out at 17,450 ft. Best time to go: Jul – Sep."},
-  {n:"Sar Pass",region:"Himachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Sar_pass%2C_himachal_pradesh.jpg/1280px-Sar_pass%2C_himachal_pradesh.jpg",credit:"T.prachi · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:5,alt:"13,800 ft",dist:"—",best:"May – Jun",price:10500,soon:true,dep:"Kasol",desc:"A 5-day moderate trek in Himachal, topping out at 13,800 ft. Best time to go: May – Jun."},
-  {n:"Kareri Lake",region:"Himachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Shiva_Temple_at_Kareri_Lake.jpg/1280px-Shiva_Temple_at_Kareri_Lake.jpg",credit:"Tanvi.sharmaaa · CC BY 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:3,alt:"9,650 ft",dist:"—",best:"May – Jul, Sep – Nov",price:7500,soon:true,dep:"Dharamshala",desc:"A 3-day moderate trek in Himachal, topping out at 9,650 ft. Best time to go: May – Jul, Sep – Nov."},
-  {n:"Indrahar Pass",region:"Himachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Looking_up_to_the_Indrahar_Pass_%2822356846090%29.jpg/1280px-Looking_up_to_the_Indrahar_Pass_%2822356846090%29.jpg",credit:"Ashish Gupta from Noida, India · CC BY 2.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Difficult",days:5,alt:"14,245 ft",dist:"—",best:"May – Oct",price:10500,soon:true,dep:"McLeodganj",desc:"A 5-day difficult trek in Himachal, topping out at 14,245 ft. Best time to go: May – Oct."},
-  {n:"Kheerganga",region:"Himachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Kheerganga_is_a_pious_hot_water_spring_Himachal_India.jpg/1280px-Kheerganga_is_a_pious_hot_water_spring_Himachal_India.jpg",credit:"Photos Worldwide · CC0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:2,alt:"9,700 ft",dist:"—",best:"Apr – Jun, Sep – Oct",price:5500,soon:true,dep:"Kasol",desc:"A 2-day easy trek in Himachal, topping out at 9,700 ft. Best time to go: Apr – Jun, Sep – Oct."},
-  {n:"Chandrakhani Pass",region:"Himachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Chandrakhani_pass_1%2C_himachal_pradesh.jpg/1280px-Chandrakhani_pass_1%2C_himachal_pradesh.jpg",credit:"Premdasan · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:5,alt:"12,030 ft",dist:"—",best:"May – Oct",price:10500,soon:true,dep:"Manali",desc:"A 5-day moderate trek in Himachal, topping out at 12,030 ft. Best time to go: May – Oct."},
-  {n:"Deo Tibba Base Camp",region:"Himachal",img:U+"1606898296502-40d8c37e994b",r:4.7,rev:"—",lvl:"Moderate",days:6,alt:"14,700 ft",dist:"—",best:"May – Oct",price:12000,soon:true,dep:"Manali",desc:"A 6-day moderate trek in Himachal, topping out at 14,700 ft. Best time to go: May – Oct."},
-  {n:"Friendship Peak",region:"Himachal",img:U+"1629976791862-5749e12b2f40",r:4.7,rev:"—",lvl:"Difficult",days:8,alt:"17,350 ft",dist:"—",best:"May – Oct",price:15500,soon:true,dep:"Manali",desc:"A 8-day difficult trek in Himachal, topping out at 17,350 ft. Best time to go: May – Oct."},
-  {n:"Bara Bhangal",region:"Himachal",img:U+"1644902560705-740850bc47b8",r:4.7,rev:"—",lvl:"Difficult",days:9,alt:"16,000 ft",dist:"—",best:"Jun – Oct",price:17000,soon:true,dep:"Manali",desc:"A 9-day difficult trek in Himachal, topping out at 16,000 ft. Best time to go: Jun – Oct."},
-  {n:"Miyar Valley",region:"Himachal",img:U+"1606898296502-40d8c37e994b",r:4.7,rev:"—",lvl:"Moderate",days:7,alt:"13,800 ft",dist:"—",best:"Jun – Sep",price:13500,soon:true,dep:"Manali",desc:"A 7-day moderate trek in Himachal, topping out at 13,800 ft. Best time to go: Jun – Sep."},
-  {n:"Lamadugh",region:"Himachal",img:U+"1629976791862-5749e12b2f40",r:4.7,rev:"—",lvl:"Easy",days:2,alt:"9,900 ft",dist:"—",best:"Apr – Jun, Sep – Dec",price:5500,soon:true,dep:"Manali",desc:"A 2-day easy trek in Himachal, topping out at 9,900 ft. Best time to go: Apr – Jun, Sep – Dec."},
-  {n:"Patalsu Peak",region:"Himachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Patalsu_Trek_-_Basic_Mountaineering_course_-_Inu_Etc.jpg/1280px-Patalsu_Trek_-_Basic_Mountaineering_course_-_Inu_Etc.jpg",credit:"Inu Etc · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:3,alt:"13,845 ft",dist:"—",best:"May – Oct",price:7500,soon:true,dep:"Manali",desc:"A 3-day moderate trek in Himachal, topping out at 13,845 ft. Best time to go: May – Oct."},
-  {n:"Seven Lakes",region:"Himachal",img:U+"1606898296502-40d8c37e994b",r:4.7,rev:"—",lvl:"Moderate",days:6,alt:"13,800 ft",dist:"—",best:"May – Jun, Sep – Oct",price:12000,soon:true,dep:"Dharamshala",desc:"A 6-day moderate trek in Himachal, topping out at 13,800 ft. Best time to go: May – Jun, Sep – Oct."},
-  {n:"Kugti Pass",region:"Himachal",img:U+"1629976791862-5749e12b2f40",r:4.7,rev:"—",lvl:"Difficult",days:8,alt:"16,600 ft",dist:"—",best:"Mid-Jun – Mid-Oct",price:15500,soon:true,dep:"Pathankot",desc:"A 8-day difficult trek in Himachal, topping out at 16,600 ft. Best time to go: Mid-Jun – Mid-Oct."},
-  {n:"Sham Valley",region:"Ladakh",img:"https://upload.wikimedia.org/wikipedia/commons/5/50/Sham_Valley_Ladakh.jpg",credit:"Himalayan community and knowledge · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:3,alt:"12,500 ft",dist:"—",best:"May – Sep",price:7500,soon:true,dep:"Leh",desc:"A 3-day easy trek in Ladakh, topping out at 12,500 ft. Best time to go: May – Sep."},
-  {n:"Stok Kangri Base Camp",region:"Ladakh",img:U+"1577516311194-eb14c570a137",r:4.7,rev:"—",lvl:"Moderate",days:5,alt:"16,500 ft",dist:"—",best:"Jul – Sep",price:10500,soon:true,dep:"Leh",desc:"A 5-day moderate trek in Ladakh, topping out at 16,500 ft. Best time to go: Jul – Sep."},
-  {n:"Kang Yatse II",region:"Ladakh",img:U+"1718429205172-0d91b73ab23c",r:4.7,rev:"—",lvl:"Difficult",days:9,alt:"20,500 ft",dist:"—",best:"Jun – Sep",price:17000,soon:true,dep:"Leh",desc:"A 9-day difficult trek in Ladakh, topping out at 20,500 ft. Best time to go: Jun – Sep."},
-  {n:"Rumtse to Tso Moriri",region:"Ladakh",img:U+"1577516311194-eb14c570a137",r:4.7,rev:"—",lvl:"Difficult",days:8,alt:"17,500 ft",dist:"—",best:"Jun – Sep",price:15500,soon:true,dep:"Leh",desc:"A 8-day difficult trek in Ladakh, topping out at 17,500 ft. Best time to go: Jun – Sep."},
-  {n:"Lamayuru to Chilling",region:"Ladakh",img:U+"1718429205172-0d91b73ab23c",r:4.7,rev:"—",lvl:"Moderate",days:5,alt:"16,800 ft",dist:"—",best:"Jun – Sep",price:10500,soon:true,dep:"Leh",desc:"A 5-day moderate trek in Ladakh, topping out at 16,800 ft. Best time to go: Jun – Sep."},
-  {n:"Nubra Valley",region:"Ladakh",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Nubra_Valley_2.jpg/1280px-Nubra_Valley_2.jpg",credit:"KennyOMG · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:6,alt:"17,000 ft",dist:"—",best:"Jun – Sep",price:12000,soon:true,dep:"Leh",desc:"A 6-day moderate trek in Ladakh, topping out at 17,000 ft. Best time to go: Jun – Sep."},
-  {n:"Dzo Jongo",region:"Ladakh",img:U+"1718429205172-0d91b73ab23c",r:4.7,rev:"—",lvl:"Difficult",days:8,alt:"20,000 ft",dist:"—",best:"Jul – Sep",price:15500,soon:true,dep:"Leh",desc:"A 8-day difficult trek in Ladakh, topping out at 20,000 ft. Best time to go: Jul – Sep."},
-  {n:"Stok La",region:"Ladakh",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Stok_Palace%2C_Ladakh_06.jpg/1280px-Stok_Palace%2C_Ladakh_06.jpg",credit:"Deepank Ranka · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:5,alt:"16,600 ft",dist:"—",best:"Jun – Sep",price:10500,soon:true,dep:"Leh",desc:"A 5-day moderate trek in Ladakh, topping out at 16,600 ft. Best time to go: Jun – Sep."},
-  {n:"Snow Leopard",region:"Ladakh",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/A_snow_leopard_wild_Ladakh_DSCN4780_02.jpg/1280px-A_snow_leopard_wild_Ladakh_DSCN4780_02.jpg",credit:"T. R. Shankar Raman · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:8,alt:"15,500 ft",dist:"—",best:"Nov – Apr",price:15500,soon:true,dep:"Leh",desc:"A 8-day moderate trek in Ladakh, topping out at 15,500 ft. Best time to go: Nov – Apr."},
-  {n:"Parang La",region:"Ladakh",img:U+"1577516311194-eb14c570a137",r:4.7,rev:"—",lvl:"Difficult",days:12,alt:"18,300 ft",dist:"—",best:"Jun – Sep",price:21500,soon:true,dep:"Manali",desc:"A 12-day difficult trek in Ladakh, topping out at 18,300 ft. Best time to go: Jun – Sep."},
-  {n:"Nafran Valley",region:"Kashmir",img:U+"1756847845343-7a1053567775",r:4.7,rev:"—",lvl:"Moderate",days:7,alt:"13,100 ft",dist:"—",best:"Jul – Sep",price:13500,soon:true,dep:"Srinagar",desc:"A 7-day moderate trek in Kashmir, topping out at 13,100 ft. Best time to go: Jul – Sep."},
-  {n:"Tulian Lake",region:"Kashmir",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Tulian_Lake.jpg/1280px-Tulian_Lake.jpg",credit:"Raqueeb Mir · CC BY-SA 3.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:4,alt:"12,900 ft",dist:"—",best:"May – Oct",price:9000,soon:true,dep:"Srinagar",desc:"A 4-day moderate trek in Kashmir, topping out at 12,900 ft. Best time to go: May – Oct."},
-  {n:"Gangbal Lake",region:"Kashmir",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/GangbalPanorama.jpg/1280px-GangbalPanorama.jpg",credit:"Mohamad Talib Bhat · CC BY-SA 3.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:5,alt:"11,800 ft",dist:"—",best:"Jun – Sep",price:10500,soon:true,dep:"Srinagar",desc:"A 5-day moderate trek in Kashmir, topping out at 11,800 ft. Best time to go: Jun – Sep."},
-  {n:"Lidderwat",region:"Kashmir",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Tiya_on_Pony_Trek_from_Aru_to_Lidderwat_%2814391496017%29.jpg/1280px-Tiya_on_Pony_Trek_from_Aru_to_Lidderwat_%2814391496017%29.jpg",credit:"Mike Prince from Bangalore, India · CC BY 2.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:3,alt:"9,100 ft",dist:"—",best:"Apr – Oct",price:7500,soon:true,dep:"Srinagar",desc:"A 3-day easy trek in Kashmir, topping out at 9,100 ft. Best time to go: Apr – Oct."},
-  {n:"Gurez Valley",region:"Kashmir",img:"https://upload.wikimedia.org/wikipedia/commons/7/76/A_calm_morning_in_the_farmland_of_Markoot_Village_%2C_Gurez_Valley%2C_Kashmir.jpg",credit:"Captured by Kausar Akhoon · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:6,alt:"11,500 ft",dist:"—",best:"Jul – Sep",price:12000,soon:true,dep:"Srinagar",desc:"A 6-day moderate trek in Kashmir, topping out at 11,500 ft. Best time to go: Jul – Sep."},
-  {n:"Naranag Mahlish",region:"Kashmir",img:U+"1732510291351-43c68b3ca022",r:4.7,rev:"—",lvl:"Moderate",days:6,alt:"12,800 ft",dist:"—",best:"Jun – Sep",price:12000,soon:true,dep:"Srinagar",desc:"A 6-day moderate trek in Kashmir, topping out at 12,800 ft. Best time to go: Jun – Sep."},
-  {n:"Great Kolahoi Glacier",region:"Kashmir",img:U+"1756847845343-7a1053567775",r:4.7,rev:"—",lvl:"Difficult",days:6,alt:"12,500 ft",dist:"—",best:"Jun – Sep",price:12000,soon:true,dep:"Srinagar",desc:"A 6-day difficult trek in Kashmir, topping out at 12,500 ft. Best time to go: Jun – Sep."},
-  {n:"Sunset Peak",region:"Kashmir",img:U+"1606898296502-40d8c37e994b",r:4.7,rev:"—",lvl:"Difficult",days:7,alt:"15,000 ft",dist:"—",best:"Jul – Sep",price:13500,soon:true,dep:"Srinagar",desc:"A 7-day difficult trek in Kashmir, topping out at 15,000 ft. Best time to go: Jul – Sep."},
-  {n:"Harmukh Peak Base Camp",region:"Kashmir",img:U+"1756847845343-7a1053567775",r:4.7,rev:"—",lvl:"Moderate",days:5,alt:"13,000 ft",dist:"—",best:"Jun – Sep",price:10500,soon:true,dep:"Srinagar",desc:"A 5-day moderate trek in Kashmir, topping out at 13,000 ft. Best time to go: Jun – Sep."},
-  {n:"Kousarnag Lake",region:"Kashmir",img:U+"1732510291351-43c68b3ca022",r:4.7,rev:"—",lvl:"Moderate",days:5,alt:"13,200 ft",dist:"—",best:"Jun – Sep",price:10500,soon:true,dep:"Srinagar",desc:"A 5-day moderate trek in Kashmir, topping out at 13,200 ft. Best time to go: Jun – Sep."},
-  {n:"Dzongri",region:"Sikkim",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Dzongri_La.jpg/1280px-Dzongri_La.jpg",credit:"Rizimd · CC BY-SA 3.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:6,alt:"13,200 ft",dist:"—",best:"Mar – May, Sep – Nov",price:12000,soon:true,dep:"Bagdogra / NJP",desc:"A 6-day moderate trek in Sikkim, topping out at 13,200 ft. Best time to go: Mar – May, Sep – Nov."},
-  {n:"Green Lake",region:"Sikkim",img:U+"1589340532046-e505aa832cd1",r:4.7,rev:"—",lvl:"Difficult",days:11,alt:"16,000 ft",dist:"—",best:"Apr – May, Oct – Nov",price:20000,soon:true,dep:"Gangtok",desc:"A 11-day difficult trek in Sikkim, topping out at 16,000 ft. Best time to go: Apr – May, Oct – Nov."},
-  {n:"Singalila Ridge",region:"Sikkim",img:"https://upload.wikimedia.org/wikipedia/commons/f/fc/Kanchendzonga_from_sandakaphu.jpg",r:4.7,rev:"—",lvl:"Moderate",days:7,alt:"12,000 ft",dist:"—",best:"Mar – May, Oct – Nov",price:13500,soon:true,dep:"Darjeeling",desc:"A 7-day moderate trek in Sikkim, topping out at 12,000 ft. Best time to go: Mar – May, Oct – Nov."},
-  {n:"Kanchenjunga Base Camp",region:"Sikkim",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/Samiti_lake%2C_near_Kanchenjunga.jpg/1280px-Samiti_lake%2C_near_Kanchenjunga.jpg",credit:"Wikimedia Commons · CC BY-SA 3.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Difficult",days:12,alt:"17,200 ft",dist:"—",best:"Mar – May, Sep – Nov",price:21500,soon:true,dep:"Kathmandu",desc:"A 12-day difficult trek in Sikkim, topping out at 17,200 ft. Best time to go: Mar – May, Sep – Nov."},
-  {n:"Kasturi Orar",region:"Sikkim",img:U+"1724733613256-a1ed7936bb70",r:4.7,rev:"—",lvl:"Difficult",days:9,alt:"16,200 ft",dist:"—",best:"Apr – May, Oct – Nov",price:17000,soon:true,dep:"Bagdogra",desc:"A 9-day difficult trek in Sikkim, topping out at 16,200 ft. Best time to go: Apr – May, Oct – Nov."},
-  {n:"Phoktey Dara",region:"Sikkim",img:U+"1589340532046-e505aa832cd1",r:4.7,rev:"—",lvl:"Moderate",days:6,alt:"12,300 ft",dist:"—",best:"Mar – May, Oct – Jan",price:12000,soon:true,dep:"NJP / Bagdogra",desc:"A 6-day moderate trek in Sikkim, topping out at 12,300 ft. Best time to go: Mar – May, Oct – Jan."},
-  {n:"Barsey Rhododendron",region:"Sikkim",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Barsey_Rhododendron_Sanctuary_in_late_april.jpg/1280px-Barsey_Rhododendron_Sanctuary_in_late_april.jpg",credit:"Spattadar · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:3,alt:"10,000 ft",dist:"—",best:"Mar – May",price:7500,soon:true,dep:"Siliguri",desc:"A 3-day easy trek in Sikkim, topping out at 10,000 ft. Best time to go: Mar – May."},
-  {n:"Varsey",region:"Sikkim",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Rhododendrone_near_barsey_rhododendrone_sanctuary_02.jpg/1280px-Rhododendrone_near_barsey_rhododendrone_sanctuary_02.jpg",r:4.7,rev:"—",lvl:"Easy",days:2,alt:"10,000 ft",dist:"—",best:"Mar – May",price:5500,soon:true,dep:"Siliguri",desc:"A 2-day easy trek in Sikkim, topping out at 10,000 ft. Best time to go: Mar – May."},
-  {n:"Tendong Hill",region:"Sikkim",img:U+"1724733613256-a1ed7936bb70",r:4.7,rev:"—",lvl:"Easy",days:2,alt:"8,530 ft",dist:"—",best:"Mar – May, Oct – Nov",price:5500,soon:true,dep:"Namchi",desc:"A 2-day easy trek in Sikkim, topping out at 8,530 ft. Best time to go: Mar – May, Oct – Nov."},
-  {n:"Maenam Hill",region:"Sikkim",img:U+"1589340532046-e505aa832cd1",r:4.7,rev:"—",lvl:"Easy",days:2,alt:"10,600 ft",dist:"—",best:"Mar – May",price:5500,soon:true,dep:"Ravangla",desc:"A 2-day easy trek in Sikkim, topping out at 10,600 ft. Best time to go: Mar – May."},
-  {n:"Tawang",region:"Arunachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Bhavachakra_or_the_Buddhist_Wheel_of_Life_at_Tawang_Monastery%2C_Tawang%2C_Arunachal_Pradesh%2C_India.jpg/1280px-Bhavachakra_or_the_Buddhist_Wheel_of_Life_at_Tawang_Monastery%2C_Tawang%2C_Arunachal_Pradesh%2C_India.jpg",credit:"Kingshuk Mondal · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:6,alt:"11,500 ft",dist:"—",best:"Mar – Jun",price:12000,soon:true,dep:"Guwahati",desc:"A 6-day moderate trek in Arunachal, topping out at 11,500 ft. Best time to go: Mar – Jun."},
-  {n:"Gorichen Base Camp",region:"Arunachal",img:U+"1724733613256-a1ed7936bb70",r:4.7,rev:"—",lvl:"Difficult",days:10,alt:"15,500 ft",dist:"—",best:"Apr – Jun, Sep – Oct",price:18500,soon:true,dep:"Guwahati",desc:"A 10-day difficult trek in Arunachal, topping out at 15,500 ft. Best time to go: Apr – Jun, Sep – Oct."},
-  {n:"Bailey Trail",region:"Arunachal",img:U+"1589340532046-e505aa832cd1",r:4.7,rev:"—",lvl:"Difficult",days:12,alt:"13,500 ft",dist:"—",best:"Apr – Jun, Oct – Nov",price:21500,soon:true,dep:"Guwahati",desc:"A 12-day difficult trek in Arunachal, topping out at 13,500 ft. Best time to go: Apr – Jun, Oct – Nov."},
-  {n:"Mechuka",region:"Arunachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Natural_beauty_of_Mechuka%2C_Arunachal_Pradesh.jpg/1280px-Natural_beauty_of_Mechuka%2C_Arunachal_Pradesh.jpg",credit:"কুমুদ ঘোষ · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:5,alt:"10,500 ft",dist:"—",best:"Mar – Jun, Sep – Nov",price:10500,soon:true,dep:"Dibrugarh",desc:"A 5-day moderate trek in Arunachal, topping out at 10,500 ft. Best time to go: Mar – Jun, Sep – Nov."},
-  {n:"Talley Valley",region:"Arunachal",img:U+"1589340532046-e505aa832cd1",r:4.7,rev:"—",lvl:"Easy",days:4,alt:"8,000 ft",dist:"—",best:"Oct – Apr",price:9000,soon:true,dep:"Guwahati",desc:"A 4-day easy trek in Arunachal, topping out at 8,000 ft. Best time to go: Oct – Apr."},
-  {n:"Ziro Valley",region:"Arunachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/An_Apatani_Old_lady_in_Ziro_valley_of_Arunachal_Pradesh.jpg/1280px-An_Apatani_Old_lady_in_Ziro_valley_of_Arunachal_Pradesh.jpg",credit:"Arunachal2007 · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:3,alt:"5,600 ft",dist:"—",best:"Mar – May, Sep – Nov",price:7500,soon:true,dep:"Guwahati",desc:"A 3-day easy trek in Arunachal, topping out at 5,600 ft. Best time to go: Mar – May, Sep – Nov."},
-  {n:"Namdapha Rainforest",region:"Arunachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Rainforest_vertical.jpg/1280px-Rainforest_vertical.jpg",credit:"T. R. Shankar Raman · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:6,alt:"4,500 ft",dist:"—",best:"Nov – Feb",price:12000,soon:true,dep:"Dibrugarh",desc:"A 6-day moderate trek in Arunachal, topping out at 4,500 ft. Best time to go: Nov – Feb."},
-  {n:"Dong Valley",region:"Arunachal",img:U+"1724733613256-a1ed7936bb70",r:4.7,rev:"—",lvl:"Moderate",days:4,alt:"8,000 ft",dist:"—",best:"Oct – Apr",price:9000,soon:true,dep:"Dibrugarh",desc:"A 4-day moderate trek in Arunachal, topping out at 8,000 ft. Best time to go: Oct – Apr."},
-  {n:"Pangsau Pass",region:"Arunachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/M.M._Pallam_Raju_and_the_Aruncahl_Pradesh_Chief_Minister_Shri_Dorjee_Khandu_inaugurated_the_3-day_Pangsau_Pass_winter_festival%2C_at_Nampong%2C_Changlang_in_Arunachal_Pradesh_on_January_20%2C_2010.jpg/1280px-thumbnail.jpg",credit:"Ministry of Defence · GODL-India · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:5,alt:"3,700 ft",dist:"—",best:"Oct – Apr",price:10500,soon:true,dep:"Dibrugarh",desc:"A 5-day moderate trek in Arunachal, topping out at 3,700 ft. Best time to go: Oct – Apr."},
-  {n:"Bum La",region:"Arunachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Mountain_range_near_Bum_La_Pass%2C_Tawang%2C_Arunachal_Pradesh%2C_India.jpg/1280px-Mountain_range_near_Bum_La_Pass%2C_Tawang%2C_Arunachal_Pradesh%2C_India.jpg",credit:"Rohit Sharma · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:2,alt:"15,200 ft",dist:"—",best:"May – Oct",price:5500,soon:true,dep:"Tawang",desc:"A 2-day moderate trek in Arunachal, topping out at 15,200 ft. Best time to go: May – Oct."},
-  {n:"David Scott Trail",region:"Meghalaya",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/David_Scott_Trail.jpg/1280px-David_Scott_Trail.jpg",credit:"Wann Majaw · CC0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:2,alt:"4,900 ft",dist:"—",best:"Oct – Apr",price:5500,soon:true,dep:"Shillong",desc:"A 2-day easy trek in Meghalaya, topping out at 4,900 ft. Best time to go: Oct – Apr."},
-  {n:"Living Root Bridge",region:"Meghalaya",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/3/37/Living_root_bridge%2C_Maghalaya%2C_India1.jpg/1280px-Living_root_bridge%2C_Maghalaya%2C_India1.jpg",credit:"Joydeep Chakraborty · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:1,alt:"2,400 ft",dist:"—",best:"Oct – Apr",price:4000,soon:true,dep:"Shillong",desc:"A 1-day easy trek in Meghalaya, topping out at 2,400 ft. Best time to go: Oct – Apr."},
-  {n:"Double Decker Root Bridge",region:"Meghalaya",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/Double_decker_living_root_bridge_02.jpg/1280px-Double_decker_living_root_bridge_02.jpg",credit:"Chiranjeeb Baul · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:1,alt:"2,500 ft",dist:"—",best:"Oct – Apr",price:4000,soon:true,dep:"Cherrapunji",desc:"A 1-day moderate trek in Meghalaya, topping out at 2,500 ft. Best time to go: Oct – Apr."},
-  {n:"Nongriat",region:"Meghalaya",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Living_root_bridges_of_Nongriat_village_in_East_Khasi_Hills_district%2C_Meghalaya_JEG7387.jpg/1280px-Living_root_bridges_of_Nongriat_village_in_East_Khasi_Hills_district%2C_Meghalaya_JEG7387.jpg",credit:"PJeganathan · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:1,alt:"2,500 ft",dist:"—",best:"Oct – Apr",price:4000,soon:true,dep:"Shillong",desc:"A 1-day moderate trek in Meghalaya, topping out at 2,500 ft. Best time to go: Oct – Apr."},
-  {n:"Mawryngkhang Bamboo",region:"Meghalaya",img:U+"1606898296502-40d8c37e994b",r:4.7,rev:"—",lvl:"Moderate",days:1,alt:"3,000 ft",dist:"—",best:"Oct – Apr",price:4000,soon:true,dep:"Shillong",desc:"A 1-day moderate trek in Meghalaya, topping out at 3,000 ft. Best time to go: Oct – Apr."},
-  {n:"Laitlum Canyon",region:"Meghalaya",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/Laitlum_Canyon%2C_Meghalaya.jpg/1280px-Laitlum_Canyon%2C_Meghalaya.jpg",credit:"Medhi jyoti · CC BY 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:1,alt:"4,500 ft",dist:"—",best:"Oct – May",price:4000,soon:true,dep:"Shillong",desc:"A 1-day easy trek in Meghalaya, topping out at 4,500 ft. Best time to go: Oct – May."},
-  {n:"Sohra Waterfall",region:"Meghalaya",img:U+"1606898296502-40d8c37e994b",r:4.7,rev:"—",lvl:"Easy",days:1,alt:"4,000 ft",dist:"—",best:"Oct – May",price:4000,soon:true,dep:"Shillong",desc:"A 1-day easy trek in Meghalaya, topping out at 4,000 ft. Best time to go: Oct – May."},
-  {n:"Mawphlang Sacred Forest",region:"Meghalaya",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Mawphlang_Sacred_Forest%2C_Mawphlang%2C_Meghalaya.jpg/1280px-Mawphlang_Sacred_Forest%2C_Mawphlang%2C_Meghalaya.jpg",credit:"Anushtup · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:1,alt:"5,000 ft",dist:"—",best:"Oct – Apr",price:4000,soon:true,dep:"Shillong",desc:"A 1-day easy trek in Meghalaya, topping out at 5,000 ft. Best time to go: Oct – Apr."},
-  {n:"Shnongpdeng Riverside",region:"Meghalaya",img:U+"1606898296502-40d8c37e994b",r:4.7,rev:"—",lvl:"Easy",days:1,alt:"1,800 ft",dist:"—",best:"Oct – Apr",price:4000,soon:true,dep:"Shillong",desc:"A 1-day easy trek in Meghalaya, topping out at 1,800 ft. Best time to go: Oct – Apr."},
-  {n:"Balpakram National Park",region:"Meghalaya",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Matcha_Nokpante_%28tiger%27s_meeting_place%29_in_Balpakram_National_Park.jpg/1280px-Matcha_Nokpante_%28tiger%27s_meeting_place%29_in_Balpakram_National_Park.jpg",credit:"Hgm2016 · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:4,alt:"3,000 ft",dist:"—",best:"Oct – Mar",price:9000,soon:true,dep:"Baghmara",desc:"A 4-day moderate trek in Meghalaya, topping out at 3,000 ft. Best time to go: Oct – Mar."},
-  {n:"Dzukou Valley",region:"Nagaland",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Breathtaking_beauty_of_Dzukou_Valley_in_Manipur-Nagaland_border_%28edit%29.jpg/1280px-Breathtaking_beauty_of_Dzukou_Valley_in_Manipur-Nagaland_border_%28edit%29.jpg",credit:"Original: Samudra Bikash Hazarika Derivative work: Unpetitpr · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:2,alt:"8,045 ft",dist:"—",best:"Jun – Sep",price:5500,soon:true,dep:"Kohima",desc:"A 2-day moderate trek in Nagaland, topping out at 8,045 ft. Best time to go: Jun – Sep."},
-  {n:"Japfu Peak",region:"Nagaland",img:U+"1606898296502-40d8c37e994b",r:4.7,rev:"—",lvl:"Moderate",days:2,alt:"9,843 ft",dist:"—",best:"Oct – Apr",price:5500,soon:true,dep:"Kohima",desc:"A 2-day moderate trek in Nagaland, topping out at 9,843 ft. Best time to go: Oct – Apr."},
-  {n:"Mount Saramati",region:"Nagaland",img:U+"1589340532046-e505aa832cd1",r:4.7,rev:"—",lvl:"Difficult",days:5,alt:"12,553 ft",dist:"—",best:"Sep – Apr",price:10500,soon:true,dep:"Dimapur",desc:"A 5-day difficult trek in Nagaland, topping out at 12,553 ft. Best time to go: Sep – Apr."},
-  {n:"Puliebadze",region:"Nagaland",img:U+"1606898296502-40d8c37e994b",r:4.7,rev:"—",lvl:"Easy",days:1,alt:"7,300 ft",dist:"—",best:"Oct – May",price:4000,soon:true,dep:"Kohima",desc:"A 1-day easy trek in Nagaland, topping out at 7,300 ft. Best time to go: Oct – May."},
-  {n:"Benreu",region:"Nagaland",img:U+"1589340532046-e505aa832cd1",r:4.7,rev:"—",lvl:"Moderate",days:2,alt:"6,000 ft",dist:"—",best:"Oct – Apr",price:5500,soon:true,dep:"Kohima",desc:"A 2-day moderate trek in Nagaland, topping out at 6,000 ft. Best time to go: Oct – Apr."},
-  {n:"Intanki National Park",region:"Nagaland",img:U+"1606898296502-40d8c37e994b",r:4.7,rev:"—",lvl:"Easy",days:2,alt:"4,000 ft",dist:"—",best:"Nov – Apr",price:5500,soon:true,dep:"Dimapur",desc:"A 2-day easy trek in Nagaland, topping out at 4,000 ft. Best time to go: Nov – Apr."},
-  {n:"Phalut",region:"West Bengal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Lhotse%2C_Everest%2C_Makalu_and_Chomolonzo_from_Phalut%2C_Oct_2011.jpg/1280px-Lhotse%2C_Everest%2C_Makalu_and_Chomolonzo_from_Phalut%2C_Oct_2011.jpg",credit:"Shilbhadra · CC BY-SA 3.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:7,alt:"11,800 ft",dist:"—",best:"Oct – Apr",price:13500,soon:true,dep:"Manebhanjan",desc:"A 7-day moderate trek in West Bengal, topping out at 11,800 ft. Best time to go: Oct – Apr."},
-  {n:"Tonglu",region:"West Bengal",img:"https://upload.wikimedia.org/wikipedia/commons/5/5f/Tonglu%2CDarjeeling%2CWest_Bengal%2C_India.jpg",credit:"Atudu · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:2,alt:"10,130 ft",dist:"—",best:"Mar – May, Sep – Dec",price:5500,soon:true,dep:"Darjeeling",desc:"A 2-day easy trek in West Bengal, topping out at 10,130 ft. Best time to go: Mar – May, Sep – Dec."},
-  {n:"Senchal Wildlife",region:"West Bengal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/Rusty-flanked_Treecreeper_in_Senchal_Wildlife_Sanctuary_May_2025_by_Tisha_Mukherjee_10.jpg/1280px-Rusty-flanked_Treecreeper_in_Senchal_Wildlife_Sanctuary_May_2025_by_Tisha_Mukherjee_10.jpg",credit:"Tisha Mukherjee · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:1,alt:"8,160 ft",dist:"—",best:"Oct – Nov",price:4000,soon:true,dep:"Darjeeling",desc:"A 1-day easy trek in West Bengal, topping out at 8,160 ft. Best time to go: Oct – Nov."},
-  {n:"Tiger Hill Sunrise",region:"West Bengal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/View_from_Tiger_Hill.jpg/1280px-View_from_Tiger_Hill.jpg",credit:"Owasim raja ahmed · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:1,alt:"8,500 ft",dist:"—",best:"Oct – Dec",price:4000,soon:true,dep:"Darjeeling",desc:"A 1-day easy trek in West Bengal, topping out at 8,500 ft. Best time to go: Oct – Dec."},
-  {n:"Neora Valley",region:"West Bengal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Sikkim_Treecreeper_in_Neora_Valley_National_Park.jpg/1280px-Sikkim_Treecreeper_in_Neora_Valley_National_Park.jpg",credit:"Ikshan Ganpathi · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:4,alt:"10,500 ft",dist:"—",best:"Oct – Apr",price:9000,soon:true,dep:"Lava",desc:"A 4-day moderate trek in West Bengal, topping out at 10,500 ft. Best time to go: Oct – Apr."},
-  {n:"Lava Lolegaon",region:"West Bengal",img:U+"1606898296502-40d8c37e994b",r:4.7,rev:"—",lvl:"Easy",days:2,alt:"7,200 ft",dist:"—",best:"Oct – Apr",price:5500,soon:true,dep:"Siliguri",desc:"A 2-day easy trek in West Bengal, topping out at 7,200 ft. Best time to go: Oct – Apr."},
-  {n:"Harishchandragad",region:"Maharashtra",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Harishchandragad_view_from_caves.jpg/1280px-Harishchandragad_view_from_caves.jpg",credit:"Tokendra · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:2,alt:"4,671 ft",dist:"—",best:"Oct – Feb",price:5500,soon:true,dep:"Pune",desc:"A 2-day moderate trek in Maharashtra, topping out at 4,671 ft. Best time to go: Oct – Feb."},
-  {n:"Rajmachi",region:"Maharashtra",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Rajmachi_fort_-_Pune_-Maharashtra_-DSC001.jpg/1280px-Rajmachi_fort_-_Pune_-Maharashtra_-DSC001.jpg",credit:"Nikhil Thokal · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:2,alt:"2,710 ft",dist:"—",best:"Jun – Sep",price:5500,soon:true,dep:"Lonavala",desc:"A 2-day easy trek in Maharashtra, topping out at 2,710 ft. Best time to go: Jun – Sep."},
-  {n:"Kalsubai Peak",region:"Maharashtra",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Sunrise_from_Kalsubai_peak_1.jpg/1280px-Sunrise_from_Kalsubai_peak_1.jpg",credit:"Ragz13 · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:1,alt:"5,400 ft",dist:"—",best:"Jun – Feb",price:4000,soon:true,dep:"Mumbai",desc:"A 1-day moderate trek in Maharashtra, topping out at 5,400 ft. Best time to go: Jun – Feb."},
-  {n:"Lohagad Fort",region:"Maharashtra",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Lohagad_Fort_Tomb_3.jpg/1280px-Lohagad_Fort_Tomb_3.jpg",credit:"Rangan Datta Wiki · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:1,alt:"3,389 ft",dist:"—",best:"Jun – Feb",price:4000,soon:true,dep:"Lonavala",desc:"A 1-day easy trek in Maharashtra, topping out at 3,389 ft. Best time to go: Jun – Feb."},
-  {n:"Visapur Fort",region:"Maharashtra",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Visapur_fort_in_monsoon.jpg/1280px-Visapur_fort_in_monsoon.jpg",credit:"Sumedh.dorwat · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:1,alt:"3,556 ft",dist:"—",best:"Jun – Feb",price:4000,soon:true,dep:"Lonavala",desc:"A 1-day easy trek in Maharashtra, topping out at 3,556 ft. Best time to go: Jun – Feb."},
-  {n:"Torna Fort",region:"Maharashtra",img:"https://upload.wikimedia.org/wikipedia/commons/b/b6/Torna_Fort.png",credit:"Purplesky91 · CC BY-SA 3.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:1,alt:"4,603 ft",dist:"—",best:"Oct – Feb",price:4000,soon:true,dep:"Pune",desc:"A 1-day moderate trek in Maharashtra, topping out at 4,603 ft. Best time to go: Oct – Feb."},
-  {n:"Rajgad Fort",region:"Maharashtra",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Bali_Khila_Rajgad_Maharashtra.jpg/1280px-Bali_Khila_Rajgad_Maharashtra.jpg",credit:"Cj.samson · CC BY 3.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:1,alt:"4,514 ft",dist:"—",best:"Jul – Feb",price:4000,soon:true,dep:"Pune",desc:"A 1-day moderate trek in Maharashtra, topping out at 4,514 ft. Best time to go: Jul – Feb."},
-  {n:"Ratangad",region:"Maharashtra",img:"https://upload.wikimedia.org/wikipedia/commons/b/b0/Ratangad_nedhe.jpg",credit:"Elroy Serrao · CC BY-SA 2.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:2,alt:"4,255 ft",dist:"—",best:"Jun – Feb",price:5500,soon:true,dep:"Pune",desc:"A 2-day moderate trek in Maharashtra, topping out at 4,255 ft. Best time to go: Jun – Feb."},
-  {n:"Alang Madan Kulang",region:"Maharashtra",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Alang_Madan_Kulang_from_Kalsubai_Maharashtra.JPG/1280px-Alang_Madan_Kulang_from_Kalsubai_Maharashtra.JPG",credit:"Kul Patil · CC BY-SA 3.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Difficult",days:3,alt:"4,850 ft",dist:"—",best:"Oct – Feb",price:7500,soon:true,dep:"Mumbai / Pune",desc:"A 3-day difficult trek in Maharashtra, topping out at 4,850 ft. Best time to go: Oct – Feb."},
-  {n:"Kalavantin Durg",region:"Maharashtra",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/KALAVANTIN_DURG_%28FORT%29.jpg/1280px-KALAVANTIN_DURG_%28FORT%29.jpg",credit:"Anthonyrosyl · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:1,alt:"2,300 ft",dist:"—",best:"Oct – Mar",price:4000,soon:true,dep:"Panvel",desc:"A 1-day moderate trek in Maharashtra, topping out at 2,300 ft. Best time to go: Oct – Mar."},
-  {n:"Peb Fort",region:"Maharashtra",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Peb_Fort_%28Wikatgadh%29_-_panoramio.jpg/1280px-Peb_Fort_%28Wikatgadh%29_-_panoramio.jpg",credit:"Rohan Patil · CC BY-SA 3.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:1,alt:"2,100 ft",dist:"—",best:"Jun – Oct",price:4000,soon:true,dep:"Neral",desc:"A 1-day easy trek in Maharashtra, topping out at 2,100 ft. Best time to go: Jun – Oct."},
-  {n:"Andharban Forest",region:"Maharashtra",img:U+"1589340532046-e505aa832cd1",r:4.7,rev:"—",lvl:"Easy",days:2,alt:"327",dist:"—",best:"Jun – Sep",price:5500,soon:true,dep:"",desc:"A 2-day easy trek in Maharashtra, topping out at 327. Best time to go: Jun – Sep."},
-  {n:"Kumara Parvatha",region:"Karnataka",img:U+"1606898296502-40d8c37e994b",r:4.7,rev:"—",lvl:"Difficult",days:2,alt:"5,617 ft",dist:"—",best:"Oct – Feb",price:5500,soon:true,dep:"Bangalore",desc:"A 2-day difficult trek in Karnataka, topping out at 5,617 ft. Best time to go: Oct – Feb."},
-  {n:"Kudremukh",region:"Karnataka",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Kudremukh_national_park.jpg/1280px-Kudremukh_national_park.jpg",credit:"Naveen · Public domain · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:2,alt:"6,207 ft",dist:"—",best:"Oct – Mar",price:5500,soon:true,dep:"Bangalore",desc:"A 2-day moderate trek in Karnataka, topping out at 6,207 ft. Best time to go: Oct – Mar."},
-  {n:"Tadiandamol",region:"Karnataka",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Shola_tadiandamol.jpg/1280px-Shola_tadiandamol.jpg",credit:"L. Shyamal · CC BY-SA 3.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:1,alt:"5,735 ft",dist:"—",best:"Oct – Feb",price:4000,soon:true,dep:"Bangalore",desc:"A 1-day easy trek in Karnataka, topping out at 5,735 ft. Best time to go: Oct – Feb."},
-  {n:"Mullayanagiri",region:"Karnataka",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Mullayanagiri_peak.jpg/1280px-Mullayanagiri_peak.jpg",credit:"Anvesh1103 · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:1,alt:"6,330 ft",dist:"—",best:"Sep – Feb",price:4000,soon:true,dep:"Chikmagalur",desc:"A 1-day easy trek in Karnataka, topping out at 6,330 ft. Best time to go: Sep – Feb."},
-  {n:"Kodachadri",region:"Karnataka",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Kodachadri%2CKarnataka%2CIndia.jpg/1280px-Kodachadri%2CKarnataka%2CIndia.jpg",credit:"Rayabhari · CC BY 3.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:2,alt:"4,411 ft",dist:"—",best:"Oct – Feb",price:5500,soon:true,dep:"Bangalore",desc:"A 2-day moderate trek in Karnataka, topping out at 4,411 ft. Best time to go: Oct – Feb."},
-  {n:"Nishani Motte",region:"Karnataka",img:U+"1589340532046-e505aa832cd1",r:4.7,rev:"—",lvl:"Moderate",days:2,alt:"4,127 ft",dist:"—",best:"Oct – Feb",price:5500,soon:true,dep:"Bangalore",desc:"A 2-day moderate trek in Karnataka, topping out at 4,127 ft. Best time to go: Oct – Feb."},
-  {n:"Narasimha Parvatha",region:"Karnataka",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Narasimha_feet_Narasimha_Parvatha_Kigga.jpg/1280px-Narasimha_feet_Narasimha_Parvatha_Kigga.jpg",credit:"NithishKWiki · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:2,alt:"3,772 ft",dist:"—",best:"Oct – Jan",price:5500,soon:true,dep:"Bangalore",desc:"A 2-day moderate trek in Karnataka, topping out at 3,772 ft. Best time to go: Oct – Jan."},
-  {n:"Ettina Bhuja",region:"Karnataka",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Ettina_Bhuja_1.jpg/1280px-Ettina_Bhuja_1.jpg",credit:"Shashidhara halady · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:1,alt:"4,265 ft",dist:"—",best:"Oct – Feb",price:4000,soon:true,dep:"Bangalore",desc:"A 1-day easy trek in Karnataka, topping out at 4,265 ft. Best time to go: Oct – Feb."},
-  {n:"Ballalarayana Durga",region:"Karnataka",img:U+"1606898296502-40d8c37e994b",r:4.7,rev:"—",lvl:"Easy",days:1,alt:"4,940 ft",dist:"—",best:"Sep – Feb",price:4000,soon:true,dep:"Bengaluru",desc:"A 1-day easy trek in Karnataka, topping out at 4,940 ft. Best time to go: Sep – Feb."},
-  {n:"Gokarna Beach",region:"Karnataka",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/PXL_20260103_054657562.MP_Paradise_beach_gokarna_Paradise_Beach_Trail%2C_Gokarna%2C_Karnataka_581326_06.jpg/1280px-PXL_20260103_054657562.MP_Paradise_beach_gokarna_Paradise_Beach_Trail%2C_Gokarna%2C_Karnataka_581326_06.jpg",credit:"Sourabh.biswas003 · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:2,alt:"Sea Level",dist:"—",best:"Oct – Mar",price:5500,soon:true,dep:"Bangalore",desc:"A 2-day easy trek in Karnataka. Best time to go: Oct – Mar."},
-  {n:"Kolukkumalai",region:"Tamil Nadu",img:"https://upload.wikimedia.org/wikipedia/commons/8/8d/Kolukkumalai_sunrise_view.jpg",credit:"Kaartic · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:1,alt:"7,130 ft",dist:"—",best:"Sep – Mar",price:4000,soon:true,dep:"Munnar",desc:"A 1-day easy trek in Tamil Nadu, topping out at 7,130 ft. Best time to go: Sep – Mar."},
-  {n:"Velliangiri Hills",region:"Tamil Nadu",img:"https://upload.wikimedia.org/wikipedia/commons/6/6c/Velliangiri_hills.jpg",credit:"Nancy Anburaj · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Difficult",days:2,alt:"6,000 ft",dist:"—",best:"Feb – May",price:5500,soon:true,dep:"Coimbatore",desc:"A 2-day difficult trek in Tamil Nadu, topping out at 6,000 ft. Best time to go: Feb – May."},
-  {n:"Perumal Peak",region:"Tamil Nadu",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Perumal%27s_Peak.jpg/1280px-Perumal%27s_Peak.jpg",credit:"Challiyil Eswaramangalath Pavithran Vipin · CC BY-SA 2.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:1,alt:"8,005 ft",dist:"—",best:"Dec – Apr",price:4000,soon:true,dep:"Kodaikanal",desc:"A 1-day moderate trek in Tamil Nadu, topping out at 8,005 ft. Best time to go: Dec – Apr."},
-  {n:"Top Station",region:"Tamil Nadu",img:"https://upload.wikimedia.org/wikipedia/commons/c/c5/Munnar_Top_station.jpg",credit:"Bimal K C from Cochin, India · CC BY 2.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:1,alt:"6,800 ft",dist:"—",best:"Sep – Mar",price:4000,soon:true,dep:"Munnar",desc:"A 1-day easy trek in Tamil Nadu, topping out at 6,800 ft. Best time to go: Sep – Mar."},
-  {n:"Dolphin's Nose",region:"Tamil Nadu",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Dolphin%27s_Nose%2C_Coonoor%2C_Nilgiris_District%2C_Tamil_Nadu%2C_India.jpg/1280px-Dolphin%27s_Nose%2C_Coonoor%2C_Nilgiris_District%2C_Tamil_Nadu%2C_India.jpg",credit:"N. Vivekananthamoorthy · CC BY 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:1,alt:"5,100 ft",dist:"—",best:"Oct – Mar",price:4000,soon:true,dep:"Kodaikanal",desc:"A 1-day easy trek in Tamil Nadu, topping out at 5,100 ft. Best time to go: Oct – Mar."},
-  {n:"Meghamalai",region:"Tamil Nadu",img:"https://upload.wikimedia.org/wikipedia/commons/e/e7/Meghamalai_elephants.jpg",credit:"Mprabaharan at English Wikipedia · Public domain · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:2,alt:"4,900 ft",dist:"—",best:"Oct – Mar",price:5500,soon:true,dep:"Madurai",desc:"A 2-day easy trek in Tamil Nadu, topping out at 4,900 ft. Best time to go: Oct – Mar."},
-  {n:"Mukurthi National Park",region:"Tamil Nadu",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Mukurthi_National_Park.jpg/1280px-Mukurthi_National_Park.jpg",credit:"Marcus Sherman · CC BY-SA 2.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Moderate",days:2,alt:"8,554 ft",dist:"—",best:"Feb – May, Sep – Nov",price:5500,soon:true,dep:"Ooty",desc:"A 2-day moderate trek in Tamil Nadu, topping out at 8,554 ft. Best time to go: Feb – May, Sep – Nov."},
-  {n:"Ooty Peak",region:"Tamil Nadu",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/East_Peak_Club_Hill_Ooty_Aug25_A7CR_07244.jpg/1280px-East_Peak_Club_Hill_Ooty_Aug25_A7CR_07244.jpg",credit:"Timothy A. Gonsalves · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:1,alt:"7,350 ft",dist:"—",best:"Oct – Jun",price:4000,soon:true,dep:"Ooty",desc:"A 1-day easy trek in Tamil Nadu, topping out at 7,350 ft. Best time to go: Oct – Jun."},
-  {n:"Kotagiri Longwood",region:"Tamil Nadu",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Longwood_Shola_Reserve_Forest%2C_Kotagiri%2C_Tamil_Nadu.jpg/1280px-Longwood_Shola_Reserve_Forest%2C_Kotagiri%2C_Tamil_Nadu.jpg",credit:"SeethaG · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Easy",days:1,alt:"6,000 ft",dist:"—",best:"Oct – Mar",price:4000,soon:true,dep:"Kotagiri",desc:"A 1-day easy trek in Tamil Nadu, topping out at 6,000 ft. Best time to go: Oct – Mar."},
-  {n:"Thalaiyar Falls",region:"Tamil Nadu",img:"https://upload.wikimedia.org/wikipedia/commons/6/6a/Thalaiyar_Falls.jpg",credit:"Barbara Gail Block · CC BY-SA 2.0 · Wikimedia Commons",r:4.7,rev:"—",lvl:"Difficult",days:2,alt:"5,900 ft",dist:"—",best:"Oct – Mar",price:5500,soon:true,dep:"Kodaikanal",desc:"A 2-day difficult trek in Tamil Nadu, topping out at 5,900 ft. Best time to go: Oct – Mar."},
+  {n:"Hemkund Sahib",region:"Uttarakhand",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Hemkund_Sahib_and_Lokpal_Lake.jpg/1280px-Hemkund_Sahib_and_Lokpal_Lake.jpg",credit:"Harshit SR · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:6,alt:"15,200 ft",dist:"",best:"May – Oct",price:12000,soon:true,dep:"Rishikesh",desc:"A 6-day moderate trek in Uttarakhand, topping out at 15,200 ft. Best time to go: May – Oct."},
+  {n:"Dayara Bugyal",region:"Uttarakhand",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/En_route_to_Dayara_Bugyal_at_Gui_camp_03.jpg/1280px-En_route_to_Dayara_Bugyal_at_Gui_camp_03.jpg",credit:"Satdeep Gill · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:5,alt:"12,100 ft",dist:"",best:"May – Jun, Oct – Nov",price:10500,soon:true,dep:"Dehradun",desc:"A 5-day moderate trek in Uttarakhand, topping out at 12,100 ft. Best time to go: May – Jun, Oct – Nov."},
+  {n:"Kuari Pass",region:"Uttarakhand",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Dunagiri_from_Kuari_Pass.jpg/1280px-Dunagiri_from_Kuari_Pass.jpg",credit:"Sumodm · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:6,alt:"12,500 ft",dist:"",best:"Mar – Jun, Oct – Feb",price:12000,soon:true,dep:"Rishikesh",desc:"A 6-day moderate trek in Uttarakhand, topping out at 12,500 ft. Best time to go: Mar – Jun, Oct – Feb."},
+  {n:"Chopta Chandrashila",region:"Uttarakhand",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Chandrashila_Panorama.jpg/1280px-Chandrashila_Panorama.jpg",credit:"Drashokk · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Easy",days:3,alt:"13,100 ft",dist:"",best:"Apr – Jun, Sep – Nov",price:7500,soon:true,dep:"Rishikesh",desc:"A 3-day easy trek in Uttarakhand, topping out at 13,100 ft. Best time to go: Apr – Jun, Sep – Nov."},
+  {n:"Pangarchulla Peak",region:"Uttarakhand",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Pangarchulla_Peak.jpg/1280px-Pangarchulla_Peak.jpg",credit:"ShwethaSulegai · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Difficult",days:7,alt:"15,100 ft",dist:"",best:"Apr – May",price:13500,soon:true,dep:"Dehradun",desc:"A 7-day difficult trek in Uttarakhand, topping out at 15,100 ft. Best time to go: Apr – May."},
+  {n:"Satopanth Lake",region:"Uttarakhand",img:U+"1714744715493-ad89b7ff503e",r:4.7,rev:"",lvl:"Difficult",days:8,alt:"15,100 ft",dist:"",best:"May – Jun, Sep – Oct",price:15500,soon:true,dep:"Dehradun",desc:"A 8-day difficult trek in Uttarakhand, topping out at 15,100 ft. Best time to go: May – Jun, Sep – Oct."},
+  {n:"Bali Pass",region:"Uttarakhand",img:U+"1513614835783-51537729c8ba",r:4.7,rev:"",lvl:"Difficult",days:8,alt:"16,200 ft",dist:"",best:"May – Jun, Sep – Oct",price:15500,soon:true,dep:"Dehradun",desc:"A 8-day difficult trek in Uttarakhand, topping out at 16,200 ft. Best time to go: May – Jun, Sep – Oct."},
+  {n:"Dodital Darwa Pass",region:"Uttarakhand",img:U+"1732510951898-416631a45e35",r:4.7,rev:"",lvl:"Moderate",days:7,alt:"13,500 ft",dist:"",best:"Apr – Jun, Sep – Nov",price:13500,soon:true,dep:"Dehradun",desc:"A 7-day moderate trek in Uttarakhand, topping out at 13,500 ft. Best time to go: Apr – Jun, Sep – Nov."},
+  {n:"Gaumukh Tapovan",region:"Uttarakhand",img:U+"1714744715493-ad89b7ff503e",r:4.7,rev:"",lvl:"Difficult",days:8,alt:"14,600 ft",dist:"",best:"May – Jun, Sep – Oct",price:15500,soon:true,dep:"Dehradun",desc:"A 8-day difficult trek in Uttarakhand, topping out at 14,600 ft. Best time to go: May – Jun, Sep – Oct."},
+  {n:"Pindari Glacier",region:"Uttarakhand",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Pindari_glacier%2C_Uttarakhand%2C_India.jpg/1280px-Pindari_glacier%2C_Uttarakhand%2C_India.jpg",credit:"Yann (talk) · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:7,alt:"12,300 ft",dist:"",best:"Apr – Jun, Sep – Oct",price:13500,soon:true,dep:"Kathgodam",desc:"A 7-day moderate trek in Uttarakhand, topping out at 12,300 ft. Best time to go: Apr – Jun, Sep – Oct."},
+  {n:"Kedartal",region:"Uttarakhand",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/Kedartal.jpg/1280px-Kedartal.jpg",credit:"Peter Andersen · CC BY-SA 3.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Difficult",days:7,alt:"15,500 ft",dist:"",best:"May – Jun, Sep – Oct",price:13500,soon:true,dep:"Dehradun",desc:"A 7-day difficult trek in Uttarakhand, topping out at 15,500 ft. Best time to go: May – Jun, Sep – Oct."},
+  {n:"Rupin Pass",region:"Uttarakhand",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/Male_Plumbeous_Water_Redstart_at_Rupin_Pass_02.jpg/1280px-Male_Plumbeous_Water_Redstart_at_Rupin_Pass_02.jpg",credit:"Fossegrimx · CC BY 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Difficult",days:8,alt:"15,250 ft",dist:"",best:"May – Jun, Sep – Oct",price:15500,soon:true,dep:"Dehradun",desc:"A 8-day difficult trek in Uttarakhand, topping out at 15,250 ft. Best time to go: May – Jun, Sep – Oct."},
+  {n:"Phulara Ridge",region:"Uttarakhand",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Phulara_ridge.jpg/1280px-Phulara_ridge.jpg",credit:"Pathaharapathik · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:6,alt:"12,100 ft",dist:"",best:"May – Jun, Sep – Nov",price:12000,soon:true,dep:"Dehradun",desc:"A 6-day moderate trek in Uttarakhand, topping out at 12,100 ft. Best time to go: May – Jun, Sep – Nov."},
+  {n:"Borasu Pass",region:"Uttarakhand",img:"https://upload.wikimedia.org/wikipedia/commons/8/86/Borasupass22.jpg",r:4.7,rev:"",lvl:"Difficult",days:8,alt:"17,224 ft",dist:"",best:"May – Jun, Sep – Oct",price:15500,soon:true,dep:"Dehradun",desc:"A 8-day difficult trek in Uttarakhand, topping out at 17,224 ft. Best time to go: May – Jun, Sep – Oct."},
+  {n:"Beas Kund",region:"Himachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Beas_kund_holy_place.jpg/1280px-Beas_kund_holy_place.jpg",credit:"Gaurav Dhingra · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Easy",days:3,alt:"12,700 ft",dist:"",best:"May – Oct",price:7500,soon:true,dep:"Manali",desc:"A 3-day easy trek in Himachal, topping out at 12,700 ft. Best time to go: May – Oct."},
+  {n:"Pin Parvati Pass",region:"Himachal",img:U+"1606898296502-40d8c37e994b",r:4.7,rev:"",lvl:"Difficult",days:11,alt:"17,450 ft",dist:"",best:"Jul – Sep",price:20000,soon:true,dep:"Manali",desc:"A 11-day difficult trek in Himachal, topping out at 17,450 ft. Best time to go: Jul – Sep."},
+  {n:"Sar Pass",region:"Himachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Sar_pass%2C_himachal_pradesh.jpg/1280px-Sar_pass%2C_himachal_pradesh.jpg",credit:"T.prachi · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:5,alt:"13,800 ft",dist:"",best:"May – Jun",price:10500,soon:true,dep:"Kasol",desc:"A 5-day moderate trek in Himachal, topping out at 13,800 ft. Best time to go: May – Jun."},
+  {n:"Kareri Lake",region:"Himachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Shiva_Temple_at_Kareri_Lake.jpg/1280px-Shiva_Temple_at_Kareri_Lake.jpg",credit:"Tanvi.sharmaaa · CC BY 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:3,alt:"9,650 ft",dist:"",best:"May – Jul, Sep – Nov",price:7500,soon:true,dep:"Dharamshala",desc:"A 3-day moderate trek in Himachal, topping out at 9,650 ft. Best time to go: May – Jul, Sep – Nov."},
+  {n:"Indrahar Pass",region:"Himachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Looking_up_to_the_Indrahar_Pass_%2822356846090%29.jpg/1280px-Looking_up_to_the_Indrahar_Pass_%2822356846090%29.jpg",credit:"Ashish Gupta from Noida, India · CC BY 2.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Difficult",days:5,alt:"14,245 ft",dist:"",best:"May – Oct",price:10500,soon:true,dep:"McLeodganj",desc:"A 5-day difficult trek in Himachal, topping out at 14,245 ft. Best time to go: May – Oct."},
+  {n:"Kheerganga",region:"Himachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Kheerganga_is_a_pious_hot_water_spring_Himachal_India.jpg/1280px-Kheerganga_is_a_pious_hot_water_spring_Himachal_India.jpg",credit:"Photos Worldwide · CC0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Easy",days:2,alt:"9,700 ft",dist:"",best:"Apr – Jun, Sep – Oct",price:5500,soon:true,dep:"Kasol",desc:"A 2-day easy trek in Himachal, topping out at 9,700 ft. Best time to go: Apr – Jun, Sep – Oct."},
+  {n:"Chandrakhani Pass",region:"Himachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Chandrakhani_pass_1%2C_himachal_pradesh.jpg/1280px-Chandrakhani_pass_1%2C_himachal_pradesh.jpg",credit:"Premdasan · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:5,alt:"12,030 ft",dist:"",best:"May – Oct",price:10500,soon:true,dep:"Manali",desc:"A 5-day moderate trek in Himachal, topping out at 12,030 ft. Best time to go: May – Oct."},
+  {n:"Deo Tibba Base Camp",region:"Himachal",img:U+"1606898296502-40d8c37e994b",r:4.7,rev:"",lvl:"Moderate",days:6,alt:"14,700 ft",dist:"",best:"May – Oct",price:12000,soon:true,dep:"Manali",desc:"A 6-day moderate trek in Himachal, topping out at 14,700 ft. Best time to go: May – Oct."},
+  {n:"Friendship Peak",region:"Himachal",img:U+"1629976791862-5749e12b2f40",r:4.7,rev:"",lvl:"Difficult",days:8,alt:"17,350 ft",dist:"",best:"May – Oct",price:15500,soon:true,dep:"Manali",desc:"A 8-day difficult trek in Himachal, topping out at 17,350 ft. Best time to go: May – Oct."},
+  {n:"Bara Bhangal",region:"Himachal",img:U+"1644902560705-740850bc47b8",r:4.7,rev:"",lvl:"Difficult",days:9,alt:"16,000 ft",dist:"",best:"Jun – Oct",price:17000,soon:true,dep:"Manali",desc:"A 9-day difficult trek in Himachal, topping out at 16,000 ft. Best time to go: Jun – Oct."},
+  {n:"Miyar Valley",region:"Himachal",img:U+"1606898296502-40d8c37e994b",r:4.7,rev:"",lvl:"Moderate",days:7,alt:"13,800 ft",dist:"",best:"Jun – Sep",price:13500,soon:true,dep:"Manali",desc:"A 7-day moderate trek in Himachal, topping out at 13,800 ft. Best time to go: Jun – Sep."},
+  {n:"Lamadugh",region:"Himachal",img:U+"1629976791862-5749e12b2f40",r:4.7,rev:"",lvl:"Easy",days:2,alt:"9,900 ft",dist:"",best:"Apr – Jun, Sep – Dec",price:5500,soon:true,dep:"Manali",desc:"A 2-day easy trek in Himachal, topping out at 9,900 ft. Best time to go: Apr – Jun, Sep – Dec."},
+  {n:"Patalsu Peak",region:"Himachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Patalsu_Trek_-_Basic_Mountaineering_course_-_Inu_Etc.jpg/1280px-Patalsu_Trek_-_Basic_Mountaineering_course_-_Inu_Etc.jpg",credit:"Inu Etc · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:3,alt:"13,845 ft",dist:"",best:"May – Oct",price:7500,soon:true,dep:"Manali",desc:"A 3-day moderate trek in Himachal, topping out at 13,845 ft. Best time to go: May – Oct."},
+  {n:"Seven Lakes",region:"Himachal",img:U+"1606898296502-40d8c37e994b",r:4.7,rev:"",lvl:"Moderate",days:6,alt:"13,800 ft",dist:"",best:"May – Jun, Sep – Oct",price:12000,soon:true,dep:"Dharamshala",desc:"A 6-day moderate trek in Himachal, topping out at 13,800 ft. Best time to go: May – Jun, Sep – Oct."},
+  {n:"Kugti Pass",region:"Himachal",img:U+"1629976791862-5749e12b2f40",r:4.7,rev:"",lvl:"Difficult",days:8,alt:"16,600 ft",dist:"",best:"Mid-Jun – Mid-Oct",price:15500,soon:true,dep:"Pathankot",desc:"A 8-day difficult trek in Himachal, topping out at 16,600 ft. Best time to go: Mid-Jun – Mid-Oct."},
+  {n:"Sham Valley",region:"Ladakh",img:"https://upload.wikimedia.org/wikipedia/commons/5/50/Sham_Valley_Ladakh.jpg",credit:"Himalayan community and knowledge · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Easy",days:3,alt:"12,500 ft",dist:"",best:"May – Sep",price:7500,soon:true,dep:"Leh",desc:"A 3-day easy trek in Ladakh, topping out at 12,500 ft. Best time to go: May – Sep."},
+  {n:"Stok Kangri Base Camp",region:"Ladakh",img:U+"1577516311194-eb14c570a137",r:4.7,rev:"",lvl:"Moderate",days:5,alt:"16,500 ft",dist:"",best:"Jul – Sep",price:10500,soon:true,dep:"Leh",desc:"A 5-day moderate trek in Ladakh, topping out at 16,500 ft. Best time to go: Jul – Sep."},
+  {n:"Kang Yatse II",region:"Ladakh",img:U+"1718429205172-0d91b73ab23c",r:4.7,rev:"",lvl:"Difficult",days:9,alt:"20,500 ft",dist:"",best:"Jun – Sep",price:17000,soon:true,dep:"Leh",desc:"A 9-day difficult trek in Ladakh, topping out at 20,500 ft. Best time to go: Jun – Sep."},
+  {n:"Rumtse to Tso Moriri",region:"Ladakh",img:U+"1577516311194-eb14c570a137",r:4.7,rev:"",lvl:"Difficult",days:8,alt:"17,500 ft",dist:"",best:"Jun – Sep",price:15500,soon:true,dep:"Leh",desc:"A 8-day difficult trek in Ladakh, topping out at 17,500 ft. Best time to go: Jun – Sep."},
+  {n:"Lamayuru to Chilling",region:"Ladakh",img:U+"1718429205172-0d91b73ab23c",r:4.7,rev:"",lvl:"Moderate",days:5,alt:"16,800 ft",dist:"",best:"Jun – Sep",price:10500,soon:true,dep:"Leh",desc:"A 5-day moderate trek in Ladakh, topping out at 16,800 ft. Best time to go: Jun – Sep."},
+  {n:"Nubra Valley",region:"Ladakh",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Nubra_Valley_2.jpg/1280px-Nubra_Valley_2.jpg",credit:"KennyOMG · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:6,alt:"17,000 ft",dist:"",best:"Jun – Sep",price:12000,soon:true,dep:"Leh",desc:"A 6-day moderate trek in Ladakh, topping out at 17,000 ft. Best time to go: Jun – Sep."},
+  {n:"Dzo Jongo",region:"Ladakh",img:U+"1718429205172-0d91b73ab23c",r:4.7,rev:"",lvl:"Difficult",days:8,alt:"20,000 ft",dist:"",best:"Jul – Sep",price:15500,soon:true,dep:"Leh",desc:"A 8-day difficult trek in Ladakh, topping out at 20,000 ft. Best time to go: Jul – Sep."},
+  {n:"Stok La",region:"Ladakh",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Stok_Palace%2C_Ladakh_06.jpg/1280px-Stok_Palace%2C_Ladakh_06.jpg",credit:"Deepank Ranka · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:5,alt:"16,600 ft",dist:"",best:"Jun – Sep",price:10500,soon:true,dep:"Leh",desc:"A 5-day moderate trek in Ladakh, topping out at 16,600 ft. Best time to go: Jun – Sep."},
+  {n:"Snow Leopard",region:"Ladakh",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/A_snow_leopard_wild_Ladakh_DSCN4780_02.jpg/1280px-A_snow_leopard_wild_Ladakh_DSCN4780_02.jpg",credit:"T. R. Shankar Raman · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:8,alt:"15,500 ft",dist:"",best:"Nov – Apr",price:15500,soon:true,dep:"Leh",desc:"A 8-day moderate trek in Ladakh, topping out at 15,500 ft. Best time to go: Nov – Apr."},
+  {n:"Parang La",region:"Ladakh",img:U+"1577516311194-eb14c570a137",r:4.7,rev:"",lvl:"Difficult",days:12,alt:"18,300 ft",dist:"",best:"Jun – Sep",price:21500,soon:true,dep:"Manali",desc:"A 12-day difficult trek in Ladakh, topping out at 18,300 ft. Best time to go: Jun – Sep."},
+  {n:"Nafran Valley",region:"Kashmir",img:U+"1756847845343-7a1053567775",r:4.7,rev:"",lvl:"Moderate",days:7,alt:"13,100 ft",dist:"",best:"Jul – Sep",price:13500,soon:true,dep:"Srinagar",desc:"A 7-day moderate trek in Kashmir, topping out at 13,100 ft. Best time to go: Jul – Sep."},
+  {n:"Tulian Lake",region:"Kashmir",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Tulian_Lake.jpg/1280px-Tulian_Lake.jpg",credit:"Raqueeb Mir · CC BY-SA 3.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:4,alt:"12,900 ft",dist:"",best:"May – Oct",price:9000,soon:true,dep:"Srinagar",desc:"A 4-day moderate trek in Kashmir, topping out at 12,900 ft. Best time to go: May – Oct."},
+  {n:"Gangbal Lake",region:"Kashmir",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/GangbalPanorama.jpg/1280px-GangbalPanorama.jpg",credit:"Mohamad Talib Bhat · CC BY-SA 3.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:5,alt:"11,800 ft",dist:"",best:"Jun – Sep",price:10500,soon:true,dep:"Srinagar",desc:"A 5-day moderate trek in Kashmir, topping out at 11,800 ft. Best time to go: Jun – Sep."},
+  {n:"Lidderwat",region:"Kashmir",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Tiya_on_Pony_Trek_from_Aru_to_Lidderwat_%2814391496017%29.jpg/1280px-Tiya_on_Pony_Trek_from_Aru_to_Lidderwat_%2814391496017%29.jpg",credit:"Mike Prince from Bangalore, India · CC BY 2.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Easy",days:3,alt:"9,100 ft",dist:"",best:"Apr – Oct",price:7500,soon:true,dep:"Srinagar",desc:"A 3-day easy trek in Kashmir, topping out at 9,100 ft. Best time to go: Apr – Oct."},
+  {n:"Gurez Valley",region:"Kashmir",img:"https://upload.wikimedia.org/wikipedia/commons/7/76/A_calm_morning_in_the_farmland_of_Markoot_Village_%2C_Gurez_Valley%2C_Kashmir.jpg",credit:"Captured by Kausar Akhoon · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:6,alt:"11,500 ft",dist:"",best:"Jul – Sep",price:12000,soon:true,dep:"Srinagar",desc:"A 6-day moderate trek in Kashmir, topping out at 11,500 ft. Best time to go: Jul – Sep."},
+  {n:"Naranag Mahlish",region:"Kashmir",img:U+"1732510291351-43c68b3ca022",r:4.7,rev:"",lvl:"Moderate",days:6,alt:"12,800 ft",dist:"",best:"Jun – Sep",price:12000,soon:true,dep:"Srinagar",desc:"A 6-day moderate trek in Kashmir, topping out at 12,800 ft. Best time to go: Jun – Sep."},
+  {n:"Great Kolahoi Glacier",region:"Kashmir",img:U+"1756847845343-7a1053567775",r:4.7,rev:"",lvl:"Difficult",days:6,alt:"12,500 ft",dist:"",best:"Jun – Sep",price:12000,soon:true,dep:"Srinagar",desc:"A 6-day difficult trek in Kashmir, topping out at 12,500 ft. Best time to go: Jun – Sep."},
+  {n:"Sunset Peak",region:"Kashmir",img:U+"1606898296502-40d8c37e994b",r:4.7,rev:"",lvl:"Difficult",days:7,alt:"15,000 ft",dist:"",best:"Jul – Sep",price:13500,soon:true,dep:"Srinagar",desc:"A 7-day difficult trek in Kashmir, topping out at 15,000 ft. Best time to go: Jul – Sep."},
+  {n:"Harmukh Peak Base Camp",region:"Kashmir",img:U+"1756847845343-7a1053567775",r:4.7,rev:"",lvl:"Moderate",days:5,alt:"13,000 ft",dist:"",best:"Jun – Sep",price:10500,soon:true,dep:"Srinagar",desc:"A 5-day moderate trek in Kashmir, topping out at 13,000 ft. Best time to go: Jun – Sep."},
+  {n:"Kousarnag Lake",region:"Kashmir",img:U+"1732510291351-43c68b3ca022",r:4.7,rev:"",lvl:"Moderate",days:5,alt:"13,200 ft",dist:"",best:"Jun – Sep",price:10500,soon:true,dep:"Srinagar",desc:"A 5-day moderate trek in Kashmir, topping out at 13,200 ft. Best time to go: Jun – Sep."},
+  {n:"Dzongri",region:"Sikkim",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Dzongri_La.jpg/1280px-Dzongri_La.jpg",credit:"Rizimd · CC BY-SA 3.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:6,alt:"13,200 ft",dist:"",best:"Mar – May, Sep – Nov",price:12000,soon:true,dep:"Bagdogra / NJP",desc:"A 6-day moderate trek in Sikkim, topping out at 13,200 ft. Best time to go: Mar – May, Sep – Nov."},
+  {n:"Green Lake",region:"Sikkim",img:U+"1589340532046-e505aa832cd1",r:4.7,rev:"",lvl:"Difficult",days:11,alt:"16,000 ft",dist:"",best:"Apr – May, Oct – Nov",price:20000,soon:true,dep:"Gangtok",desc:"A 11-day difficult trek in Sikkim, topping out at 16,000 ft. Best time to go: Apr – May, Oct – Nov."},
+  {n:"Singalila Ridge",region:"Sikkim",img:"https://upload.wikimedia.org/wikipedia/commons/f/fc/Kanchendzonga_from_sandakaphu.jpg",r:4.7,rev:"",lvl:"Moderate",days:7,alt:"12,000 ft",dist:"",best:"Mar – May, Oct – Nov",price:13500,soon:true,dep:"Darjeeling",desc:"A 7-day moderate trek in Sikkim, topping out at 12,000 ft. Best time to go: Mar – May, Oct – Nov."},
+  {n:"Kanchenjunga Base Camp",region:"Sikkim",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/Samiti_lake%2C_near_Kanchenjunga.jpg/1280px-Samiti_lake%2C_near_Kanchenjunga.jpg",credit:"Wikimedia Commons · CC BY-SA 3.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Difficult",days:12,alt:"17,200 ft",dist:"",best:"Mar – May, Sep – Nov",price:21500,soon:true,dep:"Kathmandu",desc:"A 12-day difficult trek in Sikkim, topping out at 17,200 ft. Best time to go: Mar – May, Sep – Nov."},
+  {n:"Kasturi Orar",region:"Sikkim",img:U+"1724733613256-a1ed7936bb70",r:4.7,rev:"",lvl:"Difficult",days:9,alt:"16,200 ft",dist:"",best:"Apr – May, Oct – Nov",price:17000,soon:true,dep:"Bagdogra",desc:"A 9-day difficult trek in Sikkim, topping out at 16,200 ft. Best time to go: Apr – May, Oct – Nov."},
+  {n:"Phoktey Dara",region:"Sikkim",img:U+"1589340532046-e505aa832cd1",r:4.7,rev:"",lvl:"Moderate",days:6,alt:"12,300 ft",dist:"",best:"Mar – May, Oct – Jan",price:12000,soon:true,dep:"NJP / Bagdogra",desc:"A 6-day moderate trek in Sikkim, topping out at 12,300 ft. Best time to go: Mar – May, Oct – Jan."},
+  {n:"Barsey Rhododendron",region:"Sikkim",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Barsey_Rhododendron_Sanctuary_in_late_april.jpg/1280px-Barsey_Rhododendron_Sanctuary_in_late_april.jpg",credit:"Spattadar · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Easy",days:3,alt:"10,000 ft",dist:"",best:"Mar – May",price:7500,soon:true,dep:"Siliguri",desc:"A 3-day easy trek in Sikkim, topping out at 10,000 ft. Best time to go: Mar – May."},
+  {n:"Varsey",region:"Sikkim",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Rhododendrone_near_barsey_rhododendrone_sanctuary_02.jpg/1280px-Rhododendrone_near_barsey_rhododendrone_sanctuary_02.jpg",r:4.7,rev:"",lvl:"Easy",days:2,alt:"10,000 ft",dist:"",best:"Mar – May",price:5500,soon:true,dep:"Siliguri",desc:"A 2-day easy trek in Sikkim, topping out at 10,000 ft. Best time to go: Mar – May."},
+  {n:"Tendong Hill",region:"Sikkim",img:U+"1724733613256-a1ed7936bb70",r:4.7,rev:"",lvl:"Easy",days:2,alt:"8,530 ft",dist:"",best:"Mar – May, Oct – Nov",price:5500,soon:true,dep:"Namchi",desc:"A 2-day easy trek in Sikkim, topping out at 8,530 ft. Best time to go: Mar – May, Oct – Nov."},
+  {n:"Maenam Hill",region:"Sikkim",img:U+"1589340532046-e505aa832cd1",r:4.7,rev:"",lvl:"Easy",days:2,alt:"10,600 ft",dist:"",best:"Mar – May",price:5500,soon:true,dep:"Ravangla",desc:"A 2-day easy trek in Sikkim, topping out at 10,600 ft. Best time to go: Mar – May."},
+  {n:"Tawang",region:"Arunachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Bhavachakra_or_the_Buddhist_Wheel_of_Life_at_Tawang_Monastery%2C_Tawang%2C_Arunachal_Pradesh%2C_India.jpg/1280px-Bhavachakra_or_the_Buddhist_Wheel_of_Life_at_Tawang_Monastery%2C_Tawang%2C_Arunachal_Pradesh%2C_India.jpg",credit:"Kingshuk Mondal · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:6,alt:"11,500 ft",dist:"",best:"Mar – Jun",price:12000,soon:true,dep:"Guwahati",desc:"A 6-day moderate trek in Arunachal, topping out at 11,500 ft. Best time to go: Mar – Jun."},
+  {n:"Gorichen Base Camp",region:"Arunachal",img:U+"1724733613256-a1ed7936bb70",r:4.7,rev:"",lvl:"Difficult",days:10,alt:"15,500 ft",dist:"",best:"Apr – Jun, Sep – Oct",price:18500,soon:true,dep:"Guwahati",desc:"A 10-day difficult trek in Arunachal, topping out at 15,500 ft. Best time to go: Apr – Jun, Sep – Oct."},
+  {n:"Bailey Trail",region:"Arunachal",img:U+"1589340532046-e505aa832cd1",r:4.7,rev:"",lvl:"Difficult",days:12,alt:"13,500 ft",dist:"",best:"Apr – Jun, Oct – Nov",price:21500,soon:true,dep:"Guwahati",desc:"A 12-day difficult trek in Arunachal, topping out at 13,500 ft. Best time to go: Apr – Jun, Oct – Nov."},
+  {n:"Mechuka",region:"Arunachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Natural_beauty_of_Mechuka%2C_Arunachal_Pradesh.jpg/1280px-Natural_beauty_of_Mechuka%2C_Arunachal_Pradesh.jpg",credit:"কুমুদ ঘোষ · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:5,alt:"10,500 ft",dist:"",best:"Mar – Jun, Sep – Nov",price:10500,soon:true,dep:"Dibrugarh",desc:"A 5-day moderate trek in Arunachal, topping out at 10,500 ft. Best time to go: Mar – Jun, Sep – Nov."},
+  {n:"Talley Valley",region:"Arunachal",img:U+"1589340532046-e505aa832cd1",r:4.7,rev:"",lvl:"Easy",days:4,alt:"8,000 ft",dist:"",best:"Oct – Apr",price:9000,soon:true,dep:"Guwahati",desc:"A 4-day easy trek in Arunachal, topping out at 8,000 ft. Best time to go: Oct – Apr."},
+  {n:"Ziro Valley",region:"Arunachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/An_Apatani_Old_lady_in_Ziro_valley_of_Arunachal_Pradesh.jpg/1280px-An_Apatani_Old_lady_in_Ziro_valley_of_Arunachal_Pradesh.jpg",credit:"Arunachal2007 · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Easy",days:3,alt:"5,600 ft",dist:"",best:"Mar – May, Sep – Nov",price:7500,soon:true,dep:"Guwahati",desc:"A 3-day easy trek in Arunachal, topping out at 5,600 ft. Best time to go: Mar – May, Sep – Nov."},
+  {n:"Namdapha Rainforest",region:"Arunachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Rainforest_vertical.jpg/1280px-Rainforest_vertical.jpg",credit:"T. R. Shankar Raman · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:6,alt:"4,500 ft",dist:"",best:"Nov – Feb",price:12000,soon:true,dep:"Dibrugarh",desc:"A 6-day moderate trek in Arunachal, topping out at 4,500 ft. Best time to go: Nov – Feb."},
+  {n:"Dong Valley",region:"Arunachal",img:U+"1724733613256-a1ed7936bb70",r:4.7,rev:"",lvl:"Moderate",days:4,alt:"8,000 ft",dist:"",best:"Oct – Apr",price:9000,soon:true,dep:"Dibrugarh",desc:"A 4-day moderate trek in Arunachal, topping out at 8,000 ft. Best time to go: Oct – Apr."},
+  {n:"Pangsau Pass",region:"Arunachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/M.M._Pallam_Raju_and_the_Aruncahl_Pradesh_Chief_Minister_Shri_Dorjee_Khandu_inaugurated_the_3-day_Pangsau_Pass_winter_festival%2C_at_Nampong%2C_Changlang_in_Arunachal_Pradesh_on_January_20%2C_2010.jpg/1280px-thumbnail.jpg",credit:"Ministry of Defence · GODL-India · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:5,alt:"3,700 ft",dist:"",best:"Oct – Apr",price:10500,soon:true,dep:"Dibrugarh",desc:"A 5-day moderate trek in Arunachal, topping out at 3,700 ft. Best time to go: Oct – Apr."},
+  {n:"Bum La",region:"Arunachal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Mountain_range_near_Bum_La_Pass%2C_Tawang%2C_Arunachal_Pradesh%2C_India.jpg/1280px-Mountain_range_near_Bum_La_Pass%2C_Tawang%2C_Arunachal_Pradesh%2C_India.jpg",credit:"Rohit Sharma · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:2,alt:"15,200 ft",dist:"",best:"May – Oct",price:5500,soon:true,dep:"Tawang",desc:"A 2-day moderate trek in Arunachal, topping out at 15,200 ft. Best time to go: May – Oct."},
+  {n:"David Scott Trail",region:"Meghalaya",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/David_Scott_Trail.jpg/1280px-David_Scott_Trail.jpg",credit:"Wann Majaw · CC0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Easy",days:2,alt:"4,900 ft",dist:"",best:"Oct – Apr",price:5500,soon:true,dep:"Shillong",desc:"A 2-day easy trek in Meghalaya, topping out at 4,900 ft. Best time to go: Oct – Apr."},
+  {n:"Living Root Bridge",region:"Meghalaya",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/3/37/Living_root_bridge%2C_Maghalaya%2C_India1.jpg/1280px-Living_root_bridge%2C_Maghalaya%2C_India1.jpg",credit:"Joydeep Chakraborty · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Easy",days:1,alt:"2,400 ft",dist:"",best:"Oct – Apr",price:4000,soon:true,dep:"Shillong",desc:"A 1-day easy trek in Meghalaya, topping out at 2,400 ft. Best time to go: Oct – Apr."},
+  {n:"Double Decker Root Bridge",region:"Meghalaya",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/Double_decker_living_root_bridge_02.jpg/1280px-Double_decker_living_root_bridge_02.jpg",credit:"Chiranjeeb Baul · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:1,alt:"2,500 ft",dist:"",best:"Oct – Apr",price:4000,soon:true,dep:"Cherrapunji",desc:"A 1-day moderate trek in Meghalaya, topping out at 2,500 ft. Best time to go: Oct – Apr."},
+  {n:"Nongriat",region:"Meghalaya",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Living_root_bridges_of_Nongriat_village_in_East_Khasi_Hills_district%2C_Meghalaya_JEG7387.jpg/1280px-Living_root_bridges_of_Nongriat_village_in_East_Khasi_Hills_district%2C_Meghalaya_JEG7387.jpg",credit:"PJeganathan · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:1,alt:"2,500 ft",dist:"",best:"Oct – Apr",price:4000,soon:true,dep:"Shillong",desc:"A 1-day moderate trek in Meghalaya, topping out at 2,500 ft. Best time to go: Oct – Apr."},
+  {n:"Mawryngkhang Bamboo",region:"Meghalaya",img:U+"1606898296502-40d8c37e994b",r:4.7,rev:"",lvl:"Moderate",days:1,alt:"3,000 ft",dist:"",best:"Oct – Apr",price:4000,soon:true,dep:"Shillong",desc:"A 1-day moderate trek in Meghalaya, topping out at 3,000 ft. Best time to go: Oct – Apr."},
+  {n:"Laitlum Canyon",region:"Meghalaya",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/Laitlum_Canyon%2C_Meghalaya.jpg/1280px-Laitlum_Canyon%2C_Meghalaya.jpg",credit:"Medhi jyoti · CC BY 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Easy",days:1,alt:"4,500 ft",dist:"",best:"Oct – May",price:4000,soon:true,dep:"Shillong",desc:"A 1-day easy trek in Meghalaya, topping out at 4,500 ft. Best time to go: Oct – May."},
+  {n:"Sohra Waterfall",region:"Meghalaya",img:U+"1606898296502-40d8c37e994b",r:4.7,rev:"",lvl:"Easy",days:1,alt:"4,000 ft",dist:"",best:"Oct – May",price:4000,soon:true,dep:"Shillong",desc:"A 1-day easy trek in Meghalaya, topping out at 4,000 ft. Best time to go: Oct – May."},
+  {n:"Mawphlang Sacred Forest",region:"Meghalaya",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Mawphlang_Sacred_Forest%2C_Mawphlang%2C_Meghalaya.jpg/1280px-Mawphlang_Sacred_Forest%2C_Mawphlang%2C_Meghalaya.jpg",credit:"Anushtup · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Easy",days:1,alt:"5,000 ft",dist:"",best:"Oct – Apr",price:4000,soon:true,dep:"Shillong",desc:"A 1-day easy trek in Meghalaya, topping out at 5,000 ft. Best time to go: Oct – Apr."},
+  {n:"Shnongpdeng Riverside",region:"Meghalaya",img:U+"1606898296502-40d8c37e994b",r:4.7,rev:"",lvl:"Easy",days:1,alt:"1,800 ft",dist:"",best:"Oct – Apr",price:4000,soon:true,dep:"Shillong",desc:"A 1-day easy trek in Meghalaya, topping out at 1,800 ft. Best time to go: Oct – Apr."},
+  {n:"Balpakram National Park",region:"Meghalaya",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Matcha_Nokpante_%28tiger%27s_meeting_place%29_in_Balpakram_National_Park.jpg/1280px-Matcha_Nokpante_%28tiger%27s_meeting_place%29_in_Balpakram_National_Park.jpg",credit:"Hgm2016 · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:4,alt:"3,000 ft",dist:"",best:"Oct – Mar",price:9000,soon:true,dep:"Baghmara",desc:"A 4-day moderate trek in Meghalaya, topping out at 3,000 ft. Best time to go: Oct – Mar."},
+  {n:"Dzukou Valley",region:"Nagaland",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Breathtaking_beauty_of_Dzukou_Valley_in_Manipur-Nagaland_border_%28edit%29.jpg/1280px-Breathtaking_beauty_of_Dzukou_Valley_in_Manipur-Nagaland_border_%28edit%29.jpg",credit:"Original: Samudra Bikash Hazarika Derivative work: Unpetitpr · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:2,alt:"8,045 ft",dist:"",best:"Jun – Sep",price:5500,soon:true,dep:"Kohima",desc:"A 2-day moderate trek in Nagaland, topping out at 8,045 ft. Best time to go: Jun – Sep."},
+  {n:"Japfu Peak",region:"Nagaland",img:U+"1606898296502-40d8c37e994b",r:4.7,rev:"",lvl:"Moderate",days:2,alt:"9,843 ft",dist:"",best:"Oct – Apr",price:5500,soon:true,dep:"Kohima",desc:"A 2-day moderate trek in Nagaland, topping out at 9,843 ft. Best time to go: Oct – Apr."},
+  {n:"Mount Saramati",region:"Nagaland",img:U+"1589340532046-e505aa832cd1",r:4.7,rev:"",lvl:"Difficult",days:5,alt:"12,553 ft",dist:"",best:"Sep – Apr",price:10500,soon:true,dep:"Dimapur",desc:"A 5-day difficult trek in Nagaland, topping out at 12,553 ft. Best time to go: Sep – Apr."},
+  {n:"Puliebadze",region:"Nagaland",img:U+"1606898296502-40d8c37e994b",r:4.7,rev:"",lvl:"Easy",days:1,alt:"7,300 ft",dist:"",best:"Oct – May",price:4000,soon:true,dep:"Kohima",desc:"A 1-day easy trek in Nagaland, topping out at 7,300 ft. Best time to go: Oct – May."},
+  {n:"Benreu",region:"Nagaland",img:U+"1589340532046-e505aa832cd1",r:4.7,rev:"",lvl:"Moderate",days:2,alt:"6,000 ft",dist:"",best:"Oct – Apr",price:5500,soon:true,dep:"Kohima",desc:"A 2-day moderate trek in Nagaland, topping out at 6,000 ft. Best time to go: Oct – Apr."},
+  {n:"Intanki National Park",region:"Nagaland",img:U+"1606898296502-40d8c37e994b",r:4.7,rev:"",lvl:"Easy",days:2,alt:"4,000 ft",dist:"",best:"Nov – Apr",price:5500,soon:true,dep:"Dimapur",desc:"A 2-day easy trek in Nagaland, topping out at 4,000 ft. Best time to go: Nov – Apr."},
+  {n:"Phalut",region:"West Bengal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Lhotse%2C_Everest%2C_Makalu_and_Chomolonzo_from_Phalut%2C_Oct_2011.jpg/1280px-Lhotse%2C_Everest%2C_Makalu_and_Chomolonzo_from_Phalut%2C_Oct_2011.jpg",credit:"Shilbhadra · CC BY-SA 3.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:7,alt:"11,800 ft",dist:"",best:"Oct – Apr",price:13500,soon:true,dep:"Manebhanjan",desc:"A 7-day moderate trek in West Bengal, topping out at 11,800 ft. Best time to go: Oct – Apr."},
+  {n:"Tonglu",region:"West Bengal",img:"https://upload.wikimedia.org/wikipedia/commons/5/5f/Tonglu%2CDarjeeling%2CWest_Bengal%2C_India.jpg",credit:"Atudu · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Easy",days:2,alt:"10,130 ft",dist:"",best:"Mar – May, Sep – Dec",price:5500,soon:true,dep:"Darjeeling",desc:"A 2-day easy trek in West Bengal, topping out at 10,130 ft. Best time to go: Mar – May, Sep – Dec."},
+  {n:"Senchal Wildlife",region:"West Bengal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/Rusty-flanked_Treecreeper_in_Senchal_Wildlife_Sanctuary_May_2025_by_Tisha_Mukherjee_10.jpg/1280px-Rusty-flanked_Treecreeper_in_Senchal_Wildlife_Sanctuary_May_2025_by_Tisha_Mukherjee_10.jpg",credit:"Tisha Mukherjee · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Easy",days:1,alt:"8,160 ft",dist:"",best:"Oct – Nov",price:4000,soon:true,dep:"Darjeeling",desc:"A 1-day easy trek in West Bengal, topping out at 8,160 ft. Best time to go: Oct – Nov."},
+  {n:"Tiger Hill Sunrise",region:"West Bengal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/View_from_Tiger_Hill.jpg/1280px-View_from_Tiger_Hill.jpg",credit:"Owasim raja ahmed · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Easy",days:1,alt:"8,500 ft",dist:"",best:"Oct – Dec",price:4000,soon:true,dep:"Darjeeling",desc:"A 1-day easy trek in West Bengal, topping out at 8,500 ft. Best time to go: Oct – Dec."},
+  {n:"Neora Valley",region:"West Bengal",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Sikkim_Treecreeper_in_Neora_Valley_National_Park.jpg/1280px-Sikkim_Treecreeper_in_Neora_Valley_National_Park.jpg",credit:"Ikshan Ganpathi · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:4,alt:"10,500 ft",dist:"",best:"Oct – Apr",price:9000,soon:true,dep:"Lava",desc:"A 4-day moderate trek in West Bengal, topping out at 10,500 ft. Best time to go: Oct – Apr."},
+  {n:"Lava Lolegaon",region:"West Bengal",img:U+"1606898296502-40d8c37e994b",r:4.7,rev:"",lvl:"Easy",days:2,alt:"7,200 ft",dist:"",best:"Oct – Apr",price:5500,soon:true,dep:"Siliguri",desc:"A 2-day easy trek in West Bengal, topping out at 7,200 ft. Best time to go: Oct – Apr."},
+  {n:"Harishchandragad",region:"Maharashtra",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Harishchandragad_view_from_caves.jpg/1280px-Harishchandragad_view_from_caves.jpg",credit:"Tokendra · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:2,alt:"4,671 ft",dist:"",best:"Oct – Feb",price:5500,soon:true,dep:"Pune",desc:"A 2-day moderate trek in Maharashtra, topping out at 4,671 ft. Best time to go: Oct – Feb."},
+  {n:"Rajmachi",region:"Maharashtra",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Rajmachi_fort_-_Pune_-Maharashtra_-DSC001.jpg/1280px-Rajmachi_fort_-_Pune_-Maharashtra_-DSC001.jpg",credit:"Nikhil Thokal · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Easy",days:2,alt:"2,710 ft",dist:"",best:"Jun – Sep",price:5500,soon:true,dep:"Lonavala",desc:"A 2-day easy trek in Maharashtra, topping out at 2,710 ft. Best time to go: Jun – Sep."},
+  {n:"Kalsubai Peak",region:"Maharashtra",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Sunrise_from_Kalsubai_peak_1.jpg/1280px-Sunrise_from_Kalsubai_peak_1.jpg",credit:"Ragz13 · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:1,alt:"5,400 ft",dist:"",best:"Jun – Feb",price:4000,soon:true,dep:"Mumbai",desc:"A 1-day moderate trek in Maharashtra, topping out at 5,400 ft. Best time to go: Jun – Feb."},
+  {n:"Lohagad Fort",region:"Maharashtra",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Lohagad_Fort_Tomb_3.jpg/1280px-Lohagad_Fort_Tomb_3.jpg",credit:"Rangan Datta Wiki · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Easy",days:1,alt:"3,389 ft",dist:"",best:"Jun – Feb",price:4000,soon:true,dep:"Lonavala",desc:"A 1-day easy trek in Maharashtra, topping out at 3,389 ft. Best time to go: Jun – Feb."},
+  {n:"Visapur Fort",region:"Maharashtra",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Visapur_fort_in_monsoon.jpg/1280px-Visapur_fort_in_monsoon.jpg",credit:"Sumedh.dorwat · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Easy",days:1,alt:"3,556 ft",dist:"",best:"Jun – Feb",price:4000,soon:true,dep:"Lonavala",desc:"A 1-day easy trek in Maharashtra, topping out at 3,556 ft. Best time to go: Jun – Feb."},
+  {n:"Torna Fort",region:"Maharashtra",img:"https://upload.wikimedia.org/wikipedia/commons/b/b6/Torna_Fort.png",credit:"Purplesky91 · CC BY-SA 3.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:1,alt:"4,603 ft",dist:"",best:"Oct – Feb",price:4000,soon:true,dep:"Pune",desc:"A 1-day moderate trek in Maharashtra, topping out at 4,603 ft. Best time to go: Oct – Feb."},
+  {n:"Rajgad Fort",region:"Maharashtra",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Bali_Khila_Rajgad_Maharashtra.jpg/1280px-Bali_Khila_Rajgad_Maharashtra.jpg",credit:"Cj.samson · CC BY 3.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:1,alt:"4,514 ft",dist:"",best:"Jul – Feb",price:4000,soon:true,dep:"Pune",desc:"A 1-day moderate trek in Maharashtra, topping out at 4,514 ft. Best time to go: Jul – Feb."},
+  {n:"Ratangad",region:"Maharashtra",img:"https://upload.wikimedia.org/wikipedia/commons/b/b0/Ratangad_nedhe.jpg",credit:"Elroy Serrao · CC BY-SA 2.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:2,alt:"4,255 ft",dist:"",best:"Jun – Feb",price:5500,soon:true,dep:"Pune",desc:"A 2-day moderate trek in Maharashtra, topping out at 4,255 ft. Best time to go: Jun – Feb."},
+  {n:"Alang Madan Kulang",region:"Maharashtra",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Alang_Madan_Kulang_from_Kalsubai_Maharashtra.JPG/1280px-Alang_Madan_Kulang_from_Kalsubai_Maharashtra.JPG",credit:"Kul Patil · CC BY-SA 3.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Difficult",days:3,alt:"4,850 ft",dist:"",best:"Oct – Feb",price:7500,soon:true,dep:"Mumbai / Pune",desc:"A 3-day difficult trek in Maharashtra, topping out at 4,850 ft. Best time to go: Oct – Feb."},
+  {n:"Kalavantin Durg",region:"Maharashtra",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/KALAVANTIN_DURG_%28FORT%29.jpg/1280px-KALAVANTIN_DURG_%28FORT%29.jpg",credit:"Anthonyrosyl · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:1,alt:"2,300 ft",dist:"",best:"Oct – Mar",price:4000,soon:true,dep:"Panvel",desc:"A 1-day moderate trek in Maharashtra, topping out at 2,300 ft. Best time to go: Oct – Mar."},
+  {n:"Peb Fort",region:"Maharashtra",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Peb_Fort_%28Wikatgadh%29_-_panoramio.jpg/1280px-Peb_Fort_%28Wikatgadh%29_-_panoramio.jpg",credit:"Rohan Patil · CC BY-SA 3.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Easy",days:1,alt:"2,100 ft",dist:"",best:"Jun – Oct",price:4000,soon:true,dep:"Neral",desc:"A 1-day easy trek in Maharashtra, topping out at 2,100 ft. Best time to go: Jun – Oct."},
+  {n:"Andharban Forest",region:"Maharashtra",img:U+"1589340532046-e505aa832cd1",r:4.7,rev:"",lvl:"Easy",days:2,alt:"327",dist:"",best:"Jun – Sep",price:5500,soon:true,dep:"",desc:"A 2-day easy trek in Maharashtra, topping out at 327. Best time to go: Jun – Sep."},
+  {n:"Kumara Parvatha",region:"Karnataka",img:U+"1606898296502-40d8c37e994b",r:4.7,rev:"",lvl:"Difficult",days:2,alt:"5,617 ft",dist:"",best:"Oct – Feb",price:5500,soon:true,dep:"Bangalore",desc:"A 2-day difficult trek in Karnataka, topping out at 5,617 ft. Best time to go: Oct – Feb."},
+  {n:"Kudremukh",region:"Karnataka",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Kudremukh_national_park.jpg/1280px-Kudremukh_national_park.jpg",credit:"Naveen · Public domain · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:2,alt:"6,207 ft",dist:"",best:"Oct – Mar",price:5500,soon:true,dep:"Bangalore",desc:"A 2-day moderate trek in Karnataka, topping out at 6,207 ft. Best time to go: Oct – Mar."},
+  {n:"Tadiandamol",region:"Karnataka",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Shola_tadiandamol.jpg/1280px-Shola_tadiandamol.jpg",credit:"L. Shyamal · CC BY-SA 3.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Easy",days:1,alt:"5,735 ft",dist:"",best:"Oct – Feb",price:4000,soon:true,dep:"Bangalore",desc:"A 1-day easy trek in Karnataka, topping out at 5,735 ft. Best time to go: Oct – Feb."},
+  {n:"Mullayanagiri",region:"Karnataka",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Mullayanagiri_peak.jpg/1280px-Mullayanagiri_peak.jpg",credit:"Anvesh1103 · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Easy",days:1,alt:"6,330 ft",dist:"",best:"Sep – Feb",price:4000,soon:true,dep:"Chikmagalur",desc:"A 1-day easy trek in Karnataka, topping out at 6,330 ft. Best time to go: Sep – Feb."},
+  {n:"Kodachadri",region:"Karnataka",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Kodachadri%2CKarnataka%2CIndia.jpg/1280px-Kodachadri%2CKarnataka%2CIndia.jpg",credit:"Rayabhari · CC BY 3.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:2,alt:"4,411 ft",dist:"",best:"Oct – Feb",price:5500,soon:true,dep:"Bangalore",desc:"A 2-day moderate trek in Karnataka, topping out at 4,411 ft. Best time to go: Oct – Feb."},
+  {n:"Nishani Motte",region:"Karnataka",img:U+"1589340532046-e505aa832cd1",r:4.7,rev:"",lvl:"Moderate",days:2,alt:"4,127 ft",dist:"",best:"Oct – Feb",price:5500,soon:true,dep:"Bangalore",desc:"A 2-day moderate trek in Karnataka, topping out at 4,127 ft. Best time to go: Oct – Feb."},
+  {n:"Narasimha Parvatha",region:"Karnataka",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Narasimha_feet_Narasimha_Parvatha_Kigga.jpg/1280px-Narasimha_feet_Narasimha_Parvatha_Kigga.jpg",credit:"NithishKWiki · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:2,alt:"3,772 ft",dist:"",best:"Oct – Jan",price:5500,soon:true,dep:"Bangalore",desc:"A 2-day moderate trek in Karnataka, topping out at 3,772 ft. Best time to go: Oct – Jan."},
+  {n:"Ettina Bhuja",region:"Karnataka",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Ettina_Bhuja_1.jpg/1280px-Ettina_Bhuja_1.jpg",credit:"Shashidhara halady · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Easy",days:1,alt:"4,265 ft",dist:"",best:"Oct – Feb",price:4000,soon:true,dep:"Bangalore",desc:"A 1-day easy trek in Karnataka, topping out at 4,265 ft. Best time to go: Oct – Feb."},
+  {n:"Ballalarayana Durga",region:"Karnataka",img:U+"1606898296502-40d8c37e994b",r:4.7,rev:"",lvl:"Easy",days:1,alt:"4,940 ft",dist:"",best:"Sep – Feb",price:4000,soon:true,dep:"Bengaluru",desc:"A 1-day easy trek in Karnataka, topping out at 4,940 ft. Best time to go: Sep – Feb."},
+  {n:"Gokarna Beach",region:"Karnataka",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/PXL_20260103_054657562.MP_Paradise_beach_gokarna_Paradise_Beach_Trail%2C_Gokarna%2C_Karnataka_581326_06.jpg/1280px-PXL_20260103_054657562.MP_Paradise_beach_gokarna_Paradise_Beach_Trail%2C_Gokarna%2C_Karnataka_581326_06.jpg",credit:"Sourabh.biswas003 · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Easy",days:2,alt:"Sea Level",dist:"",best:"Oct – Mar",price:5500,soon:true,dep:"Bangalore",desc:"A 2-day easy trek in Karnataka. Best time to go: Oct – Mar."},
+  {n:"Kolukkumalai",region:"Tamil Nadu",img:"https://upload.wikimedia.org/wikipedia/commons/8/8d/Kolukkumalai_sunrise_view.jpg",credit:"Kaartic · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Easy",days:1,alt:"7,130 ft",dist:"",best:"Sep – Mar",price:4000,soon:true,dep:"Munnar",desc:"A 1-day easy trek in Tamil Nadu, topping out at 7,130 ft. Best time to go: Sep – Mar."},
+  {n:"Velliangiri Hills",region:"Tamil Nadu",img:"https://upload.wikimedia.org/wikipedia/commons/6/6c/Velliangiri_hills.jpg",credit:"Nancy Anburaj · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Difficult",days:2,alt:"6,000 ft",dist:"",best:"Feb – May",price:5500,soon:true,dep:"Coimbatore",desc:"A 2-day difficult trek in Tamil Nadu, topping out at 6,000 ft. Best time to go: Feb – May."},
+  {n:"Perumal Peak",region:"Tamil Nadu",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Perumal%27s_Peak.jpg/1280px-Perumal%27s_Peak.jpg",credit:"Challiyil Eswaramangalath Pavithran Vipin · CC BY-SA 2.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:1,alt:"8,005 ft",dist:"",best:"Dec – Apr",price:4000,soon:true,dep:"Kodaikanal",desc:"A 1-day moderate trek in Tamil Nadu, topping out at 8,005 ft. Best time to go: Dec – Apr."},
+  {n:"Top Station",region:"Tamil Nadu",img:"https://upload.wikimedia.org/wikipedia/commons/c/c5/Munnar_Top_station.jpg",credit:"Bimal K C from Cochin, India · CC BY 2.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Easy",days:1,alt:"6,800 ft",dist:"",best:"Sep – Mar",price:4000,soon:true,dep:"Munnar",desc:"A 1-day easy trek in Tamil Nadu, topping out at 6,800 ft. Best time to go: Sep – Mar."},
+  {n:"Dolphin's Nose",region:"Tamil Nadu",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Dolphin%27s_Nose%2C_Coonoor%2C_Nilgiris_District%2C_Tamil_Nadu%2C_India.jpg/1280px-Dolphin%27s_Nose%2C_Coonoor%2C_Nilgiris_District%2C_Tamil_Nadu%2C_India.jpg",credit:"N. Vivekananthamoorthy · CC BY 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Easy",days:1,alt:"5,100 ft",dist:"",best:"Oct – Mar",price:4000,soon:true,dep:"Kodaikanal",desc:"A 1-day easy trek in Tamil Nadu, topping out at 5,100 ft. Best time to go: Oct – Mar."},
+  {n:"Meghamalai",region:"Tamil Nadu",img:"https://upload.wikimedia.org/wikipedia/commons/e/e7/Meghamalai_elephants.jpg",credit:"Mprabaharan at English Wikipedia · Public domain · Wikimedia Commons",r:4.7,rev:"",lvl:"Easy",days:2,alt:"4,900 ft",dist:"",best:"Oct – Mar",price:5500,soon:true,dep:"Madurai",desc:"A 2-day easy trek in Tamil Nadu, topping out at 4,900 ft. Best time to go: Oct – Mar."},
+  {n:"Mukurthi National Park",region:"Tamil Nadu",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Mukurthi_National_Park.jpg/1280px-Mukurthi_National_Park.jpg",credit:"Marcus Sherman · CC BY-SA 2.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Moderate",days:2,alt:"8,554 ft",dist:"",best:"Feb – May, Sep – Nov",price:5500,soon:true,dep:"Ooty",desc:"A 2-day moderate trek in Tamil Nadu, topping out at 8,554 ft. Best time to go: Feb – May, Sep – Nov."},
+  {n:"Ooty Peak",region:"Tamil Nadu",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/East_Peak_Club_Hill_Ooty_Aug25_A7CR_07244.jpg/1280px-East_Peak_Club_Hill_Ooty_Aug25_A7CR_07244.jpg",credit:"Timothy A. Gonsalves · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Easy",days:1,alt:"7,350 ft",dist:"",best:"Oct – Jun",price:4000,soon:true,dep:"Ooty",desc:"A 1-day easy trek in Tamil Nadu, topping out at 7,350 ft. Best time to go: Oct – Jun."},
+  {n:"Kotagiri Longwood",region:"Tamil Nadu",img:"https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Longwood_Shola_Reserve_Forest%2C_Kotagiri%2C_Tamil_Nadu.jpg/1280px-Longwood_Shola_Reserve_Forest%2C_Kotagiri%2C_Tamil_Nadu.jpg",credit:"SeethaG · CC BY-SA 4.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Easy",days:1,alt:"6,000 ft",dist:"",best:"Oct – Mar",price:4000,soon:true,dep:"Kotagiri",desc:"A 1-day easy trek in Tamil Nadu, topping out at 6,000 ft. Best time to go: Oct – Mar."},
+  {n:"Thalaiyar Falls",region:"Tamil Nadu",img:"https://upload.wikimedia.org/wikipedia/commons/6/6a/Thalaiyar_Falls.jpg",credit:"Barbara Gail Block · CC BY-SA 2.0 · Wikimedia Commons",r:4.7,rev:"",lvl:"Difficult",days:2,alt:"5,900 ft",dist:"",best:"Oct – Mar",price:5500,soon:true,dep:"Kodaikanal",desc:"A 2-day difficult trek in Tamil Nadu, topping out at 5,900 ft. Best time to go: Oct – Mar."},
 ];
 /* A Wikimedia Commons *file-page* URL (…/wiki/File:Name.jpg) is an HTML page, not an image,
    so it renders blank as a cover. Convert it to a real image via Special:FilePath (which 302s
@@ -306,11 +306,11 @@ function deriveTreks(){treks.forEach((t,i)=>{t.idx=i;
   const ft=parseInt(String(t.alt).replace(/[^0-9]/g,''))||10000;
   t.elev=t.alt;
   t.climate = ft>14000?'Alpine · Harsh':(ft>11500?'Alpine · Cold':'Himalayan · Cool');
-  /* TYPICAL range for the altitude band — labelled as such in the UI. Live values,
+  /* TYPICAL range for the altitude band, labelled as such in the UI. Live values,
      when we can fetch them, overwrite t.tempLive / t.aqiLive below.
      There used to be a `t.aqiVal = 18+((i*9)%34)` here: an "Air Quality" reading
      derived from the trek's position in the array. It looked like a measurement and
-     was shown as one. Removed — we now show a real number or no number. */
+     was shown as one. Removed, we now show a real number or no number. */
   t.temp = ft>14000?'-8° to 6°C':(ft>11500?'-5° to 10°C':'2° to 15°C');
 });}
 deriveTreks();
@@ -379,11 +379,11 @@ function sbHeaders(extra){return Object.assign({apikey:SB.SUPABASE_ANON_KEY,Auth
    These helpers stash the last result in localStorage: callers paint from it
    INSTANTLY, then revalidate in the background and repaint only if it actually
    changed. There is no locale/currency variation in this app, so the cache key
-   is just the dataset name — add a suffix here if that ever changes. */
+   is just the dataset name, add a suffix here if that ever changes. */
 /* Bump ONLY when a cached payload's shape changes (a new column the UI depends on).
-   Deliberately not tied to APP_BUILD — that changes every deploy and would throw away
+   Deliberately not tied to APP_BUILD, that changes every deploy and would throw away
    the cache each time, which is the opposite of what this is for. */
-const SWR_V=2;   /* v2: weather forecast is now 7 days (was 5) — invalidate the old cached payloads */
+const SWR_V=2;   /* v2: weather forecast is now 7 days (was 5), invalidate the old cached payloads */
 function swrGet(key){try{const v=JSON.parse(localStorage.getItem('tmk_swr_'+key)||'null');
   if(!v||!('data'in v))return null;
   if((v.v||0)!==SWR_V){localStorage.removeItem('tmk_swr_'+key);return null;}   /* stale shape */
@@ -395,7 +395,7 @@ function swrSet(key,data){try{localStorage.setItem('tmk_swr_'+key,JSON.stringify
   }}
 function swrFresh(key,ttl){const v=swrGet(key);return !!(v&&ttl&&(Date.now()-v.t<ttl));}
 /* DB is the source of truth for editable fields. Merge DB rows OVER the hardcoded
-   fallback by name — so an admin edit persists for everyone even when not all treks
+   fallback by name, so an admin edit persists for everyone even when not all treks
    were pre-imported, the trek keeps its rich display fields (highlights etc.), and it
    picks up the DB _id so the NEXT edit updates the same row instead of inserting. */
 function applyTrekRows(rows){
@@ -430,7 +430,7 @@ async function loadTreks(fresh){ if(!sbOn) return;
     }
   }
   try{let r=await fetch(SB.SUPABASE_URL+'/rest/v1/treks?select=*&order=sort.asc',{headers:sbHeaders(),cache:'no-store'});
-    /* table may not have a `sort` column — retry ordering by id */
+    /* table may not have a `sort` column, retry ordering by id */
     if(!r.ok) r=await fetch(SB.SUPABASE_URL+'/rest/v1/treks?select=*&order=id.asc',{headers:sbHeaders(),cache:'no-store'});
     if(!r.ok) return; const rows=await r.json(); if(!rows||!rows.length) return;
     swrSet(TREKS_KEY,rows);
@@ -466,7 +466,7 @@ async function loadNews(){
     return _newsCache;
   }catch(e){return[];}
 }
-/* clean redesigned news card — priority pill over image, tight hierarchy */
+/* clean redesigned news card, priority pill over image, tight hierarchy */
 function newsCard(n){
   const a=isAlert(n);const when=n.published_at?timeAgo(n.published_at):'';
   const pri=a?`<span class="npill high">${ic('alert',12)} Alert</span>`:`<span class="npill low">${ic('bell',12)} Update</span>`;
@@ -511,7 +511,7 @@ async function renderHomeNews(){
   const list=_newsCache||await loadNews();
   if(!list||!list.length){box.className='';box.innerHTML=`<div class="empty" style="padding:14px 0;font-size:12.5px;color:var(--muted)">No trek updates right now.</div>`;return;}
   const alerts=list.filter(isAlert),news=list.filter(n=>!isAlert(n));
-  /* alerts first (priority), then a couple of news — horizontal cards like Popular Treks */
+  /* alerts first (priority), then a couple of news, horizontal cards like Popular Treks */
   const show=[...alerts.slice(0,3),...news.slice(0,3)];
   box.className='news-hrow';
   box.innerHTML=show.map(newsCard).join('');hydrate(box);
@@ -523,12 +523,12 @@ async function renderNews(){
   /* opening the news screen clears the "new news" bell dot */
   markNewsSeen();
   _newsQuery='';const si=document.getElementById('newsSearch');if(si)si.value='';
-  /* paint the last cached news INSTANTLY — no skeleton, no network wait */
+  /* paint the last cached news INSTANTLY, no skeleton, no network wait */
   const cached=swrGet('news');
   const hadCache=!!(cached&&cached.data&&cached.data.length);
   if(hadCache){_newsCache=cached.data;paintNews(cached.data);}
   else box.innerHTML=`<div class="skel skel-card" style="height:54px"></div><div class="skel skel-card" style="height:54px"></div>`;
-  /* opened news moments ago? cache is fresh — skip the refetch entirely */
+  /* opened news moments ago? cache is fresh, skip the refetch entirely */
   if(swrFresh('news',120000))return;
   /* revalidate in the background; repaint only if it changed and the user hasn't started searching */
   const list=await loadNews();
@@ -551,7 +551,7 @@ function paintNews(list){
 }
 function searchNews(q){_newsQuery=q||'';paintNews(_newsCache||[]);}
 /* serious-alert notification: banner + chime when a NEW alert appears */
-/* screens where a popup banner is intrusive — pre-login / auth flow */
+/* screens where a popup banner is intrusive, pre-login / auth flow */
 const NO_BANNER_SCREENS=['login','otp','splash','onboarding'];
 /* is there fresh news the user hasn't opened yet? drives the bell dot.
    "seen" = the newest news url the last time they opened the News screen. */
@@ -563,7 +563,7 @@ function hasUnseenNews(){
 function markNewsSeen(){try{localStorage.setItem('tmk_news_seen',newestNewsUrl());}catch(e){}
   const d=document.getElementById('notifDot');if(d&&_lastUnread<=0)d.style.display='none';}
 function checkAlerts(list){
-  /* new / alert news no longer floats a banner over the app — it only lights the
+  /* new / alert news no longer floats a banner over the app, it only lights the
      bell (notification icon). Tap the bell to see it in the News section. */
   refreshNotifBadge();
 }
@@ -582,16 +582,16 @@ function saveEnquiry(kind,detail){ if(!sbOn) return;
 
 const ITIN={
   "Kedarkantha":[["Sankri to Juda Ka Talab","Trek through pine forests to a beautiful campsite.","4 km","4–5 hrs"],["Juda Ka Talab to Kedarkantha Base","Gradual ascent with scenic views.","5 km","4–5 hrs"],["Kedarkantha Summit & Base Camp","Early morning summit trek. Return to base.","6 km","6–7 hrs"],["Base Camp to Hargaon","Descent through forests and charming villages.","6 km","4–5 hrs"],["Hargaon to Sankri","Drive back with beautiful memories.","3 km","1–2 hrs"]],
-  "Brahmatal":[["Lohajung to Bekaltal","Climb through oak & rhododendron forest.","6 km","5 hrs"],["Bekaltal to Brahmatal","Ridge walk with Trishul views.","5 km","4 hrs"],["Brahmatal Top & lake","Summit the ridge and frozen lake.","7 km","6 hrs"],["Descend to Lohajung","Long descent through meadows.","8 km","5 hrs"],["Lohajung to Kathgodam","Drive back.","—","10 hrs"]],
-  "Valley of Flowers":[["Govindghat to Ghangaria","Trek to the base village.","10 km","6 hrs"],["Valley of Flowers","Day hike into the bloom valley.","7 km","6 hrs"],["Hemkund Sahib","Steep climb to the glacial lake.","12 km","8 hrs"],["Ghangaria to Govindghat","Descend and drive to Joshimath.","10 km","5 hrs"],["Drive to Rishikesh","Journey ends.","—","9 hrs"]],
-  "Hampta Pass":[["Manali to Jobra to Chika","Drive then short trek by the river.","2 km","2 hrs"],["Chika to Balu Ka Ghera","Walk along the Rani river.","7 km","5 hrs"],["Cross Hampta Pass to Shea Goru","The big crossover day.","7 km","8 hrs"],["Shea Goru to Chatru","Descend into Lahaul.","6 km","4 hrs"],["Chandratal & drive back","Visit the moon lake, drive to Manali.","—","8 hrs"]],
-  "Har Ki Dun":[["Sankri to Taluka to Gangad","Drive then trek along the Supin.","11 km","6 hrs"],["Gangad to Osla","Through ancient villages.","8 km","5 hrs"],["Osla to Har Ki Dun","Into the valley of gods.","8 km","6 hrs"],["Explore & descend","Marinda Tal and back.","8 km","6 hrs"],["Osla to Taluka","Long descent.","12 km","6 hrs"],["Taluka to Sankri to Dehradun","Drive back.","—","10 hrs"]],
+  "Brahmatal":[["Lohajung to Bekaltal","Climb through oak & rhododendron forest.","6 km","5 hrs"],["Bekaltal to Brahmatal","Ridge walk with Trishul views.","5 km","4 hrs"],["Brahmatal Top & lake","Summit the ridge and frozen lake.","7 km","6 hrs"],["Descend to Lohajung","Long descent through meadows.","8 km","5 hrs"],["Lohajung to Kathgodam","Drive back.","","10 hrs"]],
+  "Valley of Flowers":[["Govindghat to Ghangaria","Trek to the base village.","10 km","6 hrs"],["Valley of Flowers","Day hike into the bloom valley.","7 km","6 hrs"],["Hemkund Sahib","Steep climb to the glacial lake.","12 km","8 hrs"],["Ghangaria to Govindghat","Descend and drive to Joshimath.","10 km","5 hrs"],["Drive to Rishikesh","Journey ends.","","9 hrs"]],
+  "Hampta Pass":[["Manali to Jobra to Chika","Drive then short trek by the river.","2 km","2 hrs"],["Chika to Balu Ka Ghera","Walk along the Rani river.","7 km","5 hrs"],["Cross Hampta Pass to Shea Goru","The big crossover day.","7 km","8 hrs"],["Shea Goru to Chatru","Descend into Lahaul.","6 km","4 hrs"],["Chandratal & drive back","Visit the moon lake, drive to Manali.","","8 hrs"]],
+  "Har Ki Dun":[["Sankri to Taluka to Gangad","Drive then trek along the Supin.","11 km","6 hrs"],["Gangad to Osla","Through ancient villages.","8 km","5 hrs"],["Osla to Har Ki Dun","Into the valley of gods.","8 km","6 hrs"],["Explore & descend","Marinda Tal and back.","8 km","6 hrs"],["Osla to Taluka","Long descent.","12 km","6 hrs"],["Taluka to Sankri to Dehradun","Drive back.","","10 hrs"]],
   "Nag Tibba":[["Pantwari to base camp","Trek to the base, bonfire night.","4 km","3–4 hrs"],["Summit & return to Dehradun","Sunrise summit, descend and drive.","8 km","6 hrs"]],
   "Roopkund":[["Lohajung to Didna","Climb to Didna village.","7 km","5 hrs"],["Didna to Ali Bugyal","Vast alpine meadows.","11 km","6 hrs"],["Ali to Patar Nachauni","Ridge walk over Bedni.","6 km","4 hrs"],["Patar to Bhagwabasa","Climb past Kalu Vinayak.","5 km","5 hrs"],["Summit Roopkund","The mystery lake at dawn.","6 km","8 hrs"],["Descend to Lohajung","Long descent via Wan.","13 km","7 hrs"]],
-  /* DRAFT — structure matches the trek record (5 days, ~18 km, Shimla base). The staging
+  /* DRAFT, structure matches the trek record (5 days, ~18 km, Shimla base). The staging
      villages and timings are approximate: confirm them against your recce before this
      trek is promoted, then correct this entry or attach a real PDF in Admin → Treks. */
-  "Yulla Kanda":[["Shimla to Sarahan","Drive up the Sutlej valley into Kinnaur.","—","8–9 hrs"],["Sarahan to Yulla village","Drive to the roadhead, short walk to the village.","3 km","2 hrs"],["Yulla to Yulla Kanda meadow","Climb through apple orchards and cedar to the meadow camp.","7 km","5–6 hrs"],["Krishna temple & descend","Early visit to the temple, then descend to the village.","8 km","6 hrs"],["Drive back to Shimla","Journey ends.","—","8–9 hrs"]]
+  "Yulla Kanda":[["Shimla to Sarahan","Drive up the Sutlej valley into Kinnaur.","","8–9 hrs"],["Sarahan to Yulla village","Drive to the roadhead, short walk to the village.","3 km","2 hrs"],["Yulla to Yulla Kanda meadow","Climb through apple orchards and cedar to the meadow camp.","7 km","5–6 hrs"],["Krishna temple & descend","Early visit to the temple, then descend to the village.","8 km","6 hrs"],["Drive back to Shimla","Journey ends.","","8–9 hrs"]]
 };
 /* pick a scene image per itinerary day from its text, so days look different */
 function dayImg(d,i,trek){
@@ -621,9 +621,9 @@ const packing={
   Others:[['powerbank','Power Bank'],['meals','Trail Snacks'],['permits','ID Copies'],['firstaid','Personal Meds']]
 };
 /* ---------- social: people directory ---------- */
-const people=[];  /* legacy demo array — kept empty; real members live in peoplePool */
+const people=[];  /* legacy demo array, kept empty; real members live in peoplePool */
 /* Shared member list, loaded once from `profiles`. Mentions, @-tagging and the story
-   tray all read this — before, they each filtered the empty `people` array, which is
+   tray all read this, before, they each filtered the empty `people` array, which is
    why the mention popup never appeared. */
 let peoplePool=[],_peopleLoaded=0;
 async function ensurePeople(force){
@@ -644,10 +644,10 @@ function initials(n){return n.split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').
 function avHash(n){let h=0;for(let i=0;i<n.length;i++)h=(h*31+n.charCodeAt(i))|0;return Math.abs(h);}
 /* other people's profile photos, keyed by display name (filled from `profiles`) */
 let photoByName={},hostByName={},unameByName={},socialsByName={},bioByName={},categoryByName={};
-/* when each name was last fetched — so a changed DP/username refreshes instead of
+/* when each name was last fetched, so a changed DP/username refreshes instead of
    sticking on the first cached copy for the whole session */
 let _authorFetchedAt={};
-/* profile header counts — declared up here (renderProfile can run early); -1 = not loaded yet */
+/* profile header counts, declared up here (renderProfile can run early); -1 = not loaded yet */
 let _myPostCount=-1,_myFollowerCount=-1,_myFollowingCount=-1;
 /* declared up here on purpose: renderHome() runs during boot, far above the
    host-trip functions at the bottom of this file. Declaring it next to them
@@ -663,7 +663,7 @@ let _htDiff='Moderate',_htFile=null,_htImgData='',_htInc=[],_htExc=[],_htMedia=[
 /* common options so hosts tap instead of typing */
 const INC_OPTIONS=['Accommodation','All meals','Transport','Trek guide','Permits','Camping equipment','First aid','Porter support','Bonfire','Sightseeing'];
 const EXC_OPTIONS=['Travel to base city','Personal expenses','Insurance','Tips','Gear rental','Meals en route','Anything not listed'];
-/* a verified host gets a tick next to their name — public trust signal, admin-set only */
+/* a verified host gets a tick next to their name, public trust signal, admin-set only */
 function hostBadge(n){return hostByName[n]?'<span class="vbadge" title="Verified Host"><span class="msr">check</span></span>':'';}
 function photoFor(n){
   if(n==='You'||n===myName())return getSavedPhoto();
@@ -678,21 +678,21 @@ function handleFor(n){
 }
 /* same, always @-prefixed for the muted sub-line under a name. A real username can
    never contain a space (the app strips everything outside a-z0-9._), so a value with
-   a space is the name fallback — return '' rather than render a broken "@Full Name". */
+   a space is the name fallback, return '' rather than render a broken "@Full Name". */
 function atHandle(n){const s=String(handleFor(n)).replace(/^@/,'').trim();
   if(!s||/\s/.test(s))return '';
   return '@'+s;}
 function avatar(n,size){size=size||38;const g=AVG[avHash(n)%AVG.length];const fs=Math.round(size*.4);
   const photo=photoFor(n);
   /* Preset avatars are a character on a blue→navy rounded-square. A tight circle crops the
-     head/hair at the corners, so inset them to 90% on a MATCHING gradient — the full character
+     head/hair at the corners, so inset them to 90% on a MATCHING gradient, the full character
      shows and the margin blends seamlessly. Uploaded photos still use cover (normal crop). */
   const preset=photo&&/avatars\/avatar-\d/.test(photo);
   const bg=preset
     ? `background:url('${esc(photo)}') center/90% no-repeat,linear-gradient(180deg,#0064fc 0%,#0243a1 52%,#051f4a 100%)`
     : (photo?`background-image:url('${esc(photo)}');background-size:cover;background-position:center`:`background:linear-gradient(135deg,${g[0]},${g[1]})`);
   /* border-radius + overflow are baked in inline so the avatar is ALWAYS a circle, even
-     if the stylesheet is stale/partial on a device — a square photo was the symptom. */
+     if the stylesheet is stale/partial on a device, a square photo was the symptom. */
   return `<div class="av-i" onclick="openPerson('${jsq(n)}')" style="width:${size}px;height:${size}px;font-size:${fs}px;border-radius:50%;overflow:hidden;${bg}">${photo?'':initials(n)}</div>`;}
 
 let postSeq=2;
@@ -739,7 +739,7 @@ let _lastFeed=[],_feedToken=0;
 function postById(id){return _lastFeed.find(p=>p.id===id)||allPosts().find(p=>p.id===id);}
 function isFollowing(n){return !!followState[n];}
 function followCount(){return Object.values(followState).filter(Boolean).length;}
-/* update only the follow buttons for this person — a full re-render made the whole feed flicker */
+/* update only the follow buttons for this person, a full re-render made the whole feed flicker */
 function updateFollowUI(n){
   const on=!!followState[n];
   document.querySelectorAll('[data-follow]').forEach(el=>{
@@ -762,7 +762,7 @@ function updateFollowUI(n){
    - Calling never reveals a phone number: it sends a call request first, and the
      dialer only opens once the other person allows it (or for Tripomonk support).
    Client layer here; real cross-device enforcement needs the SQL/RLS (follows.status,
-   profiles.private) — see SQL-add-privacy.sql. ============================================================ */
+   profiles.private), see SQL-add-privacy.sql. ============================================================ */
 let privateByName={};                 /* name -> bool, filled as profiles load */
 function isPrivateAccount(){const p=getPrefs()||{};return !!p.private;}
 function isPrivatePerson(n){
@@ -807,9 +807,9 @@ function toggleFollow(n){
     uidForName(n).then(uid=>pushNotif({recipientId:uid,recipientName:uid?null:n,type:'follow'}));
   }
   syncFollow(n,!wasFollowing).then(okr=>{
-    if(okr===false){                 /* server rejected — roll the button back */
+    if(okr===false){                 /* server rejected, roll the button back */
       followState[n]=wasFollowing;saveFollows();updateFollowUI(n);
-      toast(wasFollowing?'Could not unfollow — try again':'Could not follow — check your connection');
+      toast(wasFollowing?'Could not unfollow, try again':'Could not follow, check your connection');
     }
   });
 }
@@ -830,14 +830,14 @@ function requestCall(n){
   const cid='c'+(++_cidSeq);
   rows.push({cid,who:'me',type:'callreq',status:'pending',t:nowT(),_pending:true});saveChat(n,rows);
   if(cur!=='chat'){openChat(n);}else renderChat();
-  note('We’ve asked '+properName(n)+' for a call. To protect their privacy their number stays hidden — you’ll be able to call only if they allow it.','Call request sent');
+  note('We’ve asked '+properName(n)+' for a call. To protect their privacy their number stays hidden, you’ll be able to call only if they allow it.','Call request sent');
   deliverMessage(n,{type:'callreq',status:'pending'},cid);
 }
 const menu=[['bookings','My Bookings','bookings'],['shield','Trek Passport','passport'],['like','My Preferences','onboarding'],['monitor','Trek Health','health'],['distance','Trek Navigation','navmap'],['heartmenu','My Wishlist','wishlist'],['starline','My Reviews','reviews'],['settings','Settings','settings'],['help','Help & Support','help']];
 const setList=[['user','Account & security','account'],['bell','Notifications','notifPrefs'],['globe','Language','language'],['card','Payment methods','payments'],['shield','Privacy Policy','privacy'],['help','About Tripomonk','about']];
-/* demo notifications removed — the notifications screen shows only real activity now */
-const faqs=[['How do I book a trek?','Pick a trek, choose a batch on Select Date, add travellers and pay 25% to confirm your seat.'],['What is the cancellation policy?','More than 30 days before departure: full refund (less payment-gateway charges). 15–29 days: 75% refund. 7–14 days: 50% refund. Under 7 days or no-show: no refund. If we cancel for weather or safety, you get a full refund or a free date change.'],['Do you provide gear on rent?','Yes — add the gear kit (jacket, boots, poles) as an add-on at checkout.'],['Are permits included?','We arrange forest / eco-zone permits for you as an assisted service.'],['What fitness level do I need?','Easy treks suit beginners; Moderate+ need regular cardio for 3–4 weeks before.']];
-let reviewsData=[];  /* {id,trek,author,rating,body,ts,date} — loaded from Supabase / localStorage (see loadReviews) */
+/* demo notifications removed, the notifications screen shows only real activity now */
+const faqs=[['How do I book a trek?','Pick a trek, choose a batch on Select Date, add travellers and pay 25% to confirm your seat.'],['What is the cancellation policy?','More than 30 days before departure: full refund (less payment-gateway charges). 15–29 days: 75% refund. 7–14 days: 50% refund. Under 7 days or no-show: no refund. If we cancel for weather or safety, you get a full refund or a free date change.'],['Do you provide gear on rent?','Yes, add the gear kit (jacket, boots, poles) as an add-on at checkout.'],['Are permits included?','We arrange forest / eco-zone permits for you as an assisted service.'],['What fitness level do I need?','Easy treks suit beginners; Moderate+ need regular cardio for 3–4 weeks before.']];
+let reviewsData=[];  /* {id,trek,author,rating,body,ts,date}, loaded from Supabase / localStorage (see loadReviews) */
 const KNOW=[['community','8–15','Group size'],['user','10+ yrs','Min age'],['altitude','Moderate','Fitness']];
 const EXCL=['Personal expenses','Travel to the base city','Anything not in inclusions'];
 
@@ -854,8 +854,8 @@ function getSupaClient(){
    A slow or dead backend must not leave every screen stuck on skeletons. Each
    remote read runs through breaker(): it races the query against a TIMEOUT and
    caps how many run at once (MAXINFLIGHT). After THRESH consecutive failures the
-   breaker OPENS and reads fast-fail to their fallback INSTANTLY — no network wait
-   — for COOLDOWN ms. It then HALF-OPENS to let a single probe test recovery: the
+   breaker OPENS and reads fast-fail to their fallback INSTANTLY, no network wait
+  , for COOLDOWN ms. It then HALF-OPENS to let a single probe test recovery: the
    probe succeeding closes it, failing re-opens it. Callers already treat the
    fallback (null) as "use cached / demo data", so a degraded dependency simply
    makes the app serve stale content instead of hanging. */
@@ -899,7 +899,7 @@ function hasStoredSession(){
 }
 /* Optimistic ONLY while initAuth() is still resolving. The boot sequence renders the
    whole app (and restoreNav() re-opens the last screen) synchronously, so without this
-   an auth-gated screen bounced to the login page on every reload — which read as being
+   an auth-gated screen bounced to the login page on every reload, which read as being
    silently signed out after each update. Once auth resolves we go strictly by
    currentUser, so a stale or revoked token can never keep the UI looking signed in. */
 let _authResolved=false;
@@ -916,7 +916,7 @@ function refreshAuthUI(){
   }catch(e){}
 }
 function renderFeedIfOpen(){if(cur==='community')renderFeed();else if(cur==='person')renderPerson();}
-/* The live session's user id — never trust a cached currentUser for writes. If the
+/* The live session's user id, never trust a cached currentUser for writes. If the
    session changed underneath us, an insert built from a stale id fails the RLS check
    ("new row violates row-level security policy"), which is exactly what a user hits
    after switching accounts. */
@@ -929,7 +929,7 @@ async function authUid(){
     return session.user.id;
   }catch(e){return currentUser?currentUser.id:null;}
 }
-/* true only while the user is on the reset-password screen via an email link — the app
+/* true only while the user is on the reset-password screen via an email link, the app
    must load NO account data and treat them as logged-out until they set a new password. */
 let _recoveryMode=false;
 async function initAuth(){
@@ -975,7 +975,7 @@ async function initAuth(){
     }
   }
   sb.auth.onAuthStateChange(async(evt,session)=>{
-    /* a reset link fired PASSWORD_RECOVERY — gate to the reset screen and load nothing */
+    /* a reset link fired PASSWORD_RECOVERY, gate to the reset screen and load nothing */
     if(evt==='PASSWORD_RECOVERY'){_recoveryMode=true;currentUser=null;_authResolved=true;refreshAuthUI();go('reset');return;}
     /* while holding on the reset screen, ignore token refreshes / user-updated so no
        account data loads until they actually reset (or sign in fresh) */
@@ -983,7 +983,7 @@ async function initAuth(){
     currentUser=session?session.user:null;
     _authResolved=true;
     if(!session){_profileLoadedFor=null;refreshAuthUI();}
-    /* reload whenever a DIFFERENT account is in play — keyed on the user id, not on
+    /* reload whenever a DIFFERENT account is in play, keyed on the user id, not on
        "was anyone logged in", so switching accounts swaps identity properly.
        Token refreshes keep the same id, so they don't re-fetch. */
     else if(_profileLoadedFor!==session.user.id){
@@ -1013,11 +1013,11 @@ function continueAsGuest(){_loginReturn=null;go(lastTab||'home');}
 /* ============================================================
    DPDP consent (Digital Personal Data Protection Act, 2023)
    Consent must be a free, specific, informed, UNAMBIGUOUS affirmative action
-   (Section 6) — so it gates sign-in behind an actively ticked box, never a
+   (Section 6), so it gates sign-in behind an actively ticked box, never a
    pre-ticked one, and can be withdrawn as easily as it was given (Section 6(4)).
    The record lives in localStorage immediately and mirrors to profiles.consent
    once signed in, so it survives across devices and is auditable.
-   Bump CONSENT_VERSION whenever the notice or the purposes change — a stored
+   Bump CONSENT_VERSION whenever the notice or the purposes change, a stored
    consent for an older version is treated as not-yet-given, forcing re-consent. */
 const CONSENT_VERSION='2026-07-25.v1';
 const CONSENT_PURPOSES=['account','bookings_payments','trek_safety','service_updates','app_improvement'];
@@ -1038,7 +1038,7 @@ function onConsentToggle(){
   if(btn){btn.disabled=false;btn.setAttribute('aria-disabled',on?'false':'true');btn.style.opacity=on?'1':'.5';btn.style.pointerEvents='';}
   if(row)row.classList.remove('shake');
 }
-/* the sign-in button calls this — belt and braces even though it's disabled until ticked */
+/* the sign-in button calls this, belt and braces even though it's disabled until ticked */
 function consentedLogin(){
   const chk=document.getElementById('consentChk');
   if(!chk||!chk.checked){
@@ -1063,7 +1063,7 @@ function renderDataPrivacy(){
   const box=document.getElementById('dataPrivacyBody');if(!box)return;
   const c=getConsent();
   const given=hasValidConsent();
-  const when=c&&c.at?new Date(c.at).toLocaleString('en-IN'):'—';
+  const when=c&&c.at?new Date(c.at).toLocaleString('en-IN'):'-';
   const plabels={account:'Creating & running your account',bookings_payments:'Bookings & payments',
     trek_safety:'Your safety on treks (incl. emergency contact)',service_updates:'Trip-related updates',
     app_improvement:'Improving the app'};
@@ -1085,7 +1085,7 @@ function renderDataPrivacy(){
       : '<button class="btn" style="margin-top:10px" onclick="go(\'login\')"><span class="msr">login</span> Give consent &amp; sign in</button>')
     +(()=>{const ck=window.tmkCookies?window.tmkCookies.get():null;
       return '<div class="dp-sec">Analytics cookies</div>'
-        +'<div class="note2">Microsoft Clarity (usage heatmaps &amp; session recordings) and the Meta Pixel (ad measurement). Optional — currently <b>'+(ck==='yes'?'allowed':ck==='no'?'declined':'not chosen')+'</b> on this device.</div>'
+        +'<div class="note2">Microsoft Clarity (usage heatmaps &amp; session recordings) and the Meta Pixel (ad measurement). Optional, currently <b>'+(ck==='yes'?'allowed':ck==='no'?'declined':'not chosen')+'</b> on this device.</div>'
         +(ck==='yes'
           ? '<button class="btn ghost" style="margin-top:10px" onclick="setCookieChoice(\'no\')"><span class="msr">toggle_off</span> Turn off analytics cookies</button>'
           : '<button class="btn ghost" style="margin-top:10px" onclick="setCookieChoice(\'yes\')"><span class="msr">toggle_on</span> Allow analytics cookies</button>');})()
@@ -1185,7 +1185,7 @@ function pwLoginGated(){
   recordConsent();passwordAuth();          /* mode comes from the Sign in / Create account switch */
 }
 /* set / change a password for the CURRENT signed-in account. Supabase Auth hashes and
-   stores it — the app never sees or keeps the raw password. Lets the user then sign in
+   stores it, the app never sees or keeps the raw password. Lets the user then sign in
    with email + password on any device. */
 /* one password rule everywhere: 8+ chars, a letter AND a number, and not a common/breached
    one. Free-tier stand-in for Supabase's Pro leaked-password check; the minimum length is
@@ -1194,7 +1194,7 @@ const COMMON_PW=new Set(['password','12345678','123456789','1234567890','passwor
 function passwordError(pw){pw=String(pw||'');
   if(pw.length<8)return 'Use at least 8 characters.';
   if(!/[A-Za-z]/.test(pw)||!/[0-9]/.test(pw))return 'Include at least one letter and one number.';
-  if(COMMON_PW.has(pw.toLowerCase()))return 'That password is too common — please choose a stronger one.';
+  if(COMMON_PW.has(pw.toLowerCase()))return 'That password is too common, please choose a stronger one.';
   return '';}
 /* client-side login backstop (Supabase already rate-limits server-side; this adds friction
    to same-session brute forcing): after 5 bad tries, lock with escalating cooldown up to 5m. */
@@ -1212,7 +1212,7 @@ async function setMyPassword(){
   const{error}=await sb.auth.updateUser({password:pw});
   if(error){note(error.message,'Could not set password');return;}
   const email=(currentUser&&currentUser.email)||(typeof getUserEmail==='function'?getUserEmail():'')||'your email';
-  note('Password set. You can now sign in with '+email+' and this password on any device. It is stored securely (hashed) by our sign-in provider — we never see it.','Password saved ✓');
+  note('Password set. You can now sign in with '+email+' and this password on any device. It is stored securely (hashed) by our sign-in provider, we never see it.','Password saved ✓');
 }
 /* email + password signup, or username/email + password login */
 async function passwordAuth(){
@@ -1234,7 +1234,7 @@ async function passwordAuth(){
       data:{full_name:n,name:n},                                   /* name travels with the account */
       emailRedirectTo:window.location.origin+window.location.pathname}});
     done();
-    if(error){note(/registered|exists/i.test(error.message)?'An account with this email already exists — sign in instead, or use “Forgot password?”.':error.message,'Could not sign up');return;}
+    if(error){note(/registered|exists/i.test(error.message)?'An account with this email already exists, sign in instead, or use “Forgot password?”.':error.message,'Could not sign up');return;}
     saveUserName(n);
     /* Supabase emails a verification link. If confirmations are ON, there's no
        session yet; if OFF, the user is already signed in. Handle both. */
@@ -1248,7 +1248,7 @@ async function passwordAuth(){
     return;
   }
 
-  /* sign in — email OR username (username resolves via the `authlogin` edge fn, server-side,
+  /* sign in, email OR username (username resolves via the `authlogin` edge fn, server-side,
      so the browser never sees anyone's email) */
   if(!id){note('Enter your email or username.','Missing details');return;}
   if(!pass){note('Enter your password.','Missing password');return;}
@@ -1256,12 +1256,12 @@ async function passwordAuth(){
   busy('Signing in…');
   try{
     if(id.includes('@')){
-      /* plain email login — no lookup, no enumeration risk */
+      /* plain email login, no lookup, no enumeration risk */
       const{data,error}=await sb.auth.signInWithPassword({email:id,password:pass});
       if(error)throw error;
       await afterPasswordLogin(data.user);
     }else{
-      /* username login — resolved + authenticated SERVER-SIDE by the authlogin edge fn */
+      /* username login, resolved + authenticated SERVER-SIDE by the authlogin edge fn */
       const res=await authByUsername(id,pass);
       if(res.error)throw new Error(res.error);
       if(!res.access_token)throw new Error('Login failed.');
@@ -1298,11 +1298,11 @@ async function authByUsername(username,password){
     });
     /* the authlogin edge function isn't deployed → 404 (and an HTML body that isn't JSON) */
     if(r.status===404)return{error:'Username sign-in isn’t enabled yet. Please sign in with your email.'};
-    let j=null;try{j=await r.json();}catch(_e){return{error:'Username sign-in is unavailable right now — please use your email.'};}
+    let j=null;try{j=await r.json();}catch(_e){return{error:'Username sign-in is unavailable right now, please use your email.'};}
     return j||{error:'Login failed.'};
   }catch(e){return{error:'Could not reach the login service. Check your connection, or sign in with your email.'};}
 }
-/* fired when the user opens a reset link — collect a new password and set it */
+/* fired when the user opens a reset link, collect a new password and set it */
 /* ---- dedicated reset-password screen (reached only from an email link) ---- */
 function renderReset(){
   const err=document.getElementById('rpErr');if(err)err.textContent='';
@@ -1327,14 +1327,14 @@ async function submitNewPassword(){
   const{error}=await sb.auth.updateUser({password:pw});
   if(error){showErr(error.message||'Could not update password.');if(btn){btn.disabled=false;btn.textContent='Update password';}return;}
   /* Success. Drop the recovery session entirely and make them sign in with the NEW
-     password — nothing from the account was loaded during the reset. */
+     password, nothing from the account was loaded during the reset. */
   _recoveryMode=false;
   try{await sb.auth.signOut();}catch(e){}
   currentUser=null;_profileLoadedFor=null;refreshAuthUI();
   note('Password updated. Please sign in with your new password.','All set').then(()=>{_loginReturn=null;go('login');});
 }
 function cancelReset(){
-  /* backed out of the reset — clear the recovery session so no data can load, go to login */
+  /* backed out of the reset, clear the recovery session so no data can load, go to login */
   _recoveryMode=false;
   const sb=getSupaClient();if(sb)sb.auth.signOut().catch(()=>{});
   currentUser=null;refreshAuthUI();go('login');
@@ -1375,7 +1375,7 @@ function getOtpValue(){
   return Array.from(document.querySelectorAll('.otp-box')).map(b=>b.value).join('');
 }
 
-/* onboarding splash — masonry collage of colourful trek photos that stagger in
+/* onboarding splash, masonry collage of colourful trek photos that stagger in
    with a blur-to-focus rise (vanilla port of the GSAP Masonry effect) */
 function renderSplashCollage(){
   const box=document.getElementById('splashCollage');if(!box)return;
@@ -1395,7 +1395,7 @@ function renderSplashCollage(){
   }
   box.innerHTML=html;
 }
-/* 3D photo ring as the welcome-splash centerpiece — decorative (no tap-to-open, so it never
+/* 3D photo ring as the welcome-splash centerpiece, decorative (no tap-to-open, so it never
    bypasses "Start Your Journey"). Falls back to the masonry collage when photos are sparse. */
 function renderSplashRing(){
   const host=document.getElementById('splashRing'), col=document.getElementById('splashCollage');
@@ -1429,7 +1429,7 @@ function setOtpScreen(channel,dest){
   }
   if(sub)sub.innerHTML='We sent a 6-digit code to<br><b id="otpPhone" style="color:#fff">'+esc(dest)+'</b>';
 }
-/* Phone + SMS OTP — the fast, India-first login.
+/* Phone + SMS OTP, the fast, India-first login.
    Needs an SMS provider set up in Supabase (Auth → Providers → Phone). */
 async function sendPhoneOtp(){
   const cc=((document.getElementById('ccInput')||{}).value||'+91').trim();
@@ -1526,7 +1526,7 @@ async function signOut(){
 function getUserEmail(){return currentUser?currentUser.email||'':''}
 function getSavedName(){try{return localStorage.getItem('tmk_uname')||'';}catch(e){return'';}}
 function saveUserName(n){try{if(n)localStorage.setItem('tmk_uname',n);}catch(e){}}
-/* Seed a new OAuth user's name & photo from their Google account — but ONLY when
+/* Seed a new OAuth user's name & photo from their Google account, but ONLY when
    they have none yet. Without this, a fresh Google sign-in is stuck showing the
    default "Explorer" name and an "E" avatar until they edit their profile by hand.
    Never overrides a name/photo the user chose themselves. Returns true if it set one. */
@@ -1563,7 +1563,7 @@ function setAvatarEl(el,name,photo){
   if(!photo||!/^(data:image\/|https?:\/\/|blob:)/i.test(photo))return;
   const im=new Image();
   im.onload=()=>{
-    /* set size/position inline too — the light-theme CSS uses a `background`
+    /* set size/position inline too, the light-theme CSS uses a `background`
        shorthand that would otherwise reset background-size to auto, cropping the
        photo to its top-left corner (looked like the image "not showing"). */
     el.style.backgroundImage="url('"+photo.replace(/'/g,'%27')+"')";
@@ -1580,8 +1580,8 @@ const USERNAME_RESERVED=['admin','tripomonk','support','help','root','staff','te
 /* returns an error string, or '' when the shape is valid */
 function usernameError(u){
   if(!u)return 'Pick a username so trekkers can find you.';
-  if(u.length<3)return 'Too short — at least 3 characters.';
-  if(u.length>20)return 'Too long — 20 characters max.';
+  if(u.length<3)return 'Too short, at least 3 characters.';
+  if(u.length>20)return 'Too long, 20 characters max.';
   if(!/^[a-z0-9._]+$/.test(u))return 'Only lowercase letters, numbers, dots and underscores.';
   if(/^[._]|[._]$/.test(u))return 'Cannot start or end with a dot or underscore.';
   if(/[._]{2,}/.test(u))return 'No two dots or underscores in a row.';
@@ -1607,7 +1607,7 @@ function setUnameMsg(txt,cls){
 function unameSpin(on){const s=document.getElementById('epUserSpin');if(s)s.classList.toggle('on',!!on);}
 function onUsernameInput(v){
   const inp=document.getElementById('epUser');
-  /* usernames are always lowercase — normalise as they type */
+  /* usernames are always lowercase, normalise as they type */
   const u=(v||'').toLowerCase().replace(/[^a-z0-9._]/g,'');
   if(inp&&inp.value!==u)inp.value=u;
   _unameOk=false;
@@ -1628,7 +1628,7 @@ function onUsernameInput(v){
   },450);
 }
 
-/* social links a user can add to their profile — [key, label, brand colour] */
+/* social links a user can add to their profile, [key, label, brand colour] */
 const SOCIALS=[['instagram','Instagram','#E1306C'],['facebook','Facebook','#1877F2'],['youtube','YouTube','#FF0000'],
   ['linkedin','LinkedIn','#0A66C2'],['x','X (Twitter)','#111827'],['reddit','Reddit','#FF4500'],['website','Website','#2f6bff']];
 function getSavedSocials(){try{return JSON.parse(localStorage.getItem('tmk_socials')||'{}')||{};}catch(e){return{};}}
@@ -1637,7 +1637,7 @@ const SOC_ICON={instagram:'<span class="msr">photo_camera</span>',facebook:'<b>f
 function renderSocialChips(){
   const sc=document.getElementById('epSocials');if(!sc)return;const soc=getSavedSocials();
   sc.innerHTML='<div class="soc-chips">'+SOCIALS.map(s=>`<button type="button" class="soc-chip${soc[s[0]]?' on':''}" id="socchip_${s[0]}" style="--sc:${s[2]}" title="${esc(s[1])}" onclick="toggleSoc('${s[0]}')">${SOC_ICON[s[0]]||'<span class="msr">link</span>'}</button>`).join('')+'</div>'
-    +'<div id="socInputs">'+SOCIALS.map(s=>`<div class="soc-inp-row" id="socrow_${s[0]}" style="display:${soc[s[0]]?'flex':'none'}"><span class="soc-dot" style="background:${s[2]}"></span><input id="epSoc_${s[0]}" placeholder="${esc(s[1])} — handle or link" autocapitalize="none" autocorrect="off" spellcheck="false" value="${esc(soc[s[0]]||'')}" oninput="markSocChip('${s[0]}',this.value)"/></div>`).join('')+'</div>';
+    +'<div id="socInputs">'+SOCIALS.map(s=>`<div class="soc-inp-row" id="socrow_${s[0]}" style="display:${soc[s[0]]?'flex':'none'}"><span class="soc-dot" style="background:${s[2]}"></span><input id="epSoc_${s[0]}" placeholder="${esc(s[1])}, handle or link" autocapitalize="none" autocorrect="off" spellcheck="false" value="${esc(soc[s[0]]||'')}" oninput="markSocChip('${s[0]}',this.value)"/></div>`).join('')+'</div>';
 }
 function toggleSoc(key){const row=document.getElementById('socrow_'+key);if(!row)return;const show=(row.style.display==='none'||!row.style.display);row.style.display=show?'flex':'none';if(show){const inp=document.getElementById('epSoc_'+key);if(inp)inp.focus();}}
 function markSocChip(key,val){const c=document.getElementById('socchip_'+key);if(c)c.classList.toggle('on',!!String(val).trim());}
@@ -1668,10 +1668,10 @@ function socialUrl(key,val){
 }
 
 /* ============================================================
-   PHONE — country-code selector (separate from the number) +
+   PHONE, country-code selector (separate from the number) +
    automatic country-code / city fill from the visitor's location.
    ============================================================ */
-/* [dial, iso, flag, name] — flag emojis show as ISO letters on Windows, still clear */
+/* [dial, iso, flag, name], flag emojis show as ISO letters on Windows, still clear */
 const COUNTRY_CODES=[
   ['+91','IN','🇮🇳','India'],['+977','NP','🇳🇵','Nepal'],['+975','BT','🇧🇹','Bhutan'],
   ['+94','LK','🇱🇰','Sri Lanka'],['+880','BD','🇧🇩','Bangladesh'],['+92','PK','🇵🇰','Pakistan'],
@@ -1720,7 +1720,7 @@ function readTel(id){
   const sel=document.getElementById(id+'_cc'),inp=document.getElementById(id);
   return joinPhone(sel?sel.value:'+91',inp?inp.value:'');
 }
-/* best-effort IP geolocation — no permission prompt, cached 7 days, falls back to India */
+/* best-effort IP geolocation, no permission prompt, cached 7 days, falls back to India */
 async function detectLocale(){
   try{const c=JSON.parse(localStorage.getItem('tmk_geo')||'null');if(c&&c.dial&&c.t&&Date.now()-c.t<6048e5)return c;}catch(e){}
   const fb={dial:'+91',iso:'IN',city:'',region:'',t:Date.now()};
@@ -1783,7 +1783,7 @@ function pickAvatar(n){
   const av=document.getElementById('epAv');
   if(av){av.style.backgroundImage=`url('${full}')`;av.style.backgroundSize='cover';av.style.backgroundPosition='center';av.textContent='';
     const badge=document.createElement('span');badge.style.cssText='position:absolute;bottom:0;right:0;width:26px;height:26px;border-radius:50%;background:var(--accent);display:grid;place-items:center';badge.innerHTML='<span class="msr" style="font-size:14px;color:#fff">photo_camera</span>';av.appendChild(badge);}
-  if(typeof toast==='function')toast('Avatar selected — tap Save Changes to keep it');
+  if(typeof toast==='function')toast('Avatar selected, tap Save Changes to keep it');
 }
 function renderEditProfile(){
   const name=getSavedName();const mobile=getSavedMobile();const email=getUserEmail()||'';const photo=getSavedPhoto();
@@ -1865,7 +1865,7 @@ function drawCrop(){
     p.pctx.drawImage(img,x*k,y*k,img.width*scale*k,img.height*scale*k);
   });
 }
-/* keep the photo covering the crop window — no empty gaps at the edges */
+/* keep the photo covering the crop window, no empty gaps at the edges */
 function clampCrop(){
   const{img,S,scale}=_crop;
   const w=img.width*scale,h=img.height*scale;
@@ -1944,7 +1944,7 @@ function openCropper(src){
   m.onclick=e=>{if(e.target===m)close();};
   ok.onclick=async()=>{
     if(!_crop){close();return;}
-    /* render the visible window to a fixed 512px square — small enough to store & sync */
+    /* render the visible window to a fixed 512px square, small enough to store & sync */
     const out=document.createElement('canvas');out.width=512;out.height=512;
     const octx=out.getContext('2d');
     const k=512/_crop.S;
@@ -1962,7 +1962,7 @@ function openCropper(src){
     const repaint=()=>{renderEditProfile();if(cur==='profile')renderProfile();if(cur==='hostProfile')renderHostProfile();if(cur==='hostDash')renderHostDash();};
     repaint();
     /* … then upload to Storage and swap in the lightweight URL (keeps profiles.photo tiny
-       and fast to sync across devices — base64 is only a local fallback if the upload fails) */
+       and fast to sync across devices, base64 is only a local fallback if the upload fails) */
     const url=blob?await uploadToStorage(blob,'avatars'):null;
     if(url){try{localStorage.setItem('tmk_uphoto',url);}catch(e){}repaint();}
     upsertProfile();          /* writes the URL (or base64 fallback) to profiles.photo */
@@ -2028,7 +2028,7 @@ function openCoverCropper(src,onDone){
 async function saveProfile(){
   const name=(document.getElementById('epName').value||'').trim();
   const mobile=readTel('epMobile');
-  /* usernames never contain spaces (or any char outside a-z0-9._) — strip before saving,
+  /* usernames never contain spaces (or any char outside a-z0-9._), strip before saving,
      so nothing can slip through even if the live field somehow held one */
   const uname=((document.getElementById('epUser')||{}).value||'').toLowerCase().replace(/[^a-z0-9._]/g,'');
   if(!name){note('Please enter your full name.','Name required');document.getElementById('epName').focus();return;}
@@ -2040,7 +2040,7 @@ async function saveProfile(){
   if(btn){btn.disabled=true;btn.textContent='Saving…';}
   const restore=()=>{if(btn){btn.disabled=false;btn.textContent='Save Changes';}};
 
-  /* the username is claimed on the server first — a unique index there is the real guard,
+  /* the username is claimed on the server first, a unique index there is the real guard,
      since an availability check can always be beaten by someone typing at the same moment */
   if(uname&&uname!==getSavedUsername()){
     const sb=getSupaClient();
@@ -2067,13 +2067,13 @@ async function saveProfile(){
   await upsertProfile();   /* keep the public profile (name/photo/username/socials) in sync */
   restore();
   renderProfile();
-  /* await the popup, THEN leave the form — staying on the edit screen after "Saved ✓"
+  /* await the popup, THEN leave the form, staying on the edit screen after "Saved ✓"
      reads as if it didn't take, and people tap Save again */
   await note('Profile saved successfully!','Saved ✓');
   go('profile');
 }
 
-/* profile gallery — only the logged-in user's own posts, filtered by tab */
+/* profile gallery, only the logged-in user's own posts, filtered by tab */
 let _profTab='All';
 function setProfTab(t,el){_profTab=t;if(el){document.querySelectorAll('#profTabs span').forEach(s=>s.classList.toggle('on',s===el));}renderProfileGallery();}
 async function renderProfileGallery(){
@@ -2098,8 +2098,8 @@ async function renderProfileGallery(){
   }).join(''):`<div class="empty" style="grid-column:1/-1">${_profTab==='All'?'You haven\'t posted yet. Share your first trek moment!':'No '+_profTab.toLowerCase()+' yet.'}</div>`;
 }
 
-/* ---------- preferences (onboarding) — used to connect like-minded trekkers ---------- */
-/* options in a single-select group — picking one clears the others in the group */
+/* ---------- preferences (onboarding), used to connect like-minded trekkers ---------- */
+/* options in a single-select group, picking one clears the others in the group */
 const EXP_OPTIONS=['Beginner','Intermediate','Advanced'];
 const PREF_GROUPS=[
   ['landscape','Regions you love',['Uttarakhand','Himachal','Ladakh','Kashmir','Northeast','Spiritual']],
@@ -2108,7 +2108,7 @@ const PREF_GROUPS=[
   ['trending_up','Experience level',EXP_OPTIONS]
 ];
 let _prefSel=[],_prefSkippedSession=false,_prefRole='';
-/* per-ACCOUNT storage key — different accounts on the same device stay independent */
+/* per-ACCOUNT storage key, different accounts on the same device stay independent */
 function prefKey(){return currentUser?('tmk_prefs_'+currentUser.id):'tmk_prefs_guest';}
 function getPrefs(){try{return JSON.parse(localStorage.getItem(prefKey())||'null');}catch(e){return null;}}
 function isPrefsDone(){const p=getPrefs();return !!(p&&p.length);}
@@ -2119,7 +2119,7 @@ async function loadPrefsFromProfile(){
     if(data&&data.prefs&&data.prefs.length){try{localStorage.setItem(prefKey(),JSON.stringify(data.prefs));}catch(e){}}
   }catch(e){}
 }
-/* called when the screen opens — loads current selection once */
+/* called when the screen opens, loads current selection once */
 function initPrefs(){
   const saved=(getPrefs()||[]).slice();
   /* role is stored in the same prefs array, prefixed, so no schema change */
@@ -2130,7 +2130,7 @@ function initPrefs(){
 }
 function renderPrefs(){
   const box=document.getElementById('prefBody');if(!box)return;
-  /* Role first — it changes what the rest of the app offers you.
+  /* Role first, it changes what the rest of the app offers you.
      Choosing Host does NOT make you one; it just routes you to the application. */
   const roleCards=`<div class="rolepick-h">How will you use Tripomonk?</div>
     <div class="rolerow">
@@ -2144,11 +2144,11 @@ function renderPrefs(){
         <span class="rc-check msr">check</span>
         <div class="rc-ic host"><span class="msr">flag</span></div>
         <b>Host <span class="rc-badge">Earn</span></b>
-        <small>Lead your own trips — keep 90%, we run operations</small>
+        <small>Lead your own trips, keep 90%, we run operations</small>
       </div>
     </div>
-    ${_prefRole==='Host'?`<div class="role-hint"><span class="msr">info</span>Choosing Host takes you to a quick application after this — you can still book as an Explorer too.</div>`:''}`;
-  const intro=`<div class="pref-intro"><b><span class="msr" style="font-size:18px;vertical-align:-4px">explore</span> Your trek vibe</b><small>Pick what excites you — we use it to match you with like-minded trekkers and trips.</small></div>`;
+    ${_prefRole==='Host'?`<div class="role-hint"><span class="msr">info</span>Choosing Host takes you to a quick application after this, you can still book as an Explorer too.</div>`:''}`;
+  const intro=`<div class="pref-intro"><b><span class="msr" style="font-size:18px;vertical-align:-4px">explore</span> Your trek vibe</b><small>Pick what excites you, we use it to match you with like-minded trekkers and trips.</small></div>`;
   const groups=PREF_GROUPS.map(g=>{
     const n=g[2].filter(o=>_prefSel.includes(o)).length;
     return `<div class="pref-group">
@@ -2163,15 +2163,15 @@ function togglePref(o){
   const i=_prefSel.indexOf(o);
   if(i>=0){_prefSel.splice(i,1);}
   else{
-    /* experience level is single-select — clear any other level first */
+    /* experience level is single-select, clear any other level first */
     if(EXP_OPTIONS.includes(o))_prefSel=_prefSel.filter(x=>!EXP_OPTIONS.includes(x));
     _prefSel.push(o);
   }
   renderPrefs();
 }
 async function savePrefs(){
-  if(!_prefSel.length&&!_prefRole){note('Pick your role or at least one preference — or skip for now.','Add a preference');return;}
-  /* role rides along in the same prefs array, prefixed — no schema change needed */
+  if(!_prefSel.length&&!_prefRole){note('Pick your role or at least one preference, or skip for now.','Add a preference');return;}
+  /* role rides along in the same prefs array, prefixed, no schema change needed */
   const out=_prefRole?['role:'+_prefRole].concat(_prefSel):_prefSel.slice();
   try{localStorage.setItem(prefKey(),JSON.stringify(out));}catch(e){}
   const sb=getSupaClient();const uid=sb?await authUid():null;
@@ -2214,7 +2214,7 @@ async function loadStaff(){const sb=getSupaClient();if(!sb)return;
   try{const{data}=await sb.from('staff').select('email,role');
     staffSet=new Set((data||[]).map(r=>(r.email||'').toLowerCase()));
     staffRoles={};(data||[]).forEach(r=>{if(r.email)staffRoles[(r.email||'').toLowerCase()]=r.role||'captain';});
-  }catch(e){ /* role column not deployed yet — fall back to email-only (everyone = captain) */
+  }catch(e){ /* role column not deployed yet, fall back to email-only (everyone = captain) */
     try{const{data}=await sb.from('staff').select('email');staffSet=new Set((data||[]).map(r=>(r.email||'').toLowerCase()));}catch(e2){}
   }
   /* the Trip Captain card is gated on staffSet, which only exists once this resolves */
@@ -2250,12 +2250,12 @@ function cssUrl(u){return String(u==null?'':u).replace(/['"()\\\s<>]/g,c=>'%'+c.
 /* Tidy a user-entered display name: trim, collapse runs of spaces, and capitalize the
    first letter of each word so "sawan kumar verma" shows as "Sawan Kumar Verma". Only
    the first letter is touched, so intentional casing (e.g. "McDonald") is preserved.
-   DISPLAY ONLY — never use for lookups; the raw name is still the key everywhere. */
+   DISPLAY ONLY, never use for lookups; the raw name is still the key everywhere. */
 function properName(n){return String(n==null?'':n).trim().replace(/\s+/g,' ').replace(/(^|\s)([a-z])/g,(m,s,c)=>s+c.toUpperCase());}
 const INR=n=>'₹'+Number(n).toLocaleString('en-IN');
 
 /* ---------- render ---------- */
-/* card text is escaped like every other user/admin-entered field (defence in depth — trek
+/* card text is escaped like every other user/admin-entered field (defence in depth, trek
    data comes from the admin console and bulk upload) */
 function trekCard(t){return `<div class="tcard" onclick="openDetail(${t.idx})"><div class="ph" style="background-image:url('${cssUrl(t.img)}')">${t.soon?'<span class="soon">Coming Soon</span>':''}${trekScoreBadge(t,'on-photo')}</div>
   <div class="bd"><h3>${esc(t.n)}</h3><div class="reg">${ic('pin',13)} ${esc(t.region)}</div>
@@ -2265,19 +2265,19 @@ function trekCard(t){return `<div class="tcard" onclick="openDetail(${t.idx})"><
    viewport. Without this, a long list (130+ treks) loads every image at once and
    iOS Safari runs out of memory and crashes the tab. Geometry-based (not
    IntersectionObserver) because the view transitions leave elements at opacity:0
-   mid-animation, which IO can miss — getBoundingClientRect ignores opacity. */
+   mid-animation, which IO can miss, getBoundingClientRect ignores opacity. */
 let _lazyT=0,_lazyScroll=null,_lazyScroller=null,_lazyObs=null;
 function lazyBg(root){
   root=root||document;
   const paint=el=>{if(el.dataset&&el.dataset.bg){el.style.backgroundImage="url('"+String(el.dataset.bg).replace(/'/g,'%27')+"')";el.removeAttribute('data-bg');}};
-  /* geometric pass — paints only the cards currently near the viewport */
+  /* geometric pass, paints only the cards currently near the viewport */
   const loadVisible=()=>{const vh=window.innerHeight||800;root.querySelectorAll('[data-bg]').forEach(el=>{const r=el.getBoundingClientRect();if(r.width>0&&r.bottom>-500&&r.top<vh+500)paint(el);});};
   /* (1) IntersectionObserver loads cards as they scroll into view */
   if('IntersectionObserver'in window){
     if(!_lazyObs)_lazyObs=new IntersectionObserver((ents,obs)=>{ents.forEach(e=>{if(e.isIntersecting){paint(e.target);obs.unobserve(e.target);}});},{rootMargin:'500px'});
     root.querySelectorAll('[data-bg]').forEach(el=>_lazyObs.observe(el));
   }
-  /* (2) geometric passes for the initially-visible cards — robust against the
+  /* (2) geometric passes for the initially-visible cards, robust against the
      view still animating in (opacity/transform) when IO first checks */
   loadVisible();setTimeout(loadVisible,180);setTimeout(loadVisible,600);
   /* (3) belt-and-suspenders: a scroll listener on the actual scroll container */
@@ -2325,8 +2325,8 @@ function trekCardCF(t,i){return `<div class="fcx" data-cf="${i}" onclick="cfTapC
     <div class="fcx-loc">${ic('pin',13)} ${esc(t.region)}</div>
     <div class="fcx-desc">${esc(t.desc||'A beautiful Himalayan trek with Tripomonk.')}</div>
     <div class="fcx-stats">
-      <div><small>Distance</small><b>${esc(t.dist||'—')}</b></div>
-      <div><small>Best time</small><b>${esc(t.best||'—')}</b></div>
+      <div><small>Distance</small><b>${esc(t.dist||'-')}</b></div>
+      <div><small>Best time</small><b>${esc(t.best||'-')}</b></div>
       <div><small>Rating</small><b>${ratingText(t)}</b></div>
     </div>
     <div class="fcx-foot"><div><small>${priceOf(t).off?priceOf(t).off+'% OFF · from':'Total Price'}</small><div class="fcx-price">${priceTag(t)}</div></div>
@@ -2337,7 +2337,7 @@ function actCardCF(a,i){return `<div class="fcx" data-cf="${i}" onclick="cfTapCa
   <div class="fcx-bd">
     <h3>${esc(a[1])}</h3>
     <div class="fcx-loc">${ic('pin',13)} ${esc(a[2])}</div>
-    <div class="fcx-desc">Adventure activity — pay in-app, our team coordinates your slot.</div>
+    <div class="fcx-desc">Adventure activity, pay in-app, our team coordinates your slot.</div>
     <div class="fcx-foot"><div><small>Price</small><div class="fcx-price">${esc(a[3])}</div></div>
       <button class="fcx-go" onclick="event.stopPropagation();cfOpenCard(this)"><span class="msr">confirmation_number</span> Book now</button></div>
   </div></div>`;}
@@ -2357,7 +2357,7 @@ function wireCoverflowFocus(el){
   const cards=[...el.querySelectorAll('.fcx')];if(!cards.length)return;
   let raf=0,geo=[],half=0;
   /* Card offsets don't change while scrolling, but reading offsetLeft/offsetWidth per
-     card per frame forced a synchronous layout on every frame — the single biggest
+     card per frame forced a synchronous layout on every frame, the single biggest
      cause of the stutter on iPhone. Measure once, re-measure only on resize/rotate. */
   const measure=()=>{
     half=el.clientWidth/2;
@@ -2367,7 +2367,7 @@ function wireCoverflowFocus(el){
     /* The rail is often built while its view is still hidden, so the first measure()
        can capture a zero-width layout and freeze every card at the off-centre clamp.
        clientWidth is cheap to read (our transform writes don't dirty layout), so use it
-       as a validity check — it also covers rotation and the view being shown later. */
+       as a validity check, it also covers rotation and the view being shown later. */
     if(!geo.length||el.clientWidth/2!==half)measure();
     if(!geo.length||!half)return;
     const mid=el.scrollLeft+half;
@@ -2392,7 +2392,7 @@ function wireCoverflowFocus(el){
   el.addEventListener('scroll',onScroll,{passive:true});
   window.addEventListener('resize',el._cfResize,{passive:true});
   measure();update();
-  /* images change card height as they load — re-measure, don't just repaint */
+  /* images change card height as they load, re-measure, don't just repaint */
   setTimeout(el._cfResize,80);setTimeout(el._cfResize,320);
 }
 function renderHomeHero(){
@@ -2411,11 +2411,15 @@ function renderHomeHero(){
   const go=box.querySelector('.hh-go .msr');if(go)go.style.transform='scaleX(-1)';
 }
 /* ============================================================
-   COMPARE TREKS — pick up to 3 treks, side-by-side table + a
+   COMPARE TREKS, pick up to 3 treks, side-by-side table + a
    rules-based "best match" using the user's onboarding prefs.
    ============================================================ */
 let _cmpSel=[],_cmpQ='',_cmpShow=false;
-function cmpAvail(){return treks.filter(t=>!t.soon&&!isTour(t));}
+/* Comparable pool = all treks (tours have their own section). Coming-soon treks are
+   INCLUDED on purpose, you can still compare price, difficulty, altitude etc. before a
+   departure opens, and excluding them broke Compare entirely whenever the catalogue had no
+   live departures. */
+function cmpAvail(){return (typeof treks!=='undefined'?treks:[]).filter(t=>t&&t.n&&(typeof isTour!=='function'||!isTour(t)));}
 function fitnessOf(lvl){lvl=(lvl||'').toLowerCase();
   if(/difficult|hard|advanced|challeng/.test(lvl))return 'High';
   if(/moderate/.test(lvl))return 'Moderate';
@@ -2445,11 +2449,11 @@ function toggleCmp(name){
   const i=_cmpSel.indexOf(name);
   if(i>=0)_cmpSel.splice(i,1);
   else{ if(_cmpSel.length>=3){toast('You can compare up to 3 treks');return;} _cmpSel.push(name); }
-  _cmpShow=false;   /* selection changed — require an explicit "Compare now" tap again */
+  _cmpShow=false;   /* selection changed, require an explicit "Compare now" tap again */
   renderCompare();
 }
 function clearCmp(){_cmpSel=[];_cmpShow=false;renderCompare();}
-/* explicit compare action — the table only appears when the user asks for it */
+/* explicit compare action, the table only appears when the user asks for it */
 function doCompare(){
   if(_cmpSel.length<2){toast('Pick at least 2 treks to compare');return;}
   _cmpShow=true;renderCompare();
@@ -2489,20 +2493,21 @@ function renderCompare(){
   }else if(sel.length>=2){
     /* recommended = highest score */
     let best=sel[0];sel.forEach(t=>{if(cmpScore(t)>cmpScore(best))best=t;});
+    const na='<span class="cmp-na">·</span>';   /* neutral "no value" mark (no em dash) */
     const ROWS=[
       ['Price',t=>INR(t.price||0)],
-      ['Duration',t=>t.days?t.days+' days':'—'],
-      ['Distance',t=>t.dist||'—'],
-      ['Max altitude',t=>t.alt||'—'],
-      ['Difficulty',t=>t.lvl||'—'],
+      ['Duration',t=>t.days?t.days+' days':na],
+      ['Distance',t=>t.dist||na],
+      ['Max altitude',t=>t.alt||na],
+      ['Difficulty',t=>t.lvl||na],
       ['Required score',t=>trekReqScore(t)],
-      ['Your Trek Match',t=>{const req=trekReqScore(t);if(!hasFitness())return '—';const rd=readiness(computeFitness().score,req);return `<span class="cmp-fit fit-${rd.k}"><span class="fit-dot"></span>${rd.pct}% match</span>`;}],
+      ['Your Trek Match',t=>{const req=trekReqScore(t);if(!hasFitness())return '<span class="cmp-na">Not assessed</span>';const rd=readiness(computeFitness().score,req);return `<span class="cmp-fit fit-${rd.k}"><span class="fit-dot"></span>${rd.pct}% match</span>`;}],
       ['Fitness needed',t=>fitnessOf(t.lvl)],
-      ['Best season',t=>t.best||'—'],
-      ['Region',t=>t.region||'—'],
+      ['Best season',t=>t.best||na],
+      ['Region',t=>t.region||na],
       ['Rating',t=>ratingText(t)],
-      ['Reviews',t=>{const c=realRating(t).count;return c?c.toLocaleString('en-IN'):'—';}],
-      ['Beginner friendly',t=>isBeginnerFriendly(t.lvl)?'Yes':'—']
+      ['Reviews',t=>{const c=realRating(t).count;return c?c.toLocaleString('en-IN'):'New';}],
+      ['Beginner friendly',t=>isBeginnerFriendly(t.lvl)?'Yes':'No']
     ];
     const head=`<tr><th class="cmp-corner"></th>${sel.map(t=>`<th class="${t.n===best.n?'best':''}"><div class="cmp-th-img" style="background-image:url('${cssUrl(t.img)}')"></div><b>${esc(t.n)}</b>${t.n===best.n?'<span class="cmp-best-tag">Best match</span>':''}</th>`).join('')}</tr>`;
     const rows=ROWS.map(r=>`<tr><td class="cmp-lbl">${r[0]}</td>${sel.map(t=>`<td class="${t.n===best.n?'best':''}">${r[1](t)}</td>`).join('')}</tr>`).join('');
@@ -2517,7 +2522,7 @@ function renderCompare(){
     compare=`<div class="cmp-table-wrap"><table class="cmp-table cmp-cols-${sel.length}"><thead>${head}</thead><tbody>${rows}${ctas}</tbody></table></div>
       <div class="cmp-rec">
         <div class="cmp-rec-h"><span class="msr">auto_awesome</span> Recommended for you</div>
-        <p>Based on your fitness score (<b>${fs}</b>) and preferences, <b>${esc(best.n)}</b> is your best match — ${reason.slice(0,3).join(', ')}.</p>
+        <p>Based on your fitness score (<b>${fs}</b>) and preferences, <b>${esc(best.n)}</b> is your best match because ${reason.slice(0,3).join(', ')}.</p>
         <button class="btn" onclick="openDetailByName('${jsq(best.n)}')">View ${esc(best.n)}</button>
       </div>`;
   }else{
@@ -2551,7 +2556,7 @@ function planTypeStart(){
 /* ---- 3D photo ring (vanilla port of the Originkit RoundCarousel) --------------------
    Trek photos arranged on a cylinder: auto-spins, drag + inertia, tap the front photo to
    open that trek. Transform-only. Pauses when scrolled off-screen or the home view is
-   hidden (IntersectionObserver), and never auto-spins under prefers-reduced-motion — both
+   hidden (IntersectionObserver), and never auto-spins under prefers-reduced-motion, both
    to keep the home screen from draining battery. */
 function tmkRing(el, opts){
   opts = opts || {};
@@ -2636,7 +2641,7 @@ function renderHome(){
   const hg=document.getElementById('homeGreet');if(hg){const nm=getSavedName();hg.textContent=nm?'Hello, '+nm:'Hello there';}
   planTypeStart();
   renderHomeHero();
-  /* Popular Treks is a small featured rail — admin's picks (Admin → Home) float to the
+  /* Popular Treks is a small featured rail, admin's picks (Admin → Home) float to the
      front, then bookable, then a few coming-soon. Sorting rather than filtering keeps the
      rail full even when a difficulty chip excludes every picked trek.
      Capping it is essential: rendering all 130+ treks here crashed iOS Safari (memory). */
@@ -2671,7 +2676,7 @@ function renderExplore(){
   document.getElementById('diffGrid').innerHTML=dd.map(d=>`<div class="diffc" onclick="filterByDiff('${d[0]}')"><b>${d[0]}</b><small>${d[1]}</small></div>`).join('');
   const cc=document.getElementById('cityChips');
   if(cc){
-    /* departure-city chips are built automatically from the treks that exist — every
+    /* departure-city chips are built automatically from the treks that exist, every
        region's real boarding city appears (Manali, Leh, Siliguri/NJP…), sorted by how
        many treks use it. No fixed list to maintain. */
     const cnt={},live={};
@@ -2681,13 +2686,13 @@ function renderExplore(){
     const csec=document.getElementById('cityChipsSec');if(csec)csec.style.display=cities.length?'':'none';
     cc.innerHTML=cities.map(c=>`<div class="chip pill ${exploreLabel===('From '+c)?'on':''}" onclick="filterByCity('${jsq(c)}')">${ic('pin',13)} ${esc(c)}</div>`).join('');
   }
-  /* filtered views (a region / difficulty / city) show their full set — always small.
+  /* filtered views (a region / difficulty / city) show their full set, always small.
      The unfiltered "Top Picks" is capped so we never render 130+ image cards at once
      (that crashed iOS Safari). Everything stays reachable via the region tiles above. */
   const list=exploreView||treks.filter(t=>!isTour(t)).slice(0,30);
   const head=document.getElementById('topHead'); if(head)head.textContent=exploreLabel||'Top Picks For You';
   const el=document.getElementById('exploreList');el.className='';
-  el.innerHTML=list.length?list.map(bigCard).join(''):`<div class="empty"><img src="illustrations/hiker-mountains.svg" alt=""/>No treks in ${esc(exploreLabel||'this filter').replace(' Treks','')} yet — more coming soon.<br><br><button class="btn sm" onclick="filterAll()">Show all treks</button></div>`;
+  el.innerHTML=list.length?list.map(bigCard).join(''):`<div class="empty"><img src="illustrations/hiker-mountains.svg" alt=""/>No treks in ${esc(exploreLabel||'this filter').replace(' Treks','')} yet, more coming soon.<br><br><button class="btn sm" onclick="filterAll()">Show all treks</button></div>`;
   hydrate(document.getElementById('explore'));
   lazyBg(el);   /* only load photos as cards scroll into view (keeps iOS memory sane) */
 }
@@ -2703,11 +2708,11 @@ function renderTours(){
   const list=tourList();
   box.innerHTML=list.length
     ? list.map(bigCard).join('')
-    : '<div class="empty"><img src="illustrations/hiker-mountains.svg" alt=""/>No road trips or tours yet — check back soon.</div>';
+    : '<div class="empty"><img src="illustrations/hiker-mountains.svg" alt=""/>No road trips or tours yet, check back soon.</div>';
   hydrate(box);lazyBg(box);
 }
-/* the home rail — only shows once at least one tour exists */
-/* one premium road-trip card — shared by the home "Featured Road Trips" rail
+/* the home rail, only shows once at least one tour exists */
+/* one premium road-trip card, shared by the home "Featured Road Trips" rail
    and the destination "Road trip packages" list, so both look identical.
    Image-forward, warm-orange identity, tap opens the trip detail (#trip). */
 function roadTripCard(t){
@@ -2723,7 +2728,7 @@ function roadTripCard(t){
         <div class="rt-ft"><span class="rt-p">${priceOf(t).off?`<small>from</small> <s>${INR(priceOf(t).base)}</s> <b>${INR(priceOf(t).now)}</b>`:`<small>from</small> <b>${INR(priceOf(t).now)}</b>`}</span><span class="rt-go">View trip ${ic('back',13)}</span></div>
       </div></div>`;
 }
-/* Home "Featured Road Trips" card — mirrors the Popular Treks coverflow card
+/* Home "Featured Road Trips" card, mirrors the Popular Treks coverflow card
    (trekCardCF) so both rails read the same, just rendered slightly smaller. */
 function tripCardCF(t,i){
   const dest=(destById(t.dest_id)||{}).n||t.region||'';
@@ -2736,8 +2741,8 @@ function tripCardCF(t,i){
       <div class="fcx-loc">${ic('pin',13)} ${esc(dest)}</div>
       <div class="fcx-desc">${esc(t.desc||'A guided road trip with Tripomonk.')}</div>
       <div class="fcx-stats">
-        <div><small>Duration</small><b>${t.days?esc(String(t.days))+' days':esc(t.dur||'—')}</b></div>
-        <div><small>Best time</small><b>${esc(t.best||'—')}</b></div>
+        <div><small>Duration</small><b>${t.days?esc(String(t.days))+' days':esc(t.dur||'-')}</b></div>
+        <div><small>Best time</small><b>${esc(t.best||'-')}</b></div>
         <div><small>Rating</small><b>${ratingText(t)}</b></div>
       </div>
       <div class="fcx-foot"><div><small>${priceOf(t).off?priceOf(t).off+'% OFF · from':'From'}</small><div class="fcx-price">${priceTag(t)}</div></div>
@@ -2784,7 +2789,7 @@ let cart={trek:treks[0],date:'',pax:1,gear:false,permit:false,total:0,booking:nu
 async function openDetailByName(n){
   const i=treks.findIndex(t=>t.n===n);
   if(i>=0){openDetail(i);return;}
-  /* host-led trips aren't in the static list — match a live host trip by title and open it */
+  /* host-led trips aren't in the static list, match a live host trip by title and open it */
   let ht=(liveHostTrips||[]).find(t=>String(t.title||'').toLowerCase()===String(n||'').toLowerCase());
   if(!ht){const sb=getSupaClient();if(sb){try{const{data}=await sb.from('host_trips').select('id').eq('status','live').ilike('title',n).limit(1);if(data&&data[0])ht=data[0];}catch(e){}}}
   if(ht){openHostTripDetail(ht.id);return;}
@@ -2794,7 +2799,7 @@ async function openDetailByName(n){
    Host trips store these as free text (one item per line, from the chips the host
    ticked). Rendering that as a <p> gave a tall wall of plain words. Split it back into
    items, give each a meaningful icon, and lay them out two-up. Unknown items still work
-   — they fall back to a tick or a cross. */
+  , they fall back to a tick or a cross. */
 const INCL_ICON={'accommodation':'hotel','stay':'hotel','all meals':'restaurant','meals':'restaurant',
   'transport':'directions_bus','trek guide':'flag','guide':'flag','permits':'description',
   'camping equipment':'festival','camping':'festival','first aid':'medical_services','firstaid':'medical_services',
@@ -2814,7 +2819,7 @@ function inclGrid(raw,kind){
     '<div class="incl-item '+kind+'"><span class="incl-ic msr">'+(map[x.toLowerCase()]||fb)+'</span>'
     +'<span>'+esc(x)+'</span></div>').join('')+'</div>';
 }
-/* one card holding both lists — they're the same question, so they shouldn't be two blocks */
+/* one card holding both lists, they're the same question, so they shouldn't be two blocks */
 function inclCard(inc,exc){
   const i=inclGrid(inc,'inc'),e=inclGrid(exc,'exc');
   if(!i&&!e)return '';
@@ -2824,7 +2829,7 @@ function inclCard(inc,exc){
     +'</div>';
 }
 /* One compact spec row: icon, muted label, value. Conditions / Good to Know / Getting
-   there used to be three headed sections of boxed tiles — ten cards' worth of borders
+   there used to be three headed sections of boxed tiles, ten cards' worth of borders
    and padding for ten short facts, which made the page roughly twice as tall as the
    content needed. They're now one plain list under a single heading. */
 function dRow(icon,label,val,cls){
@@ -2833,7 +2838,7 @@ function dRow(icon,label,val,cls){
     : ic(icon,17);
   return '<div class="dfact'+(cls?' '+cls:'')+'"><span class="dfact-ic">'+glyph+'</span>'
     +'<span class="dfact-l">'+esc(label)+'</span>'
-    +'<span class="dfact-v">'+esc(val==null||val===''?'—':val)+'</span></div>';
+    +'<span class="dfact-v">'+esc(val==null||val===''?'-':val)+'</span></div>';
 }
 /* ---- Live conditions (temperature + air quality) ----
    Open-Meteo: free, no API key, CORS-enabled, so this needs no new secret and no
@@ -2842,13 +2847,13 @@ function dRow(icon,label,val,cls){
    NOTE: only the 7 treks in COORDS have real coordinates; everything else falls back
    to a region centroid, so the reading is regional. The UI says which. */
 const AQI_BANDS=[[50,'Good'],[100,'Moderate'],[150,'Poor'],[200,'Unhealthy'],[300,'Very poor'],[1e9,'Hazardous']];
-function aqiBand(v){for(const b of AQI_BANDS)if(v<=b[0])return b[1];return '—';}
+function aqiBand(v){for(const b of AQI_BANDS)if(v<=b[0])return b[1];return '-';}
 function condKey(c){return 'cond_'+c[0].toFixed(2)+'_'+c[1].toFixed(2);}
 const COND_TTL=3*60*60*1000;
 async function loadConditions(t){
   const c=coordsFor(t),key=condKey(c);
   const cached=swrGet(key);
-  /* Use the cache only while it's fresh AND still starts on today's date — otherwise a
+  /* Use the cache only while it's fresh AND still starts on today's date, otherwise a
      forecast fetched yesterday keeps labelling yesterday as "Today". Refetch at the day boundary. */
   if(cached&&cached.data&&(Date.now()-cached.t<COND_TTL)){
     const d0=cached.data.days&&cached.data.days[0]&&cached.data.days[0].date;
@@ -2867,7 +2872,7 @@ async function loadConditions(t){
     const days=(Array.isArray(d.time)?d.time:[]).map((dt,i)=>({date:dt,code:(d.weathercode||[])[i],tmax:(d.temperature_2m_max||[])[i],tmin:(d.temperature_2m_min||[])[i]}));
     const arr=((a&&a.hourly&&a.hourly.us_aqi)||[]).filter(v=>typeof v==='number');
     const aqi=arr.length?Math.round(arr.reduce((s,v)=>s+v,0)/arr.length):null;
-    if(tmin==null&&aqi==null)return cached?cached.data:null;   /* nothing usable — keep the old copy */
+    if(tmin==null&&aqi==null)return cached?cached.data:null;   /* nothing usable, keep the old copy */
     const data={tmin,tmax,aqi,days,exact:!!COORDS[t.n]};
     swrSet(key,data);
     return data;
@@ -2877,7 +2882,7 @@ async function loadConditions(t){
 /* Open-Meteo WMO code → Material Symbol (the customer app never uses emoji) */
 function wxIcon(code){code=+code||0;const [n,c]=code===0?['sunny','#FFB800']:code<=3?['partly_cloudy_day','#FFC94D']:code<=48?['foggy','#9fb3c8']:code<=67?['rainy','#5aa9ff']:code<=77?['ac_unit','#bfe3ff']:code<=82?['rainy','#5aa9ff']:['thunderstorm','#b48cff'];
   return `<span class="msr" style="font-size:22px;color:${c}" aria-hidden="true">${n}</span>`;}
-/* local calendar date as YYYY-MM-DD — used to keep the forecast pinned to the real today */
+/* local calendar date as YYYY-MM-DD, used to keep the forecast pinned to the real today */
 function localTodayISO(){const d=new Date(),p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
 function forecastStrip(days){
   if(!Array.isArray(days)||!days.length)return '';
@@ -2893,7 +2898,7 @@ function forecastStrip(days){
     +`<span class="fc-dn">${isToday?'Today':esc(dn(d.date))}</span>`
     +`<span class="fc-dd">${esc(dd(d.date))}</span>`
     +`<span class="fc-ic">${wxIcon(d.code)}</span>`
-    +`<span class="fc-t">${d.tmax!=null?Math.round(d.tmax)+'°':'—'}</span>`
+    +`<span class="fc-t">${d.tmax!=null?Math.round(d.tmax)+'°':'-'}</span>`
     +`<span class="fc-tl">${d.tmin!=null?Math.round(d.tmin)+'°':''}</span>`
     +`</div>`;}).join('')+'</div>';
 }
@@ -2907,7 +2912,7 @@ function factsHTML(t,live){
     ? dRow('air','Air quality today',aqiBand(live.aqi)+' · '+live.aqi,'good')
     : '';
   if(isTour(t)){
-    /* road trips get a TRIP-appropriate set — no elevation/fitness/railhead trek placeholders */
+    /* road trips get a TRIP-appropriate set, no elevation/fitness/railhead trek placeholders */
     const pk=pickupInfo(t);
     return fc
       +dRow('calendar','Best time',t.best)
@@ -2945,24 +2950,24 @@ function renderDetailFacts(t){
   }).catch(()=>{});
 }
 /* ============================================================
-   INSPIRE — travel quotes + trek fun facts, shown below the news
+   INSPIRE, travel quotes + trek fun facts, shown below the news
    section as a swipeable, auto-rotating carousel. Users can swipe back
    to re-read; auto-advance pauses right after a manual swipe and while
    the view is hidden.
    ============================================================ */
 const INSPO=[
   {t:'quote',x:'The mountains are calling and I must go.',a:'John Muir'},
-  {t:'fact', x:'The Himalayas are still growing — India pushes north about 5 cm a year, nudging the peaks a few millimetres taller each year.'},
+  {t:'fact', x:'The Himalayas are still growing, India pushes north about 5 cm a year, nudging the peaks a few millimetres taller each year.'},
   {t:'quote',x:'It is not the mountain we conquer, but ourselves.',a:'Sir Edmund Hillary'},
-  {t:'fact', x:'At 4,000 m the air holds roughly 40% less oxygen than at sea level — exactly why we build in acclimatisation days.'},
+  {t:'fact', x:'At 4,000 m the air holds roughly 40% less oxygen than at sea level, exactly why we build in acclimatisation days.'},
   {t:'quote',x:'Jobs fill your pocket, but adventures fill your soul.',a:'Jaime Lyn Beatty'},
   {t:'fact', x:'Uttarakhand’s Valley of Flowers bursts into over 500 species of wild alpine flowers every monsoon.'},
   {t:'quote',x:'Not all those who wander are lost.',a:'J. R. R. Tolkien'},
-  {t:'fact', x:'Descending is often harder on your knees than climbing — trekking poles can cut the load by up to 25%.'},
+  {t:'fact', x:'Descending is often harder on your knees than climbing, trekking poles can cut the load by up to 25%.'},
   {t:'quote',x:'Travel far enough, you meet yourself.',a:'David Mitchell'},
-  {t:'fact', x:'Chandratal — “Moon Lake” in Spiti at 4,300 m — shifts from turquoise to deep blue through the day.'},
+  {t:'fact', x:'Chandratal, “Moon Lake” in Spiti at 4,300 m, shifts from turquoise to deep blue through the day.'},
   {t:'quote',x:'The journey of a thousand miles begins with a single step.',a:'Lao Tzu'},
-  {t:'fact', x:'Trekking at altitude can burn 400–700 calories an hour — eat well and keep sipping water.'},
+  {t:'fact', x:'Trekking at altitude can burn 400–700 calories an hour, eat well and keep sipping water.'},
   {t:'quote',x:'Life is either a daring adventure or nothing at all.',a:'Helen Keller'},
   {t:'fact', x:'The Ganga begins as a glacier snout at Gaumukh, nearly 4,000 m up in the Uttarakhand Himalaya.'}
 ];
@@ -2975,7 +2980,7 @@ function renderInspire(id){
       '<div class="insp-slide '+q.t+'">'
       +'<span class="insp-badge">'+(q.t==='quote'?'<span class="msr">format_quote</span>Travel wisdom':'<span class="msr">lightbulb</span>Trek fact')+'</span>'
       +'<p class="insp-x">'+esc(q.x)+'</p>'
-      +(q.a?'<div class="insp-a">— '+esc(q.a)+'</div>':'')
+      +(q.a?'<div class="insp-a">'+esc(q.a)+'</div>':'')
       +'</div>').join('')
     +'</div>';
   hydrate(box);
@@ -3019,7 +3024,7 @@ function openDetail(i){const t=treks[i];if(!t)return;
   renderDetailLeader(t);                       /* paint now if guides are loaded… */
   if(!_guidesLoaded)loadGuides().then(()=>{if(cart.trek===t)renderDetailLeader(t);});   /* …else fill in when they arrive */
   const stats=[['altitude',t.alt,'Altitude'],['clock',t.dur,'Duration'],['distance',t.dist,'Distance'],['calendar',t.best,'Best Time']];
-  document.getElementById('dStats').innerHTML=stats.map(s=>`<div class="stat"><div class="ic" style="display:grid;place-items:center">${ic(s[0],20)}</div><b>${(s[1]==null||s[1]==='')?'—':esc(String(s[1]))}</b><small>${s[2]}</small></div>`).join('');
+  document.getElementById('dStats').innerHTML=stats.map(s=>`<div class="stat"><div class="ic" style="display:grid;place-items:center">${ic(s[0],20)}</div><b>${(s[1]==null||s[1]==='')?'-':esc(String(s[1]))}</b><small>${s[2]}</small></div>`).join('');
   document.getElementById('dHl').innerHTML=hlHTML(t);
   renderDetailFacts(t);
   document.getElementById('dIncl').innerHTML=inclCard(INCL,EXCL);
@@ -3028,7 +3033,7 @@ function openDetail(i){const t=treks[i];if(!t)return;
   document.getElementById('dRevPrev').innerHTML=reviewPreviewHTML(t);
   syncFav(document.getElementById('dFav'),t);
   const cta=document.getElementById('dCta');
-  if(t.soon){cta.innerHTML=ic('bell',16)+' Coming Soon · Notify me';cta.onclick=()=>wa(t.n+' — please notify me when it goes live.');}
+  if(t.soon){cta.innerHTML=ic('bell',16)+' Coming Soon · Notify me';cta.onclick=()=>wa(t.n+', please notify me when it goes live.');}
   else if(isTour(t)){cta.innerHTML='Book this trip&nbsp; →';cta.onclick=()=>openTourDepart(t.idx);}
   else{cta.innerHTML='View Dates &amp; Price&nbsp; →';cta.onclick=()=>go('selectDate');}
   const rd=document.getElementById('dReadiness');if(rd){rd.innerHTML=readinessCardHTML(t);hydrate(rd);}
@@ -3039,7 +3044,7 @@ function openDetail(i){const t=treks[i];if(!t)return;
   go('detail');
 }
 /* ============================================================
-   ROAD TRIP DETAIL (#trip) — a distinct layout from the trek page.
+   ROAD TRIP DETAIL (#trip), a distinct layout from the trek page.
    Same data + booking engine, but a route timeline is the centrepiece,
    the facts are a compact chip band, and a sticky booking bar carries
    the price + "Book this trip". Reached via openDetail() routing tours here.
@@ -3056,7 +3061,7 @@ function renderTrip(t){
   g('tripReg').textContent=(destById(t.dest_id)||{}).n||t.region||'';
   {const m=g('tripRate');if(m&&m.parentElement)m.parentElement.innerHTML=rateHTML(t,true)+'<b id="tripRate" hidden></b><span id="tripRev" hidden></span>';}
   /* compact fact band instead of the trek 4-stat grid */
-  const q=[['clock',t.dur||((t.days||'')+' days')],['altitude',t.lvl||'—'],['calendar',t.best||'—'],['community',((typeof KNOW!=='undefined'&&KNOW[0]&&KNOW[0][1])||'8–15')+' group']];
+  const q=[['clock',t.dur||((t.days||'')+' days')],['altitude',t.lvl||'-'],['calendar',t.best||'-'],['community',((typeof KNOW!=='undefined'&&KNOW[0]&&KNOW[0][1])||'8–15')+' group']];
   g('tripQuick').innerHTML=q.map(x=>`<span class="tq"><span class="ic">${ic(x[0],14)}</span>${esc(String(x[1]))}</span>`).join('');
   /* offer banner */
   const of=g('tripOffer'),ov=(t.offer||'').trim();
@@ -3074,7 +3079,7 @@ function renderTrip(t){
   /* sticky booking bar */
   const cta=g('tripCta'),cap=g('tripCtaCap'),pr=g('tripCtaPrice');
   if(pr)pr.innerHTML=priceTag(t);
-  if(t.soon){if(cta){cta.innerHTML=ic('bell',16)+' Notify me';cta.onclick=()=>wa(t.n+' — please notify me when it goes live.');}if(cap)cap.textContent='coming soon';}
+  if(t.soon){if(cta){cta.innerHTML=ic('bell',16)+' Notify me';cta.onclick=()=>wa(t.n+', please notify me when it goes live.');}if(cap)cap.textContent='coming soon';}
   else{if(cta){cta.innerHTML='Book this trip&nbsp; →';cta.onclick=()=>openTourDepart(t.idx);}if(cap)cap.textContent='from';}
   hydrate(g('trip'));
 }
@@ -3105,7 +3110,7 @@ function routeTimeline(t){
       +'</div></div>';
   }).join('')+'</div>';
 }
-/* pickup / drop-off card (reuses pickupInfo — admin-set values win) */
+/* pickup / drop-off card (reuses pickupInfo, admin-set values win) */
 function pickupBlockHTML(t){
   const pk=pickupInfo(t);
   return '<div class="pickup-card">'
@@ -3148,7 +3153,7 @@ function handleDeepLink(){
   /* trip-circle invite link: #circle=<code|id> (404.html maps /circle/<code> → here) */
   const mc=h.match(/#circle=([^&]+)/);
   if(mc){const key=decodeURIComponent(mc[1]);setTimeout(()=>{try{openCircle(key);}catch(e){}},400);return;}
-  /* resume a circle the user was joining when they were sent to sign in — open + auto-join */
+  /* resume a circle the user was joining when they were sent to sign in, open + auto-join */
   try{const pc=localStorage.getItem('tmk_pending_circle');if(pc&&typeof isLoggedIn==='function'&&isLoggedIn()){localStorage.removeItem('tmk_pending_circle');setTimeout(()=>{try{resumePendingCircle(pc);}catch(e){}},500);}}catch(e){}
 }
 /* after sign-up from an invite link: open the circle, then auto-join a community one so the
@@ -3162,7 +3167,7 @@ async function resumePendingCircle(key){
     }
   }catch(e){}
 }
-/* Wishlist — saved trek names per account on this device (the heart used to be decorative
+/* Wishlist, saved trek names per account on this device (the heart used to be decorative
    and the Wishlist screen always showed the same three treks). */
 function wishKey(){return 'tmk_wish_'+(currentUser?currentUser.id:'guest');}
 function getWish(){try{const a=JSON.parse(localStorage.getItem(wishKey())||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}}
@@ -3186,8 +3191,8 @@ function renderItinerary(){const t=cart.trek,it=trekItin(t);
   if(head){
     head.innerHTML=`<div class="itin-sum">
         <div><b>${it.length}</b><small>Days</small></div>
-        <div><b>${totKm?totKm.toFixed(0)+' km':'—'}</b><small>Distance</small></div>
-        <div><b>${esc(t.lvl||'—')}</b><small>Grade</small></div>
+        <div><b>${totKm?totKm.toFixed(0)+' km':'-'}</b><small>Distance</small></div>
+        <div><b>${esc(t.lvl||'-')}</b><small>Grade</small></div>
       </div>`
       +(trekItinUrl(t)?`<button class="btn ghost sm itin-dl" onclick="downloadItinerary()">${ic('download',15)} Download full itinerary (PDF)</button>`:'');
     hydrate(head);
@@ -3204,8 +3209,8 @@ function renderItinerary(){const t=cart.trek,it=trekItin(t);
   hydrate(document.getElementById('itinList'));
 }
 
-/* A star rating is only shown when it is backed by a review count — never "★ 4.7 (0)". */
-/* Stars come ONLY from real customer reviews (the reviews table, via reviewsData) — never from
+/* A star rating is only shown when it is backed by a review count, never "★ 4.7 (0)". */
+/* Stars come ONLY from real customer reviews (the reviews table, via reviewsData), never from
    the catalogue's typed-in rating/review numbers. No reviews → "New". (Decision 2026-10-05.) */
 function realRating(t){const n=String((t&&t.n)||'').toLowerCase();if(!n)return {count:0,avg:0};
   const rs=(reviewsData||[]).filter(r=>String(r.trek||'').toLowerCase()===n);
@@ -3217,7 +3222,7 @@ function ratingText(t){const rr=realRating(t);return rr.count?'★ '+rr.avg.toFi
 /* Coalesce concurrent calls: while one request is in flight, every other caller gets the
    same promise instead of firing a duplicate (home used to fetch guides/hosts 4× on load). */
 function shareInflight(fn){let p=null;return function(...a){if(p)return p;p=Promise.resolve().then(()=>fn.apply(this,a));p.then(()=>{p=null;},()=>{p=null;});return p;};}
-/* select date — only real bookable departures, no confusing month grid */
+/* select date, only real bookable departures, no confusing month grid */
 function parseStartDate(label){
   /* label like "18 May – 22 May" or "01 Jun – 05 Jun" → {day:'18', mo:'MAY'} */
   const m=(label||'').match(/(\d{1,2})\s*([A-Za-z]{3})/);
@@ -3302,7 +3307,7 @@ function checkTravellers(){
   if(_bookFor==='self'){saveUserName(name);saveContact(cart.contact);}
   go('review');
 }
-/* who the booking is for — 'self' (autofill from profile) or 'other' (blank form) */
+/* who the booking is for, 'self' (autofill from profile) or 'other' (blank form) */
 let _bookFor='self';
 function setBookFor(v){
   _bookFor=v;const g=id=>document.getElementById(id);
@@ -3343,7 +3348,7 @@ const TREK_DEP={'Kedarkantha':'Dehradun','Har Ki Dun':'Dehradun','Brahmatal':'De
    (Dehradun, Manali, Leh, Srinagar, Siliguri/NJP, Guwahati…), not a North-only default */
 function depCity(t){return (pickupInfo(t)||{}).city||'Dehradun';}
 /* Region-aware pickup / assembly city for the booking flow. The gateway city where
-   trekkers gather before the road transfer to the base town — NOT the North-only
+   trekkers gather before the road transfer to the base town, NOT the North-only
    Dehradun/Rishikesh chain, which was wrong for Sikkim, the Northeast and the South. */
 const REGION_PICKUP={
   'Uttarakhand':{city:'Dehradun',alt:['Rishikesh','Haridwar','Delhi']},
@@ -3367,7 +3372,7 @@ const TREK_PICKUP={
 };
 function pickupInfo(t){
   const name=t&&t.n;
-  const r=REGION_PICKUP[t&&t.region]||{city:(t&&t.region)||'—',alt:[]};
+  const r=REGION_PICKUP[t&&t.region]||{city:(t&&t.region)||'-',alt:[]};
   /* admin-set pickup wins over the region default (fixes "random pickup points") */
   const city=(t&&(t.pickup||t.dep))||TREK_PICKUP[name]||TREK_DEP[name]||r.city;
   const alt=(r.alt||[]).filter(c=>c!==city);
@@ -3377,10 +3382,10 @@ function pickupInfo(t){
 }
 /* standard cancellation policy */
 const CANCELLATION=[
-  'More than 30 days before departure — full refund (less payment-gateway charges).',
-  '15–29 days before — 75% refund.',
-  '7–14 days before — 50% refund.',
-  'Less than 7 days before, or no-show — no refund.',
+  'More than 30 days before departure, full refund (less payment-gateway charges).',
+  '15–29 days before, 75% refund.',
+  '7–14 days before, 50% refund.',
+  'Less than 7 days before, or no-show, no refund.',
   'If Tripomonk cancels for weather/safety, you get a full refund or a free date change.',
   'Refunds are processed to the original payment method within 7–10 working days.'
 ];
@@ -3423,7 +3428,7 @@ function syncReview(){const t=cart.trek;
   const d=document.getElementById('rvDetails');if(d){d.innerHTML=reviewDetailsHTML(t);}
   hydrate(document.getElementById('review'));
 }
-/* the pre-payment fitness check — informs, never blocks */
+/* the pre-payment fitness check, informs, never blocks */
 function bookingFitnessHTML(t){
   const req=trekReqScore(t);
   if(!hasFitness()){
@@ -3470,7 +3475,7 @@ function computeTotal(){const t=cart.trek;const base=cart.total*cart.pax;const g
   const sg=document.getElementById('sGear'),sga=document.getElementById('sGearAmt');
   if(sg){if(gear>0){sg.style.display='flex';if(sga)sga.textContent=INR(gear);}else sg.style.display='none';}
   const tt=document.getElementById('sTot');if(tt)tt.textContent=INR(sum);
-  /* Payment screen breakdown — total is the FULL amount incl. rented gear */
+  /* Payment screen breakdown, total is the FULL amount incl. rented gear */
   const pa=document.getElementById('payAmt');if(pa)pa.textContent=INR(sum);
   const pyB=document.getElementById('pyBase');if(pyB)pyB.textContent=INR(base);
   const pyG=document.getElementById('pyGear'),pyGr=document.getElementById('pyGearRow');
@@ -3479,7 +3484,7 @@ function computeTotal(){const t=cart.trek;const base=cart.total*cart.pax;const g
   const pyBal=document.getElementById('pyBal');if(pyBal)pyBal.textContent=INR(bal);
   const pn=document.getElementById('payNow');if(pn)pn.textContent=INR(now);}
 /* Ask the server for the AUTHORITATIVE price when the payment screen opens, then show
-   exactly that — so the amount shown always equals what Razorpay charges, even if the
+   exactly that, so the amount shown always equals what Razorpay charges, even if the
    client's cached trek price is stale. Silent no-op (keeps client numbers) if the
    server is old / offline; the charge itself is always the server's number anyway. */
 async function refreshPayQuote(){
@@ -3534,13 +3539,13 @@ function loadRazorpay(){
   return _rzpLoad;}
 const RZP_SCREENS=['travellers','review','payment','cart','giftCards','wallet','htBook','hostTripView','act','activities','gear'];
 /* call the secure Razorpay Edge Function */
-/* the logged-in user's access token — lets the edge function credit the right wallet */
+/* the logged-in user's access token, lets the edge function credit the right wallet */
 async function authToken(){
   const sb=getSupaClient();if(!sb)return'';
   try{const{data}=await sb.auth.getSession();return (data&&data.session&&data.session.access_token)||'';}catch(e){return'';}
 }
 async function rzpCall(action,payload){
-  if(!navigator.onLine)return {error:'You’re offline. Connect to the internet to continue — nothing has been charged.'};
+  if(!navigator.onLine)return {error:'You’re offline. Connect to the internet to continue, nothing has been charged.'};
   if(action==='create'){payload=Object.assign({},payload);
     const rc=activeReferral();if(rc&&!payload.ref_code)payload.ref_code=rc;
     if(!payload.token){try{payload.token=await authToken();}catch(e){}}}
@@ -3569,17 +3574,17 @@ async function confirmBooking(){
   let order;confirmBooking._busy=true;
   try{order=await rzpCall('create',{booking:bookingReq,use_wallet:useWallet,token,attempt_id:attemptId});pricedBooking=order&&order.booking?order.booking:null;if(pricedBooking){advanceAmt=Number(pricedBooking.paid)||advanceAmt;}}catch(e){order=null;}
   confirmBooking._busy=false;
-  /* wallet paid everything due now — booking already confirmed on the server */
+  /* wallet paid everything due now, booking already confirmed on the server */
   if(order&&order.ok&&order.wallet_only){finishBooking(order.id,order.booking,bookingReq,name,total,advanceAmt);return;}
   if(!order||!order.order_id){note((order&&order.error)?order.error:'Could not start payment. Please try again.','Payment error');return;}
-  if(!window.Razorpay&&!(await loadRazorpay())){note('Payment gateway is loading — please wait a moment and try again.','Please wait');return;}
+  if(!window.Razorpay&&!(await loadRazorpay())){note('Payment gateway is loading, please wait a moment and try again.','Please wait');return;}
   const rzp=new window.Razorpay({
     key: order.key_id,
     order_id: order.order_id,
     amount: order.amount,
     currency: order.currency||'INR',
     name: 'Tripomonk',
-    description: t.n+' Trek — '+cart.date,
+    description: t.n+' Trek, '+cart.date,
     image: 'icons/icon-192.png',
     prefill: {name: name, email: c.email||'', contact: c.phone||''},
     notes: {trek: t.n, date: cart.date, pax: String(cart.pax), emergency: (c.emName||'')+' '+(c.emPhone||'')},
@@ -3594,12 +3599,12 @@ async function confirmBooking(){
         booking:bookingReq
       });}catch(e){res=null;}
       if(!res||!res.ok){
-        note('Payment received but we could not verify it instantly. Our team will confirm your seat shortly — please save your payment ID: '+(response.razorpay_payment_id||'—'),'Verification pending');
+        note('Payment received but we could not verify it instantly. Our team will confirm your seat shortly, please save your payment ID: '+(response.razorpay_payment_id||'-'),'Verification pending');
         return;
       }
       finishBooking(response.razorpay_payment_id,(res&&res.booking)||pricedBooking,bookingReq,name,total,advanceAmt);
     },
-    modal:{ondismiss:function(){note('Payment cancelled — your seat is not yet confirmed.','Cancelled');}}
+    modal:{ondismiss:function(){note('Payment cancelled, your seat is not yet confirmed.','Cancelled');}}
   });
   rzp.open();
 }
@@ -3662,30 +3667,30 @@ function bkPopCard(t,i){
     <div class="bk-pop-tx"><b>${esc(t.n)}</b><small>${esc(t.region||'')} · ${INR(priceOf(t).now)}</small></div></div>`;
 }
 /* ============================================================
-   TREK GUARDIAN — an OFFLINE safety companion for a booked trek.
+   TREK GUARDIAN, an OFFLINE safety companion for a booked trek.
    Reads only client data (the saved booking, the trek, baseInfo, ITIN) +
    constants, so it works with NO signal on the trail. tel: links and this
    whole page work offline; sharing/SOS need signal (that's the whole point
    of "if you don't hear from me…").
    ============================================================ */
 const GUARDIAN_SOS=[
-  ['112','Emergency — police · fire · medical'],
+  ['112','Emergency, police · fire · medical'],
   ['108','Ambulance / medical response'],
   ['1070','State disaster (SDRF) helpline']
 ];
 const AMS_SIGNS=['Headache that water &amp; rest won’t shift','Nausea or vomiting','Dizziness / feeling unsteady','Breathless even while resting','No appetite on the climb','Poor sleep, unusual exhaustion'];
-const AMS_DO=['Stop — do NOT climb any higher','Rest, hydrate, tell your trek leader','If it gets worse, DESCEND at once','Never leave someone with AMS alone'];
+const AMS_DO=['Stop, do NOT climb any higher','Rest, hydrate, tell your trek leader','If it gets worse, DESCEND at once','Never leave someone with AMS alone'];
 let _guardBk=null;
 function openGuardian(id){const b=getBookings().find(x=>x.id===id);if(!b){note('Booking not found.','Trek Guardian');return;}_guardBk=b;go('guardian');}
 function guardianTrek(){const b=_guardBk;if(!b)return null;return treks.find(x=>x.n===String(b.trek||'').replace(' (Activity)',''))||null;}
 function renderGuardian(){
   const b=_guardBk;const box=document.getElementById('guardianBody');if(!box)return;
   if(!b){box.innerHTML='<div class="empty" style="padding:30px 6px"><p>Open Trek Guardian from one of your bookings.</p><button class="btn sm" style="margin-top:10px" onclick="go(\'bookings\')">My bookings</button></div>';return;}
-  const t=guardianTrek();const base=t?baseInfo(t):{town:'—',rail:'—',air:'—'};
+  const t=guardianTrek();const base=t?baseInfo(t):{town:'-',rail:'-',air:'-'};
   const itin=trekItin(t);const wnum=getWa();
   const trekName=esc(String(b.trek||'').replace(' (Activity)',''));
   box.innerHTML=`
-    <div class="gd-note"><span class="msr">wifi_off</span> Works offline — open it on the trail even with no signal. Keep the app installed and screenshot this page before you start.</div>
+    <div class="gd-note"><span class="msr">wifi_off</span> Works offline, open it on the trail even with no signal. Keep the app installed and screenshot this page before you start.</div>
     <div class="gd-card gd-trek">
       <div class="gd-trek-top"><span class="msr gd-shield">shield</span><div class="gd-trek-tx"><b>${trekName}</b><small>${esc(b.date||'')} · ${b.pax||1} trekker${(b.pax||1)>1?'s':''}</small></div></div>
       <div class="gd-facts">
@@ -3695,15 +3700,15 @@ function renderGuardian(){
       </div>
     </div>
     <div class="gd-actions">
-      <button class="gd-sos-btn" onclick="guardianSOS()"><span class="msr">sos</span> SOS — alert Tripomonk</button>
-      <div class="gd-sos-hint"><span class="msr">priority_high</span> Life-threatening? Call <b>112</b> first — it's the first contact below.</div>
+      <button class="gd-sos-btn" onclick="guardianSOS()"><span class="msr">sos</span> SOS, alert Tripomonk</button>
+      <div class="gd-sos-hint"><span class="msr">priority_high</span> Life-threatening? Call <b>112</b> first, it's the first contact below.</div>
       <button class="gd-share" onclick="shareMyTrek()"><span class="msr">share_location</span> Share my trek with family</button>
     </div>
-    <div class="gd-h"><span class="msr">contact_phone</span>Emergency contacts<small>tap to call — works offline</small></div>
+    <div class="gd-h"><span class="msr">contact_phone</span>Emergency contacts<small>tap to call, works offline</small></div>
     <div class="gd-card gd-contacts">
       ${GUARDIAN_SOS.map(c=>`<a class="gd-con" href="tel:${c[0]}"><span class="gd-con-ic msr">call</span><div class="gd-con-tx"><b>${c[0]}</b><small>${c[1]}</small></div><span class="msr gd-chev">chevron_right</span></a>`).join('')}
       <a class="gd-con" href="tel:+${esc(wnum)}"><span class="gd-con-ic msr">support_agent</span><div class="gd-con-tx"><b>Tripomonk support</b><small>+${esc(wnum)}</small></div><span class="msr gd-chev">chevron_right</span></a>
-      <div class="gd-con gd-con-note"><span class="gd-con-ic msr">hiking</span><div class="gd-con-tx"><b>Your trek leader</b><small>Number is shared on WhatsApp before departure — save it in your phone.</small></div></div>
+      <div class="gd-con gd-con-note"><span class="gd-con-ic msr">hiking</span><div class="gd-con-tx"><b>Your trek leader</b><small>Number is shared on WhatsApp before departure, save it in your phone.</small></div></div>
     </div>
     <div class="gd-h"><span class="msr">landscape</span>Altitude sickness (AMS)<small>know the signs</small></div>
     <div class="gd-card gd-ams">
@@ -3719,19 +3724,19 @@ function shareMyTrek(){
   const msg='🏔️ I’m going trekking with Tripomonk.\n'
     +'Trek: '+String(b.trek||'').replace(' (Activity)','')+'\n'
     +'Dates: '+(b.date||'')+'\n'
-    +(base.town&&base.town!=='—'?('Base: '+base.town+'\n'):'')
+    +(base.town&&base.town!=='-'?('Base: '+base.town+'\n'):'')
     +'Booking: '+b.id+'\n\n'
-    +'Mobile network is limited on the trail — I may be out of touch for a few days. If you don’t hear from me by the end date, contact Tripomonk at +'+getWa()+'.';
-  if(navigator.share){navigator.share({title:'My trek — Tripomonk',text:msg}).catch(()=>{try{wa(msg);}catch(e){}});}
+    +'Mobile network is limited on the trail, I may be out of touch for a few days. If you don’t hear from me by the end date, contact Tripomonk at +'+getWa()+'.';
+  if(navigator.share){navigator.share({title:'My trek, Tripomonk',text:msg}).catch(()=>{try{wa(msg);}catch(e){}});}
   else wa(msg);
 }
 function guardianSOS(){
   const b=_guardBk;const name=String((b&&b.trek)||'my trek').replace(' (Activity)','');
   /* fire synchronously from the tap so the WhatsApp window isn't popup-blocked;
      112 is right above as a one-tap call for a true life-threatening emergency */
-  wa('🆘 SOS — I need help on '+name+'.\nBooking: '+((b&&b.id)||'—')+'\nPlease call me / send help. If this is life-threatening I am also calling 112.');
+  wa('🆘 SOS, I need help on '+name+'.\nBooking: '+((b&&b.id)||'-')+'\nPlease call me / send help. If this is life-threatening I am also calling 112.');
 }
-/* best-effort trip date for a booking, as YYYY-MM-DD — used to split Upcoming vs Past.
+/* best-effort trip date for a booking, as YYYY-MM-DD, used to split Upcoming vs Past.
    Prefers a stamped startISO; else parses the human date label ("1 Sept", "15 Jun 2026",
    "2026-09-01 · 6:30 AM"). Returns '' when it truly can't tell (then treated as upcoming). */
 const _BK_MON={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
@@ -3790,7 +3795,7 @@ function renderCommTabs(){document.getElementById('commTabs').innerHTML=['Discov
 function selCommTab(t){commTab=t;renderFeed();}
 /* Instagram-style stories row: Your Story + trekkers */
 /* ============================================================
-   STORIES — separate from posts. Live 24h, then stop showing.
+   STORIES, separate from posts. Live 24h, then stop showing.
    Ring spins while unseen; goes flat once viewed.
    ============================================================ */
 let storyGroups=[];           /* [{n, uid, items:[...]}] */
@@ -3840,7 +3845,7 @@ async function onStoryPick(input){
   if(!sb||!uid){note('Please sign in to add a story.','Sign in required');return;}
   note('Uploading your story…','Just a moment');
   try{
-    /* stories are viewed full-screen on a phone — 1080px is plenty and uploads fast */
+    /* stories are viewed full-screen on a phone, 1080px is plenty and uploads fast */
     const small=await compressImage(file,{maxW:1080,quality:.78});
     const path=`stories/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
     const{error:upErr}=await sb.storage.from('community').upload(path,small,{cacheControl:'3600',upsert:false});
@@ -3851,7 +3856,7 @@ async function onStoryPick(input){
     document.getElementById('modal').classList.remove('show');
     await loadStories();renderStories();
     sfx('repost');
-    note('Story added — it stays up for 24 hours.','Posted ✓');
+    note('Story added, it stays up for 24 hours.','Posted ✓');
   }catch(e){
     document.getElementById('modal').classList.remove('show');
     note('Could not add your story: '+e.message,'Error');
@@ -3919,11 +3924,11 @@ function showStoryFrame(){
   clearTimeout(_svTimer);
   _svTimer=setTimeout(()=>stepStory(1),STORY_MS);
 }
-/* ---- story views + reactions (5 & 6) — stored in `story_views` (SQL-add-story-views.sql) ---- */
+/* ---- story views + reactions (5 & 6), stored in `story_views` (SQL-add-story-views.sql) ---- */
 async function recordStoryView(it){
   if(!it||!it.id)return;
   const sb=getSupaClient();const uid=sb?await authUid():null;if(!sb||!uid)return;
-  /* record the view once — ignoreDuplicates so it never wipes an existing like */
+  /* record the view once, ignoreDuplicates so it never wipes an existing like */
   try{await sb.from('story_views').upsert({story_id:it.id,viewer_id:uid,viewer_name:myName()},{onConflict:'story_id,viewer_id',ignoreDuplicates:true});}catch(e){}
 }
 async function refreshStoryFoot(it,mine){
@@ -3985,7 +3990,7 @@ async function deleteCurrentStory(){
   await loadStories();renderStories();
 }
 /* ============================================================
-   REVIEWS — stored in the Supabase `reviews` table when available, with a
+   REVIEWS, stored in the Supabase `reviews` table when available, with a
    localStorage cache so new reviews REFLECT instantly (and work in preview /
    before the table is deployed). Users write reviews from the Reviews screen;
    admin adds them manually from Admin → Reviews. Every field is escaped on
@@ -4002,7 +4007,7 @@ function reviewsForTrek(name){name=String(name||'');return reviewsData.filter(r=
 function reviewPreviewHTML(t){
   const list=reviewsForTrek(t&&t.n);
   return list.length?list.slice(0,2).map(reviewCard).join('')
-    :'<div style="font-size:12.5px;color:var(--muted)">No reviews yet — be the first after your '+(isTour(t)?'trip':'trek')+'.</div>';
+    :'<div style="font-size:12.5px;color:var(--muted)">No reviews yet, be the first after your '+(isTour(t)?'trip':'trek')+'.</div>';
 }
 function repaintReviews(){
   if(cur==='reviews')renderReviews();
@@ -4019,7 +4024,7 @@ async function loadReviews(){
       list=data.map(r=>({id:r.id,trek:r.trek||'',author:r.author||'Trekker',rating:Math.max(1,Math.min(5,+r.rating||5)),body:r.body||'',ts:r.created_at?Date.parse(r.created_at):Date.now(),date:reviewDateLabel(r.created_at||Date.now())}));
       reviewsSaveLocal(list);
     }
-  }catch(e){/* table not deployed yet, or offline — fall back to the local cache */}}
+  }catch(e){/* table not deployed yet, or offline, fall back to the local cache */}}
   reviewsData=list.map(r=>({...r,date:r.date||reviewDateLabel(r.ts||Date.now())}));
   repaintReviews();
   if(reviewsData.length&&cur==='home'&&typeof renderHome==='function'){try{renderHome();}catch(e){}}
@@ -4072,7 +4077,7 @@ async function submitReview(){
   if(!body.trim()){note('Please write a few words for your review.','Add a review');return;}
   await addReview({trek:(cart.trek&&cart.trek.n)||'',author:name,rating:_revRating,body});
   closeReviewModal();
-  toast('Thanks — your review is live!');
+  toast('Thanks, your review is live!');
 }
 /* "Trekkers to follow" strip */
 /* ---- people search ---- */
@@ -4101,7 +4106,7 @@ async function loadPeopleRemote(){
 async function renderSuggestions(){
   const box=document.getElementById('commSuggest');if(!box)return;
   const mine=getPrefs()||[];
-  /* nothing to match on yet — nudge them to complete onboarding instead */
+  /* nothing to match on yet, nudge them to complete onboarding instead */
   if(!mine.length){
     if(isLoggedIn()&&!isPrefsDone()){
       box.innerHTML='<div class="suggest-wrap"><div class="pref-prompt" onclick="go(\'onboarding\')">'
@@ -4139,7 +4144,7 @@ function suggestFollow(n,btn){
   const now=isFollowing(n);
   if(btn){btn.classList.toggle('on',now);btn.textContent=now?'Following':'Follow';}
 }
-/* DESKTOP right rail — "Trekkers to follow" + quick links. Fills the empty right side on
+/* DESKTOP right rail, "Trekkers to follow" + quick links. Fills the empty right side on
    wide screens only; reuses the same people/suggestion engine as the community rail. It's a
    persistent element in .screen, so one render covers every tab. No-op on phones. */
 let _deskRailDone=false;
@@ -4172,12 +4177,12 @@ async function renderDeskRail(force){
     _deskRailDone=true;
   }catch(e){/* non-fatal */}
 }
-/* right-rail "Popular treks" card — DISTINCT from the left sidebar's utility links, so the
+/* right-rail "Popular treks" card, DISTINCT from the left sidebar's utility links, so the
    two sides don't repeat. Pulls from the live catalogue; opens the trek on tap. */
 function _railPopularTreks(){
   try{
     if(typeof treks==='undefined'||!Array.isArray(treks))return '';
-    /* bookable first, then popular — never exclude so the card always has a few picks */
+    /* bookable first, then popular, never exclude so the card always has a few picks */
     const list=treks.filter(t=>t&&t.n)
       .sort((a,b)=>((a.soon?1:0)-(b.soon?1:0))||((b.pop?1:0)-(a.pop?1:0)))
       .slice(0,4);
@@ -4189,7 +4194,7 @@ function _railPopularTreks(){
       +'<a class="dr-all" onclick="go(\'explore\')">Browse all treks</a></div>';
   }catch(e){return '';}
 }
-/* right-rail "Trip Circles to join" card (desktop) — open community circles people can hop on */
+/* right-rail "Trip Circles to join" card (desktop), open community circles people can hop on */
 function _railCircles(list){
   if(!list||!list.length)return '';
   const rows=list.map(c=>{const cc=c.counts||{};const when=(typeof fmtCircleDate==='function')?fmtCircleDate(c):'';
@@ -4198,7 +4203,7 @@ function _railCircles(list){
   return '<div class="dr-card"><div class="dr-head">Trip Circles to join</div><div class="dr-links">'+rows+'</div>'
     +'<a class="dr-all" onclick="go(\'community\');setTimeout(function(){if(typeof setCommView===\'function\')setCommView(\'join\')},60)">See all trips</a></div>';
 }
-/* LEFT sidebar (desktop) Trip Circles widget — the user's active circles, else a "travel together" CTA */
+/* LEFT sidebar (desktop) Trip Circles widget, the user's active circles, else a "travel together" CTA */
 async function renderNavTC(){
   try{
     if(typeof matchMedia==='function' && !matchMedia('(min-width:1024px)').matches)return;
@@ -4263,7 +4268,7 @@ async function renderCirclesTab(panel){
   const r=await circlesCall('list_my_circles',{});
   const box=document.getElementById('tcMine');if(!box)return;
   const all=(r&&r.ok&&r.circles)||[];
-  /* the community rail shows only live circles — cancelled / past-date ones live in My Travel */
+  /* the community rail shows only live circles, cancelled / past-date ones live in My Travel */
   const list=all.filter(c=>c.status!=='cancelled'&&c.status!=='closed'&&!isCircleExpired(c));
   if(!list.length){box.innerHTML='<div class="empty" style="padding:18px 0"><p>No active trip circles. Create one, or join a trip.</p></div>';return;}
   box.innerHTML=list.map(circleCard).join('');hydrate(box);
@@ -4295,7 +4300,7 @@ function fmtCircleDate(c){
     return s.toLocaleDateString('en-IN',o);}catch(e){return '';}
 }
 let _tcJoinT=null,_tcJoinCache=null,_tcJoinSeq=0;
-/* keystrokes filter the CACHED list synchronously — no async in the type path, so no
+/* keystrokes filter the CACHED list synchronously, no async in the type path, so no
    response-ordering race can repaint a stale (unfiltered) list over a filtered one. */
 function _tcJoinDeb(){clearTimeout(_tcJoinT);_tcJoinT=setTimeout(_tcJoinPaint,180);}
 function _tcJoinPaint(){
@@ -4304,8 +4309,8 @@ function _tcJoinPaint(){
   let list=_tcJoinCache||[];
   if(q)list=list.filter(c=>[c.trek_name,c.trek_region,c.creator_name].some(x=>String(x||'').toLowerCase().includes(q)));
   if(!list.length){box.innerHTML=q
-    ?tcEmpty('search_off','No trips match','Try another trek or region — or start your own.','<button class="btn" style="max-width:220px;margin:12px auto 0" onclick="openCircleCreate()">Create Trip Circle</button>')
-    :tcEmpty('hiking','No open trips yet','Be the first — start a trip circle and others can hop on.','<button class="btn" style="max-width:220px;margin:12px auto 0" onclick="openCircleCreate()">Create Trip Circle</button>');hydrate(box);return;}
+    ?tcEmpty('search_off','No trips match','Try another trek or region, or start your own.','<button class="btn" style="max-width:220px;margin:12px auto 0" onclick="openCircleCreate()">Create Trip Circle</button>')
+    :tcEmpty('hiking','No open trips yet','Be the first, start a trip circle and others can hop on.','<button class="btn" style="max-width:220px;margin:12px auto 0" onclick="openCircleCreate()">Create Trip Circle</button>');hydrate(box);return;}
   box.innerHTML=list.map(circleCard).join('');hydrate(box);
 }
 async function renderJoinList(){
@@ -4319,7 +4324,7 @@ async function renderJoinList(){
   return;
 }
 /* ---- Find Travel Buddies (Phase 2). Match on trek + experience + city + shared interests
-   (profiles.prefs). "Connect" = follow + open a DM (decision D1 — reuses the existing follow
+   (profiles.prefs). "Connect" = follow + open a DM (decision D1, reuses the existing follow
    and messaging systems, no new relationship table). Ranked server-side by the circles fn. */
 let _buddyPrefs={trek:'',level:'',city:''},_buddyMatches=null,_buddyBusy=false,_buddyErr=null;
 function cap(s){s=String(s||'');return s?s[0].toUpperCase()+s.slice(1):s;}
@@ -4332,11 +4337,11 @@ function tcBuddiesPanel(){
         :'<div class="empty" style="padding:12px 0"><p>Sign in to match with trekkers like you.</p><button class="btn" style="max-width:200px;margin:8px auto 0" onclick="go(\'login\')">Sign in</button></div>');
   }
   return '<div class="tc-head"><b>Find Travel Buddies</b></div>'
-    +'<p class="buddy-intro">Tell us what you\'re planning — we\'ll match you with trekkers like you. Connecting follows them and opens a chat.</p>'
+    +'<p class="buddy-intro">Tell us what you\'re planning, we\'ll match you with trekkers like you. Connecting follows them and opens a chat.</p>'
     +'<div class="cc-sec"><label>Experience</label><div class="cc-pick">'
       +['','beginner','intermediate','experienced'].map(v=>'<span class="tap" data-bl="'+v+'" onclick="buddyLevel(\''+v+'\')">'+(v?cap(v):'Any')+'</span>').join('')
     +'</div></div>'
-    +'<div class="cc-sec"><label>Trek <span style="color:var(--muted);font-weight:400">(optional)</span></label><div class="cc-search"><span class="msr" style="color:var(--muted)">terrain</span><input id="buddyTrek" value="'+esc(_buddyPrefs.trek)+'" placeholder="e.g. Kedarkantha — or leave blank"/></div></div>'
+    +'<div class="cc-sec"><label>Trek <span style="color:var(--muted);font-weight:400">(optional)</span></label><div class="cc-search"><span class="msr" style="color:var(--muted)">terrain</span><input id="buddyTrek" value="'+esc(_buddyPrefs.trek)+'" placeholder="e.g. Kedarkantha, or leave blank"/></div></div>'
     +'<div class="cc-sec"><label>Your city <span style="color:var(--muted);font-weight:400">(optional)</span></label><div class="cc-search"><span class="msr" style="color:var(--muted)">location_city</span><input id="buddyCity" value="'+esc(_buddyPrefs.city)+'" placeholder="e.g. Dehradun"/></div></div>'
     +'<button class="btn" id="buddyGo" onclick="buddyFind()">Find buddies</button>'
     +'<div id="buddyResults" style="margin-top:14px"></div>';
@@ -4352,7 +4357,7 @@ async function buddyFind(){
   const filters={trek_name:_buddyPrefs.trek,city:_buddyPrefs.city,experience_level:_buddyPrefs.level};
   _buddyErr=null;
   try{
-    await circlesCall('set_buddy_prefs',filters);           /* opt in — make me discoverable too */
+    await circlesCall('set_buddy_prefs',filters);           /* opt in, make me discoverable too */
     const r=await circlesCall('buddy_match',{filters});
     if(!r||!r.ok){_buddyErr=(r&&r.error)||'Could not load matches.';_buddyMatches=[];}
     else{_buddyMatches=r.matches||[];}
@@ -4366,12 +4371,12 @@ function renderBuddyResults(){
   const box=document.getElementById('buddyResults');if(!box)return;
   if(_buddyErr){
     const notLive=/unknown action/i.test(_buddyErr),signin=/sign_in/i.test(_buddyErr);
-    const msg=notLive?'Buddy matching isn’t live yet — the circles function needs to be re-deployed.':signin?'Please sign in again to find buddies.':('Couldn’t load matches: '+esc(_buddyErr));
+    const msg=notLive?'Buddy matching isn’t live yet, the circles function needs to be re-deployed.':signin?'Please sign in again to find buddies.':('Couldn’t load matches: '+esc(_buddyErr));
     box.innerHTML=tcEmpty('error','Something went wrong',msg,'<button class="btn" style="max-width:200px;margin:12px auto 0" onclick="buddyFind()">Try again</button>');hydrate(box);return;
   }
   if(_buddyMatches===null){box.innerHTML='';return;}
   const list=(_buddyMatches||[]).filter(m=>typeof isBlocked!=='function'||!isBlocked(m.user_name));
-  if(!list.length){box.innerHTML=tcEmpty('travel_explore','No matches yet','Add a few interests to your profile to get matched — and check back as more trekkers join.',(typeof isPrefsDone==='function'&&!isPrefsDone()?'<button class="btn" style="max-width:220px;margin:12px auto 0" onclick="go(\'onboarding\')">Add my interests</button>':'<button class="btn" style="max-width:220px;margin:12px auto 0" onclick="go(\'peopleSearch\')">Discover trekkers</button>'));hydrate(box);return;}
+  if(!list.length){box.innerHTML=tcEmpty('travel_explore','No matches yet','Add a few interests to your profile to get matched, and check back as more trekkers join.',(typeof isPrefsDone==='function'&&!isPrefsDone()?'<button class="btn" style="max-width:220px;margin:12px auto 0" onclick="go(\'onboarding\')">Add my interests</button>':'<button class="btn" style="max-width:220px;margin:12px auto 0" onclick="go(\'peopleSearch\')">Discover trekkers</button>'));hydrate(box);return;}
   box.innerHTML='<div class="tc-head" style="margin-top:4px"><b>'+list.length+' match'+(list.length!==1?'es':'')+'</b></div>'+list.map(buddyCard).join('');
   hydrate(box);
 }
@@ -4408,7 +4413,7 @@ function buddyConnect(n,btn){
 }
 
 /* ============================================================
-   WHO'S GOING + TRAVEL WITH YOUR PEOPLE (Phase 3) — on every trek/trip detail.
+   WHO'S GOING + TRAVEL WITH YOUR PEOPLE (Phase 3), on every trek/trip detail.
    Pure frontend: trip_interests has public read + own insert/delete RLS (shipped in
    Phase 1), so interest is a direct client write; "people you follow going" cross-refs
    interested names with the existing follow state. No edge-fn / SQL change.
@@ -4443,7 +4448,7 @@ function paintWhosGoing(boxId,trek,count,names,followed,amIn){
 }
 function trekTravelWith(trek,boxId){
   return '<div class="tsoc-twp"><div class="tsoc-head"><span class="msr">diversity_3</span>Travel with your people</div>'
-    +'<p>Don’t go solo — form a group or match with trekkers for this trip. Tripomonk handles the rest.</p>'
+    +'<p>Don’t go solo, form a group or match with trekkers for this trip. Tripomonk handles the rest.</p>'
     +'<div class="tsoc-acts"><button onclick="openCircleCreate(\''+jsq(trek)+'\')"><span class="msr">groups</span>Create a circle</button>'
     +'<button onclick="buddyFromTrek(\''+jsq(trek)+'\')"><span class="msr">travel_explore</span>Find buddies</button></div>'
     +'<div id="'+boxId+'Circles"></div></div>';
@@ -4476,8 +4481,8 @@ function joinFromTrek(trek){
 }
 function tcHostPanel(){
   const explain='<div class="tc-head"><b>Host a Trip</b></div>'
-    +'<div class="tsoc-twp" style="margin-bottom:12px"><p style="margin:0 0 10px;color:var(--text);font-size:13.5px"><b>You bring the people. Tripomonk handles operations.</b><br>Transport, stay, permits, trek captain, safety &amp; payments — all handled. You earn on every seat you fill.</p>'
-    +'<div style="font-size:11.5px;color:var(--muted)">Profit-share: after on-ground costs, 90% to you, 10% to Tripomonk — agreed up front in onboarding.</div></div>';
+    +'<div class="tsoc-twp" style="margin-bottom:12px"><p style="margin:0 0 10px;color:var(--text);font-size:13.5px"><b>You bring the people. Tripomonk handles operations.</b><br>Transport, stay, permits, trek captain, safety &amp; payments, all handled. You earn on every seat you fill.</p>'
+    +'<div style="font-size:11.5px;color:var(--muted)">Profit-share: after on-ground costs, 90% to you, 10% to Tripomonk, agreed up front in onboarding.</div></div>';
   if(typeof isLoggedIn==='function'&&!isLoggedIn())
     return explain+'<button class="btn" onclick="go(\'login\')">Sign in to host</button>';
   /* load host status once, then re-render this panel so the adaptive hub shows the right card */
@@ -4488,9 +4493,9 @@ function tcHostPanel(){
     +(approved?'<button class="btn" style="margin-top:4px" onclick="openHostTrip()">+ List a new trip</button>':'');
 }
 /* ============================================================
-   MY TRAVEL (Phase 4) — a profile hub for the social-travel side: my trip circles,
+   MY TRAVEL (Phase 4), a profile hub for the social-travel side: my trip circles,
    upcoming trips, interests + quick links to Bookings / Host dashboard. Reuses
-   list_my_circles, getBookings/bookingCard, getPrefs and host status — no new backend.
+   list_my_circles, getBookings/bookingCard, getPrefs and host status, no new backend.
    ============================================================ */
 function openMyTravel(){
   if(typeof isLoggedIn==='function'&&!isLoggedIn()){_loginReturn='myTravel';go('login');return;}
@@ -4530,7 +4535,7 @@ async function renderMyTravel(){
   const cb=document.getElementById('mtCircles');if(!cb)return;
   const list=(r&&r.ok&&r.circles)||[];
   cb.innerHTML=list.length?list.map(circleCard).join('')
-    :empty('diversity_3','No trip circles yet','Plan a trek with friends, or meet new trek-mates — create a circle and invite people along.',['Create a circle',"openCircleCreate()"]);
+    :empty('diversity_3','No trip circles yet','Plan a trek with friends or meet new trek-mates. Create a circle and invite people along.',['Create a circle',"openCircleCreate()"]);
   hydrate(cb);
 }
 /* ---- Create ---- */
@@ -4587,9 +4592,9 @@ function ccPickTrek(n){
   if(!dp)return;
   const today=new Date().toISOString().slice(0,10);
   const batches=(t.batches||[]).filter(Boolean);
-  /* only future company departures — a past date can't be used for a new circle anyway */
+  /* only future company departures, a past date can't be used for a new circle anyway */
   _tcc._batches=(batches.length?batches.map(ccBatchDate):[]).filter(d=>!d.start||d.start>=today);
-  let h=_tcc._batches.length?'':'<div style="font-size:12px;color:var(--muted);width:100%;margin-bottom:4px">'+(t.soon?'This trek isn’t open for booking yet — your circle will gather demand, and we’ll notify everyone when it opens. Pick a tentative date.':'No fixed company departures for this trek — pick your own date.')+'</div>';
+  let h=_tcc._batches.length?'':'<div style="font-size:12px;color:var(--muted);width:100%;margin-bottom:4px">'+(t.soon?'This trek isn’t open for booking yet, your circle will gather demand, and we’ll notify everyone when it opens. Pick a tentative date.':'No fixed company departures for this trek, pick your own date.')+'</div>';
   h+=_tcc._batches.slice(0,12).map((d,i)=>'<span class="tap" onclick="ccPickDate('+i+')" data-bi="'+i+'">'+esc(d.label)+'</span>').join('');
   h+='<span class="tap" id="ccCustomChip" onclick="ccCustomToggle()"><span class="msr" style="font-size:15px;vertical-align:-3px">event</span> Your own date</span>';
   h+='<div id="ccCustomRow" class="cc-custom" hidden><label>Start date<input type="text" inputmode="numeric" maxlength="10" id="ccCustomStart" placeholder="DD/MM/YYYY" oninput="ccDateMask(this)"></label><label>End date<input type="text" inputmode="numeric" maxlength="10" id="ccCustomEnd" placeholder="DD/MM/YYYY" oninput="ccDateMask(this)"></label></div>';
@@ -4609,7 +4614,7 @@ function ccCustomToggle(){
   document.querySelectorAll('#ccDatePicks .tap').forEach(el=>el.classList.toggle('sel',el.id==='ccCustomChip'));
   ccCustomSet();
 }
-/* type a date as DD/MM/YYYY — auto-insert the slashes as they go */
+/* type a date as DD/MM/YYYY, auto-insert the slashes as they go */
 function ccDateMask(el){
   let v=(el.value||'').replace(/\D/g,'').slice(0,8);
   if(v.length>=5)v=v.slice(0,2)+'/'+v.slice(2,4)+'/'+v.slice(4);
@@ -4627,21 +4632,21 @@ function ccCustomSet(){
   const s=parseDMY((document.getElementById('ccCustomStart')||{}).value);
   const e=parseDMY((document.getElementById('ccCustomEnd')||{}).value);
   _tcc.date=s||null;
-  _tcc.endDate=(e&&(!s||e>=s))?e:null;               /* keep end only when valid — no auto-fill */
+  _tcc.endDate=(e&&(!s||e>=s))?e:null;               /* keep end only when valid, no auto-fill */
 }
 function ccSetVis(v){_tcc.vis=v;const c=document.getElementById('ccVisC'),p=document.getElementById('ccVisP');if(c)c.classList.toggle('sel',v==='community');if(p)p.classList.toggle('sel',v==='private');}
 function ccNum(k,d){_tcc[k]=Math.max(2,Math.min(50,(_tcc[k]||(k==='min'?4:15))+d));if(_tcc.min>_tcc.max){if(k==='min')_tcc.max=_tcc.min;else _tcc.min=_tcc.max;}const mn=document.getElementById('ccMin'),mx=document.getElementById('ccMax');if(mn)mn.textContent=_tcc.min;if(mx)mx.textContent=_tcc.max;}
 function renderCCInvite(){
   const box=document.getElementById('ccInv');if(!box)return;
   if(_ccFollowers===null){box.innerHTML='<div class="empty" style="padding:14px 0"><p style="font-size:12.5px">Loading…</p></div>';return;}
-  if(!_ccFollowers.length){box.innerHTML='<div class="empty" style="padding:14px 0"><p style="font-size:12.5px">No followers yet — share the invite link after you create the circle.</p></div>';return;}
+  if(!_ccFollowers.length){box.innerHTML='<div class="empty" style="padding:14px 0"><p style="font-size:12.5px">No followers yet, share the invite link after you create the circle.</p></div>';return;}
   box.innerHTML=_ccFollowers.map(f=>'<div class="mrow'+(_tcc.invite[f.id]?' sel':'')+'" onclick="ccToggleInvite(\''+jsq(f.id)+'\')" data-fid="'+esc(f.id)+'">'+avatar(f.name,36)+'<div class="tc-mtx"><b>'+esc(properName(f.name))+'</b></div><span class="ck msr">check</span></div>').join('');
   hydrate(box);
 }
 function ccToggleInvite(id){if(_tcc.invite[id])delete _tcc.invite[id];else _tcc.invite[id]=((_ccFollowers||[]).find(f=>f.id===id)||{}).name||'Trekker';renderCCInvite();}
 async function submitCircle(){
   if(!_tcc.trek){note('Pick a trek first.','Choose a trek');return;}
-  if(!_tcc.date){note('Choose a date for the trip — a company departure or your own.','Add a date');return;}
+  if(!_tcc.date){note('Choose a date for the trip, a company departure or your own.','Add a date');return;}
   if(!_tcc.endDate){note('Add an end date for the trip.','End date needed');return;}
   if(_tcc.endDate<_tcc.date){note('The end date can’t be before the start date.','Check your dates');return;}
   const btn=document.getElementById('ccGo');if(btn){btn.disabled=true;btn.textContent='Creating…';}
@@ -4669,7 +4674,7 @@ function renderCirclePage(r){
   let h='<div class="tc-hero" style="background-image:url(\''+esc(c.trek_img||'')+'\')">'
     +'<div class="rb round tc-back" onclick="back()"><span class="ic" data-i="back"></span></div>'
     +'<div class="tc-htx"><h1>'+esc(c.trek_name)+'</h1><small>'+(when?esc(when)+' · ':'')+'by '+esc(c.creator_name)+'</small></div></div>';
-  if(confirmed)h+='<div class="tc-confirm"><b>Trip Circle Confirmed!</b><small>Your group reached the minimum — Tripomonk takes it from here.</small></div>';
+  if(confirmed)h+='<div class="tc-confirm"><b>Trip Circle Confirmed!</b><small>Your group reached the minimum, Tripomonk takes it from here.</small></div>';
   const bookable=(typeof circleTrekBookable==='function')?circleTrekBookable(c):true;
   h+='<div class="tc-prog"><i style="width:'+pct+'%"></i></div><div class="tc-progtx"><span><b style="color:var(--text)">'+cc.total+'</b> / '+c.max_members+' joined</span><span>min '+c.min_members+'</span></div>';
   if(bookable)h+='<div class="tc-stat"><div><b>'+cc.total+'</b><small>Joined</small></div><div><b>'+(cc.booked||0)+'</b><small>Booked</small></div><div><b>'+(cc.pending||0)+'</b><small>Pending</small></div></div>';
@@ -4677,16 +4682,16 @@ function renderCirclePage(r){
   if(!confirmed){
     if(bookable){
       const need=Math.max(0,(c.min_members||0)-(cc.booked||0));
-      h+='<div class="tc-nudge"><span class="msr">'+(need>0?'bolt':'check_circle')+'</span>'+(need>0?('<b>'+need+' more</b> '+(need===1?'spot':'spots')+' booked to confirm this trip'):'Minimum reached — confirming now')+'</div>';
+      h+='<div class="tc-nudge"><span class="msr">'+(need>0?'bolt':'check_circle')+'</span>'+(need>0?('<b>'+need+' more</b> '+(need===1?'spot':'spots')+' booked to confirm this trip'):'Minimum reached, confirming now')+'</div>';
     }else{
       const want=cc.total||0;
-      h+='<div class="tc-nudge"><span class="msr">campaign</span>Bookings aren’t open for this trek yet — <b>'+want+'</b> '+(want===1?'person wants':'people want')+' it. Request a spot and we’ll notify everyone when it opens.</div>';
+      h+='<div class="tc-nudge"><span class="msr">campaign</span>Bookings aren’t open for this trek yet, <b>'+want+'</b> '+(want===1?'person wants':'people want')+' it. Request a spot and we’ll notify everyone when it opens.</div>';
     }
   }
   h+='<div class="tc-actions">';
   if(r.amMember){
     if(bookable)h+='<button class="pri tc-act-full" onclick="circleBook()">'+(r.myStatus==='booked'?'View trip':'Book my spot')+'</button>';
-    else if(r.myStatus==='booking_pending')h+='<button class="pri tc-act-full tc-act-done" onclick="note(\'You\\u2019re on the list — we\\u2019ll notify you when bookings open.\',\'Requested\')"><span class="msr">check</span>On the waitlist</button>';
+    else if(r.myStatus==='booking_pending')h+='<button class="pri tc-act-full tc-act-done" onclick="note(\'You\\u2019re on the list, we\\u2019ll notify you when bookings open.\',\'Requested\')"><span class="msr">check</span>On the waitlist</button>';
     else h+='<button class="pri tc-act-full" onclick="circleRequest()">Request a spot</button>';
     h+='<div class="tc-act-row"><button onclick="circleShare()"><span class="msr">ios_share</span>Share</button>';
     if(r.amCreator)h+='<button onclick="openCircleInvite()"><span class="msr">person_add</span>Invite</button>';
@@ -4714,7 +4719,7 @@ async function circleJoin(){
 }
 async function circleLeave(){const c=_circleCur&&_circleCur.circle;if(!c)return;if(!(await askConfirm('Leave this trip circle?','Leave')))return;const r=await circlesCall('leave',{circle_id:c.id});if(!r||!r.ok){note((r&&r.error)||'Could not leave.','Error');return;}toast('You left the circle');openCircle(c.id);}
 function circleBook(){const c=_circleCur&&_circleCur.circle;if(!c)return;_circleBookCtx={id:c.id,trek:c.trek_name};if(typeof openDetailByName==='function')openDetailByName(c.trek_name);}
-/* a circle's trek is "bookable" only when it's a live catalogue trek — "Coming Soon" treks
+/* a circle's trek is "bookable" only when it's a live catalogue trek, "Coming Soon" treks
    and custom (off-catalogue) trips can't be booked yet, so those circles gather DEMAND instead. */
 function circleTrekBookable(c){
   if(!c||!c.trek_name)return false;
@@ -4729,7 +4734,7 @@ async function circleRequest(){
   if(!(_circleCur&&_circleCur.amMember)){const j=await circlesCall('join',{circle_id:c.id});if(!j||!j.ok){note((j&&j.error)||'Could not join.','Error');return;}}
   const r=await circlesCall('set_member_status',{circle_id:c.id,status:'booking_pending'});
   if(!r||!r.ok){note((r&&r.error)||'Could not register your request.','Error');return;}
-  toast('You’re on the list — we’ll notify you when bookings open.');openCircle(c.id);
+  toast('You’re on the list, we’ll notify you when bookings open.');openCircle(c.id);
 }
 /* after a booking completes, link it to the circle the user came from (trek must match),
    flip their status to booked, and auto-confirm the circle when the minimum is booked. */
@@ -4757,10 +4762,10 @@ function openCircleInvite(){
 }
 function renderCIInvite(){
   const box=document.getElementById('ciInv');if(!box)return;
-  /* first-class "anyone with the link" option — works for people who aren't on the app yet */
-  let h='<div class="ci-link" onclick="circleShare()"><div class="ci-link-ic"><span class="msr">link</span></div><div class="tc-mtx"><b>Invite anyone with a link</b><small>Share on WhatsApp or copy — they can open it, sign up and join.</small></div><span class="msr">ios_share</span></div>';
+  /* first-class "anyone with the link" option, works for people who aren't on the app yet */
+  let h='<div class="ci-link" onclick="circleShare()"><div class="ci-link-ic"><span class="msr">link</span></div><div class="tc-mtx"><b>Invite anyone with a link</b><small>Share on WhatsApp or copy, they can open it, sign up and join.</small></div><span class="msr">ios_share</span></div>';
   if(_ccFollowers===null)h+='<div class="empty" style="padding:10px 0"><p style="font-size:12.5px">Loading your followers…</p></div>';
-  else if(!_ccFollowers.length)h+='<div class="empty" style="padding:8px 0"><p style="font-size:12.5px">You have no followers to pick from yet — the link above works for anyone.</p></div>';
+  else if(!_ccFollowers.length)h+='<div class="empty" style="padding:8px 0"><p style="font-size:12.5px">You have no followers to pick from yet, the link above works for anyone.</p></div>';
   else h+='<div class="ci-sub">Or pick from your followers</div>'+_ccFollowers.map(f=>'<div class="mrow'+(_ciSel[f.id]?' sel':'')+'" onclick="ciToggle(\''+jsq(f.id)+'\')">'+avatar(f.name,36)+'<div class="tc-mtx"><b>'+esc(properName(f.name))+'</b></div><span class="ck msr">check</span></div>').join('');
   box.innerHTML=h;hydrate(box);
 }
@@ -4910,7 +4915,7 @@ function fitCarousels(root){
 }
 /* DESKTOP only: horizontal carousels can't be mouse-swiped, so add ← → arrow buttons to the
    post image carousels (.car / .car-track) and the "Trekkers like you" rail (.suggest-rail).
-   Idempotent — runs on every hydrate; skips rows that aren't actually scrollable yet. */
+   Idempotent, runs on every hydrate; skips rows that aren't actually scrollable yet. */
 function addCarouselArrows(root){
   try{
     if(typeof matchMedia==='function' && !matchMedia('(min-width:1024px)').matches)return;
@@ -4925,7 +4930,7 @@ function addCarouselArrows(root){
       if(getComputedStyle(mount).position==='static')mount.style.position='relative';
       scroller._arrowed=true;mount.classList.add('car-has-arrows');
       /* position each arrow over the scroller's own box (rect-based, so it works even when the
-         mount is a big grid container — e.g. the gift-card view). */
+         mount is a big grid container, e.g. the gift-card view). */
       const place=b=>{const mr=mount.getBoundingClientRect(),sr=scroller.getBoundingClientRect();
         b.style.top=(sr.top-mr.top+sr.height/2)+'px';
         b.style.left=(b.classList.contains('car-prev')?(sr.left-mr.left+6):(sr.left-mr.left+sr.width-40))+'px';};
@@ -4953,8 +4958,8 @@ function postCard(p){
   const more=me
     ?`<span class="ig-more" onclick="postMenu('${p.id}')" title="Post options"><span class="msr" style="font-size:21px">more_horiz</span></span>`
     :`<span class="ig-more" onclick="postReportMenu('${p.id}','${sn}')" title="Report"><span class="msr" style="font-size:21px">more_horiz</span></span>`;
-  /* the actions live under the photo only — no duplicate overlay rail */
-  /* tagged trekkers — show 2, then "and N others" (tap to reveal the rest) */
+  /* the actions live under the photo only, no duplicate overlay rail */
+  /* tagged trekkers, show 2, then "and N others" (tap to reveal the rest) */
   const tagged=taggedHTML(p);
   return `<div class="post" data-pid="${p.id}">
    <div class="ig-head">
@@ -5026,7 +5031,7 @@ async function reportPost(id,name){
   const sb=getSupaClient();
   try{if(sb)await sb.rpc('report_post',{p_post_id:id,p_reason:reason});}catch(e){console.warn('report failed',e&&e.message);}
   const el=document.querySelector('.post[data-pid="'+id+'"]');if(el)el.remove();   /* hide it for me right away */
-  toast('Thanks — reported for review');
+  toast('Thanks, reported for review');
 }
 function carScroll(track){
   const i=Math.round(track.scrollLeft/track.clientWidth);
@@ -5058,15 +5063,15 @@ function editPostCaption(id){
     const uid=sb?await authUid():null;
     if(!sb||!uid){note('Please sign in to edit this post.','Sign in required');return;}
     save.disabled=true;save.textContent='Saving…';
-    /* scope to the owner as well as the id — the DB policy is the real guard,
+    /* scope to the owner as well as the id, the DB policy is the real guard,
        this just fails fast and never edits someone else's row */
     /* .select() matters: a row blocked by RLS comes back as 0 rows and NO error,
        so without this an edit that never happened would report success */
     const{data,error}=await sb.from('community_posts').update({txt}).eq('id',id).eq('user_id',uid).select('id');
     save.disabled=false;save.textContent='Save';
     if(error){note('Could not save: '+error.message,'Error');return;}
-    if(!data||!data.length){note('This post could not be updated — you can only edit your own posts.','Not saved');return;}
-    /* update in place — no full feed re-render */
+    if(!data||!data.length){note('This post could not be updated, you can only edit your own posts.','Not saved');return;}
+    /* update in place, no full feed re-render */
     p.txt=txt;
     const local=userPosts.find(x=>x.id===id);if(local){local.txt=txt;try{localStorage.setItem('tmk_posts',JSON.stringify(userPosts));}catch(e){}}
     close();
@@ -5128,7 +5133,7 @@ async function renderFeed(){
   const remote=await loadPostsRemote();
   let list;
   if(remote===null){
-    /* network/auth error — show local + demo */
+    /* network/auth error, show local + demo */
     list=allPosts();
   } else {
     const remoteIds=new Set(remote.map(p=>p.id));
@@ -5139,7 +5144,7 @@ async function renderFeed(){
   if(commTab==='Recent')list=[...list].sort((a,b)=>b.id.localeCompare(a.id));
   _lastFeed=list;
   /* Show posts IMMEDIATELY. Waiting on like/comment counts + author photos before
-     the first paint added ~1s of blank feed — the app felt broken. Paint now,
+     the first paint added ~1s of blank feed, the app felt broken. Paint now,
      then enrich (counts, avatars) and re-render once when they arrive. */
   const empty='<div class="empty"><p>No posts yet. Share your trek story!</p></div>';
   box.innerHTML=list.length?list.map(postCard).join(''):empty;
@@ -5149,15 +5154,15 @@ async function renderFeed(){
     /* resolveAuthors rewrites each post's name to the author's CURRENT identity
        (by user id), so a renamed / re-photo'd / re-usernamed author shows fresh */
     Promise.all([loadEngagement(list.map(p=>p.id)),resolveAuthors(list,'uid','n')]).then(()=>{
-      /* another render started meanwhile — don't clobber it */
+      /* another render started meanwhile, don't clobber it */
       if(token!==_feedToken||cur!=='community')return;
       box.innerHTML=list.map(postCard).join('');
       hydrate(box);
     }).catch(()=>{});
   }
 }
-/* pull profile photos for the authors on screen — one query, cached, skips names we already have */
-const AUTHOR_TTL=30000;   /* re-check a name at most this often — fresh enough to feel instant, cheap enough */
+/* pull profile photos for the authors on screen, one query, cached, skips names we already have */
+const AUTHOR_TTL=30000;   /* re-check a name at most this often, fresh enough to feel instant, cheap enough */
 async function loadAuthorPhotos(names){
   const sb=getSupaClient();if(!sb)return;
   const mine=myName();const now=Date.now();
@@ -5168,7 +5173,7 @@ async function loadAuthorPhotos(names){
   try{
     const{data}=await sb.from('profiles').select('name,photo,is_host,username,socials').in('name',need);
     (data||[]).forEach(r=>{if(r.name){photoByName[r.name]=r.photo||'';hostByName[r.name]=!!r.is_host;unameByName[r.name]=r.username||'';socialsByName[r.name]=r.socials||null;_authorFetchedAt[r.name]=now;}});
-    /* bio + category live in optional columns — fetched separately so a missing column
+    /* bio + category live in optional columns, fetched separately so a missing column
        never breaks author photos/names in the feed */
     try{const{data:xd}=await sb.from('profiles').select('name,bio,category').in('name',need);(xd||[]).forEach(r=>{if(r.name){if(r.bio!=null)bioByName[r.name]=r.bio;if(r.category!=null)categoryByName[r.name]=r.category;}});}catch(e){}
   }catch(e){}
@@ -5177,7 +5182,7 @@ async function loadAuthorPhotos(names){
 }
 /* Resolve display identity by the STABLE user id, not the name snapshot. Rewrites
    each row's name field to the author's CURRENT profile name and fills the
-   name-keyed display maps — so an old post/comment shows the current name,
+   name-keyed display maps, so an old post/comment shows the current name,
    username and photo even after the author renames. Mirrors resolveHostNames().
    Rows without a uid (legacy/demo) fall back to name-based lookup. */
 async function resolveAuthors(rows,idKey,nameKey){
@@ -5238,7 +5243,7 @@ async function likePost(id){
   const sb=getSupaClient();if(!sb)return;
   const wasLiked=!!likedByMe[id];
   const prevCount=likeCounts[id]||0;
-  /* optimistic UI — update just the tapped heart in place so the pop animation plays */
+  /* optimistic UI, update just the tapped heart in place so the pop animation plays */
   likedByMe[id]=!wasLiked;
   likeCounts[id]=prevCount+(wasLiked?-1:1);if(likeCounts[id]<0)likeCounts[id]=0;
   updateLikeUI(id);
@@ -5258,10 +5263,10 @@ async function likePost(id){
     }
   }catch(e){
     rollback();
-    toast(wasLiked?'Could not remove like — try again':'Could not like — check your connection');
+    toast(wasLiked?'Could not remove like, try again':'Could not like, check your connection');
   }
 }
-/* custom centered glass modal — replaces native prompt() */
+/* custom centered glass modal, replaces native prompt() */
 function askCode(title,opts){opts=opts||{};return new Promise(res=>{
   const m=document.getElementById('modal'),t=document.getElementById('modalTitle'),sub=document.getElementById('modalSub'),i=document.getElementById('modalInput'),ok=document.getElementById('modalOk'),cn=document.getElementById('modalCancel');
   t.textContent=title; if(opts.sub){sub.textContent=opts.sub;sub.style.display='block';}else sub.style.display='none';
@@ -5273,7 +5278,7 @@ function askCode(title,opts){opts=opts||{};return new Promise(res=>{
   m.onclick=e=>{if(e.target===m)done(null);};
   i.onkeydown=e=>{if(e.key==='Enter')done(i.value);else if(e.key==='Escape')done(null);};
 });}
-/* lightweight auto-dismiss toast — used to explain optimistic-action rollbacks
+/* lightweight auto-dismiss toast, used to explain optimistic-action rollbacks
    (a failed like/follow) where a full modal would be far too heavy. */
 let _toastTimer=null;
 function toast(msg,ms){
@@ -5327,7 +5332,7 @@ async function compressImage(file,opts){
     ctx.drawImage(src,0,0,w,h);
     if(src.close)src.close();
     const blob=await new Promise(res=>c.toBlob(res,'image/jpeg',quality));
-    /* an already-small or well-compressed file can come out BIGGER — keep the original */
+    /* an already-small or well-compressed file can come out BIGGER, keep the original */
     if(!blob||blob.size>=file.size)return file;
     return new File([blob],(file.name||'photo').replace(/\.\w+$/,'')+'.jpg',{type:'image/jpeg'});
   }catch(e){return file;}   /* compression is a nicety, never a blocker */
@@ -5351,7 +5356,7 @@ async function savePostRemote(post){
   const{error}=await sb.from('community_posts').insert({
     id:post.id,user_id:uid,
     author_name:post.n,txt:post.txt||'',imgs:post.imgs||[],likes:0,trek_tag:post.trek||null,tagged:post.tagged||[]
-    /* status defaults to 'live' — the post publishes instantly, exactly like before.
+    /* status defaults to 'live', the post publishes instantly, exactly like before.
        Moderation runs in the BACKGROUND below and pulls it only if it's adult/explicit. */
   });
   if(error){note('Post saved locally but could not sync: '+error.message,'Sync error');return;}
@@ -5395,7 +5400,7 @@ function timeAgo(ts){
 
 /* ===== Community notifications (Instagram-style, cross-user via Supabase) ===== */
 function myName(){return getSavedName()||(currentUser&&currentUser.email?currentUser.email.split('@')[0]:'You');}
-/* shape one notification row — shared by the single + batched inserts so they can't drift */
+/* shape one notification row, shared by the single + batched inserts so they can't drift */
 function notifRow({recipientId,recipientName,type,postId,preview}){
   return {recipient_id:recipientId||null,recipient_name:recipientName||null,
     actor_name:myName(),type:type,post_id:postId||null,preview:preview||null,read:false};
@@ -5414,17 +5419,17 @@ async function pushNotif({recipientId,recipientName,type,postId,preview}){
 }
 /* resolve a display name to a user_id via their posts (best-effort) */
 /* register/refresh this user's public profile so follows/notifications can reach them.
-   Only writes fields we actually have — an empty local value must never blank the stored one. */
+   Only writes fields we actually have, an empty local value must never blank the stored one. */
 async function upsertProfile(){
   const sb=getSupaClient();if(!sb)return;
   const uid=await authUid();if(!uid)return;
   /* No email here. `profiles` is publicly readable so the community can show
-     names and photos — writing emails into it leaked every user's address to
+     names and photos, writing emails into it leaked every user's address to
      anyone with the anon key. The address already lives in auth.users. */
   const ts=new Date().toISOString();
   const nm=getSavedName(),ph=getSavedPhoto(),un=getSavedUsername(),cv=getSavedCover();
   const soc=getSavedSocials(),con=getConsent();
-  /* A single upsert fails ATOMICALLY if ANY column is refused — and `consent`/`fitness`/
+  /* A single upsert fails ATOMICALLY if ANY column is refused, and `consent`/`fitness`/
      `training` are locked down by column-level grants on this project. That silently
      dropped the profile PHOTO. So try richest → leanest and stop at the first that lands,
      guaranteeing name/photo/cover/username always save even when consent is refused. */
@@ -5440,13 +5445,13 @@ async function upsertProfile(){
   for(const row of [full,core,minimal]){
     try{const{error}=await sb.from('profiles').upsert(row);if(!error){saved=true;break;}}catch(e){}
   }
-  /* gender + category live in optional columns — saved separately so a missing column
+  /* gender + category live in optional columns, saved separately so a missing column
      never blocks the core profile save (needs SQL-add-profile-fields.sql to persist) */
   const g=getSavedGender(),cat=getSavedCategory(),bio=getSavedBio();
   if(saved&&(g||cat||bio)){try{await sb.from('profiles').upsert({id:uid,updated_at:ts,gender:g||null,category:cat||null,bio:bio||null});}catch(e){}}
 }
 /* everything that identifies ONE person on this device */
-/* NOTE: tmk_fitness (the Adventure Readiness assessment) is intentionally NOT here — it's a
+/* NOTE: tmk_fitness (the Adventure Readiness assessment) is intentionally NOT here, it's a
    device-level self-assessment that should persist across sign-out so a completed readiness
    always shows on the profile. It still syncs to the cloud per account and is restored on sign-in. */
 const IDENTITY_KEYS=['tmk_uname','tmk_uhandle','tmk_uphoto','tmk_uphoto_src','tmk_ucover','tmk_socials','tmk_umobile','tmk_gender','tmk_category','tmk_bio','tmk_follows','tmk_followreqs','tmk_posts','tmk_savedposts','tmk_likes','tmk_comments','tmk_bookings','tmk_reviews','tmk_blocked','tmk_pledge','tmk_pledge_prompted','tmk_ref_count','tmk_ref_earn','tmk_notif_seen','tmk_admin','tmk_admin_key','tmk_captain','tmk_plan'];
@@ -5454,18 +5459,18 @@ function clearLocalIdentity(){
   try{IDENTITY_KEYS.forEach(k=>localStorage.removeItem(k));}catch(e){}
   followState={};staffSet=new Set();_prefSkippedSession=false;
 }
-/* pull the stored profile back down after a login — localStorage is cleared on sign-out,
+/* pull the stored profile back down after a login, localStorage is cleared on sign-out,
    so the server copy is the source of truth for name/photo/follows across devices */
 async function loadProfileFromServer(){
   const sb=getSupaClient();if(!sb||!currentUser)return;
   /* if a DIFFERENT account signed in on this device, wipe the previous person's
-     name/photo/follows first — otherwise they post under the old identity */
+     name/photo/follows first, otherwise they post under the old identity */
   let prev=null;try{prev=localStorage.getItem('tmk_uid');}catch(e){}
   if(prev&&prev!==currentUser.id){
     clearLocalIdentity();
     /* a different account signed in without a sign-out (no page reload here): also drop the
-       previous person's guide/host identity from MEMORY, or their Guide/Host Dashboard — and
-       profile — would leak to this user until the next async re-resolve. */
+       previous person's guide/host identity from MEMORY, or their Guide/Host Dashboard, and
+       profile, would leak to this user until the next async re-resolve. */
     _myGuide=null;_guidePubId=null;_hostApp=null;_hostLoaded=false;
   }
   try{localStorage.setItem('tmk_uid',currentUser.id);}catch(e){}
@@ -5477,7 +5482,7 @@ async function loadProfileFromServer(){
     /* gender + category fetched separately so a missing column never fails the whole read */
     try{const{data:gc}=await sb.from('profiles').select('gender,category,bio').eq('id',currentUser.id).maybeSingle();if(gc){if(gc.gender)localStorage.setItem('tmk_gender',gc.gender);if(gc.category)localStorage.setItem('tmk_category',gc.category);if(gc.bio)localStorage.setItem('tmk_bio',gc.bio);}}catch(e){}
     /* restore the fitness/readiness assessment from the server so the Trek Match shows on
-       every device — the assessment SYNCS up (syncFitnessCloud) but was never read back, so a
+       every device, the assessment SYNCS up (syncFitnessCloud) but was never read back, so a
        new device / cleared storage wrongly showed "Check my Trek Match" for a done assessment */
     try{const{data:fd}=await sb.from('profiles').select('fitness').eq('id',currentUser.id).maybeSingle();
       if(fd&&fd.fitness&&fd.fitness.answers){
@@ -5493,7 +5498,7 @@ async function loadProfileFromServer(){
       if(data.username)try{localStorage.setItem('tmk_uhandle',data.username);}catch(e){}
       if(data.cover)try{localStorage.setItem('tmk_ucover',data.cover);}catch(e){}
       if(data.socials)try{localStorage.setItem('tmk_socials',JSON.stringify(data.socials));}catch(e){}
-      /* DPDP consent — get the account association exactly right:
+      /* DPDP consent, get the account association exactly right:
          - a fresh consent from the sign-in screen has no uid yet: claim it for THIS account
          - a local consent stamped with a DIFFERENT uid (shared device) must be dropped
          - otherwise the profile copy is authoritative for a returning account */
@@ -5508,7 +5513,7 @@ async function loadProfileFromServer(){
   }catch(e){}
   await loadFollowsFromServer();
   if(typeof loadBlocksFromServer==='function')loadBlocksFromServer();   /* sync blocks across devices */
-  loadCart();   /* cart is keyed per account — swap to this user's one */
+  loadCart();   /* cart is keyed per account, swap to this user's one */
   planPull();   /* training plan follows the account, not the device */
   _profileLoadedFor=currentUser.id;
 }
@@ -5542,7 +5547,7 @@ async function uidForName(name){
   let uid=null;
   try{
     /* 1) exact name  2) case-insensitive/trimmed name  3) username (handles a @handle or username passed as name).
-       When duplicate profiles share a name, PREFER the completed one (has a username) — otherwise an
+       When duplicate profiles share a name, PREFER the completed one (has a username), otherwise an
        empty duplicate gets picked and its 0 follows/messages break counts + delivery. */
     let r=await sb.from('profiles').select('id,username').eq('name',name).order('username',{ascending:true,nullsFirst:false}).limit(1);
     if(r.data&&r.data[0])uid=r.data[0].id;
@@ -5565,7 +5570,7 @@ async function _loadNotifsRemote(){
   /* guests have no notifications (RLS returns nothing), so don't ask */
   if(!currentUser)return [];
   return await breaker(async()=>{
-    /* identity = user id only — never a display name (anyone can pick any name) */
+    /* identity = user id only, never a display name (anyone can pick any name) */
     let q=sb.from('notifications').select('*').eq('recipient_id',currentUser.id).order('created_at',{ascending:false}).limit(60);
     const{data,error}=await q;
     if(error)throw error;
@@ -5638,9 +5643,9 @@ function openMention(u){
   if(p)openPerson(p.n);
   else note('No trekker with the username @'+u+' yet.','Not found');
 }
-/* turn @username into a link. Runs on ALREADY-ESCAPED text — the pattern only ever
+/* turn @username into a link. Runs on ALREADY-ESCAPED text, the pattern only ever
    matches [a-z0-9._], so nothing can break out of the onclick string. */
-/* the @ must start the text or follow a space/bracket — otherwise "vikas@gmail.com"
+/* the @ must start the text or follow a space/bracket, otherwise "vikas@gmail.com"
    would turn "@gmail.com" into a mention */
 const MENTION_RE=/(^|[\s([{])@([a-zA-Z0-9][a-zA-Z0-9._]{1,18}[a-zA-Z0-9])/g;
 function linkifyMentions(escaped){
@@ -5830,7 +5835,7 @@ async function openComments(id){
     const v=inp.value.trim();if(!v)return;
     if(!isLoggedIn()){note('Please sign in to comment.','Sign in required').then(()=>{close();_loginReturn='community';go('login');});return;}
     const sb=getSupaClient();if(!sb)return;
-    /* use the LIVE session id — a stale one fails the row-level security check */
+    /* use the LIVE session id, a stale one fails the row-level security check */
     const uid=await authUid();
     if(!uid){note('Your session expired. Please sign in again.','Sign in required').then(()=>{close();_loginReturn='community';go('login');});return;}
     inp.value='';
@@ -5877,7 +5882,7 @@ function renderComments(){
   list.innerHTML=cmList.length?cmList.map(c=>commentHTML(c,false)).join(''):`<div class="cm-empty">Be the first to comment</div>`;
   hydrate(list);
 }
-/* add a single comment with a slide-in — only the new node animates */
+/* add a single comment with a slide-in, only the new node animates */
 function appendComment(c){
   const list=document.getElementById('cmList');if(!list)return;
   const empty=list.querySelector('.cm-empty');if(empty)empty.remove();
@@ -5994,14 +5999,14 @@ async function renderPerson(){if(!curPerson){go('community');return;}const p=get
         ?`<div class="priv-lock"><span class="msr">lock</span><b>This account is private</b><p>Follow ${esc(properName(p.n))} to see their posts, message and call.</p></div>`
         :(posts.length?`<div class="pgrid">${posts.map(gridCell).join('')}</div>`:`<div class="empty"><p>${me?'You have not posted yet.':'No posts yet.'}</p></div>`))}`;
   hydrate(body);
-  /* a host's trips are the main thing people come here for — load them after the
+  /* a host's trips are the main thing people come here for, load them after the
      profile paints so the page never waits on a second query. Always attempt: the
      hostByName flag isn't always set (e.g. profile opened via a deep link), and
      renderPersonTrips hides itself when there are no live trips anyway. */
   renderPersonTrips(p.n);
 }
 /* live trips for one host. Match by BOTH the frozen host_name AND the resolved
-   host_id, then merge — because either can miss on its own:
+   host_id, then merge, because either can miss on its own:
    - host_name is a snapshot from trip-creation time, so it drifts if the host renames;
    - uidForName() can resolve to the WRONG profile when duplicate profiles share a name
      (limit 1), which made a host's live trips vanish on their profile even though they
@@ -6014,7 +6019,7 @@ async function loadHostTripsFor(name){
     /* Match EXACTLY like loadTripCountsByHost so the profile shows the same trips the
        "N live trips" count promised. Pull every live trip, resolve each to the host's
        CURRENT profile name, then keep any trip that matches on the current name, the
-       frozen host_name, OR the host_id — case-insensitive. This survives host renames
+       frozen host_name, OR the host_id, case-insensitive. This survives host renames
        and the duplicate-profile problem, which used to make a host's trips vanish here
        even though the count on the list said 2. */
     const r=await sb.from('host_trips').select('*').eq('status','live').limit(200);
@@ -6146,7 +6151,7 @@ function renderPassport(){
     <div class="sec" style="margin:4px 2px 10px"><h2 style="font-size:15px">Badges</h2></div>
     <div class="pp-badges">${badges.map(b=>`<div class="pp-badge ${b.on?'':'locked'}"><span class="em msr" aria-hidden="true">${b.em}</span><b>${b.t}</b><small>${b.on?'Earned':b.d}</small></div>`).join('')}</div>
     <div class="sec" style="margin:20px 2px 10px"><h2 style="font-size:15px">Your Treks</h2></div>
-    ${bs.length?bs.map(b=>{const t=treks.find(x=>x.n===(b.trek||'').replace(' (Activity)',''));return `<div class="pp-stamp"><div class="ps-img" style="background-image:url('${b.img||(t?t.img:'')}')"></div><div class="ps-bd"><b>${esc(b.trek)}</b><small>${esc(b.date)}</small></div><span class="ps-done">${b.checkedIn?'✓ Completed':'Booked'}</span></div>`;}).join(''):`<div class="pp-empty"><span class="pp-empty-ic msr" aria-hidden="true">landscape</span><b>Your passport is waiting</b><p>Book your first trek and it’ll be stamped here — every journey, badge and summit you collect.</p><button class="btn" style="max-width:220px;margin:2px auto 0" onclick="go('explore')"><span class="msr">explore</span> Browse treks</button></div>`}
+    ${bs.length?bs.map(b=>{const t=treks.find(x=>x.n===(b.trek||'').replace(' (Activity)',''));return `<div class="pp-stamp"><div class="ps-img" style="background-image:url('${b.img||(t?t.img:'')}')"></div><div class="ps-bd"><b>${esc(b.trek)}</b><small>${esc(b.date)}</small></div><span class="ps-done">${b.checkedIn?'✓ Completed':'Booked'}</span></div>`;}).join(''):`<div class="pp-empty"><span class="pp-empty-ic msr" aria-hidden="true">landscape</span><b>Your passport is waiting</b><p>Book your first trek and it’ll be stamped here, every journey, badge and summit you collect.</p><button class="btn" style="max-width:220px;margin:2px auto 0" onclick="go('explore')"><span class="msr">explore</span> Browse treks</button></div>`}
     <div style="height:20px"></div>`;
   hydrate(box);
 }
@@ -6164,7 +6169,7 @@ async function uploadToStorage(blob,folder){
   if(up&&up.error)return null;
   try{return sb.storage.from('community').getPublicUrl(path).data.publicUrl||null;}catch(e){return null;}
 }
-/* upload a wide cover image (URL in storage, never base64 — keeps profiles light) */
+/* upload a wide cover image (URL in storage, never base64, keeps profiles light) */
 async function coverPickPhoto(input){
   const file=input.files&&input.files[0];if(!file)return;input.value='';
   if(!/^image\//.test(file.type)){note('Please choose an image file.','Not an image');return;}
@@ -6182,9 +6187,9 @@ async function coverPickPhoto(input){
     const doUpload=()=>sb.storage.from('community').upload(path,small,{cacheControl:'3600',upsert:true})
       .catch(e=>({error:{message:String((e&&e.message)||e)}}));
     let up=await doUpload();
-    /* mobile networks drop mid-upload — one quiet retry on a bare network failure */
+    /* mobile networks drop mid-upload, one quiet retry on a bare network failure */
     if(up.error&&netErr(up.error.message)){await new Promise(r=>setTimeout(r,900));up=await doUpload();}
-    if(up.error)throw new Error('storage upload — '+up.error.message);
+    if(up.error)throw new Error('storage upload, '+up.error.message);
     const url=sb.storage.from('community').getPublicUrl(path).data.publicUrl;
     try{localStorage.setItem('tmk_ucover',url);}catch(e){}
     const upd=await sb.from('profiles').update({cover:url}).eq('id',uid)
@@ -6196,11 +6201,11 @@ async function coverPickPhoto(input){
     hideModal();
     const msg=String((e&&e.message)||e);
     note('Could not update cover: '+(netErr(msg)
-      ? 'couldn’t reach storage — check your connection and try again. If it keeps failing, the community storage bucket / upload policy needs setup (run the SQL below).'
+      ? 'couldn’t reach storage, check your connection and try again. If it keeps failing, the community storage bucket / upload policy needs setup (run the SQL below).'
       : msg),'Error');
   }
 }
-/* one adaptive Hosting hub for the profile — apply / under-review / dashboard */
+/* one adaptive Hosting hub for the profile, apply / under-review / dashboard */
 function hostHubCard(){
   if(!isLoggedIn())return '';
   const st=_hostApp&&_hostApp.status;
@@ -6215,12 +6220,12 @@ function hostHubCard(){
     return '<div class="host-hub pending" onclick="go(\'becomeHost\')">'
       +'<div class="hh-ic">'+ic('clock',22)+'</div>'
       +'<div class="hh-tx"><b>Host application <span class="hh-badge pend">Under review</span></b>'
-      +'<small>We’re reviewing your application — tap to view</small></div>'+chev+'</div>';
+      +'<small>We’re reviewing your application, tap to view</small></div>'+chev+'</div>';
   }
   return '<div class="host-hub" onclick="go(\'becomeHost\')">'
     +'<div class="hh-ic">'+ic('landscape',22)+'</div>'
     +'<div class="hh-tx"><b>Host with Tripomonk</b>'
-    +'<small>Lead treks & earn — we handle operations, safety & payments</small></div>'+chev+'</div>';
+    +'<small>Lead treks & earn, we handle operations, safety & payments</small></div>'+chev+'</div>';
 }
 /* Staff tools, shown on the profile directly under the Host Dashboard card.
    Only rendered for the people who actually have them: the Admin Dashboard for
@@ -6256,7 +6261,7 @@ function guideHubCard(){
     +'<small>Your treks, trekkers, earnings &amp; QR check-in</small></div>'+chev+'</div>';
 }
 /* The full admin panel now lives OUTSIDE the app as a standalone console at
-   app.tripomonk.com/admin/. The app no longer renders admin screens — it just
+   app.tripomonk.com/admin/. The app no longer renders admin screens, it just
    launches the console in a new tab for the owner / assigned team roles. */
 function openAdminConsole(){
   if(!canOpenAdmin()){note('Admin access is restricted to the owner and assigned team roles.','Restricted');return;}
@@ -6265,7 +6270,7 @@ function openAdminConsole(){
 /* Dev Deepawali 2026 campaign landing page (standalone page at /dev-diwali.html) */
 function openDevDiwali(){try{window.open('/dev-diwali/','_blank','noopener');}catch(e){location.href='/dev-diwali/';}}
 /* ============================================================
-   ACCOUNT & SETTINGS MENU (hamburger) — everything that isn't the
+   ACCOUNT & SETTINGS MENU (hamburger), everything that isn't the
    social profile lives here: bookings, payments, tools, support.
    ============================================================ */
 async function openAccountMenu(){go('accountMenu');if(isLoggedIn())await loadHostApp().catch(()=>{});renderAccountMenu();}
@@ -6274,7 +6279,7 @@ function menuGo(t){
   if(t==='hostDash'){openHostDash();return;}
   if(t==='vendorDash'){openVendorDash();return;}
   if(t.indexOf('url:')===0){const u=t.slice(4);try{window.open(u,'_blank','noopener');}catch(e){location.href=u;}return;}
-  if(t.indexOf('soon:')===0){note(t.slice(5)+' is coming soon — we\'re building it into Tripomonk.','Coming soon');return;}
+  if(t.indexOf('soon:')===0){note(t.slice(5)+' is coming soon, we\'re building it into Tripomonk.','Coming soon');return;}
   go(t);
 }
 function accountMenuGroups(){
@@ -6346,7 +6351,7 @@ const PLEDGE_POINTS=[
   ['forest','Tread lightly','I stay on the marked trail, keep my distance from wildlife, and never pick or disturb what grows here.'],
   ['delete_sweep','Leave no trace','I carry back every wrapper, bottle and scrap. The mountain stays cleaner than I found it.'],
   ['health_and_safety','Trek safe','I follow my trek leader, respect my limits, and never risk the group for a photo or a summit.'],
-  ['volunteer_activism','Support local','I respect village life and culture, and put my money into local hands — guides, porters and homestays.'],
+  ['volunteer_activism','Support local','I respect village life and culture, and put my money into local hands, guides, porters and homestays.'],
   ['water_drop','Use less','I go easy on water, fuel and plastic, and share what I can on the trail.'],
   ['diversity_3','Leave it better','I help fellow trekkers, speak up for the mountains, and bring others into the promise.']
 ];
@@ -6373,7 +6378,7 @@ function renderPledge(){
         ? `<button class="btn ghost" onclick="sharePledge()"><span class="msr">ios_share</span> Share the promise</button><button class="btn" onclick="retakePledge()"><span class="msr">favorite</span> Re-affirm my promise</button>`
         : `<button class="btn" onclick="takePledge()"><span class="msr">front_hand</span> Take the Mountain Promise</button>`}
     </div>
-    <p class="pledge-foot">The Mountain Promise is a personal commitment, not a contract — it’s how we keep Uttarakhand’s trails wild and welcoming for every trekker after you.</p>`;
+    <p class="pledge-foot">The Mountain Promise is a personal commitment, not a contract, it’s how we keep Uttarakhand’s trails wild and welcoming for every trekker after you.</p>`;
   hydrate(box);
   loadPledgeCount();
   loadMyPledge();
@@ -6386,7 +6391,7 @@ async function loadPledgeCount(){
   try{const {data,error}=await sb.rpc('pledge_count');if(!error&&data!=null){_pledgeCount=Number(data);const el=document.getElementById('pledgeCountTxt');if(el)el.innerHTML='<span class="msr">group</span>'+esc(pledgeCountLabel());}}catch(e){}
 }
 /* cross-device: if this account already pledged (stored in the DB), reflect it on THIS
-   device so every device shows the signed / "re-affirm" state — never "take" it again. */
+   device so every device shows the signed / "re-affirm" state, never "take" it again. */
 async function loadMyPledge(){
   if(pledgeDate())return;                       /* already known on this device */
   const sb=getSupaClient();if(!sb||!isLoggedIn())return;
@@ -6408,7 +6413,7 @@ function schedulePledgePrompt(){
     if(cur!=='home'||pledgeDate())return;                   /* moved on, or pledged meanwhile */
     try{sessionStorage.setItem('tmk_pledge_prompted','1');}catch(e){}
     const join=(_pledgeCount&&_pledgeCount>0)?('Join '+_pledgeCount.toLocaleString('en-IN')+' trekkers who already promised. '):'';
-    const yes=await askConfirm(join+'Take the Mountain Promise — our pledge to keep the Himalaya wild and clean. It takes ten seconds.','The Mountain Promise');
+    const yes=await askConfirm(join+'Take the Mountain Promise, our pledge to keep the Himalaya wild and clean. It takes ten seconds.','The Mountain Promise');
     if(yes)go('pledge');
   },16000);
 }
@@ -6424,7 +6429,7 @@ async function takePledge(){
   }
   note('Thank you for taking the Mountain Promise. Trek light, and leave it better.','Promise taken');
 }
-function retakePledge(){note('Your promise still stands — thank you for keeping it.','Mountain Promise');}
+function retakePledge(){note('Your promise still stands, thank you for keeping it.','Mountain Promise');}
 /* compact banner reused on the Passport (and anywhere) to promote / show the pledge */
 function pledgeCard(){
   if(pledgeDate())return `<div class="pledge-signed" style="cursor:pointer" onclick="go('pledge')"><span class="msr">verified</span><div><b>Mountain Promise taken</b><small>Tap to view your pledge</small></div><span class="msr" style="margin-left:auto;color:var(--muted)">chevron_right</span></div>`;
@@ -6490,7 +6495,7 @@ async function shareWithCard(cardOpts,share){
   try{await navigator.clipboard.writeText(share.url);}catch(e){}
   if(typeof toast==='function')toast('Share image saved & link copied');
 }
-/* build a 1080×1920 Instagram-story card — editorial "postcard from the mountains".
+/* build a 1080×1920 Instagram-story card, editorial "postcard from the mountains".
    Background = a REAL trek photo (never a drawn vector). Type stays ≤ semibold (600).
    Only ever built at share time. */
 const FONT='-apple-system,"Segoe UI Semibold","Segoe UI",system-ui,Arial,sans-serif';
@@ -6500,7 +6505,7 @@ function _gradText(x,txt,px,py,font){x.font=font;const w=x.measureText(txt).widt
 async function makePledgeImage(name){
   const W=1080,H=1920,PAD=96,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
   const wrap=(text,px,py,maxW,lh)=>{const words=String(text).split(' ');let line='',yy=py;for(let i=0;i<words.length;i++){const test=line?line+' '+words[i]:words[i];if(x.measureText(test).width>maxW&&line){x.fillText(line,px,yy);line=words[i];yy+=lh;}else line=test;}if(line)x.fillText(line,px,yy);return yy;};
-  /* real trek photo — featured/first loaded trek if CORS-safe Unsplash, else curated Himalaya */
+  /* real trek photo, featured/first loaded trek if CORS-safe Unsplash, else curated Himalaya */
   let bg=PLEDGE_BG;
   try{const t=(window.treks||[]).find(k=>k.feat&&/unsplash\.com/.test(k.img||''))||(window.treks||[]).find(k=>/unsplash\.com/.test(k.img||''));if(t&&t.img)bg=t.img;}catch(e){}
   try{const im=await loadImg(bg);const iw=im.naturalWidth||im.width,ih=im.naturalHeight||im.height,s=Math.max(W/iw,H/ih),dw=iw*s,dh=ih*s;x.drawImage(im,(W-dw)/2,(H-dh)/2,dw,dh);}
@@ -6509,7 +6514,7 @@ async function makePledgeImage(name){
   x.fillStyle='rgba(6,14,30,.34)';x.fillRect(0,0,W,H);
   let tg=x.createLinearGradient(0,0,0,H*0.34);tg.addColorStop(0,'rgba(4,10,24,.72)');tg.addColorStop(1,'rgba(4,10,24,0)');x.fillStyle=tg;x.fillRect(0,0,W,H*0.34);
   let bd=x.createLinearGradient(0,H*0.30,0,H);bd.addColorStop(0,'rgba(3,9,22,0)');bd.addColorStop(.5,'rgba(3,9,22,.74)');bd.addColorStop(1,'rgba(3,9,22,.97)');x.fillStyle=bd;x.fillRect(0,H*0.30,W,H*0.70);
-  /* top brand row (left) — wordmark is "Tripomonk", normal case, no letter-spacing */
+  /* top brand row (left), wordmark is "Tripomonk", normal case, no letter-spacing */
   try{const logo=await loadImg('icons/icon-512.png');x.drawImage(logo,PAD,92,86,86);}catch(e){}
   x.textAlign='left';x.textBaseline='alphabetic';
   x.fillStyle='rgba(255,255,255,.98)';x.font='700 40px '+FONT;x.fillText('Tripomonk',PAD+104,152);
@@ -6559,7 +6564,7 @@ async function makePledgeImage(name){
       x.lineWidth=15;x.strokeStyle='rgba(255,255,255,.25)';x.beginPath();x.arc(cx2,cy2,r2,0,Math.PI*2);x.stroke();
       if(has){x.strokeStyle=col;x.lineCap='round';x.beginPath();x.arc(cx2,cy2,r2,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.max(0.001,sc/100));x.stroke();x.lineCap='butt';}
       x.textBaseline='middle';
-      x.fillStyle='#ffffff';x.font='800 66px '+FONT;x.fillText(has?String(sc):'—',cx2,cy2-6);
+      x.fillStyle='#ffffff';x.font='800 66px '+FONT;x.fillText(has?String(sc):'-',cx2,cy2-6);
       x.fillStyle='rgba(255,255,255,.7)';x.font='600 22px '+FONT;x.fillText('/ 100',cx2,cy2+40);
       x.textBaseline='alphabetic';
       x.fillStyle=has?col:'rgba(255,255,255,.7)';x.font='700 27px '+FONT;x.fillText(has?String(fs.level||''):'Take the test',cx2,cy2+r2+42);
@@ -6570,7 +6575,7 @@ async function makePledgeImage(name){
 }
 async function sharePledge(){
   const name=getSavedName()||'';
-  const text='I took the Tripomonk Mountain Promise — trek light and leave the Himalaya better than I found it. Take yours:';
+  const text='I took the Tripomonk Mountain Promise, trek light and leave the Himalaya better than I found it. Take yours:';
   let file=null;
   try{const blob=await makePledgeImage(name);if(blob)file=new File([blob],'mountain-promise.png',{type:'image/png'});}catch(e){}
   try{
@@ -6580,7 +6585,7 @@ async function sharePledge(){
   /* fallback (desktop / no share sheet): save the image + copy the invite link */
   if(file){const a=document.createElement('a');a.href=URL.createObjectURL(file);a.download='mountain-promise.png';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);}
   try{await navigator.clipboard.writeText(PLEDGE_LINK);}catch(e){}
-  note('Promise card saved and invite link copied — post it to your Instagram story so your trek crew can take the promise too.','Share the promise');
+  note('Promise card saved and invite link copied, post it to your Instagram story so your trek crew can take the promise too.','Share the promise');
 }
 function renderEmergency(){
   const box=document.getElementById('emergencyBody');if(!box)return;
@@ -6592,11 +6597,11 @@ function renderEmergency(){
     +'<div class="em-sos-h"><span class="msr">sos</span><div><b>Tripomonk 24×7 helpline</b><small>Trek emergencies, delays, medical &amp; safety</small></div></div>'
     +'<div class="em-sos-btns">'
     +'<a class="em-cta call" href="tel:+'+esc(wa)+'"><span class="msr">call</span>Call now</a>'
-    +'<a class="em-cta wa" href="https://wa.me/'+esc(wa)+'?text='+encodeURIComponent(typeof aiCfg==='function'?aiCfg('sos'):'EMERGENCY — I need help on my Tripomonk trek.')+'" target="_blank" rel="noopener"><span class="msr">chat</span>WhatsApp</a>'
+    +'<a class="em-cta wa" href="https://wa.me/'+esc(wa)+'?text='+encodeURIComponent(typeof aiCfg==='function'?aiCfg('sos'):'EMERGENCY, I need help on my Tripomonk trek.')+'" target="_blank" rel="noopener"><span class="msr">chat</span>WhatsApp</a>'
     +'</div></div>'
     +'<div class="sec" style="margin:18px 2px 8px"><h2 style="font-size:15px">On a trek, in an emergency</h2></div>'
     +'<ol class="em-steps">'
-    +'<li>Stop, stay together and keep calm — don’t move or descend alone.</li>'
+    +'<li>Stop, stay together and keep calm, don’t move or descend alone.</li>'
     +'<li>Tell your <b>trek leader / guide</b> right away. They carry first-aid and know the evacuation route.</li>'
     +'<li>Open <b>Trek Guardian</b> and hit <b>SOS</b> to share your live location.</li>'
     +'<li>Call the Tripomonk helpline above, then the national numbers below if needed.</li>'
@@ -6606,8 +6611,8 @@ function renderEmergency(){
     +'<div class="em-grid">'+EMERGENCY_NUMS.map(n=>'<a class="em-num" href="tel:'+esc(n[0])+'"><span class="msr">'+n[2]+'</span><b>'+esc(n[0])+'</b><small>'+esc(n[1])+'</small></a>').join('')+'</div>'
     +'<div class="sec" style="margin:18px 2px 8px"><h2 style="font-size:15px">Your emergency contact</h2></div>'
     +((emName||emPhone)
-       ? '<div class="em-contact"><div class="em-c-tx"><b>'+esc(emName||'Contact')+'</b><small>'+esc(emPhone||'—')+'</small></div>'+(emPhone?'<a class="em-mini" href="tel:'+esc(emPhone)+'"><span class="msr">call</span></a>':'')+'</div>'
-       : '<div class="em-empty">Add an emergency contact when you book a trek — it’s saved here and shared with your trek leader.</div>')
+       ? '<div class="em-contact"><div class="em-c-tx"><b>'+esc(emName||'Contact')+'</b><small>'+esc(emPhone||'-')+'</small></div>'+(emPhone?'<a class="em-mini" href="tel:'+esc(emPhone)+'"><span class="msr">call</span></a>':'')+'</div>'
+       : '<div class="em-empty">Add an emergency contact when you book a trek, it’s saved here and shared with your trek leader.</div>')
     +'<div style="height:24px"></div>';
   hydrate(box);
 }
@@ -6661,12 +6666,12 @@ async function renderSavedPosts(){
   if(typeof lazyBg==='function')lazyBg(box);
 }
 /* ---- gift cards (welcome-gift picker) ---- */
-/* Each card carries its OWN perk — a themed inclusion shown on the card and
+/* Each card carries its OWN perk, a themed inclusion shown on the card and
    honoured at booking. perkIc = a material-symbol glyph for the badge. */
 const GIFT_CARDS=[
-  {file:'escape-together',name:'Escape Together',perkIc:'favorite',perk:'Couple’s tent upgrade',perkDesc:'A private tent for two on your trek — on us'},
+  {file:'escape-together',name:'Escape Together',perkIc:'favorite',perk:'Couple’s tent upgrade',perkDesc:'A private tent for two on your trek, on us'},
   {file:'explorer-buddy',name:'The Explorer Buddy',perkIc:'group_add',perk:'Bring a friend',perkDesc:'Your +1 gets 10% off the same departure'},
-  {file:'solo-warrior',name:'The Solo Warrior',perkIc:'hiking',perk:'Solo safety kit',perkDesc:'Free gear rental for one trek — headlamp, poles & gaiters'},
+  {file:'solo-warrior',name:'The Solo Warrior',perkIc:'hiking',perk:'Solo safety kit',perkDesc:'Free gear rental for one trek, headlamp, poles & gaiters'},
   {file:'soul-sisters',name:'The Soul Sisters',perkIc:'diversity_3',perk:'Squad discount',perkDesc:'Groups of 3+ get an extra 8% off'},
   {file:'story-collector',name:'The Story Collector',perkIc:'photo_camera',perk:'Trek photo album',perkDesc:'Free pro photos from your departure'},
   {file:'unscripted-wanderer',name:'The Unscripted Wanderer',perkIc:'event_repeat',perk:'Flexi reschedule',perkDesc:'Change your trek date once, no fee'},
@@ -6684,7 +6689,7 @@ function priceTag(t){const p=priceOf(t);return p.off
   ? `<span class="pr-was">${INR(p.base)}</span> <span class="pr-now">${INR(p.now)}</span>`
   : INR(p.now);}
 /* apply a trek's % discount to any base amount (batch price or trek price), matching the
-   Razorpay edge fn — so the booking total shown = the amount charged */
+   Razorpay edge fn, so the booking total shown = the amount charged */
 function discPrice(base,t){return priceOf({price:Number(base)||0,discount:t&&t.discount}).now;}
 function openGiftCards(){_giftSel=0;_giftAmt=2000;go('giftCards');renderGiftCards();}
 function openGiftCardAt(i){_giftSel=i||0;_giftAmt=2000;go('giftCards');renderGiftCards();}
@@ -6693,7 +6698,7 @@ function renderGiftHome(){
   const el=document.getElementById('gcHome');if(!el)return;
   el.innerHTML=
     '<div class="sec" style="margin-top:22px"><h2>Gift Cards</h2><a onclick="openGiftCards()">See all</a></div>'
-    +'<div class="gc-home-sub">Give the gift of adventure — they choose the trek.</div>'
+    +'<div class="gc-home-sub">Give the gift of adventure, they choose the trek.</div>'
     +'<div class="gc-home-rail">'
     +GIFT_CARDS.map((c,i)=>'<div class="gc-home-card" onclick="openGiftCardAt('+i+')"><img src="giftcards/'+c.file+'.svg" alt="'+esc(c.name)+'" loading="lazy"></div>').join('')
     +'<div class="gc-home-more" onclick="openGiftCards()"><span class="msr">card_giftcard</span><span>Send a<br>gift card</span></div>'
@@ -6710,7 +6715,7 @@ function gcCenter(rail,i,smooth){
   const left=c.offsetLeft-(rail.clientWidth-c.offsetWidth)/2;
   rail.scrollTo({left:Math.max(0,left),behavior:smooth?'smooth':'auto'});
 }
-/* mark whichever card is centred as .on — the CSS scale/glow then animates as you swipe */
+/* mark whichever card is centred as .on, the CSS scale/glow then animates as you swipe */
 function gcFocusRail(rail,cardSel,onChange){
   const cards=[...rail.querySelectorAll(cardSel)];if(!cards.length)return;
   let raf=0;
@@ -6731,7 +6736,7 @@ function renderGiftCards(){
   if(row){
     row.innerHTML=GIFT_CARDS.map((g,i)=>'<div class="gc-card'+(i===_giftSel?' on':'')+'" onclick="selGift('+i+')"><img src="giftcards/'+g.file+'.svg" alt="'+esc(g.name)+'" loading="lazy"/></div>').join('');
     /* open on the card that was picked (e.g. tapped on the home rail), THEN wire the
-       swipe focus — otherwise the focus pass would snap the selection back to card 1 */
+       swipe focus, otherwise the focus pass would snap the selection back to card 1 */
     const want=_giftSel;
     gcCenter(row,want,false);
     requestAnimationFrame(()=>{
@@ -6773,12 +6778,12 @@ function selGift(i){
   if(row){row.querySelectorAll('.gc-card').forEach((c,j)=>c.classList.toggle('on',j===i));gcCenter(row,i,true);}
   renderGiftAmts();
 }
-/* buy a gift card — priced & credited server-side (booking.kind = 'giftcard') */
+/* buy a gift card, priced & credited server-side (booking.kind = 'giftcard') */
 async function buyGiftCard(){
   const card=GIFT_CARDS[_giftSel],amount=_giftAmt;
   if(!(amount>=500)){note('Choose an amount first.','Amount required');return;}
   if(!isLoggedIn()){note('Please sign in to buy a gift card.','Sign in required').then(()=>{_loginReturn='giftCards';go('login');});return;}
-  if(!window.Razorpay&&!(await loadRazorpay())){note('Payment is still loading — try again in a moment.','Please wait');return;}
+  if(!window.Razorpay&&!(await loadRazorpay())){note('Payment is still loading, try again in a moment.','Please wait');return;}
   if(!sbOn){note('Payment service not configured. Please contact Tripomonk.','Payment error');return;}
   const btn=document.getElementById('gcBuyBtn');if(btn){btn.disabled=true;btn.textContent='Starting payment…';}
   const restore=()=>{if(btn)btn.disabled=false;renderGiftAmts();};
@@ -6786,24 +6791,24 @@ async function buyGiftCard(){
   const gc={kind:'giftcard',amount,card:card.file,card_name:card.name,card_perk:card.perk||'',name,email,phone:getSavedMobile()||''};
   const token=await authToken();
   let order;try{order=await rzpCall('create',{booking:gc,token});}catch(e){order=null;}
-  if(!order||!order.order_id){restore();note((order&&order.error)?order.error:'Could not start payment — the gift-card service may not be enabled on the server yet.','Payment error');return;}
+  if(!order||!order.order_id){restore();note((order&&order.error)?order.error:'Could not start payment, the gift-card service may not be enabled on the server yet.','Payment error');return;}
   const rzp=new window.Razorpay({
     key:order.key_id,order_id:order.order_id,amount:order.amount,currency:order.currency||'INR',
     name:'Tripomonk',description:'Gift card · '+card.name,image:'icons/icon-192.png',
     prefill:{name,email,contact:getSavedMobile()||''},notes:{giftcard:card.file},theme:{color:'#2f6bff'},
     handler:async function(response){
       let res;try{res=await rzpCall('verify',{razorpay_order_id:response.razorpay_order_id,razorpay_payment_id:response.razorpay_payment_id,razorpay_signature:response.razorpay_signature,booking:gc,token});}catch(e){res=null;}
-      if(!res||!res.ok){note('Payment received — your gift code is being generated. If it doesn\'t appear, contact us with payment ID: '+(response.razorpay_payment_id||'—'),'Almost done');return;}
+      if(!res||!res.ok){note('Payment received, your gift code is being generated. If it doesn\'t appear, contact us with payment ID: '+(response.razorpay_payment_id||'-'),'Almost done');return;}
       const code=res.code||'';
       try{if(code&&navigator.clipboard)navigator.clipboard.writeText(code);}catch(e){}
-      note('Your '+inr(amount)+' '+card.name+' gift card is ready. Code: '+code+' (copied).'+(card.perk?' Includes: '+card.perk+' — quote it when booking.':'')+' Redeem it in your Wallet, or share the code with a friend to gift it.','Gift card ready').then(async()=>{
-        if(code&&await askConfirm('Add '+inr(amount)+' to your own wallet now? You can use it to pay for any trip — up to the full amount. (Skip this if the card is a gift for someone else.)','Add to my wallet')){
+      note('Your '+inr(amount)+' '+card.name+' gift card is ready. Code: '+code+' (copied).'+(card.perk?' Includes: '+card.perk+', quote it when booking.':'')+' Redeem it in your Wallet, or share the code with a friend to gift it.','Gift card ready').then(async()=>{
+        if(code&&await askConfirm('Add '+inr(amount)+' to your own wallet now? You can use it to pay for any trip, up to the full amount. (Skip this if the card is a gift for someone else.)','Add to my wallet')){
           let r2;try{r2=await rzpCall('redeem_giftcard',{code,token:await authToken()});}catch(e){r2=null;}
-          if(r2&&r2.ok)toast(inr(r2.amount||amount)+' added to your wallet');else note((r2&&r2.error)||'Could not add it right now — redeem the code from your Wallet.','Not added');
+          if(r2&&r2.ok)toast(inr(r2.amount||amount)+' added to your wallet');else note((r2&&r2.error)||'Could not add it right now, redeem the code from your Wallet.','Not added');
         }
         go('wallet');});
     },
-    modal:{ondismiss:function(){restore();note('Payment cancelled — nothing was charged.','Cancelled');}}
+    modal:{ondismiss:function(){restore();note('Payment cancelled, nothing was charged.','Cancelled');}}
   });
   rzp.open();restore();
 }
@@ -6838,7 +6843,7 @@ async function topupWallet(){
   const req={kind:'wallet_topup',amount,name,email,phone:getSavedMobile()||''};
   let order;try{order=await rzpCall('create',{booking:req,token});}catch(e){order=null;}
   if(!order||!order.order_id){restore();note((order&&order.error)||'Could not start payment. Please try again.','Payment error');return;}
-  if(!window.Razorpay&&!(await loadRazorpay())){restore();note('Payment is still loading — try again in a moment.','Please wait');return;}
+  if(!window.Razorpay&&!(await loadRazorpay())){restore();note('Payment is still loading, try again in a moment.','Please wait');return;}
   const rzp=new window.Razorpay({
     key:order.key_id,order_id:order.order_id,amount:order.amount,currency:order.currency||'INR',
     name:'Tripomonk',description:'Add money to wallet',image:'icons/icon-192.png',
@@ -6846,10 +6851,10 @@ async function topupWallet(){
     handler:async function(response){
       let res;try{res=await rzpCall('verify',{razorpay_order_id:response.razorpay_order_id,razorpay_payment_id:response.razorpay_payment_id,razorpay_signature:response.razorpay_signature,booking:req,token});}catch(e){res=null;}
       restore();
-      if(!res||!res.ok){note('Payment received — your wallet will be credited shortly. If it isn’t, contact us with payment ID: '+(response.razorpay_payment_id||'—'),'Almost done');return;}
+      if(!res||!res.ok){note('Payment received, your wallet will be credited shortly. If it isn’t, contact us with payment ID: '+(response.razorpay_payment_id||'-'),'Almost done');return;}
       toast(inr(res.amount||amount)+' added to your wallet');loadWallet();refreshHomeWallet();
     },
-    modal:{ondismiss:function(){restore();note('Payment cancelled — nothing was charged.','Cancelled');}}
+    modal:{ondismiss:function(){restore();note('Payment cancelled, nothing was charged.','Cancelled');}}
   });
   rzp.open();
 }
@@ -6878,7 +6883,7 @@ async function redeemGiftCode(){
     const res=await rzpCall('redeem_giftcard',{code,token});
     if(res&&res.ok){note(inr(res.amount||0)+' added to your wallet!','Redeemed').then(()=>{if(el)el.value='';loadWallet();});}
     else note((res&&res.error)||'That code is invalid or already used.','Could not redeem');
-  }catch(e){note('Could not redeem right now — please try again.','Error');}
+  }catch(e){note('Could not redeem right now, please try again.','Error');}
   if(btn){btn.disabled=false;btn.textContent='Redeem to wallet';}
 }
 /* share the traveller's public profile */
@@ -6886,7 +6891,7 @@ function shareProfile(){
   const un=getSavedUsername();
   const base=window.location.origin+window.location.pathname.replace(/index\.html$/,'');
   const url=base+(un?'#@'+un:'');
-  const data={title:'Tripomonk — '+(getSavedName()||'Trekker'),text:'Follow my treks on Tripomonk 🏔️',url};
+  const data={title:'Tripomonk, '+(getSavedName()||'Trekker'),text:'Follow my treks on Tripomonk 🏔️',url};
   if(navigator.share){navigator.share(data).catch(()=>{});return;}
   try{navigator.clipboard.writeText(url);toast('Profile link copied');}catch(e){note(url,'Your profile link');}
 }
@@ -6913,7 +6918,7 @@ function renderProfile(){document.getElementById('pCover').style.backgroundImage
   if(pbEl){const cat=getSavedCategory(),bio=getSavedBio();
     pbEl.innerHTML=isLoggedIn()?((cat?`<span class="pcat"><span class="msr">hiking</span>${esc(cat)}</span>`:'')+(bio?`<div style="margin-top:6px">${esc(bio)}</div>`:'')):'';
     hydrate(pbEl);}
-  /* dynamic, tappable stat tiles — social first (posts / followers / following), trek count kept */
+  /* dynamic, tappable stat tiles, social first (posts / followers / following), trek count kept */
   const bs=getBookings();
   const trekCount=new Set(bs.map(b=>b.trek)).size;
   const following=followCount();
@@ -6947,7 +6952,7 @@ function renderProfile(){document.getElementById('pCover').style.backgroundImage
   if(isLoggedIn()&&!isPrefsDone())rows+=`<div class="pref-prompt" onclick="go('onboarding')"><span class="msr">interests</span><div><b>Complete your preferences</b><small>Help us connect you with like-minded trekkers</small></div><span class="msr" style="margin-left:auto">chevron_right</span></div>`;
   if(!isLoggedIn())rows+=`<div class="mrow" onclick="go('login')"><span class="ic">${ic('user',20)}</span><span class="t" style="color:var(--accent2)">Sign in / Create account</span><span class="ch">${ic('back',16)}</span></div>`;
   document.getElementById('menu').innerHTML=rows;
-  /* guide status is async (needs guides + auth) — refill the card once it resolves */
+  /* guide status is async (needs guides + auth), refill the card once it resolves */
   if(isLoggedIn()&&typeof loadMyGuide==='function'){loadMyGuide().then(()=>{const h=document.getElementById('guideHub');if(h)h.innerHTML=guideHubCard();}).catch(()=>{});}
   const cover=document.getElementById('pCover');cover.querySelectorAll('.ch').forEach(c=>c.style.transform='rotate(180deg)');
   document.querySelectorAll('#menu .ch svg').forEach(s=>s.style.transform='scaleX(-1)');
@@ -6959,13 +6964,13 @@ async function loadMyCounts(){
   const sb=getSupaClient();const mine=myName();
   try{
     if(sb&&currentUser){
-      /* how many people follow me — rows in follows where following_name = me */
+      /* how many people follow me, rows in follows where following_name = me */
       const{count:fc}=await sb.from('follows').select('*',{count:'exact',head:true}).eq('following_name',mine);
       if(typeof fc==='number')_myFollowerCount=fc;
-      /* my posts — count by the stable user_id (rename-proof), table is community_posts */
+      /* my posts, count by the stable user_id (rename-proof), table is community_posts */
       const{count:pc}=await sb.from('community_posts').select('*',{count:'exact',head:true}).eq('user_id',currentUser.id);
       if(typeof pc==='number')_myPostCount=pc;
-      /* how many I follow — rows in follows where follower_id = me (real, not local state) */
+      /* how many I follow, rows in follows where follower_id = me (real, not local state) */
       const{count:gc}=await sb.from('follows').select('*',{count:'exact',head:true}).eq('follower_id',currentUser.id);
       if(typeof gc==='number')_myFollowingCount=gc;
     }
@@ -6991,7 +6996,7 @@ let _supportUid=null;       /* the account that receives 'Tripomonk Team' chats 
 let _msgUnread=false;       /* unread-message dot on the Messages icon */
 function setMsgUnread(on){_msgUnread=!!on;try{document.querySelectorAll('.msg-badge').forEach(b=>b.classList.toggle('show',_msgUnread));}catch(e){}}
 function chatKey(n){return 'tmk_chat_'+String(n||'team').toLowerCase().replace(/[^a-z0-9]+/g,'_');}
-/* Only the Tripomonk Team chat is pre-seeded — with a single welcome message.
+/* Only the Tripomonk Team chat is pre-seeded, with a single welcome message.
    Every other conversation starts empty (no fake demo thread). */
 function chatSeed(n){
   if(n==='Tripomonk Team'){
@@ -7023,7 +7028,7 @@ function actionSheet(title,items){return new Promise(res=>{
 /* ---------- real cross-user messaging (Supabase `messages` table + realtime) ----
    The localStorage cache above stays as the instant + offline copy; the DB is the
    source of truth so two different phones see the same thread. 'Tripomonk Team' is
-   a local support bot (no real user id) — it stays on-device.  Needs SQL-add-messages.sql
+   a local support bot (no real user id), it stays on-device.  Needs SQL-add-messages.sql
    run + `messages` added to the supabase_realtime publication to work cross-device. */
 function msgTime(iso){try{return new Date(iso).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});}catch(e){return nowT();}}
 function msgToRow(m,me){return {id:m.id,who:(m.sender_id===me?'me':'them'),txt:m.body||'',type:m.type||'text',status:m.status||'',t:msgTime(m.created_at),ts:m.created_at,read:!!m.read_at};}
@@ -7039,14 +7044,14 @@ async function nameToUid(name){
   if(!name)return null;
   if(name==='Tripomonk Team')return teamIsLive()?_supportUid:null;   /* Team routes to the support account */
   if(name==='You'||name===myName())return await myUid();
-  if(_nameUidCache[name])return _nameUidCache[name];   /* cache successes only — a failed lookup must retry, or the message never delivers */
+  if(_nameUidCache[name])return _nameUidCache[name];   /* cache successes only, a failed lookup must retry, or the message never delivers */
   const uid=await uidForName(name);if(uid)_nameUidCache[name]=uid;return uid;
 }
 /* 'Tripomonk Team' is a real conversation with the support account when one is configured
    AND I'm a customer (not the support account itself). Otherwise it's the local welcome bot. */
 function teamIsLive(){return !!_supportUid&&_myUid!==_supportUid;}
 /* always-fresh read of the support account id (loadAiCfg is memoised, so it can't pick up a
-   support inbox configured LATER in the same session — this can) */
+   support inbox configured LATER in the same session, this can) */
 async function loadSupportUid(){
   const sb=getSupaClient();if(!sb)return _supportUid;
   try{const{data}=await sb.from('app_config').select('value').eq('key','support_uid').maybeSingle();if(data&&data.value)_supportUid=data.value;}catch(e){}
@@ -7097,11 +7102,11 @@ async function loadInbox(){
       const other=outbound?m.recipient_id:m.sender_id;
       let name=outbound?(m.recipient_name||''):(m.sender_name||'');
       /* a customer files every message to/from the support account under 'Tripomonk Team',
-         whatever staff name is on it — so support stays one stable thread */
+         whatever staff name is on it, so support stays one stable thread */
       if(_supportUid&&me!==_supportUid&&other===_supportUid)name='Tripomonk Team';
       if(!name)return;
       if(cleared[name]&&(m.created_at||'')<=cleared[name])return;   /* deleted-chat cutoff */
-      if(isBlocked(name))return;   /* blocked person — keep them out of the inbox entirely */
+      if(isBlocked(name))return;   /* blocked person, keep them out of the inbox entirely */
       /* owner side: a thread that carries a customer→'Tripomonk Team' message is a SUPPORT chat,
          kept out of the owner's personal inbox and shown in Admin → Support instead */
       if(me===_supportUid&&m.recipient_name==='Tripomonk Team')supportSet[name]=1;
@@ -7138,7 +7143,7 @@ async function ensureMsgSub(){
   startMsgPoll();   /* fallback delivery even if realtime is down/blocked */
 }
 function stopMsgSub(){if(!msgChannel)return;try{getSupaClient().removeChannel(msgChannel);}catch(e){}msgChannel=null;setMsgUnread(false);stopMsgPoll();}
-/* Realtime can be off/blocked on some networks — poll as a safety net so messages still
+/* Realtime can be off/blocked on some networks, poll as a safety net so messages still
    arrive. Cheap: only refreshes what's on screen; badge count otherwise. */
 let _msgPollTimer=null;
 function startMsgPoll(){
@@ -7157,12 +7162,12 @@ function startMsgPoll(){
   },6000);
 }
 function stopMsgPoll(){if(_msgPollTimer){clearInterval(_msgPollTimer);_msgPollTimer=null;}}
-/* accurate unread dot — count messages addressed to me that I haven't read */
+/* accurate unread dot, count messages addressed to me that I haven't read */
 async function refreshMsgBadge(){
   const sb=getSupaClient();const me=await myUid();if(!sb||!me){setMsgUnread(false);return;}
   try{const{count}=await sb.from('messages').select('*',{count:'exact',head:true}).eq('recipient_id',me).is('read_at',null);setMsgUnread((count||0)>0);}catch(e){}
 }
-/* a message I sent was updated (typically read_at set) — reflect "Seen" without a reopen */
+/* a message I sent was updated (typically read_at set), reflect "Seen" without a reopen */
 function onMsgUpdated(m){
   if(!m||!m.read_at)return;
   let name=m.recipient_name||'';
@@ -7177,15 +7182,15 @@ function onIncomingMsg(m){
   let name=m.sender_name||'';if(!name)return;
   /* a reply from the support account always lands in the customer's 'Tripomonk Team' thread */
   if(_supportUid&&_myUid!==_supportUid&&m.sender_id===_supportUid)name='Tripomonk Team';
-  if(isBlocked(name))return;   /* blocked user — silently drop */
+  if(isBlocked(name))return;   /* blocked user, silently drop */
   if(m.sender_id)_nameUidCache[name]=m.sender_id;
   const rows=getChat(name);
   if(m.id&&rows.some(x=>String(x.id)===String(m.id)))return;   /* dedupe */
-  if(m.type==='callok'){                       /* they allowed my call — I can dial now */
+  if(m.type==='callok'){                       /* they allowed my call, I can dial now */
     const s=callAllowedSet();s[name]={num:m.body||'',t:Date.now()};
     try{localStorage.setItem('tmk_callok',JSON.stringify(s));}catch(e){}
     rows.forEach(r=>{if(r.type==='callreq'&&r.who==='me'&&r.status==='pending')r.status='allowed';});
-    rows.push({id:m.id,who:'them',type:'sys',txt:properName(name)+' allowed your call — tap the call button to dial.',t:msgTime(m.created_at),ts:m.created_at});
+    rows.push({id:m.id,who:'them',type:'sys',txt:properName(name)+' allowed your call, tap the call button to dial.',t:msgTime(m.created_at),ts:m.created_at});
   }else{
     rows.push(msgToRow(m,_myUid));
   }
@@ -7207,7 +7212,7 @@ async function deliverMessage(name,payload,cid){
   const sb=getSupaClient();const me=await myUid();
   if(!sb||!me){finish(null,false);return false;}
   const other=await nameToUid(name);
-  if(!other){finish(null,false);return false;}   /* unknown / unresolvable recipient — stays local */
+  if(!other){finish(null,false);return false;}   /* unknown / unresolvable recipient, stays local */
   try{
     const row={sender_id:me,sender_name:myName(),recipient_id:other,recipient_name:name,body:payload.body||'',type:payload.type||'text'};
     if(payload.status)row.status=payload.status;
@@ -7237,7 +7242,7 @@ function chatContacts(){
   const seen={'Tripomonk Team':1};
   _inboxNames.forEach(nm=>{if(nm&&!seen[nm]&&!isBlocked(nm)){seen[nm]=1;list.push({n:nm});}});   /* real conversations */
   (peoplePool||[]).slice(0,8).forEach(p=>{if(p&&p.n&&!seen[p.n]&&!isBlocked(p.n)){seen[p.n]=1;list.push(p);}});  /* suggested new chats */
-  /* newest conversation first (WhatsApp-style) — whoever just sent/received a message
+  /* newest conversation first (WhatsApp-style), whoever just sent/received a message
      jumps to the top; threads with no messages sink to the bottom. Support stays pinned. */
   list.sort((a,b)=>{
     if(a.n==='Tripomonk Team')return -1;
@@ -7269,16 +7274,16 @@ function paintMessages(){
 function openChat(n){chatWith=n||'Tripomonk Team';ensureMsgSub();go('chat');refreshOpenThread();}
 async function refreshOpenThread(){const name=chatWith;if(name==='Tripomonk Team'&&!_supportUid)await loadSupportUid();/* pick up support_uid */await flushPending(name);await loadThread(name);if(cur==='chat'&&chatWith===name)renderChat();refreshMsgBadge();
   loadAuthorPhotos([name]).then(()=>{if(cur==='chat'&&chatWith===name)renderChat();});   /* show the person's real DP in the header */}
-/* a call-request card in the thread — the requester sees "waiting", the recipient gets Allow/Decline */
+/* a call-request card in the thread, the requester sees "waiting", the recipient gets Allow/Decline */
 function callReqBubble(m,i){
   if(m.who==='me'){   /* MY request, shown on the requester's side */
     if(m.status==='allowed')
       return `<div class="chat-sys"><span class="msr" style="font-size:15px;vertical-align:-4px">call</span> ${esc(properName(chatWith))} allowed your call. <a onclick="requestCall('${jsq(chatWith)}')" style="color:var(--accent2);font-weight:700;cursor:pointer">Call now →</a></div>`;
     if(m.status==='declined')
       return `<div class="chat-sys"><span class="msr" style="font-size:15px;vertical-align:-4px">call</span> ${esc(properName(chatWith))} declined the call request.</div>`;
-    return `<div class="chat-sys"><span class="msr" style="font-size:15px;vertical-align:-4px">call</span> Call request sent — waiting for ${esc(properName(chatWith))} to allow. Their number stays private until they do.</div>`;
+    return `<div class="chat-sys"><span class="msr" style="font-size:15px;vertical-align:-4px">call</span> Call request sent, waiting for ${esc(properName(chatWith))} to allow. Their number stays private until they do.</div>`;
   }
-  /* a request someone sent ME — once I've answered it, the card is gone (a sys line is shown instead) */
+  /* a request someone sent ME, once I've answered it, the card is gone (a sys line is shown instead) */
   if(m.status==='allowed'||m.status==='declined')return '';
   return `<div class="callreq-card"><div class="cr-top"><span class="msr">call</span><div><b>${esc(properName(chatWith))} wants to call you</b><small>Allow to share your number for this call.</small></div></div>`
     +`<div class="cr-btns"><button class="cr-no" onclick="declineCall('${jsq(chatWith)}',${i})">Not now</button><button class="cr-yes" onclick="allowCallMsg('${jsq(chatWith)}',${i})">Allow call</button></div></div>`;
@@ -7299,10 +7304,10 @@ function declineCall(n,i){
   rows.push({who:'me',type:'sys',txt:'You declined the call request. Your number was not shared.'});
   saveChat(n,rows);renderChat();
   markCallreqStatus(ids,'declined');
-  deliverMessage(n,{type:'sys',body:'Your call request was declined — the number was not shared.'});
+  deliverMessage(n,{type:'sys',body:'Your call request was declined, the number was not shared.'});
 }
 async function allowCallMsg(n,i){
-  /* we can only share a number if we HAVE one — ask for it if the profile has none,
+  /* we can only share a number if we HAVE one, ask for it if the profile has none,
      otherwise the requester gets "allowed" but nothing to dial (the reported bug) */
   let num=getSavedMobile()||'';
   if(!num){
@@ -7314,9 +7319,9 @@ async function allowCallMsg(n,i){
   }
   const rows=getChat(n);const ids=resolveIncomingCallreqs(rows,'allowed');
   /* IMPORTANT: allowing someone to call ME does NOT give me a number to call THEM back.
-     Do not write callAllowedSet here — that made my own call button dial my own number.
+     Do not write callAllowedSet here, that made my own call button dial my own number.
      Only the requester stores a number (their copy of MY number, via the callok below). */
-  rows.push({who:'me',type:'sys',txt:'You allowed the call — '+properName(n)+' can now call you.'});
+  rows.push({who:'me',type:'sys',txt:'You allowed the call, '+properName(n)+' can now call you.'});
   saveChat(n,rows);renderChat();
   markCallreqStatus(ids,'allowed');
   deliverMessage(n,{type:'callok',body:num});   /* sends my number ONLY to this person, only because I allowed it */
@@ -7334,7 +7339,7 @@ function syncCallState(name,rows){
   rows.forEach(r=>{if(r.type==='callreq'&&r.who==='me'&&r.status!=='allowed'&&r.status!=='declined'){r.status='allowed';changed=true;}});
   return changed;
 }
-/* ---- block / unblock (safety) — on-device blocklist. Blocked people can't reach your
+/* ---- block / unblock (safety), on-device blocklist. Blocked people can't reach your
    chat, their inbound messages are dropped, and their posts/profile are hidden. ---- */
 function blockedSet(){try{return JSON.parse(localStorage.getItem('tmk_blocked')||'[]');}catch(e){return[];}}
 function isBlocked(n){return !!n&&blockedSet().indexOf(String(n).toLowerCase())>=0;}
@@ -7366,7 +7371,7 @@ async function reportTo(opts){
   if(typeof isLoggedIn==='function'&&!isLoggedIn()){go('login');return;}
   const who=opts.reported_user?properName(opts.reported_user):'this trip circle';
   if(!(await askConfirm('Report '+who+' to Tripomonk? Our team will review it.','Report')))return;
-  try{const r=await circlesCall('report',opts);if(r&&r.ok)toast('Reported — thank you, we’ll review it.');else note((r&&r.error)||'Could not send the report.','Error');}catch(e){note('Could not send the report.','Error');}
+  try{const r=await circlesCall('report',opts);if(r&&r.ok)toast('Reported, thank you, we’ll review it.');else note((r&&r.error)||'Could not send the report.','Error');}catch(e){note('Could not send the report.','Error');}
 }
 function reportUser(n){reportTo({reported_user:n});}
 function reportCircle(id,creatorName){reportTo({circle_id:id,reported_user:creatorName||''});}
@@ -7438,7 +7443,7 @@ function renderChat(){
   }
   if(compose)compose.style.display='';
   if(!rows.length){
-    thread.innerHTML=`<div class="chat-empty"><div class="ce-ava">${avatar(chatWith,66)}</div><b>${esc(properName(chatWith))}</b><p>${team?'Ask us anything about bookings, payments or picking your next trek.':'Say hi — this is the start of your conversation.'}</p></div>`;
+    thread.innerHTML=`<div class="chat-empty"><div class="ce-ava">${avatar(chatWith,66)}</div><b>${esc(properName(chatWith))}</b><p>${team?'Ask us anything about bookings, payments or picking your next trek.':'Say hi, this is the start of your conversation.'}</p></div>`;
   }else{
     /* WhatsApp-style: show a delivery/read receipt only under the LAST message I sent */
     let lastMeIdx=-1;rows.forEach((m,i)=>{if(m.who==='me'&&(m.type==='text'||!m.type))lastMeIdx=i;});
@@ -7458,7 +7463,7 @@ async function sendChat(){
   const input=document.getElementById('chatInput');if(!input)return;
   const txt=(input.value||'').trim();if(!txt)return;
   if(isBlocked(chatWith)){note('You blocked '+properName(chatWith)+'. Unblock to message them.','Blocked');return;}
-  if(isPrivatePerson(chatWith)&&!canSeePerson(chatWith)){note('Send a follow request first — this account is private.','Private account');return;}
+  if(isPrivatePerson(chatWith)&&!canSeePerson(chatWith)){note('Send a follow request first, this account is private.','Private account');return;}
   logEvent('message',{to:chatWith});
   await myUid();
   /* local-only when it's the Team welcome bot AND no support inbox is configured yet */
@@ -7502,7 +7507,7 @@ function renderAccount(){
     <div class="mrow" onclick="sendPasswordReset()"><span class="ic"><span class="msr" style="font-size:20px">lock_reset</span></span><span class="t">Change password<small style="display:block;color:var(--muted2);font-size:10.5px">We email you a secure reset link</small></span><span class="ch">${ic('back',16)}</span></div>
     <div class="mrow" onclick="signOut()"><span class="ic">${ic('logout',20)}</span><span class="t" style="color:#ff7a7a">Sign out</span></div>
     <div class="mrow" onclick="requestAccountDeletion()"><span class="ic"><span class="msr" style="font-size:20px;color:#ff5a6e">delete_forever</span></span><span class="t" style="color:#ff5a6e">Delete my account</span><span class="ch">${ic('back',16)}</span></div>
-    <p class="host-note">Tripomonk never stores your card details — payments are handled by Razorpay. Your email is never shown publicly.</p>`;
+    <p class="host-note">Tripomonk never stores your card details, payments are handled by Razorpay. Your email is never shown publicly.</p>`;
   hydrate(box);
 }
 async function sendPasswordReset(){
@@ -7543,26 +7548,26 @@ const LANGS=[['en','English',''],['hi','हिन्दी · Hindi','Coming soo
 function getLang(){try{return localStorage.getItem('tmk_lang')||'en';}catch(e){return 'en';}}
 function setLang(code){
   const l=LANGS.find(x=>x[0]===code);if(!l)return;
-  if(l[2]){note(l[1].split('·').pop().trim()+' is not ready yet — we are working on it. The app stays in English for now.','Coming soon');return;}
+  if(l[2]){note(l[1].split('·').pop().trim()+' is not ready yet, we are working on it. The app stays in English for now.','Coming soon');return;}
   try{localStorage.setItem('tmk_lang',code);}catch(e){}
   renderLanguage();toast('Language set to '+l[1]);
 }
 function renderLanguage(){
   const box=document.getElementById('languageBody');if(!box)return;
   const cur=getLang();
-  box.innerHTML='<p class="host-note" style="margin:0 0 14px">Tripomonk is available in English today. We are adding more languages — turn one on here once it is ready.</p>'
+  box.innerHTML='<p class="host-note" style="margin:0 0 14px">Tripomonk is available in English today. We are adding more languages, turn one on here once it is ready.</p>'
     +LANGS.map(l=>`<div class="mrow" onclick="setLang('${l[0]}')"><span class="ic">${ic('globe',20)}</span><span class="t">${esc(l[1])}${l[2]?'<small style="display:block;color:var(--muted2);font-size:10.5px">'+l[2]+'</small>':''}</span>${cur===l[0]&&!l[2]?'<span class="msr" style="color:var(--accent2);font-size:20px">check_circle</span>':''}</div>`).join('');
   hydrate(box);
 }
 /* ---------- Payment methods ---------- */
 function renderPayments(){
   const box=document.getElementById('paymentsBody');if(!box)return;
-  const methods=[['UPI','GPay, PhonePe, Paytm — any UPI app','account_balance_wallet'],
-    ['Cards','Credit & debit — Visa, Mastercard, RuPay','credit_card'],
+  const methods=[['UPI','GPay, PhonePe, Paytm, any UPI app','account_balance_wallet'],
+    ['Cards','Credit & debit, Visa, Mastercard, RuPay','credit_card'],
     ['Net banking','All major Indian banks','account_balance'],
     ['Wallets','Paytm, Amazon Pay and more','wallet']];
   box.innerHTML=`<div class="panel" style="font-size:12.5px;color:var(--muted);line-height:1.55;margin-bottom:16px">
-      Payments are processed securely by <b style="color:var(--text)">Razorpay</b>. Tripomonk never sees or stores your card details — there is nothing to save here. You choose your method at checkout.</div>
+      Payments are processed securely by <b style="color:var(--text)">Razorpay</b>. Tripomonk never sees or stores your card details, there is nothing to save here. You choose your method at checkout.</div>
     <div class="sec" style="margin:6px 2px 10px"><h2 style="font-size:14.5px">Accepted at checkout</h2></div>
     ${methods.map(m=>`<div class="mrow" style="cursor:default"><span class="ic"><span class="msr" style="font-size:20px">${m[2]}</span></span><span class="t">${m[0]}<small style="display:block;color:var(--muted2);font-size:10.5px">${m[1]}</small></span></div>`).join('')}
     <div class="sec" style="margin:20px 2px 10px"><h2 style="font-size:14.5px">How payment works</h2></div>
@@ -7580,7 +7585,7 @@ function renderSettings(){
   const opts=[['system','brightness_auto','System'],['light','light_mode','Light'],['dark','dark_mode','Dark']];
   const tp=document.getElementById('themePick');
   if(tp)tp.innerHTML=opts.map(o=>`<div class="tp ${cur2===o[0]?'on':''}" onclick="setTheme('${o[0]}')"><span class="msr">${o[1]}</span><small>${o[2]}</small></div>`).join('');
-  /* sounds must be mutable — an app you can't silence is one people close */
+  /* sounds must be mutable, an app you can't silence is one people close */
   const soundRow=`<div class="mrow" onclick="tswRow('soundToggle')">
     <span class="ic"><span class="msr" style="font-size:20px">volume_up</span></span>
     <span class="t">Sound effects</span>
@@ -7646,7 +7651,7 @@ async function renderFollowList(){
       /* who follows this person → rows where following_name = them (accepted only) */
       const{data}=await sb.from('follows').select('follower_name,follower_id,status').ilike('following_name',name);
       const rows=(data||[]).filter(r=>(r.status||'accepted')==='accepted');
-      /* older follow rows saved no follower_name — resolve those from the profile id so
+      /* older follow rows saved no follower_name, resolve those from the profile id so
          nobody is silently missing from the list */
       const missIds=[...new Set(rows.filter(r=>!r.follower_name&&r.follower_id).map(r=>r.follower_id))];
       if(missIds.length){try{const{data:profs}=await sb.from('profiles').select('id,name').in('id',missIds);const byId={};(profs||[]).forEach(p=>{if(p.id)byId[p.id]=p.name;});rows.forEach(r=>{if(!r.follower_name&&byId[r.follower_id])r.follower_name=byId[r.follower_id];});}catch(e){}}
@@ -7677,12 +7682,12 @@ function doSearch(q){const inp=document.getElementById('searchInput');if(inp&&q&
   const el=document.getElementById('searchResults');
   /* no matches → say so, then suggest popular treks (never pass them off as results) */
   el.innerHTML=f.length?f.map(trekCard).join(''):`<div class="empty" style="grid-column:1/-1"><p>No treks match “${esc(q)}”. Try a region like Uttarakhand, or a trek name. Popular picks:</p></div>`+treks.filter(t=>!isTour(t)&&!t.soon).slice(0,6).map(trekCard).join('');hydrate(el);}
-/* ===== AI Trip Planner — conversational search grounded in the real catalogue ===== */
+/* ===== AI Trip Planner, conversational search grounded in the real catalogue ===== */
 let _planMsgs=[], _planBusy=false, _tripCtx={}, _planShown=new Set(), _planLastMin=0;
 function renderPlanner(){
   if(!_planMsgs.length){
     _tripCtx={};_planShown=new Set();_planLastMin=0;
-    _planMsgs=[{role:'assistant',content:"Hi — I'm your Tripomonk trip planner. Tell me what you're after: your budget, how many days you have, who's coming, a region, or the vibe (snow, lakes, first-timer, road trip). I'll build you a shortlist from our real trips, and ask if I need one more detail."}];
+    _planMsgs=[{role:'assistant',content:"Hi, I'm your Tripomonk trip planner. Tell me what you're after: your budget, how many days you have, who's coming, a region, or the vibe (snow, lakes, first-timer, road trip). I'll build you a shortlist from our real trips, and ask if I need one more detail."}];
   }
   paintPlanner();
   const inp=document.getElementById('plannerInput');if(inp)setTimeout(()=>{try{inp.focus();}catch(e){}},120);
@@ -7698,9 +7703,9 @@ function plannerCard(t,rec){
     <div class="pl-card-bd"><div class="pl-card-top"><b>${esc(t.n)}</b>${badge}</div><small>${esc(t.region||'')}${t.days?' · '+t.days+'D':''}${t.lvl?' · '+esc(t.lvl):''} · ${price}${t.soon?' · coming soon':''}</small>${w}</div>
   </div>`;
 }
-/* Branded intro state — greeting + glowing orb + trek suggestion chips. Shown until the
+/* Branded intro state, greeting + glowing orb + trek suggestion chips. Shown until the
    first user message, then it switches to the normal chat thread. */
-/* the glowing orb with blinking eyes — reused big in the intro and small atop the chat */
+/* the glowing orb with blinking eyes, reused big in the intro and small atop the chat */
 function plannerOrbHTML(){
   return '<div class="pl-orb"><span class="glow"></span><span class="ball"><span class="shine"></span><span class="eyes"><i class="eye"></i><i class="eye"></i></span></span></div>';
 }
@@ -7736,7 +7741,7 @@ function plFormat(s){
 }
 function paintPlanner(){
   const chat=document.getElementById('plannerChat');if(!chat)return;
-  /* the welcome block is built once and kept — never re-rendered — so it just scrolls up */
+  /* the welcome block is built once and kept, never re-rendered, so it just scrolls up */
   let intro=chat.querySelector('.pl-intro'),thread=document.getElementById('plThread');
   if(!intro||!thread){chat.innerHTML=plannerIntroHTML()+'<div class="pl-thread" id="plThread" aria-live="polite"></div>';hydrate(chat);
     intro=chat.querySelector('.pl-intro');thread=document.getElementById('plThread');}
@@ -7745,7 +7750,7 @@ function paintPlanner(){
   if(!started){thread.innerHTML='';return;}
   const findTrek=nm=>treks.find(x=>x.n===nm)||treks.find(x=>String(x.n).toLowerCase()===String(nm).toLowerCase());
   const animFrom=_plAnimFrom;
-  /* the canned "Hi — I'm your planner…" opener duplicates the intro, so skip assistant lines before the first user line */
+  /* the canned "Hi, I'm your planner…" opener duplicates the intro, so skip assistant lines before the first user line */
   const firstUser=_planMsgs.findIndex(m=>m.role==='user');
   const html=_planMsgs.map((m,i)=>{
     if(i<firstUser)return '';
@@ -7763,7 +7768,7 @@ function paintPlanner(){
         const cs=(m.circles||[]).map(plCircleChip).join('');
         const top=recs[0]&&recs[0].name;
         extra+='<div class="pl-circles"><div class="pl-circles-h"><span class="msr">diversity_3</span>'+((m.circles||[]).length?'Trip Circles you can join':'Travel with others')+'</div>'+cs
-          +(top?'<div class="pl-circ pl-circ-new" onclick="openCircleCreate(\''+jsq(top)+'\')"><div class="pl-circ-tx"><b>Start a Trip Circle</b><small>Gather your people for '+esc(top)+' — Tripomonk handles the rest</small></div><span class="msr">add</span></div>':'')
+          +(top?'<div class="pl-circ pl-circ-new" onclick="openCircleCreate(\''+jsq(top)+'\')"><div class="pl-circ-tx"><b>Start a Trip Circle</b><small>Gather your people for '+esc(top)+', Tripomonk handles the rest</small></div><span class="msr">add</span></div>':'')
           +'</div>';
       }
       /* only the latest answer keeps its refine chips active, so old turns don't clutter */
@@ -7835,7 +7840,7 @@ async function sendPlan(text){
   _planBusy=true;
   _planMsgs.push({role:'user',content:q});paintPlanner();
   const ql=q.toLowerCase();
-  const chit=plChitchat(ql);                 /* greetings / thanks / "what can you do" — answer locally */
+  const chit=plChitchat(ql);                 /* greetings / thanks / "what can you do", answer locally */
   plExtract(ql,_tripCtx);plRefine(ql,_tripCtx);   /* remember what they told us this turn */
   const t0=Date.now();
   let res=null;
@@ -7872,13 +7877,13 @@ function plChitchat(ql){
   if(!ql)return null;
   const has=re=>re.test(ql);
   if((has(/^(hi|hey|hello|yo|hola|namaste|namaskar|sup)\b/)||/^good\s*(morning|afternoon|evening|day)\b/.test(ql))&&ql.length<=24)
-    return "Hey! I'm your Tripomonk trip planner. Tell me your budget, how many days you have, who's coming, or the kind of trek you want — and I'll suggest the right ones.";
+    return "Hey! I'm your Tripomonk trip planner. Tell me your budget, how many days you have, who's coming, or the kind of trek you want, and I'll suggest the right ones.";
   if(has(/\b(thanks|thank you|thankyou|thx|ty|great|awesome|cool|nice|perfect|ok(ay)?)\b/)&&ql.length<=18)
-    return "You're welcome! Want me to refine these by budget, dates or difficulty — or shortlist something new?";
+    return "You're welcome! Want me to refine these by budget, dates or difficulty, or shortlist something new?";
   if(has(/what can you do|who are you|how (do|does) (you|this|it) work|what do you do|^help\b|help me|what is this/))
-    return "I'm your Tripomonk travel companion. I can match real treks & tours to your budget, days, group and vibe — and also build a day-by-day plan, a packing list or a budget breakdown, and answer anything on seasons, weather, fitness, altitude, permits, transport, money or safety. I can even sketch a custom or road-trip idea. What are you planning?";
+    return "I'm your Tripomonk travel companion. I can match real treks & tours to your budget, days, group and vibe, and also build a day-by-day plan, a packing list or a budget breakdown, and answer anything on seasons, weather, fitness, altitude, permits, transport, money or safety. I can even sketch a custom or road-trip idea. What are you planning?";
   if(has(/contact|call you|phone number|whatsapp|reach you|customer (care|support)|talk to (someone|human|team)/))
-    return "You can reach the Tripomonk team from Profile → Help & Support in the app. Meanwhile I can help you plan — what kind of trip are you after?";
+    return "You can reach the Tripomonk team from Profile → Help & Support in the app. Meanwhile I can help you plan, what kind of trip are you after?";
   return null;
 }
 /* Travel Q&A used only when the AI edge fn is unavailable (the AI handles these better when live). */
@@ -7888,21 +7893,21 @@ function plTravelFaq(ql){
   if(!/\b(recommend|suggest|show|find|book|which trek|best trek|pick|shortlist)\b/.test(ql)&&has(/best time|when (to|should|is best|is the best)|which (month|season)|good season|weather|climate|temperature|how cold|snowfall/))
     return "Broadly, spring (Mar–Jun) and autumn (Sep–Nov) are the prime trekking windows; snow treks like Kedarkantha and Brahmatal shine Dec–Apr, and the monsoon (Jul–Aug) is mostly avoided in the Garhwal Himalaya. Tell me a month and I'll pick what's in season.";
   if(has(/permit|forest (fee|entry)|id proof|documents?|aadhaar|aadhar/))
-    return "Most Uttarakhand treks need a forest entry permit and a valid government photo ID — Tripomonk arranges the permits as part of the trip. Ask me about a specific trek for its exact requirements.";
+    return "Most Uttarakhand treks need a forest entry permit and a valid government photo ID, Tripomonk arranges the permits as part of the trip. Ask me about a specific trek for its exact requirements.";
   if(has(/how fit|fitness|training|prepare|acclimat|altitude sickness|how hard|difficulty|difficult|challenging/)&&!/\b(recommend|suggest|show|find|which)\b/.test(ql))
     return "Fitness depends on the trek: easy ones suit first-timers with basic cardio, while moderate/difficult ones want a few weeks of walking or jogging beforehand. Open any trek to see your personal Trek Match %, or tell me your fitness level and I'll suggest suitable options.";
   if(has(/what (to|should i) (pack|bring|carry)|packing|gear|equipment|shoes|clothes/))
-    return "Essentials: sturdy trekking shoes, warm layers, a rain layer, headlamp, water bottle, sunscreen and a small daypack. Every Tripomonk trek page has a full packing list — tell me the trek for specifics.";
+    return "Essentials: sturdy trekking shoes, warm layers, a rain layer, headlamp, water bottle, sunscreen and a small daypack. Every Tripomonk trek page has a full packing list, tell me the trek for specifics.";
   if(has(/how (do i|to) book|booking|payment|pay\b|upi|refund|cancel|price includes|what.s included|inclusion/))
-    return "You can book right in the app — pick a batch, add travellers and pay securely (UPI or card). Tell me a budget or dates and I'll shortlist treks you can book now.";
+    return "You can book right in the app, pick a batch, add travellers and pay securely (UPI or card). Tell me a budget or dates and I'll shortlist treks you can book now.";
   if(has(/altitude sickness|\bams\b|acute mountain|acclimat|how high|altitude/))
-    return "Altitude matters above ~3,000 m. Go slow, drink plenty of water, and spend a night acclimatising before climbing higher; a mild headache or breathlessness is common, but worsening symptoms mean descend. Our guides pace treks for safe acclimatisation — ask me about a specific trek's maximum altitude.";
+    return "Altitude matters above ~3,000 m. Go slow, drink plenty of water, and spend a night acclimatising before climbing higher; a mild headache or breathlessness is common, but worsening symptoms mean descend. Our guides pace treks for safe acclimatisation, ask me about a specific trek's maximum altitude.";
   if(has(/how (do i |to )?reach|how to get (to|there)|transport|nearest (airport|railway|station)|how far|pick ?up|cab|bus from/))
     return "Most Uttarakhand treks start from Dehradun (nearest airport/railhead) with a shared drive to the basecamp village; Himachal treks usually route via Chandigarh or Manali. Tell me the trek and your city and I'll outline the route.";
   if(has(/\batm\b|cash|network|signal|\bsim\b|internet|wifi|charge|electricity|connectivity/))
-    return "Carry enough cash — ATMs and card machines thin out past the last town — and expect mobile network to drop near the trailhead (BSNL/Jio last longest). Charge your devices and a power bank beforehand. Ask me about a specific trek's last connectivity point.";
+    return "Carry enough cash, ATMs and card machines thin out past the last town, and expect mobile network to drop near the trailhead (BSNL/Jio last longest). Charge your devices and a power bank beforehand. Ask me about a specific trek's last connectivity point.";
   if(has(/\bsafe\b|safety|solo|alone|women|woman|female|is it ok to go/))
-    return "Our treks run with certified guides, fixed safety protocols and group departures, which makes them well-suited to solo and women travellers — plenty join on their own. Tell me your dates and I'll point you to group departures you can join.";
+    return "Our treks run with certified guides, fixed safety protocols and group departures, which makes them well-suited to solo and women travellers, plenty join on their own. Tell me your dates and I'll point you to group departures you can join.";
   return null;
 }
 /* ---- offline planner engine: understands requirements, scores fit, explains why ---- */
@@ -7999,7 +8004,7 @@ function plScore(t,ctx){
   if(ctx.budget){if(price<=ctx.budget){s+=2.2;why.push('within your ₹'+ctx.budget.toLocaleString('en-IN'));}else if(price<=ctx.budget*1.12){s+=0.5;why.push('a touch over budget');}else s-=3;}
   if(ctx.days){const d=Math.abs((t.days||0)-ctx.days);if(d===0){s+=2;why.push(t.days+'-day trip');}else if(d===1)s+=1.2;else if(d<=2)s+=0.4;else s-=0.5*(d-2);}
   const tv=_PL_LVL[(t.lvl||'moderate').toLowerCase()]||2;
-  if(ctx.lvl){const u=_PL_LVL[ctx.lvl.toLowerCase()]||2;if(u===tv){s+=2;why.push(t.lvl+' — suits you');}else if(tv>u)s-=1.6*(tv-u);else s-=0.4*(u-tv);}
+  if(ctx.lvl){const u=_PL_LVL[ctx.lvl.toLowerCase()]||2;if(u===tv){s+=2;why.push(t.lvl+', suits you');}else if(tv>u)s-=1.6*(tv-u);else s-=0.4*(u-tv);}
   if(ctx.maxLvl){const cap=_PL_LVL[ctx.maxLvl.toLowerCase()]||2;if(tv>cap)s-=1.8*(tv-cap);else s+=0.4;}
   if(ctx.region){const inR=((t.region||'')+' '+(t.n||'')).toLowerCase().includes(ctx.region);if(inR){s+=3;why.push('in '+ctx.region.replace(/\b\w/g,c=>c.toUpperCase()));}else s-=1.6;}
   if(ctx.simTo){if(t.n===ctx.simTo)s-=10;else{const st=treks.find(x=>x.n===ctx.simTo);if(st){if((st.region||'')===(t.region||''))s+=1;if((st.lvl||'')===(t.lvl||''))s+=0.6;}}}
@@ -8028,14 +8033,14 @@ function plBrief(ctx){
 function plFollowup(ctx){
   if(!ctx.budget)return "What's your rough budget per person?";
   if(!ctx.days)return "How many days do you have?";
-  if(!ctx.group)return "And who's coming — solo, a couple, friends or family?";
+  if(!ctx.group)return "And who's coming, solo, a couple, friends or family?";
   if(!ctx.month&&!ctx.season)return "Which month are you thinking? That changes what's in season.";
   return "";
 }
 const _plCap=s=>String(s||'').replace(/\b\w/g,c=>c.toUpperCase());
 function plList(a){a=a.filter(Boolean);if(!a.length)return'';if(a.length===1)return a[0];if(a.length===2)return a[0]+' and '+a[1];return a.slice(0,-1).join(', ')+' and '+a[a.length-1];}
 function plMatchLabel(score){return score>=5?'Strong match':score>=3?'Good match':score>=1.2?'Partial match':'Stretch';}
-/* a natural, personalised explanation of WHY this trip fits — and its main trade-off */
+/* a natural, personalised explanation of WHY this trip fits, and its main trade-off */
 function plExplain(t,ctx){
   const fits=[];
   if(ctx.budget&&(t.price||0)<=ctx.budget)fits.push('your ₹'+ctx.budget.toLocaleString('en-IN')+' budget');
@@ -8055,14 +8060,14 @@ function plExplain(t,ctx){
   s+=trade.length?('. Trade-off: '+trade[0]+'.'):'.';
   return s;
 }
-/* honest feasibility / transport reasoning — challenge the ask when the combo is strained */
+/* honest feasibility / transport reasoning, challenge the ask when the combo is strained */
 function plFeasNote(ctx){
   if(!ctx.budget||!ctx.days)return '';
   const metro=ctx.fromCity&&/delhi|mumbai|bombay|bangalore|bengaluru|kolkata|chennai|hyderabad|pune|ahmedabad/.test(ctx.fromCity);
   const perDay=ctx.budget/ctx.days;
   if(ctx.days>=5&&perDay<2400){
     const from=ctx.fromCity?_plCap(ctx.fromCity):'a metro';
-    return ' One honest note: ₹'+ctx.budget.toLocaleString('en-IN')+' for '+ctx.days+' days'+(metro?(' from '+from):'')+' is tight once transport is counted — the drive to the trailhead eats a big chunk. If that’s your all-in budget, a 3-day trip fits comfortably; if it’s the trip cost excluding travel, I can open up more.';
+    return ' One honest note: ₹'+ctx.budget.toLocaleString('en-IN')+' for '+ctx.days+' days'+(metro?(' from '+from):'')+' is tight once transport is counted, the drive to the trailhead eats a big chunk. If that’s your all-in budget, a 3-day trip fits comfortably; if it’s the trip cost excluding travel, I can open up more.';
   }
   return '';
 }
@@ -8075,7 +8080,7 @@ function plRecommend(ql,ctx){
   const big=['budget','days','group','region'].filter(k=>ctx[k]!=null).length+((ctx.month||ctx.season)?1:0);
   const anyKnown=big>0||(ctx.interests&&ctx.interests.length)||!!ctx.ptype||!!ctx.lvl;
   if(!anyKnown&&!intent){
-    return {reply:"I'm your Tripomonk trek & tour planner. Tell me a couple of things — your budget (₹), how many days, who's coming, a region, or the vibe (snow, lakes, first-timer, road trip) — and I'll build a shortlist and explain why each fits. What are you thinking?",recs:[],brief:''};
+    return {reply:"I'm your Tripomonk trek & tour planner. Tell me a couple of things, your budget (₹), how many days, who's coming, a region, or the vibe (snow, lakes, first-timer, road trip), and I'll build a shortlist and explain why each fits. What are you thinking?",recs:[],brief:''};
   }
   const pool=treks.filter(t=>!t.soon);
   let scored=pool.map(t=>{const r=plScore(t,ctx);return {t,score:r.score};});
@@ -8089,21 +8094,21 @@ function plRecommend(ql,ctx){
     const cheapest=[...scored].sort((a,b)=>(a.t.price||0)-(b.t.price||0)).slice(0,3);
     const c0=cheapest[0];const over=c0?Math.max(0,(c0.t.price||0)-ctx.budget):0;
     recsArr=cheapest;mode='alt';
-    reply=`Being straight with you — nothing sits under ₹${ctx.budget.toLocaleString('en-IN')}${ctx.days?` for ${ctx.days} days`:''} right now. The closest is ${c0?c0.t.n:'this one'} at ₹${c0?Number(c0.t.price).toLocaleString('en-IN'):''} — about ₹${over.toLocaleString('en-IN')} more. Either nudge the budget a little, or trim a day or two; here's the best value I'd point you to:`;
+    reply=`Being straight with you, nothing sits under ₹${ctx.budget.toLocaleString('en-IN')}${ctx.days?` for ${ctx.days} days`:''} right now. The closest is ${c0?c0.t.n:'this one'} at ₹${c0?Number(c0.t.price).toLocaleString('en-IN'):''}, about ₹${over.toLocaleString('en-IN')} more. Either nudge the budget a little, or trim a day or two; here's the best value I'd point you to:`;
   }else if(ctx.region&&scored[0]&&scored[0].score<=0){
     /* region we don't serve → best fit elsewhere, no dead end */
     const alt=pool.map(t=>({t,score:plScore(t,Object.assign({},ctx,{region:null})).score})).sort((a,b)=>b.score-a.score).slice(0,3);
     recsArr=alt;mode='alt';
-    /* the region may simply be between seasons (all its trips Coming soon) — say that, not "we don't go there" */
+    /* the region may simply be between seasons (all its trips Coming soon), say that, not "we don't go there" */
     const rg=String(ctx.region).toLowerCase();const soonThere=treks.some(t=>t.soon&&((t.region||'')+' '+(t.n||'')).toLowerCase().includes(rg));
-    reply=soonThere?`Our ${_plCap(ctx.region)} treks are coming soon — open one and tap “Notify me” to hear first when dates open. Bookable right now, going on the rest of what you want:`
-      :`We don't run trips in ${_plCap(ctx.region)} yet — but going on the rest of what you want, here's what I'd genuinely recommend instead:`;
+    reply=soonThere?`Our ${_plCap(ctx.region)} treks are coming soon, open one and tap “Notify me” to hear first when dates open. Bookable right now, going on the rest of what you want:`
+      :`We don't run trips in ${_plCap(ctx.region)} yet, but going on the rest of what you want, here's what I'd genuinely recommend instead:`;
   }else if(!anyKnown){
     recsArr=pool.filter(t=>t.pop).slice(0,3).map(t=>({t,score:0}));
-    reply="Here are a few of our most-loved trips to start with — tell me your budget or dates and I'll tailor these to you:";
+    reply="Here are a few of our most-loved trips to start with, tell me your budget or dates and I'll tailor these to you:";
   }else{
     recsArr=scored.slice(0,3);
-    const lead=ctx.simTo?`Something in the spirit of ${ctx.simTo}${ctx.maxLvl?', a notch easier':''} — here's what I'd swap to`
+    const lead=ctx.simTo?`Something in the spirit of ${ctx.simTo}${ctx.maxLvl?', a notch easier':''}, here's what I'd swap to`
       :`With ${phrase}, here's what actually works`;
     reply=`${lead}${recsArr.length>1?'. Best first:':':'}`;
   }
@@ -8126,7 +8131,7 @@ async function renderNotifications(){
   box.innerHTML=`<div style="color:var(--muted);font-size:12px;margin:0 2px 10px">Activity</div><div class="skel-row"><div class="skel sk-av" style="width:38px;height:38px;border-radius:50%"></div><div class="sk-l"><div class="skel" style="width:70%"></div><div class="skel" style="width:40%"></div></div></div><div class="skel-row"><div class="skel sk-av" style="width:38px;height:38px;border-radius:50%"></div><div class="sk-l"><div class="skel" style="width:60%"></div><div class="skel" style="width:35%"></div></div></div>`;
   hydrate(box);
   const np=getNotifPrefs();
-  /* respect the user's notification preferences — a muted type never shows */
+  /* respect the user's notification preferences, a muted type never shows */
   const remote=(await loadNotifsRemote()||[]).filter(n=>np[n.type]!==false);
   let activity='';
   if(remote&&remote.length){
@@ -8152,7 +8157,7 @@ async function renderNotifications(){
   box.innerHTML=`<div style="color:var(--muted);font-size:12px;margin:0 2px 10px">Activity</div>${activity}`;
   hydrate(box);
   wireNotifSwipe();
-  /* mark all as seen — activity AND news — so the bell dot fully clears */
+  /* mark all as seen, activity AND news, so the bell dot fully clears */
   localStorage.setItem('tmk_notif_seen',String(Date.now()));
   try{markNewsSeen();}catch(e){}
   setNotifBadges(0,false);_lastUnread=0;
@@ -8191,7 +8196,7 @@ async function openNotif(nid,type,postId,actor){
   }
   go('community');
 }
-/* remove one notification (swipe or the reveal button) — optimistic, server delete after */
+/* remove one notification (swipe or the reveal button), optimistic, server delete after */
 async function deleteNotif(nid,sw){
   if(sw)sw.remove();
   dismissNotifLocal(nid);   /* remember locally so it never comes back on refresh */
@@ -8200,7 +8205,7 @@ async function deleteNotif(nid,sw){
   const list=document.getElementById('notiList');
   if(list&&!list.querySelector('.noti-sw'))renderNotifications();   /* last one gone -> show empty state */
 }
-/* swipe-left to delete, tap to open — wired after each render */
+/* swipe-left to delete, tap to open, wired after each render */
 function wireNotifSwipe(){
   document.querySelectorAll('#notiList .noti-card').forEach(card=>{
     const sw=card.closest('.noti-sw');let x0=0,dx=0,drag=false;
@@ -8221,7 +8226,7 @@ function renderReviews(){
     +(list.length?list.map(reviewCard).join(''):'<div class="empty"><p>No reviews yet. Be the first to review after your trek!</p></div>');
   const avg=list.length?(list.reduce((s,r)=>s+(+r.rating||0),0)/list.length):0;
   const av=document.getElementById('revAvg'),ac=document.getElementById('revCount'),as=document.getElementById('revStarRow');
-  if(av)av.textContent=list.length?avg.toFixed(1):'—';
+  if(av)av.textContent=list.length?avg.toFixed(1):'-';
   if(as){const full=Math.round(avg);as.textContent=list.length?('★'.repeat(full)+'☆'.repeat(5-full)):'☆☆☆☆☆';}
   if(ac)ac.textContent=list.length?('Based on '+list.length+' review'+(list.length!==1?'s':'')):'Be the first to review';
   hydrate(box);
@@ -8260,7 +8265,7 @@ function coordsFor(t){return (t&&COORDS[t.n])||(t&&REGION_C[t.region])||[30.73,7
 /* base town + nearest rail/air per trek, for "Getting there" + directions.
    Rail/air default to the region's usual gateway (REGION_GATEWAY) and are only
    overridden per-trek when the nearest railhead/airport actually differs. Every trek
-   gets a real roadhead "town" — the point you start from after the road journey. */
+   gets a real roadhead "town", the point you start from after the road journey. */
 const REGION_GATEWAY={
   'Uttarakhand':{rail:'Dehradun',air:'Dehradun (Jolly Grant)'},
   'Himachal':{rail:'Chandigarh',air:'Bhuntar / Kullu'},
@@ -8387,7 +8392,7 @@ const BASE={
   'Mount Saramati':{town:'Thanamir village (Kiphire)'},
   'Benreu':{town:'Benreu village (Peren)'},
   'Intanki National Park':{town:'Peren'},
-  /* ---- West Bengal (Darjeeling hills — rail NJP, air Bagdogra) ---- */
+  /* ---- West Bengal (Darjeeling hills, rail NJP, air Bagdogra) ---- */
   'Phalut':{town:'Manebhanjan / Sepi'},
   'Tonglu':{town:'Manebhanjan'},
   'Senchal Wildlife':{town:'Darjeeling'},
@@ -8434,7 +8439,7 @@ function baseInfo(t){
   const g=REGION_GATEWAY[t&&t.region]||{rail:'Nearest major railhead',air:'Nearest airport'};
   const b=(t&&BASE[t.n])||{};
   return {
-    town: b.town || (t&&(t.dep||(typeof TREK_DEP!=='undefined'&&TREK_DEP[t.n]))) || (t&&t.region) || '—',
+    town: b.town || (t&&(t.dep||(typeof TREK_DEP!=='undefined'&&TREK_DEP[t.n]))) || (t&&t.region) || '-',
     rail: b.rail || g.rail,
     air:  b.air  || g.air
   };
@@ -8444,7 +8449,7 @@ function getDirections(){
   const dest=(b.town&&b.town!==t.region)?encodeURIComponent(b.town+', '+t.region+', India'):`${c[0]},${c[1]}`;
   window.open(`https://www.google.com/maps/dir/?api=1&destination=${dest}`,'_blank','noopener');
 }
-/* the base-town / rail / airport facts moved into renderDetailFacts — this is just
+/* the base-town / rail / airport facts moved into renderDetailFacts, this is just
    the two actions that go with them */
 function renderDetailGetting(t){
   const box=document.getElementById('dGetting');if(!box)return;
@@ -8457,12 +8462,12 @@ function renderDetailGetting(t){
 function hav(a,b,c,d){const R=6371,p=Math.PI/180,x=Math.sin((c-a)*p/2)**2+Math.cos(a*p)*Math.cos(c*p)*Math.sin((d-b)*p/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
 function openNav(t){navTrek=t||cart.trek;go('navmap');}
 function renderNav(){const t=navTrek||cart.trek,c=coordsFor(t);
-  if(typeof L==='undefined'){document.getElementById('nCoord').textContent='Map needs internet on first load — please retry.';return;}
+  if(typeof L==='undefined'){document.getElementById('nCoord').textContent='Map needs internet on first load, please retry.';return;}
   if(!_map){_map=L.map('map',{zoomControl:true,attributionControl:true}).setView(c,12);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:17,attribution:'© OpenStreetMap'}).addTo(_map);}
   setTimeout(()=>{try{_map.invalidateSize();}catch(e){}},220);
   if(_base)_map.removeLayer(_base);
-  _base=L.marker(c).addTo(_map).bindPopup((t?t.n:'Trek')+' — base');
+  _base=L.marker(c).addTo(_map).bindPopup((t?t.n:'Trek')+', base');
   if(!_last)_map.setView(c,12);}
 function toggleNav(){if(navOn){stopNav();return;}
   if(!navigator.geolocation){note('GPS is not available on this device/browser.');return;}
@@ -8472,8 +8477,8 @@ let _watchN=null;
 function onPos(p){const lat=p.coords.latitude,lng=p.coords.longitude;
   if(_last)navDist+=hav(_last[0],_last[1],lat,lng); _last=[lat,lng];
   const g=id=>document.getElementById(id);
-  if(g('nAlt'))g('nAlt').textContent=p.coords.altitude!=null?Math.round(p.coords.altitude)+' m':'—';
-  if(g('nSpd'))g('nSpd').textContent=p.coords.speed!=null?(p.coords.speed*3.6).toFixed(1)+' km/h':'—';
+  if(g('nAlt'))g('nAlt').textContent=p.coords.altitude!=null?Math.round(p.coords.altitude)+' m':'-';
+  if(g('nSpd'))g('nSpd').textContent=p.coords.speed!=null?(p.coords.speed*3.6).toFixed(1)+' km/h':'-';
   if(g('nDist'))g('nDist').textContent=navDist.toFixed(2);
   if(g('nCoord'))g('nCoord').textContent=lat.toFixed(4)+', '+lng.toFixed(4)+'  ±'+Math.round(p.coords.accuracy)+' m';
   const c=coordsFor(navTrek||cart.trek);if(g('nToBase'))g('nToBase').textContent=hav(lat,lng,c[0],c[1]).toFixed(1)+' km';
@@ -8516,7 +8521,7 @@ async function sbWriteChecked(method,path,body){
     const id=(path.split('eq.')[1]||'');
     if(method==='POST')res=await adminCall('save_trek',{trek:body});
     /* a packing-only save carries JUST {packing:…}; a full trek save also carries name/price/etc
-       (and a packing key). Route to save_packing ONLY when there's no trek name — otherwise a trek
+       (and a packing key). Route to save_packing ONLY when there's no trek name, otherwise a trek
        edit was silently going down the packing path and its price/other fields never saved. */
     else if(method==='PATCH'&&body&&Object.prototype.hasOwnProperty.call(body,'packing')&&!Object.prototype.hasOwnProperty.call(body,'name'))res=await adminCall('save_packing',{id:id,packing:body.packing});
     else if(method==='PATCH'&&body&&Object.prototype.hasOwnProperty.call(body,'batches')&&!Object.prototype.hasOwnProperty.call(body,'name'))res=await adminCall('save_batches',{id:id,batches:body.batches});
@@ -8537,7 +8542,7 @@ const ADM_TAB_DESC={Overview:'Today at a glance',Bookings:'Who has booked',Users
   Home:'Featured trek & popular rail',Departures:'Batch dates & seats',Packing:'Per-trek packing lists',
   Guides:'Your trek leaders',Gear:'Rental inventory & status',Permits:'Forest & park permit requests',Support:'Customer chats & tickets',Vendors:'Partner operators & listings',Community:'Moderate posts',Reviews:'Add & manage reviews',Hosts:'Applications & host trips',Training:'Who is training',
   Staff:'Team roles & captains',Settings:'App build & admin'};
-/* Was a horizontally-SWIPED tab strip — sections off the right edge were invisible and
+/* Was a horizontally-SWIPED tab strip, sections off the right edge were invisible and
    the gesture read as flaky. Now a card GRID: tap a card to open that section behind a
    back header, tap back to return to the grid. */
 function renderAdmin(){
@@ -8576,7 +8581,7 @@ function renderAdmin(){
   else renderAdminSettings();
 }
 let _admHubQ='';
-/* grouped sidebar structure — cards a role can't access are hidden, empty groups drop out */
+/* grouped sidebar structure, cards a role can't access are hidden, empty groups drop out */
 const ADM_GROUPS=[
   ['Dashboard',['Overview']],
   ['Bookings',['Bookings']],
@@ -8626,11 +8631,11 @@ function adminHub(){_admHub=true;const box=document.getElementById('adminBody');
 /* the top-bar back arrow: leave the current section for the hub, or leave admin from the hub */
 function adminBack(){ if(!_admHub)adminHub(); else back(); }
 /* ============================================================
-   ADMIN · OVERVIEW — one console that answers "what needs me today?"
+   ADMIN · OVERVIEW, one console that answers "what needs me today?"
    Everything here is a count plus a jump; the detail lives in its own tab.
    ============================================================ */
 let _ovCache=null;
-/* lightweight, dependency-free charts (no external lib — CSP/offline safe) */
+/* lightweight, dependency-free charts (no external lib, CSP/offline safe) */
 function dashVBars(labels,values,fmt){
   const max=Math.max(1,...values);
   return '<div class="dash-vbars">'+values.map((v,i)=>
@@ -8650,7 +8655,7 @@ async function renderAdminOverview(){
   const box=document.getElementById('adminBody');if(!box)return;
   const liveTreks=treks.filter(t=>!t.soon).length;
   const paint=d=>{
-    const nn=v=>v==null?'—':v, money=v=>v==null?'—':INR(v);
+    const nn=v=>v==null?'-':v, money=v=>v==null?'-':INR(v);
     const kc=(icon,val,label,cls)=>`<div class="dash-kpi ${cls||''}"><span class="dash-kpi-ic msr">${icon}</span><b>${val}</b><small>${label}</small></div>`;
     const act=(label,sub,tab,badge)=>`<div class="adm-act" onclick="setAdminTab('${tab}')"><div class="adm-act-ic"><span class="msr">${ADM_TAB_IC[tab]||'circle'}</span></div><div class="adm-act-tx"><b>${label}${badge?`<span class="adm-pill">${badge}</span>`:''}</b><small>${sub}</small></div><span class="msr adm-act-ch">chevron_right</span></div>`;
     box.innerHTML=
@@ -8663,7 +8668,7 @@ async function renderAdminOverview(){
        <div class="dash-kgrid">
          ${kc('account_balance_wallet',money(d.revenue),'Revenue collected','g')}
          ${kc('receipt_long',money(d.value),'Booking value')}
-         ${kc('percent',d.cancelRate==null?'—':d.cancelRate+'%','Cancellation rate')}
+         ${kc('percent',d.cancelRate==null?'-':d.cancelRate+'%','Cancellation rate')}
          ${kc('assignment_return',nn(d.pendingRefunds),'Pending refunds',d.pendingRefunds?'warn':'')}
        </div>
        <div class="adm-sec">Bookings & departures</div>
@@ -8721,7 +8726,7 @@ async function renderAdminOverview(){
       for(let i=13;i>=0;i--){const dt=todayISO(-i);d.trendRev.push(map[dt].r);d.trendCnt.push(map[dt].c);}
       /* popular treks + destinations */
       const byTrek={},byDest={},reg={};treks.forEach(t=>{reg[t.n]=t.region||'Other';});
-      rows.forEach(b=>{const k=(b.trek||'—').replace(' (Activity)','');byTrek[k]=(byTrek[k]||0)+1;const r=reg[k]||'Other';byDest[r]=(byDest[r]||0)+1;});
+      rows.forEach(b=>{const k=(b.trek||'-').replace(' (Activity)','');byTrek[k]=(byTrek[k]||0)+1;const r=reg[k]||'Other';byDest[r]=(byDest[r]||0)+1;});
       d.topTreks=Object.entries(byTrek).sort((a,b)=>b[1]-a[1]).slice(0,5);
       d.topDest=Object.entries(byDest).sort((a,b)=>b[1]-a[1]).slice(0,5);
     }
@@ -8740,7 +8745,7 @@ async function renderAdminOverview(){
 }
 
 /* ============================================================
-   ADMIN · TRAINING — who is actually training, from profiles.training
+   ADMIN · TRAINING, who is actually training, from profiles.training
    ============================================================ */
 let _trainRows=null,_trainQ='';
 function trainSummary(p){
@@ -8789,7 +8794,7 @@ async function renderAdminTraining(){
 }
 
 /* ============================================================
-   ADMIN · GUIDES — manage your roster of trek leaders
+   ADMIN · GUIDES, manage your roster of trek leaders
    ============================================================ */
 let _guideEdit=null;   /* the guide being edited, or {} for a new one, or null for the list */
 async function renderAdminGuides(){
@@ -8799,7 +8804,7 @@ async function renderAdminGuides(){
   if(adminTab!=='Guides')return;
   if(_guideEdit){renderGuideForm(box);return;}
   box.innerHTML=
-    `<div class="note2" style="margin-bottom:12px">Your trek leaders. Assign one to a trek in the <b>Treks</b> tab — it shows as “Your trek leader” on the trek page. Only display a certification you can actually verify.</div>`
+    `<div class="note2" style="margin-bottom:12px">Your trek leaders. Assign one to a trek in the <b>Treks</b> tab, it shows as “Your trek leader” on the trek page. Only display a certification you can actually verify.</div>`
     +(guides.length?'<div class="hostlist">'+guides.map(admGuideCard).join('')+'</div>'
       :'<div class="empty"><p>No guides yet.</p></div>')
     +'<button class="btn" style="margin-top:14px" onclick="guideNew()"><span class="msr">add</span> Add a guide</button>';
@@ -8811,7 +8816,7 @@ function admGuideCard(g){
   const uses=treks.filter(t=>String(t.guide_id||'')===String(g.id)).length;
   return '<div class="hostcard" onclick="guideEdit(\''+jsq(String(g.id))+'\')">'
     +'<div class="vhring sm"'+(photo?' style="background-image:url(\''+esc(photo)+'\');background-size:cover;background-position:center;color:transparent"':'')+'>'+(photo?'':esc((String(g.name||'G')[0]||'G').toUpperCase()))+'</div>'
-    +'<div class="hostcard-bd"><b>'+esc(g.name||'—')+(g.verified?'<span class="vbadge"><span class="msr">check</span></span>':'')+'</b>'
+    +'<div class="hostcard-bd"><b>'+esc(g.name||'-')+(g.verified?'<span class="vbadge"><span class="msr">check</span></span>':'')+'</b>'
     +'<small>'+(certs||'No certifications listed')+'</small>'
     +'<span class="hostcard-trips">'+(uses?'Leads '+uses+' trek'+(uses>1?'s':''):'Not assigned yet')+'</span></div>'
     +'<span class="ch" style="transform:scaleX(-1)">'+ic('back',16)+'</span></div>';
@@ -8829,7 +8834,7 @@ function renderGuideForm(box){
     <div class="adm-imgprev" id="gdPhotoPrev" style="${photo?`background-image:url('${esc(photo)}')`:''}"></div>
     <div class="adm-sec">Credentials</div>
     ${fld('gdCerts','Certifications',g.certifications,'AMC, WFR, Wilderness First Aid')}
-    <div class="adm-hint">Comma-separated. Shown as badges. Only list what you can verify — an unverified badge is worse than none.</div>
+    <div class="adm-hint">Comma-separated. Shown as badges. Only list what you can verify, an unverified badge is worse than none.</div>
     <div class="adm-row2">${fld('gdYears','Years leading',g.years,'8')}${fld('gdTreks','Treks led',g.treks_led,'120')}</div>
     ${fld('gdLangs','Languages',g.languages,'Hindi, English, Garhwali')}
     <div class="field"><label>Verified guide</label><div class="adm-status">
@@ -8872,7 +8877,7 @@ async function guideDelete(){
 }
 
 /* ============================================================
-   DESTINATIONS — custom places for the Adventure section.
+   DESTINATIONS, custom places for the Adventure section.
    Stored in the `destinations` table (public read, admin-only write via
    RLS). They merge OVER the built-in DESTS list by id, so an admin can add
    brand-new places or override a built-in one. See SQL-add-destinations.sql.
@@ -8921,8 +8926,8 @@ function admDestCard(d){
   const acts=(typeof actsFor==='function')?actsFor(d.id).length:0;
   return '<div class="hostcard" onclick="destEdit(\''+jsq(String(d.id))+'\')">'
     +'<div class="vhring sm"'+(d.img?' style="background-image:url(\''+esc(d.img)+'\');background-size:cover;background-position:center;color:transparent"':'')+'>'+(d.img?'':esc((String(d.n||'D')[0]||'D').toUpperCase()))+'</div>'
-    +'<div class="hostcard-bd"><b>'+esc(d.n||'—')+(d.soon?' <span class="adm-tc-soon">Soon</span>':'')+'</b>'
-    +'<small>'+esc(d.state||'—')+(acts?' · '+acts+' activity'+(acts>1?'s':''):'')+'</small>'
+    +'<div class="hostcard-bd"><b>'+esc(d.n||'-')+(d.soon?' <span class="adm-tc-soon">Soon</span>':'')+'</b>'
+    +'<small>'+esc(d.state||'-')+(acts?' · '+acts+' activity'+(acts>1?'s':''):'')+'</small>'
     +'<span class="hostcard-trips">'+(custom?'Custom':'Built-in')+'</span></div>'
     +'<span class="ch" style="transform:scaleX(-1)">'+ic('back',16)+'</span></div>';
 }
@@ -8988,7 +8993,7 @@ async function saveDestination(){
   const r=await sb.from('destinations').upsert(row,{onConflict:'id'}).select('id');
   if(btn){btn.disabled=false;}
   if(r.error){note('Could not save: '+r.error.message,'Save failed');return;}
-  if(!r.data||!r.data.length){note('Nothing was saved — make sure you are signed in as the admin.','Not saved');return;}
+  if(!r.data||!r.data.length){note('Nothing was saved, make sure you are signed in as the admin.','Not saved');return;}
   _destEdit=null;await loadDestinations(true);renderAdminDestinations();
   try{if(document.querySelector('#dests.active'))renderDests();if(cur==='dest')renderDest();}catch(e){}
   note('Destination saved ✓');
@@ -9019,7 +9024,7 @@ async function renderAdminStaff(){
   const row=e=>'<div class="staff-row"><span class="ic">'+ic('user',18)+'</span>'
     +'<div class="staff-tx"><b>'+esc(e)+'</b>'+roleCtl(e)+'</div>'
     +(isSuper?'<span class="ic" onclick="removeStaff(\''+jsq(e)+'\')" style="color:#ff7a7a;cursor:pointer">'+ic('close',18)+'</span>':'')+'</div>';
-  box.innerHTML=`<div class="note2" style="margin-bottom:12px">Give each team member a <b>role</b> — they only see their own admin tools. <b>Trek Captain</b> = ticket check-in only. <b>Operations / Finance / Content / Community</b> = a scoped admin panel.</div>`+
+  box.innerHTML=`<div class="note2" style="margin-bottom:12px">Give each team member a <b>role</b>, they only see their own admin tools. <b>Trek Captain</b> = ticket check-in only. <b>Operations / Finance / Content / Community</b> = a scoped admin panel.</div>`+
     (staff.length?staff.map(row).join(''):'<div class="empty" style="padding:14px 0"><p>No team members yet.</p></div>')+
     (isSuper?`<div class="panel" style="margin-top:6px"><b style="display:block;margin-bottom:8px">Add a team member</b>
       <div class="field"><div class="inp"><span class="ic" data-i="mail"></span><input id="staffEmail" type="email" placeholder="name@email.com"></div></div>
@@ -9041,7 +9046,7 @@ async function addStaff(){
 async function setStaffRole(email,role){
   const sb=getSupaClient();if(!sb)return;
   const{error}=await sb.from('staff').update({role}).eq('email',email);
-  if(error){note('Could not update role — deploy SQL-add-staff-roles.sql first. ('+error.message+')','Role not saved');return;}
+  if(error){note('Could not update role, deploy SQL-add-staff-roles.sql first. ('+error.message+')','Role not saved');return;}
   staffRoles[email]=role;toast(ROLE_LABEL[role]+' role set for '+email);
 }
 async function removeStaff(email){
@@ -9080,7 +9085,7 @@ async function savePackingAdmin(){
   const t=treks.find(x=>x.n===pkAdminTrek);if(!t){note('Trek not found.');return;}
   t.packing=_pkEdit;
   if(!sbOn){note('Saved on this device only (Supabase not connected).');return;}
-  if(!t._id){note('This trek isn’t in the database yet — save it in the Treks tab first.','Cannot save');return;}
+  if(!t._id){note('This trek isn’t in the database yet, save it in the Treks tab first.','Cannot save');return;}
   const ok=await sbWriteChecked('PATCH','treks?id=eq.'+t._id,{packing:_pkEdit});
   if(ok){bustTreksCache();await loadTreks(true);note('Packing list saved for '+pkAdminTrek+' ✓');}
 }
@@ -9125,14 +9130,14 @@ function admBookingCard(b){
   const batches=getAllBatches((b.trek||'').replace(' (Activity)',''))||[];
   return `<div class="adm-bk" onclick="this.classList.toggle('open')">
     <div class="adm-bk-top">
-      <div class="adm-bk-main"><b>${esc(b.trek||'—')}</b><small>${esc(b.name||'')} · ${esc(b.date||'')} · ${b.pax||1} pax</small></div>
+      <div class="adm-bk-main"><b>${esc(b.trek||'-')}</b><small>${esc(b.name||'')} · ${esc(b.date||'')} · ${b.pax||1} pax</small></div>
       <div class="adm-bk-rt"><b>${INR(paid)}</b><span class="adm-bk-st ${b.checked_in?'in':''}">${st}</span></div>
       <span class="adm-bk-chev msr">expand_more</span>
     </div>
     <div class="adm-bk-det">
       <div class="adm-bk-row"><span class="msr">call</span>${b.phone?`<a href="tel:${esc(b.phone)}" onclick="event.stopPropagation()">${esc(b.phone)}</a>${wa?`<a class="adm-bk-wa" href="https://wa.me/${esc(wa)}?text=${esc(encodeURIComponent(waConfirmText(b)))}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><span class="msr">chat</span> Send confirmation</a>`:''}`:'<span class="adm-bk-na">No phone</span>'}</div>
       <div class="adm-bk-row"><span class="msr">mail</span>${b.email?`<a href="mailto:${esc(b.email)}" onclick="event.stopPropagation()">${esc(b.email)}</a>`:'<span class="adm-bk-na">No email</span>'}</div>
-      <div class="adm-bk-row"><span class="msr">emergency</span><span>Emergency: <b>${esc(b.emergency_name||'—')}</b> · ${esc(b.emergency_phone||'—')}</span></div>
+      <div class="adm-bk-row"><span class="msr">emergency</span><span>Emergency: <b>${esc(b.emergency_name||'-')}</b> · ${esc(b.emergency_phone||'-')}</span></div>
       <div class="adm-bk-row"><span class="msr">payments</span><span>Paid ${INR(paid)}${tot?' of '+INR(tot):''} · <span class="adm-bk-pid">${esc(b.payment_id||b.id||'')}</span></span></div>
       ${b.captain?`<div class="adm-bk-row"><span class="msr">badge</span><span>Captain: <b>${esc(b.captain)}</b></span></div>`:''}
       <div class="adm-bk-ops" onclick="event.stopPropagation()">
@@ -9149,7 +9154,7 @@ function admBookingCard(b){
 }
 async function admBkUpdate(id,patch,msg){
   const res=await adminCall('update_booking',Object.assign({id},patch));
-  if(!res||!res.ok){note((res&&res.error)||'Could not update — redeploy the admin function?','Update failed');return false;}
+  if(!res||!res.ok){note((res&&res.error)||'Could not update, redeploy the admin function?','Update failed');return false;}
   const b=_admBookings.find(x=>String(x.id)===String(id));if(b)Object.assign(b,patch);
   if(msg)toast(msg);return true;
 }
@@ -9158,7 +9163,7 @@ function admChangeBatch(id,date){if(!date)return;admBkUpdate(id,{date:date},'Bat
 function _admRerender(){if(adminTab==='Payments')paintPayments();else renderAdminBookings();}
 async function admRefund(id){if(!(await askConfirm('Mark this booking as refunded? Process the actual refund in Razorpay too.','Refund booking')))return;if(await admBkUpdate(id,{status:'Refunded'},'Marked refunded'))_admRerender();}
 async function admCancelBooking(id){if(!(await askConfirm('Cancel this booking?','Cancel booking')))return;if(await admBkUpdate(id,{status:'Cancelled'},'Booking cancelled'))_admRerender();}
-/* client-side invoice (offline, no backend) — downloads a printable HTML invoice */
+/* client-side invoice (offline, no backend), downloads a printable HTML invoice */
 function admInvoice(id){
   const b=_admBookings.find(x=>String(x.id)===String(id));if(!b){note('Booking not found.','Error');return;}
   const paid=Number(b.paid)||0,tot=Number(b.total)||0,bal=Math.max(0,tot-paid);
@@ -9170,10 +9175,10 @@ function admInvoice(id){
     +'.pill{display:inline-block;padding:3px 10px;border-radius:999px;background:#eaf1ff;color:#2f6bff;font-size:12px;font-weight:700}@media print{body{margin:0}}</style></head><body>'
     +'<div class="hd"><div><h1>Tripomonk</h1><div class="muted">Tripomonk Travel Pvt. Ltd. · Uttarakhand, India</div></div>'
     +'<div style="text-align:right"><b>INVOICE</b><div class="muted">'+esc(String(b.id))+'</div><div class="muted">'+esc((b.created_at||'').slice(0,10))+'</div></div></div>'
-    +'<p><b>Billed to:</b> '+esc(b.name||'—')+(b.email?' · '+esc(b.email):'')+(b.phone?' · '+esc(b.phone):'')+'</p>'
+    +'<p><b>Billed to:</b> '+esc(b.name||'-')+(b.email?' · '+esc(b.email):'')+(b.phone?' · '+esc(b.phone):'')+'</p>'
     +'<table>'
-    +row('Trek / trip',esc(b.trek||'—'))
-    +row('Date',esc(b.date||'—'))
+    +row('Trek / trip',esc(b.trek||'-'))
+    +row('Date',esc(b.date||'-'))
     +row('Trekkers',String(b.pax||1))
     +(b.captain?row('Trek captain',esc(b.captain)):'')
     +row('Status','<span class="pill">'+esc(b.status||'Confirmed')+'</span>')
@@ -9184,7 +9189,7 @@ function admInvoice(id){
     +'<tr class="tot"><td>Balance due</td><td style="text-align:right">'+INR(bal)+'</td></tr>'
     +'</table>'
     +'<p class="muted" style="margin-top:22px">Payments processed securely via Razorpay. This is a computer-generated invoice. For GST or support, contact Tripomonk.</p>'
-    +'<p class="muted" style="margin-top:6px">Payment ID: '+esc(b.payment_id||b.id||'—')+'</p>'
+    +'<p class="muted" style="margin-top:6px">Payment ID: '+esc(b.payment_id||b.id||'-')+'</p>'
     +'</body></html>';
   try{const blob=new Blob([html],{type:'text/html'});const url=URL.createObjectURL(blob);
     const a=document.createElement('a');a.href=url;a.download='Tripomonk-Invoice-'+String(b.id).replace(/[^a-zA-Z0-9]/g,'').slice(-10)+'.html';
@@ -9198,7 +9203,7 @@ async function renderAdminUsers(){
   box.innerHTML='<div class="adm-search" style="margin:2px 0 12px"><span class="msr">search</span><input placeholder="Search by name or @username…" value="'+esc(_usersQ)+'" oninput="_usersQ=this.value;paintUsers()"></div><div id="admUsersList"><div class="skel skel-card"></div><div class="skel skel-card"></div></div>';
   const sb=getSupaClient();
   if(!sb){document.getElementById('admUsersList').innerHTML='<div class="note2">Connect Supabase to see users.</div>';return;}
-  /* profiles has no created_at column — select only real columns. Supabase returns an
+  /* profiles has no created_at column, select only real columns. Supabase returns an
      {error} (it does NOT throw), so check it explicitly rather than relying on catch. */
   const{data,error}=await sb.from('profiles').select('name,username,photo,is_host').order('name',{ascending:true}).limit(500);
   _usersRows=(!error&&Array.isArray(data))?data:[];
@@ -9226,7 +9231,7 @@ function actIcon(r){if(r&&r.event){const m=EVENT_META[r.event];return m?m[1]:'bo
 function actLabel(r){
   if(!r.event)return 'Viewed '+screenLabel(r.screen);
   const m=EVENT_META[r.event],meta=r.meta||{};
-  if(r.event==='view_trek'&&meta.trek)return 'Viewed trek — '+meta.trek;
+  if(r.event==='view_trek'&&meta.trek)return 'Viewed trek, '+meta.trek;
   if(r.event==='booking')return 'Booked '+(meta.trek||'a trek')+(meta.amount?' · ₹'+meta.amount:'');
   if(r.event==='message'&&meta.to)return 'Messaged '+properName(meta.to);
   if(r.event==='follow'&&meta.name)return 'Followed '+properName(meta.name);
@@ -9245,7 +9250,7 @@ async function renderUserActivity(){
   if(!sb||!uid){box.innerHTML='<div class="ss-empty"><span class="msr">insights</span><b>No activity yet</b><p>This user hasn’t been seen since analytics were enabled.</p></div>';setSub('No data');return;}
   let rows=[],qerr=null;
   try{const{data,error}=await sb.from('app_events').select('screen,event,seconds,session_id,created_at,meta').eq('user_id',uid).order('created_at',{ascending:false}).limit(400);qerr=error;rows=data||[];}catch(e){}
-  if(qerr){box.innerHTML='<div class="note2">Behaviour tracking isn’t enabled yet — run <b>SQL-add-user-analytics.sql</b> in Supabase, then reopen.</div>';setSub('Not enabled');return;}
+  if(qerr){box.innerHTML='<div class="note2">Behaviour tracking isn’t enabled yet, run <b>SQL-add-user-analytics.sql</b> in Supabase, then reopen.</div>';setSub('Not enabled');return;}
   if(!rows.length){box.innerHTML='<div class="ss-empty"><span class="msr">insights</span><b>No activity yet</b><p>Once '+esc(properName(_uaName))+' uses the app, their screens & actions appear here.</p></div>';setSub('No activity yet');return;}
   const last=rows[0].created_at;
   const sessions=new Set(rows.map(r=>r.session_id)).size;
@@ -9269,9 +9274,9 @@ async function renderUserActivity(){
   hydrate(box);
 }
 async function admNotifyUser(name){
-  const msg=await askCode('Message '+properName(name),{placeholder:'Your message — they get a notification'});
+  const msg=await askCode('Message '+properName(name),{placeholder:'Your message, they get a notification'});
   if(!msg||!msg.trim())return;
-  try{const uid=await uidForName(name);if(!uid){toast(properName(name)+' has no app account — notification not sent');return;}await pushNotif({recipientId:uid,type:'admin',preview:msg.trim().slice(0,140)});toast('Sent to '+properName(name));}
+  try{const uid=await uidForName(name);if(!uid){toast(properName(name)+' has no app account, notification not sent');return;}await pushNotif({recipientId:uid,type:'admin',preview:msg.trim().slice(0,140)});toast('Sent to '+properName(name));}
   catch(e){note('Could not send the notification.','Error');}
 }
 /* ---- Admin · Payments (transactions, refunds, host payouts, reports) ---- */
@@ -9317,7 +9322,7 @@ function paintPayments(){
 function payRow(b){
   const st=payStatus(b),id=jsq(String(b.id||''));
   const stLabel={paid:'Paid',refunded:'Refunded',cancelled:'Cancelled'}[st];
-  return '<div class="pay-row"><div class="pay-main"><b>'+esc(b.name||'—')+'</b><small>'+esc(b.trek||'')+' · '+esc((b.created_at||'').slice(0,10)||b.date||'')+'</small><span class="pay-pid">'+esc(b.payment_id||b.id||'')+'</span></div>'
+  return '<div class="pay-row"><div class="pay-main"><b>'+esc(b.name||'-')+'</b><small>'+esc(b.trek||'')+' · '+esc((b.created_at||'').slice(0,10)||b.date||'')+'</small><span class="pay-pid">'+esc(b.payment_id||b.id||'')+'</span></div>'
     +'<div class="pay-rt"><b>'+INR(+b.paid||0)+'</b><span class="pay-st '+st+'">'+stLabel+'</span>'
     +'<div class="pay-acts"><button onclick="admInvoice(\''+id+'\')" title="Invoice"><span class="msr">receipt_long</span></button>'+(st==='paid'?'<button onclick="admRefund(\''+id+'\')" title="Refund"><span class="msr">currency_rupee</span></button>':'')+'</div></div></div>';
 }
@@ -9330,7 +9335,7 @@ function admExportCSV(){
 }
 function admRevenueCSV(){
   const rows=_admBookings||[],by={};
-  rows.forEach(b=>{const m=(b.created_at||'').slice(0,7)||'—';if(!by[m])by[m]={paid:0,total:0,n:0};by[m].paid+=(+b.paid||0);by[m].total+=(+b.total||0);by[m].n++;});
+  rows.forEach(b=>{const m=(b.created_at||'').slice(0,7)||'-';if(!by[m])by[m]={paid:0,total:0,n:0};by[m].paid+=(+b.paid||0);by[m].total+=(+b.total||0);by[m].n++;});
   const head=['Month','Bookings','Collected','Booking value'];
   const lines=[head.map(csvEsc).join(',')].concat(Object.keys(by).sort().map(m=>[m,by[m].n,by[m].paid,by[m].total].map(csvEsc).join(',')));
   downloadText(lines.join('\r\n'),'Tripomonk-revenue-'+todayISO(0)+'.csv','text/csv');
@@ -9340,7 +9345,7 @@ function admPayoutsHTML(){
   const hosts=Object.entries(by).sort((a,b)=>b[1].gross-a[1].gross);
   if(!hosts.length)return '<div class="adm-sec">Host payouts</div><div class="adm-hint">No host-trip bookings matched yet. Payouts show here once a host has paid bookings. Host share = 90% of profit after operating cost (per the host commission model).</div>';
   return '<div class="adm-sec">Host payouts (estimated)</div>'
-    +'<div class="adm-hint" style="margin:0 2px 8px">Gross collected on each host\'s trips. Net payout = 90% of profit after operating cost — settle manually from here.</div>'
+    +'<div class="adm-hint" style="margin:0 2px 8px">Gross collected on each host\'s trips. Net payout = 90% of profit after operating cost, settle manually from here.</div>'
     +hosts.map(h=>'<div class="pay-row"><div class="pay-main"><b>'+esc(h[0])+'</b><small>'+h[1].n+' paid booking'+(h[1].n!==1?'s':'')+'</small></div><div class="pay-rt"><b>'+INR(h[1].gross)+'</b><span class="pay-st paid">≈ '+INR(Math.round(h[1].gross*0.9))+' share</span></div></div>').join('');
 }
 /* ---- Admin · Gear inventory (localStorage-backed; syncs to gear_inventory when deployed) ---- */
@@ -9366,7 +9371,7 @@ function paintGear(){
   const kpi=(v,l,cls)=>'<div class="dash-kpi '+(cls||'')+'"><b>'+v+'</b><small>'+l+'</small></div>';
   box.innerHTML=
     '<div class="dash-kgrid">'+kpi(sum('total'),'Total units')+kpi(avail,'Available','g')+kpi(sum('rented'),'Rented')+kpi(oos,'Out of service',oos?'warn':'')+'</div>'
-    +(inv.length?inv.map(gearRow).join(''):'<div class="empty" style="padding:16px 0"><p>No gear tracked yet — add items or seed from the rental catalog.</p></div>')
+    +(inv.length?inv.map(gearRow).join(''):'<div class="empty" style="padding:16px 0"><p>No gear tracked yet, add items or seed from the rental catalog.</p></div>')
     +'<div class="adm-bk-btns" style="margin-top:12px"><button onclick="gearAddItem()"><span class="msr">add</span> Add item</button><button onclick="gearSeed()"><span class="msr">auto_awesome</span> Seed from catalog</button></div>';
   hydrate(box);
 }
@@ -9422,12 +9427,12 @@ function modRow(p){
 async function admDeletePost(id){
   if(!(await askConfirm('Delete this post permanently?','Delete post')))return;
   const res=await adminCall('delete_post',{id});
-  if(!res||!res.ok){note((res&&res.error)||'Could not delete — redeploy the admin edge function.','Delete failed');return;}
+  if(!res||!res.ok){note((res&&res.error)||'Could not delete, redeploy the admin edge function.','Delete failed');return;}
   _modPosts=(_modPosts||[]).filter(p=>String(p.id)!==String(id));paintMod();toast('Post deleted');
 }
 async function admFeaturePost(id,on){
   const res=await adminCall('feature_post',{id,featured:on});
-  if(!res||!res.ok){note((res&&res.error)||'Could not update — run SQL-add-post-featured.sql + redeploy the admin edge function.','Update failed');return;}
+  if(!res||!res.ok){note((res&&res.error)||'Could not update, run SQL-add-post-featured.sql + redeploy the admin edge function.','Update failed');return;}
   const p=(_modPosts||[]).find(x=>String(x.id)===String(id));if(p)p.featured=on;paintMod();toast(on?'Featured ★':'Unfeatured');
 }
 /* ---- Admin · Permits (forest / park / border permit requests) ---- */
@@ -9438,7 +9443,7 @@ async function renderAdminPermits(){
   const sb=getSupaClient();if(!sb){box.innerHTML='<div class="note2">Connect Supabase to see permit requests.</div>';return;}
   try{const{data,error}=await sb.from('permit_applications').select('*').order('created_at',{ascending:false}).limit(120);
     if(error)throw error;_permApps=data||[];}
-  catch(e){box.innerHTML='<div class="note2">No permit requests table yet — run <b>SQL-add-permits-support.sql</b> to enable this. (Requests will then be captured when travellers tap “Apply”.)</div>';return;}
+  catch(e){box.innerHTML='<div class="note2">No permit requests table yet, run <b>SQL-add-permits-support.sql</b> to enable this. (Requests will then be captured when travellers tap “Apply”.)</div>';return;}
   paintPermits();
 }
 function paintPermits(){
@@ -9472,16 +9477,16 @@ async function renderAdminSupport(){
   try{await loadInbox();}catch(e){}     /* populates _supportNames (customer 'Tripomonk Team' chats) */
   try{const{data,error}=await sb.from('support_tickets').select('*').order('created_at',{ascending:false}).limit(120);
     if(error)throw error;_tickets=data||[];}
-  catch(e){_tickets=null;}             /* tickets table not deployed — still show live chats */
+  catch(e){_tickets=null;}             /* tickets table not deployed, still show live chats */
   paintSupport();
 }
-/* customer live chats that came through 'Tripomonk Team' — owner replies via the normal chat */
+/* customer live chats that came through 'Tripomonk Team', owner replies via the normal chat */
 function liveSupportHTML(){
   const names=_supportNames||[];
   let h='<div class="adm-sec">Live chats'+(names.length?' ('+names.length+')':'')+'</div>';
-  if(!_supportUid)return h+'<div class="adm-hint" style="margin:2px 2px 14px">Sign in as the owner once to activate the support inbox — then customer messages to “Tripomonk Team” appear here.</div>';
+  if(!_supportUid)return h+'<div class="adm-hint" style="margin:2px 2px 14px">Sign in as the owner once to activate the support inbox, then customer messages to “Tripomonk Team” appear here.</div>';
   if(!names.length)return h+'<div class="adm-hint" style="margin:2px 2px 14px">No customer chats yet. Messages sent to “Tripomonk Team” from the app land here.</div>';
-  h+='<div class="adm-hint" style="margin:2px 2px 8px">Customer messages to “Tripomonk Team” — tap to reply.</div><div class="chat-list">';
+  h+='<div class="adm-hint" style="margin:2px 2px 8px">Customer messages to “Tripomonk Team”, tap to reply.</div><div class="chat-list">';
   h+=names.map(n=>{const msgs=getChat(n)||[];const last=msgs[msgs.length-1]||{};
     const prev=(last.who==='me'?'You: ':'')+(last.txt||'Start a conversation');
     return '<div class="chat-row" onclick="openChat(\''+jsq(n)+'\')">'+avatar(n,46)+'<div class="meta"><b>'+esc(properName(n))+'</b><p>'+esc(prev.slice(0,80))+'</p></div><time>'+esc(last.ts?timeAgo(last.ts):(last.t||''))+'</time></div>';}).join('');
@@ -9493,7 +9498,7 @@ function paintSupport(){
   box.innerHTML=liveSupportHTML()
     +'<div class="adm-sec">Support tickets</div>'
     +(t===null
-      ? '<div class="adm-hint" style="margin:2px 2px 10px">No support-tickets table yet — run <b>SQL-add-permits-support.sql</b>. Travellers raise tickets from Help &amp; Support.</div>'
+      ? '<div class="adm-hint" style="margin:2px 2px 10px">No support-tickets table yet, run <b>SQL-add-permits-support.sql</b>. Travellers raise tickets from Help &amp; Support.</div>'
       : '<div class="adm-hint" style="margin:2px 2px 10px">'+list.length+' ticket'+(list.length!==1?'s':'')+' · '+open+' open</div>'
         +(list.length?list.map(ticketRow).join(''):'<div class="empty"><p>No tickets yet.</p></div>'));
   hydrate(box);
@@ -9506,7 +9511,7 @@ function ticketRow(t){
     +'<div class="tk-rt"><span class="tk-st '+st+'">'+esc(st)+'</span><div class="tk-acts"><button onclick="ticketReply(\''+id+'\')">Reply</button>'+(st!=='resolved'?'<button class="ok" onclick="ticketResolve(\''+id+'\')">Resolve</button>':'')+'</div></div></div>';
 }
 async function ticketReply(id){
-  const msg=await askCode('Reply to ticket',{placeholder:'Your reply — the user is notified'});if(!msg||!msg.trim())return;
+  const msg=await askCode('Reply to ticket',{placeholder:'Your reply, the user is notified'});if(!msg||!msg.trim())return;
   const sb=getSupaClient();if(!sb)return;
   const t=(_tickets||[]).find(x=>String(x.id)===String(id));
   try{await sb.from('support_tickets').update({reply:msg.trim().slice(0,1000),status:'answered'}).eq('id',id);
@@ -9520,7 +9525,7 @@ async function raiseTicket(){
   if(!isLoggedIn()){note('Please sign in to raise a ticket.','Sign in required').then(()=>{_loginReturn='help';go('login');});return;}
   const msg=await askCode('Raise a support ticket',{placeholder:'Describe your issue…'});
   if(!msg||!msg.trim())return;
-  const sb=getSupaClient();if(!sb){note('Support is unavailable offline — please WhatsApp us.','Offline');return;}
+  const sb=getSupaClient();if(!sb){note('Support is unavailable offline, please WhatsApp us.','Offline');return;}
   try{const uid=await authUid();
     const{error}=await sb.from('support_tickets').insert({user_id:uid,name:getSavedName()||'',email:getUserEmail()||'',phone:getSavedMobile()||'',message:msg.trim().slice(0,1000),status:'open'});
     if(error)throw error;
@@ -9538,7 +9543,7 @@ async function renderAdminCRM(){
 function crmSearch(q){
   _crmQ=q;const el=document.getElementById('crmBody');if(!el)return;
   const ql=(q||'').trim().toLowerCase();
-  if(ql.length<2){el.innerHTML='<div class="adm-hint">Type a name to open a customer’s full timeline — bookings, payments, tickets, reviews, posts &amp; fitness.</div>';return;}
+  if(ql.length<2){el.innerHTML='<div class="adm-hint">Type a name to open a customer’s full timeline, bookings, payments, tickets, reviews, posts &amp; fitness.</div>';return;}
   const matches=(_usersRows||[]).filter(u=>u.name&&u.name.toLowerCase().includes(ql)).slice(0,8);
   el.innerHTML=matches.length?matches.map(u=>{const nm=jsq(u.name);
     return '<div class="usr-row" onclick="crmOpen(\''+nm+'\')"><div class="usr-av">'+avatar(u.name,40)+'</div><div class="usr-tx"><b>'+esc(properName(u.name))+'</b><small>'+(u.username?'@'+esc(u.username):'')+'</small></div><span class="usr-act"><span class="msr">arrow_forward</span></span></div>';}).join(''):'<div class="empty"><p>No customer found.</p></div>';
@@ -9578,7 +9583,7 @@ async function crmOpen(name){
 }
 /* ---- Admin · AI & Automation (live message templates, stored in app_config) ---- */
 let _aiCfg=null;
-const AI_DEFAULTS={welcome:'Welcome to Tripomonk! We’re glad to have you. Message us anytime for help with bookings, payments or picking your next trek.',sos:'EMERGENCY — I need help on my Tripomonk trek. Please call me right away.',planner:'Tell us your dates, fitness and vibe — we’ll suggest the right trek for you.'};
+const AI_DEFAULTS={welcome:'Welcome to Tripomonk! We’re glad to have you. Message us anytime for help with bookings, payments or picking your next trek.',sos:'EMERGENCY, I need help on my Tripomonk trek. Please call me right away.',planner:'Tell us your dates, fitness and vibe, we’ll suggest the right trek for you.'};
 async function loadAiCfg(){
   if(_aiCfg)return _aiCfg;
   _aiCfg=Object.assign({},AI_DEFAULTS);
@@ -9592,7 +9597,7 @@ async function renderAdminAI(){
   box.innerHTML='<div class="skel skel-card"></div>';
   await loadAiCfg();
   const fldT=(k,label,hint)=>'<div class="adm-sec">'+label+'</div><div class="field"><textarea class="adm-ta" id="ai_'+k+'">'+esc(_aiCfg[k]||'')+'</textarea></div><div class="adm-hint">'+hint+'</div>';
-  box.innerHTML='<div class="note2" style="margin-bottom:12px">Manage the automated messages the app sends — used live, no code change needed. (Trek fitness scores are edited per-trek in the Treks editor; gear rules stay in-app for now.)</div>'
+  box.innerHTML='<div class="note2" style="margin-bottom:12px">Manage the automated messages the app sends, used live, no code change needed. (Trek fitness scores are edited per-trek in the Treks editor; gear rules stay in-app for now.)</div>'
     +fldT('welcome','Welcome message','Auto-sent in the Tripomonk Team chat when someone joins.')
     +fldT('sos','Emergency SOS message','Pre-filled WhatsApp text when a trekker requests an emergency call.')
     +fldT('planner','Trip planner nudge','A short line encouraging travellers to find the right trek.')
@@ -9604,10 +9609,10 @@ async function saveAiCfg(){
   const next={welcome:(g('ai_welcome').value||'').trim()||AI_DEFAULTS.welcome,sos:(g('ai_sos').value||'').trim()||AI_DEFAULTS.sos,planner:(g('ai_planner').value||'').trim()||AI_DEFAULTS.planner};
   _aiCfg=Object.assign({},AI_DEFAULTS,next);
   try{localStorage.setItem('tmk_appcfg',JSON.stringify(_aiCfg));}catch(e){}
-  const sb=getSupaClient();if(sb){try{const{error}=await sb.from('app_config').upsert(Object.keys(next).map(k=>({key:k,value:next[k]})),{onConflict:'key'});if(error)throw error;toast('Saved — live everywhere');}catch(e){note('Saved on this device. For all devices, run SQL-add-app-config.sql.','Saved locally');}}else toast('Saved on this device');
+  const sb=getSupaClient();if(sb){try{const{error}=await sb.from('app_config').upsert(Object.keys(next).map(k=>({key:k,value:next[k]})),{onConflict:'key'});if(error)throw error;toast('Saved, live everywhere');}catch(e){note('Saved on this device. For all devices, run SQL-add-app-config.sql.','Saved locally');}}else toast('Saved on this device');
 }
 /* ============================================================
-   VENDORS — partner operators (hotels / transport / activities / gear).
+   VENDORS, partner operators (hotels / transport / activities / gear).
    Admin approves partners; approved partners manage their own listings from a
    dedicated Vendor Dashboard. Backed by vendors + vendor_listings tables.
    ============================================================ */
@@ -9618,7 +9623,7 @@ async function renderAdminVendors(){
   box.innerHTML='<div class="skel skel-card"></div><div class="skel skel-card"></div>';
   const sb=getSupaClient();if(!sb){box.innerHTML='<div class="note2">Connect Supabase to manage vendors.</div>';return;}
   try{const{data,error}=await sb.from('vendors').select('*').order('created_at',{ascending:false}).limit(200);if(error)throw error;_adminVendors=data||[];}
-  catch(e){box.innerHTML='<div class="note2">No vendors table yet — run <b>SQL-add-vendors.sql</b>. Partners then apply from “Partner with Tripomonk”.</div>';return;}
+  catch(e){box.innerHTML='<div class="note2">No vendors table yet, run <b>SQL-add-vendors.sql</b>. Partners then apply from “Partner with Tripomonk”.</div>';return;}
   let listings=[];try{const{data}=await sb.from('vendor_listings').select('owner_id');listings=data||[];}catch(e){}
   const cnt={};listings.forEach(l=>{cnt[l.owner_id]=(cnt[l.owner_id]||0)+1;});
   paintAdminVendors(cnt);
@@ -9660,18 +9665,18 @@ async function renderVendorDash(){
   const sb=getSupaClient();const uid=sb?await authUid():null;
   if(!sb||!uid){box.innerHTML='<div class="note2">Please sign in to continue.</div>';return;}
   try{const{data}=await sb.from('vendors').select('*').eq('user_id',uid).maybeSingle();_myVendor=data||null;}
-  catch(e){box.innerHTML='<div class="note2">Partner sign-up isn’t enabled yet — the team needs to run <b>SQL-add-vendors.sql</b>.</div>';return;}
+  catch(e){box.innerHTML='<div class="note2">Partner sign-up isn’t enabled yet, the team needs to run <b>SQL-add-vendors.sql</b>.</div>';return;}
   if(!_myVendor){box.innerHTML=vendorApplyHTML();hydrate(box);return;}
   if(_myVendor.status!=='approved'){
     box.innerHTML='<div class="vend-hero"><span class="msr">storefront</span><div><b>'+esc(_myVendor.business_name)+'</b><small>'+esc(_myVendor.type||'')+'</small></div></div>'
-      +'<div class="adm-hint" style="margin-top:12px">Your partner application is <b>'+esc(_myVendor.status||'pending')+'</b>. Our team reviews every partner — we’ll be in touch soon.</div>';
+      +'<div class="adm-hint" style="margin-top:12px">Your partner application is <b>'+esc(_myVendor.status||'pending')+'</b>. Our team reviews every partner, we’ll be in touch soon.</div>';
     hydrate(box);return;
   }
   let listings=[];try{const{data}=await sb.from('vendor_listings').select('*').eq('owner_id',uid).order('name');listings=data||[];}catch(e){}
   _myVendorListings=listings;
   box.innerHTML='<div class="vend-hero"><span class="msr">storefront</span><div><b>'+esc(_myVendor.business_name)+'</b><small>'+esc(_myVendor.type||'')+(_myVendor.city?' · '+esc(_myVendor.city):'')+' · <span style="color:#3ddc84">Approved partner</span></small></div></div>'
     +'<div class="adm-sec">Your listings</div>'
-    +(listings.length?listings.map(vendorListingRow).join(''):'<div class="adm-hint">No listings yet — add your rooms, vehicles, activities or gear so Tripomonk can send you bookings.</div>')
+    +(listings.length?listings.map(vendorListingRow).join(''):'<div class="adm-hint">No listings yet, add your rooms, vehicles, activities or gear so Tripomonk can send you bookings.</div>')
     +'<button class="btn" style="margin-top:12px" onclick="vendorAddListing()"><span class="msr">add</span> Add a listing</button>';
   hydrate(box);
 }
@@ -9679,7 +9684,7 @@ function vendorApplyHTML(){
   const opt=t=>'<option style="color:#000">'+esc(t)+'</option>';
   const f=(lbl,inner)=>'<div class="field"><label>'+lbl+'</label><div class="inp">'+inner+'</div></div>';
   return '<div class="vend-hero"><span class="msr">handshake</span><div><b>Partner with Tripomonk</b><small>Hotels · transport · activities · gear</small></div></div>'
-    +'<div class="adm-hint" style="margin:10px 0 12px">List your services and get bookings from Tripomonk trekkers. Fill in your details — we review every partner.</div>'
+    +'<div class="adm-hint" style="margin:10px 0 12px">List your services and get bookings from Tripomonk trekkers. Fill in your details, we review every partner.</div>'
     +f('Business name','<input id="vdName" placeholder="e.g. Himalayan Stays">')
     +f('Type','<select id="vdType" style="all:unset;flex:1;color:var(--text)">'+VENDOR_TYPES.map(opt).join('')+'</select>')
     +f('Contact person','<input id="vdContact" placeholder="Your full name">')
@@ -9748,8 +9753,8 @@ function admTrekCard(t,i){
   const req=trekReqScore(t), img=(t.img||'').split('?')[0];
   return `<div class="adm-tc" onclick="editTrek(${i})">
     <div class="adm-tc-ph" style="background-image:url('${esc(img)}')">${t.soon?'<span class="adm-tc-soon">Soon</span>':''}</div>
-    <div class="adm-tc-bd"><b>${esc(t.n)}</b><small>${esc(t.region||'—')} · ${t.days||'?'}d · ₹${Number(t.price||0).toLocaleString('en-IN')}</small>
-      <div class="adm-tc-tags"><span class="adm-tc-lvl">${esc(t.lvl||'—')}</span><span class="adm-tc-req">Score ${req}</span>${trekTag(t)?`<span class="adm-tc-tag ${tagStyle(t.tag)}">${esc(t.tag)}</span>`:''}${hasItinerary(t)?'':'<span class="adm-tc-warn">No itinerary</span>'}</div></div>
+    <div class="adm-tc-bd"><b>${esc(t.n)}</b><small>${esc(t.region||'-')} · ${t.days||'?'}d · ₹${Number(t.price||0).toLocaleString('en-IN')}</small>
+      <div class="adm-tc-tags"><span class="adm-tc-lvl">${esc(t.lvl||'-')}</span><span class="adm-tc-req">Score ${req}</span>${trekTag(t)?`<span class="adm-tc-tag ${tagStyle(t.tag)}">${esc(t.tag)}</span>`:''}${hasItinerary(t)?'':'<span class="adm-tc-warn">No itinerary</span>'}</div></div>
     <div class="adm-tc-act"><button class="adm-ic" onclick="event.stopPropagation();editTrek(${i})" title="Edit"><span class="msr">edit</span></button>
       <button class="adm-ic del" onclick="event.stopPropagation();delTrek(${i})" title="Delete"><span class="msr">delete</span></button></div>
   </div>`;
@@ -9795,7 +9800,7 @@ function admHomeFiltered(){
 }
 function admHomePreviewHTML(){
   const t=treks.find(x=>x.n===_homeFeat);
-  if(!t)return '<div class="adm-hint" style="margin:0 0 10px">No featured trek picked — the home banner falls back to the first live trek.</div>';
+  if(!t)return '<div class="adm-hint" style="margin:0 0 10px">No featured trek picked, the home banner falls back to the first live trek.</div>';
   const img=(t.img||'').split('?')[0];
   return `<div class="adm-hm-prev" style="background-image:url('${esc(img)}')">
     <div><span>Featured trek</span><b>${esc(t.n)}</b><small>${esc(t.region||'')} · ${esc(t.lvl||'')} · ${t.days||'?'}D · ₹${Number(t.price||0).toLocaleString('en-IN')}</small></div></div>`;
@@ -9808,7 +9813,7 @@ function renderAdminHomeList(){
     const on=_homePop.has(t.n),fe=_homeFeat===t.n,img=(t.img||'').split('?')[0];
     return `<div class="adm-hm${on?' pop':''}">
       <div class="adm-hm-ph" style="background-image:url('${esc(img)}')"></div>
-      <div class="adm-hm-bd"><b>${esc(t.n)}</b><small>${esc(t.region||'—')} · ${t.soon?'Coming soon':'Live'} · ₹${Number(t.price||0).toLocaleString('en-IN')}</small></div>
+      <div class="adm-hm-bd"><b>${esc(t.n)}</b><small>${esc(t.region||'-')} · ${t.soon?'Coming soon':'Live'} · ₹${Number(t.price||0).toLocaleString('en-IN')}</small></div>
       <button class="adm-hm-btn star${fe?' on':''}" onclick="homeSetFeat('${jsq(t.n)}')" title="Set as the featured trek"><span class="msr">${fe?'star':'star_border'}</span></button>
       <button class="adm-hm-btn tick${on?' on':''}" onclick="homeTogglePop('${jsq(t.n)}')" title="Show in Popular Treks"><span class="msr">${on?'check_circle':'radio_button_unchecked'}</span></button>
     </div>`;}).join('')||'<div class="empty"><p>No treks match your search.</p></div>';
@@ -9822,10 +9827,10 @@ function renderAdminHome(){
   homeSelInit();
   const box=document.getElementById('adminBody');
   /* The Save bar is STICKY at the bottom. With 141 trek rows the old footer button sat
-     ~13,000px down the page — you'd never scroll to it, so it looked like there was no
+     ~13,000px down the page, you'd never scroll to it, so it looked like there was no
      save button at all. Sticky keeps it on screen no matter where you are in the list. */
   box.innerHTML=`
-    <div class="note2" style="margin-bottom:12px">Choose what shows on the <b>home page</b>. The <b>star</b> sets the big <b>Featured trek</b> banner (one trek only). The <b>tick</b> adds a trek to the <b>Popular Treks</b> rail — your picks show first and the rail fills up to 12 with the rest. Tap <b>Save home page</b> at the bottom when done.</div>
+    <div class="note2" style="margin-bottom:12px">Choose what shows on the <b>home page</b>. The <b>star</b> sets the big <b>Featured trek</b> banner (one trek only). The <b>tick</b> adds a trek to the <b>Popular Treks</b> rail, your picks show first and the rail fills up to 12 with the rest. Tap <b>Save home page</b> at the bottom when done.</div>
     <div id="admHomePreview">${admHomePreviewHTML()}</div>
     <div class="adm-count" id="admHomeCount"></div>
     <div class="adm-search"><span class="msr">search</span><input placeholder="Search treks by name or region…" value="${esc(_homeQ)}" oninput="_homeQ=this.value;renderAdminHomeList()"></div>
@@ -9847,7 +9852,7 @@ async function saveHomePicks(){
   bustTreksCache();
   await loadTreks(true);          /* fresh: no stale cache to revert the pick */
   _homePop=null;homeSelInit();renderHome();renderAdminHome();
-  /* the DB is the source of truth now — verify the pick actually landed there, so a
+  /* the DB is the source of truth now, verify the pick actually landed there, so a
      silent persistence failure (missing columns / old function) isn't reported as a win */
   const featOk=!wantFeat||(treks.find(t=>t.feat)||{}).n===wantFeat;
   const popOk=pop.every(n=>{const t=treks.find(x=>x.n===n);return t&&t.pop;});
@@ -9857,7 +9862,7 @@ async function saveHomePicks(){
 /* ----- Departures (batches) ----- */
 function getBatchMap(){try{return JSON.parse(localStorage.getItem('tmk_batches')||'{}');}catch(e){return {};}}
 function setBatchMap(m){try{localStorage.setItem('tmk_batches',JSON.stringify(m));}catch(e){}}
-/* Every departure saved for a trek, past ones included — for staff screens. Source of
+/* Every departure saved for a trek, past ones included, for staff screens. Source of
    truth = the trek's DB `batches`; the local cache is only an offline fallback. */
 function getAllBatches(name){
   const t=treks.find(x=>x.n===name)||{};
@@ -9877,7 +9882,7 @@ function batchStart(b){
   return d;}
 function batchIsPast(b){const d=batchStart(b);if(!d)return false;const today=new Date();today.setHours(0,0,0,0);return d<today;}
 /* Departures a customer can actually pick: upcoming only, soonest first. No made-up
-   defaults — a trek with no real departures shows the WhatsApp enquiry instead. */
+   defaults, a trek with no real departures shows the WhatsApp enquiry instead. */
 function getBatches(name){
   const t=treks.find(x=>x.n===name)||{};
   const list=(Array.isArray(t.batches)?t.batches:[]).filter(b=>!batchIsPast(b));
@@ -9892,13 +9897,13 @@ async function saveBatches(name,list){
   const ok=await sbWriteChecked('PATCH','treks?id=eq.'+t._id,{batches:list});
   if(ok){bustTreksCache();await loadTreks(true);note('Departures saved for everyone ✓');}
 }
-/* selected-trek card with a tap-to-change native picker — shared by Departures + Packing */
+/* selected-trek card with a tap-to-change native picker, shared by Departures + Packing */
 function admTrekSelect(selName,onchangeFn){
   const sel=treks.find(t=>t.n===selName)||{};
   const opts=treks.map(t=>`<option ${t.n===selName?'selected':''} style="color:#000">${esc(t.n)}</option>`).join('');
   return `<div class="adm-picker">
     <div class="adm-tc-ph" style="background-image:url('${esc((sel.img||'').split('?')[0])}')">${sel.soon?'<span class="adm-tc-soon">Soon</span>':''}</div>
-    <div class="adm-picker-tx"><small>Editing trek</small><b>${esc(sel.n||'—')}</b><span>${esc(sel.region||'')}${sel.days?' · '+sel.days+'d':''}</span></div>
+    <div class="adm-picker-tx"><small>Editing trek</small><b>${esc(sel.n||'-')}</b><span>${esc(sel.region||'')}${sel.days?' · '+sel.days+'d':''}</span></div>
     <div class="adm-picker-change"><span class="msr">unfold_more</span>Change<select onchange="${onchangeFn}">${opts}</select></div>
   </div>`;
 }
@@ -9908,10 +9913,10 @@ function renderDepartures(){const sel=depTrek||((treks.find(t=>!t.soon)||treks[0
     admTrekSelect(sel,"depTrek=this.value;renderDepartures()")+
     `<div class="adm-sec">Departures</div>
     <div class="adm-batch-list">${list.map((b,i)=>{const st=batchState(b.seats);const d=parseStartDate(b.label);return `<div class="adm-batch">
-      <div class="adm-batch-cal"><span class="mo">${esc(d.mo||'—')}</span><span class="dy">${esc(d.day||'')}</span></div>
+      <div class="adm-batch-cal"><span class="mo">${esc(d.mo||'-')}</span><span class="dy">${esc(d.day||'')}</span></div>
       <div class="adm-batch-bd"><b>${esc(b.label)}</b><span class="adm-batch-seats ${st}"><span class="dot"></span>${esc(b.seats||'Available')}</span></div>
       <div class="adm-batch-rt"><b>₹${Number(b.price||0).toLocaleString('en-IN')}</b><button class="adm-ic del" onclick="delBatch(${i})" title="Remove"><span class="msr">delete</span></button></div>
-    </div>`;}).join('')||'<div class="empty" style="padding:12px 0"><p>No departures yet — add one below.</p></div>'}</div>
+    </div>`;}).join('')||'<div class="empty" style="padding:12px 0"><p>No departures yet, add one below.</p></div>'}</div>
     <div class="adm-sec">Add a departure</div>
     <div class="adm-editor" style="padding:14px">
       <div class="adm-row2">
@@ -9993,7 +9998,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='534';   /* bump with the service-worker CACHE version — lets the admin confirm the phone is on the latest code */
+const APP_BUILD='535';   /* bump with the service-worker CACHE version, lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -10054,7 +10059,7 @@ async function admUploadItin(input){
     if(up.error)throw new Error(up.error.message);
     const url=sb.storage.from('community').getPublicUrl(path).data.publicUrl;
     const inp=document.getElementById('admItin');if(inp)inp.value=url;
-    if(st)st.textContent='Uploaded ✓ — now Save the trek';
+    if(st)st.textContent='Uploaded ✓, now Save the trek';
   }catch(e){
     if(st)st.textContent='Upload failed';
     note('Could not upload: '+e.message,'Upload failed');
@@ -10078,16 +10083,16 @@ function admTypeSync(){
   const h=document.getElementById('admEdWord');if(h)h.textContent=(editIdx<0?'Add a ':'Edit ')+w;
   const s=document.getElementById('admSaveWord');if(s)s.textContent='Save '+w;
 }
-/* day-by-day itinerary editor (admin) — each day = [title, desc, distance, hours] */
+/* day-by-day itinerary editor (admin), each day = [title, desc, distance, hours] */
 let _admItin=[];
 function admItinRender(){
   const box=document.getElementById('admItinDays');if(!box)return;
   box.innerHTML=_admItin.length?_admItin.map((d,i)=>`<div class="adm-itd">
       <div class="adm-itd-h"><b>Day ${i+1}</b><button type="button" class="adm-ic" onclick="admItinDel(${i})" title="Remove day"><span class="msr">close</span></button></div>
-      <div class="inp"><input id="it_t_${i}" value="${esc(d[0]||'')}" placeholder="Title — e.g. Sankri to Juda Ka Talab"></div>
+      <div class="inp"><input id="it_t_${i}" value="${esc(d[0]||'')}" placeholder="Title, e.g. Sankri to Juda Ka Talab"></div>
       <textarea id="it_d_${i}" class="adm-ta" style="min-height:56px;margin-top:7px" placeholder="What happens this day (optional)">${esc(d[1]||'')}</textarea>
-      <div class="adm-row2" style="margin-top:7px"><div class="inp"><input id="it_k_${i}" value="${esc(d[2]||'')}" placeholder="Distance — 6 km"></div><div class="inp"><input id="it_h_${i}" value="${esc(d[3]||'')}" placeholder="Hours — 5 hrs"></div></div>
-    </div>`).join(''):'<div class="adm-hint" style="opacity:.7;margin-top:0">No days yet — tap “Add a day”.</div>';
+      <div class="adm-row2" style="margin-top:7px"><div class="inp"><input id="it_k_${i}" value="${esc(d[2]||'')}" placeholder="Distance, 6 km"></div><div class="inp"><input id="it_h_${i}" value="${esc(d[3]||'')}" placeholder="Hours, 5 hrs"></div></div>
+    </div>`).join(''):'<div class="adm-hint" style="opacity:.7;margin-top:0">No days yet, tap “Add a day”.</div>';
   hydrate(box);
 }
 function admItinReadDOM(){
@@ -10116,7 +10121,7 @@ function showAdminForm(t){const f=document.getElementById('adminForm');
     </select></div></div>
     <div class="adm-row2">
       <div class="field"><label>Destination</label><div class="inp"><select id="admDest" style="all:unset;flex:1;color:var(--text)">
-        <option value="" style="color:#000">— none —</option>
+        <option value="" style="color:#000">(none)</option>
         ${DESTS.map(dd=>`<option value="${esc(dd.id)}" ${(t.dest_id===dd.id)?'selected':''} style="color:#000">${esc(dd.n)}</option>`).join('')}
       </select></div></div>
       <div class="field"><label>Departure type</label><div class="inp"><select id="admDepType" style="all:unset;flex:1;color:var(--text)">
@@ -10136,7 +10141,7 @@ function showAdminForm(t){const f=document.getElementById('adminForm');
     ${fld('admTag','Or type your own',t.tag,'e.g. Diwali Special')}
     <div class="adm-hint">Shows as a coloured badge on this trek everywhere in the app. Leave blank for none.</div>
     ${fld('admOffer','Offer details',t.offer,'e.g. Flat ₹2,000 off · book by 30 Sep')}
-    <div class="adm-hint">The actual offer — shown as a highlighted banner on the trip page so travellers see exactly what they get. Pair with the “Offer” tag above.</div>
+    <div class="adm-hint">The actual offer, shown as a highlighted banner on the trip page so travellers see exactly what they get. Pair with the “Offer” tag above.</div>
 
     <div class="adm-sec">Trip details</div>
     <div class="adm-row2">${fld('admDays','Days',t.days,'5')}${fld('admAlt','Max altitude',t.alt,'12,500 ft')}</div>
@@ -10156,7 +10161,7 @@ function showAdminForm(t){const f=document.getElementById('adminForm');
     <div class="adm-hint">Leave the score blank to auto-calculate it from difficulty, altitude &amp; days.</div>
 
     <div class="adm-sec">Trip highlights</div>
-    <div class="adm-hint">Pick what makes this ${word} special — shown as chips on the trip page. Up to 8.</div>
+    <div class="adm-hint">Pick what makes this ${word} special, shown as chips on the trip page. Up to 8.</div>
     <div class="adm-chips" id="admHlChips"></div>
 
     <div class="adm-sec">Ratings</div>
@@ -10174,7 +10179,7 @@ function showAdminForm(t){const f=document.getElementById('adminForm');
     <div class="adm-hint" id="admVidHint">The photo is still used as the video's cover, and as the card image everywhere else. Pick “Photo” to keep the video attached but hidden.</div>
 
     <div class="adm-sec">Day-by-day itinerary</div>
-    <div class="adm-hint">Add each day — this shows on the trip page. Leave empty to use the attached PDF only.</div>
+    <div class="adm-hint">Add each day, this shows on the trip page. Leave empty to use the attached PDF only.</div>
     <div id="admItinDays"></div>
     <button type="button" class="btn ghost sm" style="margin-top:8px" onclick="admItinAdd()"><span class="msr">add</span> Add a day</button>
 
@@ -10190,7 +10195,7 @@ function showAdminForm(t){const f=document.getElementById('adminForm');
 
     <div class="adm-sec">Trek leader</div>
     <div class="field"><label>Assign a guide</label><div class="inp"><select id="admGuide" style="all:unset;flex:1;color:var(--text)">
-      <option value="" style="color:#000">— None —</option>
+      <option value="" style="color:#000">(None)</option>
       ${guides.map(gd=>`<option value="${esc(gd.id)}" ${String(t.guide_id||'')===String(gd.id)?'selected':''} style="color:#000">${esc(gd.name)}${gd.verified?' ✓':''}</option>`).join('')}
     </select></div></div>
     <div class="adm-hint">Shown as “Your trek leader” on the trek page. Manage guides in the <b>Guides</b> tab.</div>
@@ -10250,7 +10255,7 @@ async function delTrek(i){const t=treks[i];if(!(await askConfirm('Delete "'+t.n+
   treks.splice(i,1);deriveTreks();renderHomeChips();renderHome();renderQuick();renderAdmin();
   note('Deleted ✓');}
 /* ---- services: rent gear / permits / adventure activities ---- */
-/* full rental catalog, grouped by category — [name, ₹/day] */
+/* full rental catalog, grouped by category, [name, ₹/day] */
 const GEAR_CATS=[
   {cat:'Footwear',icon:'hiking',items:[['Trekking Shoes',150],['Snow Boots',250],['Mountaineering Boots',400]]},
   {cat:'Backpacks',icon:'backpack',items:[['30L Daypack',100],['50–55L Trek Backpack',150],['65–70L Expedition Backpack',200],['Duffel Bag (90–100L)',100]]},
@@ -10266,28 +10271,28 @@ const GEAR_CATS=[
 ];
 function gearAllItems(){const out=[];GEAR_CATS.forEach(c=>c.items.forEach(it=>out.push({cat:c.cat,icon:c.icon,name:it[0],price:it[1]})));return out;}
 /* [name, desc, time, price, officialUrl, region]. officialUrl = the government portal the
-   "Official site" button opens; '' → WhatsApp-only (no self-serve online portal — issued at a
+   "Official site" button opens; '' → WhatsApp-only (no self-serve online portal, issued at a
    counter or through a registered agency). All URLs below are official government / authorised
-   portals verified for India & Nepal treks — edit here if a portal changes. region groups the
+   portals verified for India & Nepal treks, edit here if a portal changes. region groups the
    list into India / Nepal sections. */
 const permitTypes=[
   /* ---------- India ---------- */
-  ['Forest / Trek Permit — Uttarakhand','Most Uttarakhand treks: Kedarkantha, Har Ki Dun, Brahmatal (Govind & Kedarnath sanctuaries).','At entry / online','Govt fee','https://forest.uk.gov.in/online-services','India'],
-  ['National Park & Sanctuary Entry — Uttarakhand','Valley of Flowers, Nanda Devi, Rajaji, Corbett & Govind entry booking.','Online','Govt fee','https://forest.uk.gov.in/online-services','India'],
+  ['Forest / Trek Permit, Uttarakhand','Most Uttarakhand treks: Kedarkantha, Har Ki Dun, Brahmatal (Govind & Kedarnath sanctuaries).','At entry / online','Govt fee','https://forest.uk.gov.in/online-services','India'],
+  ['National Park & Sanctuary Entry, Uttarakhand','Valley of Flowers, Nanda Devi, Rajaji, Corbett & Govind entry booking.','Online','Govt fee','https://forest.uk.gov.in/online-services','India'],
   ['Ladakh Inner Line Permit / Environment Fee','Nubra, Pangong, Tso Moriri, Hanle, Umling La. Indians: environment fee; foreigners: PAP via agent.','Instant online','₹590 / 7 days','https://www.lahdclehpermit.in','India'],
   ['Arunachal Pradesh Inner Line Permit (eILP)','Mandatory for every non-resident Indian entering Arunachal Pradesh.','24–48 hrs','₹100','https://eilp.arunachal.gov.in','India'],
-  ['Foreigner Protected / Restricted Area Permit (India)','Foreign nationals for Sikkim, Ladakh, Arunachal, Nubra & other border zones — via e-FRRO.','Apply 15–30 days ahead','e-FRRO','https://indianfrro.gov.in/efrro/home','India'],
-  ['Border-Zone Inner Line Permit — Uttarakhand','Adi Kailash, Om Parvat, Nelong / Gartang Gali, Niti–Mana valleys. Issued by the local SDM / DM.','At district office','Assisted','','India'],
+  ['Foreigner Protected / Restricted Area Permit (India)','Foreign nationals for Sikkim, Ladakh, Arunachal, Nubra & other border zones, via e-FRRO.','Apply 15–30 days ahead','e-FRRO','https://indianfrro.gov.in/efrro/home','India'],
+  ['Border-Zone Inner Line Permit, Uttarakhand','Adi Kailash, Om Parvat, Nelong / Gartang Gali, Niti–Mana valleys. Issued by the local SDM / DM.','At district office','Assisted','','India'],
   /* ---------- Nepal ---------- */
-  ['TIMS Card — Nepal','Trekkers’ Information card for most Nepal treks. Now issued only through a registered trekking agency.','Via agency','NPR ~2,000','https://tims.ntb.gov.np','Nepal'],
-  ['Conservation Area Permit (ACAP / MCAP)','Annapurna Circuit, ABC, Mardi Himal & Manaslu — NTNC conservation areas.','Instant online','NPR 3,000','https://epermit.ntnc.org.np','Nepal'],
-  ['National Park Entry — Nepal','Everest (Sagarmatha), Langtang, Makalu-Barun & other national parks.','Online / counter','NPR 3,000','https://dnpwc.gov.np/en','Nepal'],
-  ['Restricted Area Permit — Nepal','Upper Mustang, Manaslu, Dolpo, Nar Phu, Kanchenjunga & Tsum — registered agency + guide only.','2–4 weeks','USD 50–100','','Nepal'],
+  ['TIMS Card, Nepal','Trekkers’ Information card for most Nepal treks. Now issued only through a registered trekking agency.','Via agency','NPR ~2,000','https://tims.ntb.gov.np','Nepal'],
+  ['Conservation Area Permit (ACAP / MCAP)','Annapurna Circuit, ABC, Mardi Himal & Manaslu, NTNC conservation areas.','Instant online','NPR 3,000','https://epermit.ntnc.org.np','Nepal'],
+  ['National Park Entry, Nepal','Everest (Sagarmatha), Langtang, Makalu-Barun & other national parks.','Online / counter','NPR 3,000','https://dnpwc.gov.np/en','Nepal'],
+  ['Restricted Area Permit, Nepal','Upper Mustang, Manaslu, Dolpo, Nar Phu, Kanchenjunga & Tsum, registered agency + guide only.','2–4 weeks','USD 50–100','','Nepal'],
   ['Everest Region Local Permit','Khumbu Pasang Lhamu Rural Municipality entry fee (Everest region), collected at Lukla / Monjo.','At counter','NPR ~3,000','','Nepal'],
   /* ---------- Bhutan ---------- */
   ['Bhutan Visa & SDF (foreign nationals)','e-Visa (US$40) + Sustainable Development Fee of US$100 / night. Booked through a licensed Bhutan operator.','~5 working days','US$40 + SDF','https://immi.gov.bt','Bhutan'],
-  ['Bhutan Entry Permit (Indian nationals)','Indians need no visa — an entry permit + concessional SDF (₹1,200 / night). Apply online or at Phuentsholing.','Online / at border','₹1,200 / night','https://immi.gov.bt','Bhutan'],
-  ['Trek Route Permit & Park Fee — Bhutan','Jomolhari, Druk Path & Snowman treks — licensed guide, route permit & national-park fees, arranged by the operator.','Via operator','Assisted','','Bhutan']
+  ['Bhutan Entry Permit (Indian nationals)','Indians need no visa, an entry permit + concessional SDF (₹1,200 / night). Apply online or at Phuentsholing.','Online / at border','₹1,200 / night','https://immi.gov.bt','Bhutan'],
+  ['Trek Route Permit & Park Fee, Bhutan','Jomolhari, Druk Path & Snowman treks, licensed guide, route permit & national-park fees, arranged by the operator.','Via operator','Assisted','','Bhutan']
 ];
 /* Country landing metadata (icon = Material Symbol, tagline = key regions). Countries are otherwise
    derived from permitTypes[].region, so adding a permit for a new country needs only an entry here. */
@@ -10300,10 +10305,10 @@ let _permitCountry='';   /* '' = show country boxes; else drill into that countr
 const activitiesData=[['raft','River Rafting','Rishikesh · Grade III','₹1,200'],['para','Paragliding','Mussoorie / Tehri','₹2,500'],['bungee','Bungee Jump','Rishikesh · 83 m','₹3,700'],['ski','Skiing','Auli · with gear','₹2,200'],['camp','Camping','Lakeside · per night','₹999'],['kayak','Kayaking','Tehri Lake','₹1,500']];
 
 /* ============================================================
-   ADVENTURE MARKETPLACE — destinations & bookable activities
+   ADVENTURE MARKETPLACE, destinations & bookable activities
    ------------------------------------------------------------
    Live: Rishikesh only. Everything else is soon:true until we
-   have signed operators — an empty destination is worse than none.
+   have signed operators, an empty destination is worse than none.
 
    ⚠ Prices, slots and operator details are PLACEHOLDERS.
    Replace with operator-confirmed numbers before selling.
@@ -10312,33 +10317,33 @@ const activitiesData=[['raft','River Rafting','Rishikesh · Grade III','₹1,200
 const DESTS=[
   {id:'rishikesh',n:'Rishikesh',state:'Uttarakhand',img:U+'1591017403286-fd8493524e1e',
    best:'Sep - Jun (rafting shuts in monsoon)',lvl:'Beginner friendly',budget:'Rs 2,000 - 5,000 / day',
-   blurb:'India’s adventure capital on the Ganga — rafting, bungee, cliff jumping and riverside camps, all within a few km.',
+   blurb:'India’s adventure capital on the Ganga, rafting, bungee, cliff jumping and riverside camps, all within a few km.',
    attractions:['Laxman Jhula','Beatles Ashram','Triveni Ghat','Neer Waterfall'],
-   tips:['Carry a change of clothes for rafting days.','Alcohol and meat are banned in the temple town area.','Book the Shivpuri stretch early on weekends — it sells out.'],
+   tips:['Carry a change of clothes for rafting days.','Alcohol and meat are banned in the temple town area.','Book the Shivpuri stretch early on weekends, it sells out.'],
    near:['Chopta','Auli']},
   {id:'manali',n:'Manali',state:'Himachal',img:U+'1626621341517-bbf3d9990a23',
    best:'Mar - Jun, Oct - Feb (snow)',lvl:'All levels',budget:'Rs 2,500 - 6,000 / day',
    blurb:'Solang and the Atal Tunnel put paragliding, snow sports and high-mountain drives within 30 minutes of town.',
    attractions:['Solang Valley','Atal Tunnel','Hadimba Temple','Old Manali'],
-   tips:['Solang is busiest 11am-3pm — go early.','Carry ID for Rohtang / Atal permits.','Snow gear rents cheaper in town than at Solang.'],
+   tips:['Solang is busiest 11am-3pm, go early.','Carry ID for Rohtang / Atal permits.','Snow gear rents cheaper in town than at Solang.'],
    near:['Kasol','Bir Billing','Spiti Valley']},
   {id:'kasol',n:'Kasol',state:'Himachal',img:U+'1626621341517-bbf3d9990a23',
    best:'Mar - Jun, Sep - Nov',lvl:'Easy - Moderate',budget:'Rs 1,500 - 3,500 / day',
    blurb:'Parvati valley base for Kheerganga, riverside cafes and slow mountain days.',
    attractions:['Kheerganga','Tosh','Malana','Manikaran Sahib'],
-   tips:['Kheerganga is a 12 km round trip — start before 9am.','Cash is king; ATMs are unreliable.','Respect Malana’s local customs and no-touch rules.'],
+   tips:['Kheerganga is a 12 km round trip, start before 9am.','Cash is king; ATMs are unreliable.','Respect Malana’s local customs and no-touch rules.'],
    near:['Manali','Bir Billing']},
   {id:'bir',n:'Bir Billing',state:'Himachal',img:U+'1600011689032-8b628b8a8747',
    best:'Mar - Jun, Sep - Nov',lvl:'Beginner friendly',budget:'Rs 1,500 - 4,000 / day',
-   blurb:'India’s paragliding capital — take off at Billing, land at Bir. No experience needed.',
+   blurb:'India’s paragliding capital, take off at Billing, land at Bir. No experience needed.',
    attractions:['Billing take-off','Bir landing ground','Sherab Ling Monastery','Bir tea gardens'],
-   tips:['Flights are morning-only, when the wind allows.','Carry a windproof layer — it is cold at take-off.','Monsoon (Jul-Aug) is closed for flying.'],
+   tips:['Flights are morning-only, when the wind allows.','Carry a windproof layer, it is cold at take-off.','Monsoon (Jul-Aug) is closed for flying.'],
    near:['Manali','Kasol']},
   {id:'chopta',n:'Chopta',state:'Uttarakhand',img:U+'1714744715493-ad89b7ff503e',
    best:'Mar - Jun, Sep - Nov (snow Dec-Feb)',lvl:'Easy - Moderate',budget:'Rs 1,500 - 3,500 / day',
-   blurb:'The “mini Switzerland” of Uttarakhand — meadows, Tungnath temple and the Chandrashila summit.',
+   blurb:'The “mini Switzerland” of Uttarakhand, meadows, Tungnath temple and the Chandrashila summit.',
    attractions:['Tungnath Temple','Chandrashila Summit','Deoriatal','Kanchula Korak'],
-   tips:['Tungnath is the world’s highest Shiva temple — 3.5 km up.','Very limited food above Chopta; carry snacks.','Nights are cold year-round.'],
+   tips:['Tungnath is the world’s highest Shiva temple, 3.5 km up.','Very limited food above Chopta; carry snacks.','Nights are cold year-round.'],
    near:['Rishikesh','Auli']},
   {id:'auli',n:'Auli',state:'Uttarakhand',img:U+'1551524559-8af4e6624178',
    best:'Jan - Mar (skiing), Apr - Jun',lvl:'Beginner - Intermediate',budget:'Rs 2,500 - 6,000 / day',
@@ -10348,15 +10353,15 @@ const DESTS=[
    near:['Chopta','Rishikesh']},
   {id:'leh',n:'Leh',state:'Ladakh',img:U+'1581793745862-99fde7fa73d2',
    best:'Jun - Sep',lvl:'Moderate (altitude)',budget:'Rs 3,000 - 7,000 / day',
-   blurb:'High-desert Ladakh — Zanskar rafting, Khardung La rides and moonscape valleys above 11,000 ft.',
+   blurb:'High-desert Ladakh, Zanskar rafting, Khardung La rides and moonscape valleys above 11,000 ft.',
    attractions:['Pangong Lake','Nubra Valley','Khardung La','Magnetic Hill'],
-   tips:['Take 48 hours to acclimatise before any activity. This is not optional.','Inner Line Permits are needed for Nubra / Pangong.','Carry cash — connectivity is patchy outside Leh.'],
+   tips:['Take 48 hours to acclimatise before any activity. This is not optional.','Inner Line Permits are needed for Nubra / Pangong.','Carry cash, connectivity is patchy outside Leh.'],
    near:['Spiti Valley','Kashmir']},
   {id:'spiti',n:'Spiti Valley',state:'Himachal',img:U+'1626621341517-bbf3d9990a23',
    best:'May - Oct (road open)',lvl:'Moderate - Difficult',budget:'Rs 2,500 - 6,000 / day',
-   blurb:'A cold desert of monasteries and 4,000 m villages — Chandratal, Key, Hikkim and long empty roads.',
+   blurb:'A cold desert of monasteries and 4,000 m villages, Chandratal, Key, Hikkim and long empty roads.',
    attractions:['Key Monastery','Chandratal Lake','Hikkim','Langza'],
-   tips:['Acclimatise at Kaza before going higher.','Fuel up at Kaza — the next pump is far.','Kunzum and Rohtang close with early snow; check road status.'],
+   tips:['Acclimatise at Kaza before going higher.','Fuel up at Kaza, the next pump is far.','Kunzum and Rohtang close with early snow; check road status.'],
    near:['Manali','Leh']},
   {id:'goa',n:'Goa',state:'Goa',img:U+'1512343879784-a960bf40e7f2',
    best:'Nov - Mar',lvl:'Beginner friendly',budget:'Rs 2,000 - 5,000 / day',
@@ -10368,31 +10373,31 @@ const DESTS=[
    best:'Oct - Apr',lvl:'Moderate',budget:'Rs 2,000 - 4,500 / day',
    blurb:'Living root bridges, river caves and the clearest water in India at Umngot.',
    attractions:['Double Decker Root Bridge','Dawki / Umngot River','Nohkalikai Falls','Mawsmai Cave'],
-   tips:['The Double Decker is 3,000+ steps down and back — it is a real trek.','Wettest place on earth: waterproof everything.','Caves flood in monsoon and close.'],
+   tips:['The Double Decker is 3,000+ steps down and back, it is a real trek.','Wettest place on earth: waterproof everything.','Caves flood in monsoon and close.'],
    near:['Andaman']},
   {id:'andaman',n:'Andaman',state:'Andaman & Nicobar',img:U+'1512343879784-a960bf40e7f2',
    best:'Oct - May',lvl:'Beginner friendly',budget:'Rs 3,000 - 7,000 / day',
-   blurb:'India’s best diving — coral, sea walks and Havelock’s white sand.',
+   blurb:'India’s best diving, coral, sea walks and Havelock’s white sand.',
    attractions:['Radhanagar Beach','Havelock Island','Cellular Jail','Neil Island'],
-   tips:['Do not fly within 18-24 hours of diving.','Ferries between islands sell out — book ahead.','Mobile data is weak; download maps offline.'],
+   tips:['Do not fly within 18-24 hours of diving.','Ferries between islands sell out, book ahead.','Mobile data is weak; download maps offline.'],
    near:['Goa']},
   {id:'kashmir',n:'Kashmir',state:'Jammu & Kashmir',img:U+'1756847845343-7a1053567775',
    best:'Apr - Oct, Dec - Feb (ski)',lvl:'All levels',budget:'Rs 2,500 - 6,000 / day',
    blurb:'Gulmarg’s gondola and powder in winter; alpine lakes and meadows through summer.',
    attractions:['Gulmarg Gondola','Dal Lake','Pahalgam','Sonmarg'],
-   tips:['Gulmarg powder season is Jan-Feb.','Check local advisories before you travel.','Shikara and pony rates are negotiable — agree first.'],
+   tips:['Gulmarg powder season is Jan-Feb.','Check local advisories before you travel.','Shikara and pony rates are negotiable, agree first.'],
    near:['Leh']}
 ];
 
-/* Baseline safety per activity type. Generic, well-established rules only — the
+/* Baseline safety per activity type. Generic, well-established rules only, the
    operator’s own briefing and medical limits always take precedence over these. */
 const SAFETY_BASE={
-  water:['Life jacket and helmet stay on for the whole activity.','Tell your guide if you cannot swim — you can still take part.','Declare pregnancy, heart, spine or blood-pressure conditions before booking.','The operator’s call on water conditions is final.'],
-  air:['Fly only with a certified pilot on inspected equipment.','Weight and age limits are confirmed by the operator at check-in.','Declare heart, blood-pressure, epilepsy, recent surgery or pregnancy before booking.','Flights are cancelled in poor wind or visibility — no exceptions.'],
+  water:['Life jacket and helmet stay on for the whole activity.','Tell your guide if you cannot swim, you can still take part.','Declare pregnancy, heart, spine or blood-pressure conditions before booking.','The operator’s call on water conditions is final.'],
+  air:['Fly only with a certified pilot on inspected equipment.','Weight and age limits are confirmed by the operator at check-in.','Declare heart, blood-pressure, epilepsy, recent surgery or pregnancy before booking.','Flights are cancelled in poor wind or visibility, no exceptions.'],
   snow:['Helmet is mandatory. Take an instructor for your first session.','Dress for wind chill; snow glare needs eye protection.','Declare any joint, heart or blood-pressure conditions.','Slopes close in poor visibility or avalanche risk.'],
   ride:['Helmet mandatory. Stay with your guide and on marked trails.','Not suitable with back, neck or heart conditions.','The operator’s call on route and weather is final.'],
-  trail:['Go with a registered guide — do not trek alone.','Acclimatise properly and descend if you feel altitude sickness.','Carry water, warm layers and a headlamp.','Mountain weather turns fast; the guide’s call is final.'],
-  sea:['A certified instructor supervises you at all times.','Do not fly within 18-24 hours of diving.','Declare asthma, heart, sinus or ear conditions before booking.','Never hold your breath on ascent — follow your briefing exactly.']
+  trail:['Go with a registered guide, do not trek alone.','Acclimatise properly and descend if you feel altitude sickness.','Carry water, warm layers and a headlamp.','Mountain weather turns fast; the guide’s call is final.'],
+  sea:['A certified instructor supervises you at all times.','Do not fly within 18-24 hours of diving.','Declare asthma, heart, sinus or ear conditions before booking.','Never hold your breath on ascent, follow your briefing exactly.']
 };
 const CARRY_BASE={
   water:['Quick-dry clothes','Change of clothes','Towel','Strapped floaters'],
@@ -10414,41 +10419,41 @@ const EXC_BASE=['Transport to the start point','Photos and videos','Meals','Pers
 
 /* [id, dest, name, cat, price, dur, lvl, minAge, maxGroup, startPoint, safetyKey, grade] */
 const ACT_SEED=[
-  ['raft16','rishikesh','River Rafting — Shivpuri to NIM Beach','Water',1200,'3-4 hrs','Moderate',14,8,'Shivpuri (16 km stretch)','water','Grade III+'],
-  ['bungee','rishikesh','Bungee Jumping — 83 m','Air',3700,'2-3 hrs','Extreme',12,1,'Mohanchatti','air','83 m platform'],
+  ['raft16','rishikesh','River Rafting, Shivpuri to NIM Beach','Water',1200,'3-4 hrs','Moderate',14,8,'Shivpuri (16 km stretch)','water','Grade III+'],
+  ['bungee','rishikesh','Bungee Jumping, 83 m','Air',3700,'2-3 hrs','Extreme',12,1,'Mohanchatti','air','83 m platform'],
   ['zipline-rsh','rishikesh','Flying Fox / Zipline','Air',1800,'1-2 hrs','Easy',12,3,'Mohanchatti','air','1 km span'],
   ['camp-rsh','rishikesh','Riverside Camping','Camp',999,'1 night','Easy',5,20,'Byasi','trail','Tented camp'],
   ['kayak-rsh','rishikesh','Kayaking on the Ganga','Water',1500,'2 hrs','Moderate',14,6,'Brahmapuri','water','Grade II-III'],
-  ['para-manali','manali','Paragliding — Solang Valley','Air',2500,'15-20 min','Easy',12,1,'Solang Valley','air','Tandem'],
-  ['zip-manali','manali','Zipline — Solang','Air',900,'30 min','Easy',10,4,'Solang Valley','air','Cable span'],
-  ['atv-manali','manali','ATV Ride — Solang','Ride',1200,'20-30 min','Easy',14,2,'Solang Valley','ride','Off-road track'],
-  ['ski-manali','manali','Skiing — Solang (winter)','Snow',2000,'2-3 hrs','Beginner',10,6,'Solang Valley','snow','Beginner slope'],
+  ['para-manali','manali','Paragliding, Solang Valley','Air',2500,'15-20 min','Easy',12,1,'Solang Valley','air','Tandem'],
+  ['zip-manali','manali','Zipline, Solang','Air',900,'30 min','Easy',10,4,'Solang Valley','air','Cable span'],
+  ['atv-manali','manali','ATV Ride, Solang','Ride',1200,'20-30 min','Easy',14,2,'Solang Valley','ride','Off-road track'],
+  ['ski-manali','manali','Skiing, Solang (winter)','Snow',2000,'2-3 hrs','Beginner',10,6,'Solang Valley','snow','Beginner slope'],
   ['kheerganga','kasol','Kheerganga Trek','Trek',2500,'2 days','Moderate',12,15,'Barshaini','trail','12 km round trip'],
   ['camp-kasol','kasol','Parvati Riverside Camping','Camp',1200,'1 night','Easy',5,20,'Kasol','trail','Tented camp'],
-  ['para-bir','bir','Paragliding — Billing to Bir','Air',3000,'20-30 min','Easy',12,1,'Billing take-off','air','Tandem, 2,400 m'],
+  ['para-bir','bir','Paragliding, Billing to Bir','Air',3000,'20-30 min','Easy',12,1,'Billing take-off','air','Tandem, 2,400 m'],
   ['tungnath','chopta','Tungnath and Chandrashila Trek','Trek',2200,'1 day','Moderate',10,15,'Chopta','trail','9 km round trip'],
-  ['camp-chopta','chopta','Meadow Camping — Chopta','Camp',1500,'1 night','Easy',5,20,'Chopta','trail','Tented camp'],
-  ['ski-auli','auli','Skiing — Auli','Snow',2200,'Half day','Beginner',10,6,'Auli slopes','snow','Beginner-intermediate'],
-  ['snowboard-auli','auli','Snowboarding — Auli','Snow',2600,'Half day','Intermediate',14,4,'Auli slopes','snow','Intermediate'],
+  ['camp-chopta','chopta','Meadow Camping, Chopta','Camp',1500,'1 night','Easy',5,20,'Chopta','trail','Tented camp'],
+  ['ski-auli','auli','Skiing, Auli','Snow',2200,'Half day','Beginner',10,6,'Auli slopes','snow','Beginner-intermediate'],
+  ['snowboard-auli','auli','Snowboarding, Auli','Snow',2600,'Half day','Intermediate',14,4,'Auli slopes','snow','Intermediate'],
   ['ropeway-auli','auli','Auli Ropeway','Ride',1000,'45 min','Easy',3,6,'Joshimath','ride','4 km cable car'],
   ['raft-zanskar','leh','Zanskar River Rafting','Water',2500,'3-4 hrs','Difficult',16,8,'Chilling','water','Grade III-IV'],
   ['safari-leh','leh','Nubra and Khardung La Jeep Safari','Ride',4500,'1 day','Moderate',8,6,'Leh','ride','5,359 m pass'],
-  ['bike-leh','leh','Mountain Biking — Khardung La descent','Ride',3000,'Half day','Difficult',16,8,'Khardung La','ride','Downhill'],
+  ['bike-leh','leh','Mountain Biking, Khardung La descent','Ride',3000,'Half day','Difficult',16,8,'Khardung La','ride','Downhill'],
   ['safari-spiti','spiti','Spiti Jeep Safari','Ride',4000,'1 day','Moderate',8,6,'Kaza','ride','High passes'],
   ['camp-chandratal','spiti','Chandratal Camping','Camp',2500,'1 night','Moderate',10,15,'Chandratal','trail','4,250 m'],
-  ['bike-spiti','spiti','Mountain Biking — Spiti','Ride',2800,'Half day','Difficult',16,8,'Kaza','ride','High altitude'],
-  ['scuba-goa','goa','Scuba Diving — Grande Island','Sea',3500,'Half day','Beginner',10,4,'Mormugao jetty','sea','Try-dive'],
-  ['snorkel-goa','goa','Snorkelling — Grande Island','Sea',1500,'2 hrs','Easy',8,10,'Mormugao jetty','sea','Shallow reef'],
-  ['para-goa','goa','Parasailing — North Goa','Air',1800,'15 min','Easy',10,2,'Calangute','air','Boat tow'],
+  ['bike-spiti','spiti','Mountain Biking, Spiti','Ride',2800,'Half day','Difficult',16,8,'Kaza','ride','High altitude'],
+  ['scuba-goa','goa','Scuba Diving, Grande Island','Sea',3500,'Half day','Beginner',10,4,'Mormugao jetty','sea','Try-dive'],
+  ['snorkel-goa','goa','Snorkelling, Grande Island','Sea',1500,'2 hrs','Easy',8,10,'Mormugao jetty','sea','Shallow reef'],
+  ['para-goa','goa','Parasailing, North Goa','Air',1800,'15 min','Easy',10,2,'Calangute','air','Boat tow'],
   ['root-bridge','meghalaya','Double Decker Root Bridge Trek','Trek',2000,'1 day','Difficult',12,12,'Tyrna','trail','3,000+ steps'],
-  ['kayak-dawki','meghalaya','Kayaking — Umngot River, Dawki','Water',1200,'2 hrs','Easy',8,4,'Dawki','water','Flat water'],
-  ['cave-megh','meghalaya','Caving — Mawsmai','Trek',800,'1-2 hrs','Easy',6,10,'Cherrapunji','trail','Lit cave'],
-  ['scuba-andaman','andaman','Scuba Diving — Havelock','Sea',4000,'Half day','Beginner',10,4,'Havelock Island','sea','Try-dive'],
-  ['snorkel-andaman','andaman','Snorkelling — Elephant Beach','Sea',1500,'2 hrs','Easy',8,10,'Havelock Island','sea','Shallow reef'],
-  ['seawalk-andaman','andaman','Sea Walking — North Bay','Sea',3500,'2 hrs','Easy',10,4,'North Bay Island','sea','Helmet walk, 5 m'],
-  ['ski-gulmarg','kashmir','Skiing — Gulmarg','Snow',3000,'Half day','Beginner',10,6,'Gulmarg','snow','Powder'],
+  ['kayak-dawki','meghalaya','Kayaking, Umngot River, Dawki','Water',1200,'2 hrs','Easy',8,4,'Dawki','water','Flat water'],
+  ['cave-megh','meghalaya','Caving, Mawsmai','Trek',800,'1-2 hrs','Easy',6,10,'Cherrapunji','trail','Lit cave'],
+  ['scuba-andaman','andaman','Scuba Diving, Havelock','Sea',4000,'Half day','Beginner',10,4,'Havelock Island','sea','Try-dive'],
+  ['snorkel-andaman','andaman','Snorkelling, Elephant Beach','Sea',1500,'2 hrs','Easy',8,10,'Havelock Island','sea','Shallow reef'],
+  ['seawalk-andaman','andaman','Sea Walking, North Bay','Sea',3500,'2 hrs','Easy',10,4,'North Bay Island','sea','Helmet walk, 5 m'],
+  ['ski-gulmarg','kashmir','Skiing, Gulmarg','Snow',3000,'Half day','Beginner',10,6,'Gulmarg','snow','Powder'],
   ['gondola-gulmarg','kashmir','Gulmarg Gondola','Ride',1200,'1-2 hrs','Easy',3,6,'Gulmarg','ride','Phase 1 and 2'],
-  ['shikara','kashmir','Shikara Ride — Dal Lake','Ride',800,'1 hr','Easy',3,6,'Dal Lake','water','Flat water']
+  ['shikara','kashmir','Shikara Ride, Dal Lake','Ride',800,'1 hr','Easy',3,6,'Dal Lake','water','Flat water']
 ];
 const CAT_IMG={Water:U+'1530866495561-507c9faab2ed',Air:U+'1601024445121-e5b82f020549',Snow:U+'1551524559-8af4e6624178',
   Ride:U+'1581793745862-99fde7fa73d2',Camp:U+'1504280390367-361c6d9f38f4',Trek:U+'1513614835783-51537729c8ba',Sea:U+'1512343879784-a960bf40e7f2'};
@@ -10466,7 +10471,7 @@ const ACTS=ACT_SEED.map(a=>{
     cancel:'Free cancellation up to 24 hrs before the slot. No refund after that.',
     faqs:[['Is this suitable for beginners?','Yes if the difficulty above says Easy or Beginner. Your guide briefs you before you start.'],
           ['What if the weather turns?','If the operator calls it off for safety, you get a full refund or a free reschedule.'],
-          ['Do I need my own gear?','No — the safety gear listed under Inclusions is provided.']]};
+          ['Do I need my own gear?','No, the safety gear listed under Inclusions is provided.']]};
 });
 const destById=id=>DESTS.find(d=>d.id===id)||null;
 const actsFor=id=>ACTS.filter(a=>a.dest===id);
@@ -10477,7 +10482,7 @@ let curAct=null;
 /* what the user picked on this screen */
 let actSel={date:'',slot:'',adults:1,children:0,exp:'Beginner'};
 const EXP_LEVELS=['Beginner','Intermediate','Expert'];
-/* local calendar date (toISOString() is UTC — before 5:30am IST it returned yesterday) */
+/* local calendar date (toISOString() is UTC, before 5:30am IST it returned yesterday) */
 function todayISO(d){const t=new Date();t.setDate(t.getDate()+(d||0));return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');}
 /* a slot can be booked unless it is in the past, or starts within the next hour today */
 function slotOpen(date,slot){
@@ -10505,7 +10510,7 @@ function renderAct(){
   const hero=document.getElementById('actHero');if(hero)hero.style.backgroundImage=`url('${a.img+Q}')`;
   document.getElementById('actName').textContent=a.n;
   document.getElementById('actWhere').textContent=(d?d.n+' · ':'')+a.start;
-  /* no invented ratings — say "new" until real reviews exist */
+  /* no invented ratings, say "new" until real reviews exist */
   document.getElementById('actMeta').innerHTML=a.r
     ?`${rateHTML(a,true)} &nbsp;·&nbsp; <span class="lvl">${esc(a.lvl)}</span>`
     :`<span class="g" style="color:var(--muted)">No reviews yet</span> &nbsp;·&nbsp; <span class="lvl">${esc(a.lvl)}</span>`;
@@ -10525,7 +10530,7 @@ function renderAct(){
   document.getElementById('actSlots').innerHTML=(a.slots||[]).map(s=>slotOpen(actSel.date,s)
     ?`<span class="tap ${actSel.slot===s?'sel':''}" onclick="pickSlot('${s}')">${s}</span>`
     :`<span class="tap off" aria-disabled="true" title="This time has passed">${s}</span>`).join('')
-    +(anyOpen?'':'<small class="act-noslot">No more slots today — pick another date.</small>');
+    +(anyOpen?'':'<small class="act-noslot">No more slots today, pick another date.</small>');
 
   /* participants */
   document.getElementById('actAdultAge').textContent='18+';
@@ -10552,7 +10557,7 @@ function renderAct(){
   document.getElementById('actExc').innerHTML=`<div class="inclist no">${(a.exc||[]).map(x=>`<div><span class="msr">cancel</span>${esc(x)}</div>`).join('')}</div>`;
   document.getElementById('actCarry').innerHTML=(a.carry||[]).map(x=>`<span>${esc(x)}</span>`).join('');
   document.getElementById('actCancel').textContent=a.cancel||'';
-  document.getElementById('actRev').innerHTML=`<div class="empty" style="padding:18px 0"><p style="font-size:12.5px;color:var(--muted)">No reviews yet — be the first once you've done it.</p></div>`;
+  document.getElementById('actRev').innerHTML=`<div class="empty" style="padding:18px 0"><p style="font-size:12.5px;color:var(--muted)">No reviews yet, be the first once you've done it.</p></div>`;
   document.getElementById('actFaqs').innerHTML=(a.faqs||[]).map(f=>
     `<details class="faq"><summary>${esc(f[0])}</summary><p>${esc(f[1])}</p></details>`).join('');
 
@@ -10596,10 +10601,10 @@ function recalcAct(){
     warn.textContent=msgs.join(' ');warn.style.display='';
   }
   const btn=document.getElementById('actAdd');
-  /* reset BOTH disabled + label — otherwise a prior "Starting payment…" sticks across activities */
+  /* reset BOTH disabled + label, otherwise a prior "Starting payment…" sticks across activities */
   if(btn){btn.disabled=false;btn.innerHTML='<span class="msr" style="font-size:18px;vertical-align:-3px;margin-right:5px">bolt</span>Book now';}
 }
-/* Direct online booking for an adventure activity via Razorpay — no cart, no WhatsApp.
+/* Direct online booking for an adventure activity via Razorpay, no cart, no WhatsApp.
    Confirms date/slot/party, then takes payment (priced server-side by activity ID). */
 async function bookActNow(){
   const a=actById(curAct);if(!a)return;
@@ -10610,7 +10615,7 @@ async function bookActNow(){
   const pax=actPax();
   if(pax<1){note('Add at least one participant.','Who\'s going?');return;}
   if(!isLoggedIn()){note('Please sign in to book this activity.','Sign in required').then(()=>{_loginReturn='act';go('login');});return;}
-  if(!window.Razorpay&&!(await loadRazorpay())){note('Payment gateway is still loading — please wait a few seconds and tap Book again.','Please wait');return;}
+  if(!window.Razorpay&&!(await loadRazorpay())){note('Payment gateway is still loading, please wait a few seconds and tap Book again.','Please wait');return;}
   if(!sbOn){note('Payment service not configured. Please contact Tripomonk.','Payment error');return;}
   const leadName=getSavedName()||(getUserEmail()?getUserEmail().split('@')[0]:'Guest');
   const when=actSel.date+' · '+actSel.slot;
@@ -10620,16 +10625,16 @@ async function bookActNow(){
   const restore=()=>{if(btn)btn.disabled=false;renderAct();};
   let order;
   try{order=await rzpCall('create',{booking:bk});}
-  catch(e){restore();note(navigator.onLine?'Could not reach the payment service. Please try again in a moment.':'You’re offline. Connect to the internet to book — nothing has been charged.','Payment error');return;}
-  if(!order||!order.order_id){restore();note('Could not start payment — '+((order&&order.error)?order.error:'no order returned'),'Payment error');return;}
+  catch(e){restore();note(navigator.onLine?'Could not reach the payment service. Please try again in a moment.':'You’re offline. Connect to the internet to book, nothing has been charged.','Payment error');return;}
+  if(!order||!order.order_id){restore();note('Could not start payment, '+((order&&order.error)?order.error:'no order returned'),'Payment error');return;}
   const rzp=new window.Razorpay({
     key:order.key_id, order_id:order.order_id, amount:order.amount, currency:order.currency||'INR',
-    name:'Tripomonk', description:a.n+' — Adventure Activity', image:'icons/icon-192.png',
+    name:'Tripomonk', description:a.n+', Adventure Activity', image:'icons/icon-192.png',
     prefill:{name:leadName, email:getUserEmail()||'', contact:getSavedMobile()||''}, notes:{activity:a.n,date:when}, theme:{color:'#2f6bff'},
     handler:async function(response){
       let res;
       try{res=await rzpCall('verify',{razorpay_order_id:response.razorpay_order_id,razorpay_payment_id:response.razorpay_payment_id,razorpay_signature:response.razorpay_signature,booking:bk});}catch(e){res=null;}
-      if(!res||!res.ok){note('Payment received but we could not verify it instantly. Our team will confirm shortly — payment ID: '+(response.razorpay_payment_id||'—'),'Verification pending');return;}
+      if(!res||!res.ok){note('Payment received but we could not verify it instantly. Our team will confirm shortly, payment ID: '+(response.razorpay_payment_id||'-'),'Verification pending');return;}
       saveUserName(leadName);
       const sbk=(res&&res.booking)||{};
       const b={id:response.razorpay_payment_id,name:leadName,trek:sbk.trek||a.n+' (Activity)',img:a.img||'',date:sbk.date||when,startISO:(actSel.date||''),pax:sbk.pax||pax,total:sbk.total||actSubtotal(),paid:sbk.paid||actSubtotal(),ts:Date.now(),status:'Confirmed',checkedIn:false,paymentId:response.razorpay_payment_id};
@@ -10637,7 +10642,7 @@ async function bookActNow(){
       if(window.fbTrack)window.fbTrack('Purchase',{value:Number(b.total)||Number(b.paid)||0,currency:'INR',content_name:b.trek||'',content_type:'product'});
       note('Payment successful! '+a.n+' is booked for '+when+'.','Booked ✓').then(()=>go('bookings'));
     },
-    modal:{ondismiss:function(){restore();note('Payment cancelled — your activity is not yet booked.','Cancelled');}}
+    modal:{ondismiss:function(){restore();note('Payment cancelled, your activity is not yet booked.','Cancelled');}}
   });
   rzp.open();restore();
 }
@@ -10647,7 +10652,7 @@ async function bookActNow(){
    ------------------------------------------------------------
    ⚠ Everything here is DISPLAY ONLY. The razorpay edge function
    already prices server-side (pricedBooking) and must keep doing
-   so — a total sent from the browser can be edited by the user.
+   so, a total sent from the browser can be edited by the user.
    Step 4 mirrors this function in the edge function; this copy
    only tells the customer what they're about to pay.
 
@@ -10713,7 +10718,7 @@ function loadCart(){
   try{const r=JSON.parse(localStorage.getItem(cartKey())||'{}');
     cartItems=Array.isArray(r.items)?r.items:[];cartCoupon=r.coupon||'';}
   catch(e){cartItems=[];cartCoupon='';}
-  /* drop anything whose activity/trek no longer exists — must handle BOTH kinds,
+  /* drop anything whose activity/trek no longer exists, must handle BOTH kinds,
      or every trek in the cart gets silently deleted on reload */
   cartItems=cartItems.filter(i=>i.kind==='trek'?treks.some(t=>t.n===i.trekName):actById(i.actId));
   updateCartBadge();
@@ -10730,11 +10735,11 @@ function updateCartBadge(){
   if(fab)fab.style.display=n?'':'none';
 }
 
-/* nothing gets added half-filled — the operator needs a real date, slot and headcount */
+/* nothing gets added half-filled, the operator needs a real date, slot and headcount */
 function validateAct(){
-  const a=actById(curAct);if(!a)return 'Something went wrong — please reopen this activity.';
+  const a=actById(curAct);if(!a)return 'Something went wrong, please reopen this activity.';
   if(!actSel.date)return 'Please choose a date.';
-  if(actSel.date<todayISO(0))return 'That date has passed — please pick today or later.';
+  if(actSel.date<todayISO(0))return 'That date has passed, please pick today or later.';
   if(!actSel.slot)return 'Please choose a time slot.';
   if(actPax()<1)return 'Add at least one participant.';
   if(actPax()>a.maxGroup)return 'This activity allows a maximum of '+a.maxGroup+' people per booking.';
@@ -10781,7 +10786,7 @@ function removeCartItem(i){
 function stepCartPax(i,kind,delta){
   const it=cartItems[i];if(!it)return;
   if(kind==='a')it.adults=Math.max(0,it.adults+delta);else it.children=Math.max(0,it.children+delta);
-  /* treks have no per-slot group cap — the batch seat count governs at checkout */
+  /* treks have no per-slot group cap, the batch seat count governs at checkout */
   const a=it.kind==='trek'?null:actById(it.actId);
   if(a&&it.adults+it.children>a.maxGroup){
     if(kind==='a')it.adults-=delta;else it.children-=delta;
@@ -10841,7 +10846,7 @@ function renderCart(){
       <button class="cx" onclick="removeCartItem(${i})" title="Remove">${ic('trash',18)}</button>
     </div>`;}).join('');
 
-  /* every line shown — no surprise charges at the end */
+  /* every line shown, no surprise charges at the end */
   const rows=[];
   const nTrek=b.lines.filter(l=>l.kind==='trek').length, nAct=b.lines.length-nTrek;
   const what=nTrek&&nAct?'Treks & activities':nTrek?'Treks':'Activities';
@@ -10861,7 +10866,7 @@ function renderCart(){
         <input id="cartCoupon" placeholder="Coupon code" autocapitalize="characters" value="${esc(cartCoupon)}"/></div>
       <button onclick="applyCoupon()">Apply</button>
     </div>`:''}
-    ${hasCoupons&&cartCoupon?`<p class="coupon-msg ${b.couponInvalid?'bad':'ok'}">${b.couponInvalid?'“'+esc(cartCoupon)+'” is not a valid code.':esc(b.coupon)+' applied — '+esc(b.couponLabel)}</p>`:''}
+    ${hasCoupons&&cartCoupon?`<p class="coupon-msg ${b.couponInvalid?'bad':'ok'}">${b.couponInvalid?'“'+esc(cartCoupon)+'” is not a valid code.':esc(b.coupon)+' applied, '+esc(b.couponLabel)}</p>`:''}
     ${nextTier?`<p class="coupon-msg" style="color:var(--muted2)">Add ${nextTier.min-b.totalPax} more ${nextTier.min-b.totalPax===1?'person':'people'} to unlock ${nextTier.pct}% off.</p>`:''}
     <div class="bill">
       ${rows.join('')}
@@ -10889,7 +10894,7 @@ function cartCheckout(){
   }
   /* several trips/activities in one go → our team books them together on WhatsApp */
   const pr=priceCart(cartItems,{});
-  const lines=pr.lines.map(l=>'• '+l.name+(l.date?' — '+(l.kind==='trek'?l.date:prettyDate(l.date))+(l.slot?' '+l.slot:''):'')+' — '+l.pax+' '+(l.pax===1?'person':'people')+' — '+INR(l.total)).join('\n');
+  const lines=pr.lines.map(l=>'• '+l.name+(l.date?', '+(l.kind==='trek'?l.date:prettyDate(l.date))+(l.slot?' '+l.slot:''):'')+', '+l.pax+' '+(l.pax===1?'person':'people')+', '+INR(l.total)).join('\n');
   wa('Hi Tripomonk! I’d like to book these together:\n\n'+lines+'\n\nEstimated total: '+INR(pr.grand)+'\nName: '+(getSavedName()||'')+'\n\nPlease confirm availability and the final price.');
 }
 
@@ -10931,10 +10936,10 @@ function renderDest(){
   document.getElementById('destName').textContent=d.n;
   document.getElementById('destState').textContent=d.state;
   document.getElementById('destBlurb').textContent=d.blurb||'';
-  const stats=[['calendar',d.best||'—','Best time'],['altitude',d.lvl||'—','Level'],['card',d.budget||'—','Avg budget']];
+  const stats=[['calendar',d.best||'-','Best time'],['altitude',d.lvl||'-','Level'],['card',d.budget||'-','Avg budget']];
   document.getElementById('destStats').innerHTML=stats.map(s=>
     `<div class="stat"><div class="ic" style="display:grid;place-items:center">${ic(s[0],20)}</div><b style="font-size:11px">${esc(s[1])}</b><small>${s[2]}</small></div>`).join('');
-  /* road trip packages — highlighted above activities */
+  /* road trip packages, highlighted above activities */
   const trips=toursForDest(d.id);
   const rb=document.getElementById('destTripsBlk'),rt=document.getElementById('destTrips');
   if(rb)rb.style.display=trips.length?'':'none';
@@ -10960,7 +10965,7 @@ function renderDest(){
 }
 let gearSel={};
 /* ============================================================
-   AI RECOMMENDED GEAR — a context-aware engine + a reusable card
+   AI RECOMMENDED GEAR, a context-aware engine + a reusable card
    that drops into any surface (trek detail, packing list, checkout…).
    Recommendations adapt to altitude, season, difficulty & duration,
    and skip gear the user already owns.
@@ -10982,14 +10987,14 @@ function gSeason(t){return String(t&&t.best||'').toLowerCase();}
 function gSnow(t){return gAlt(t)>=13500||(/dec|jan|feb|mar/.test(gSeason(t))&&gAlt(t)>=9000);}
 function gCold(t){return gAlt(t)>=11000||/dec|jan|feb|nov/.test(gSeason(t))||gSnow(t);}
 function gMonsoon(t){return /jul|aug|sep/.test(gSeason(t));}
-/* All gear that fits this trek. Nothing is pre-selected — the user taps the ones
+/* All gear that fits this trek. Nothing is pre-selected, the user taps the ones
    they actually want to hire. */
 function gearApplicable(t){if(!t)return[];return GEAR_CATALOG.filter(g=>{try{return g.when(t);}catch(e){return false;}});}
 /* the set of gear the user has picked to hire. Global, starts empty. */
 function getSelGear(){try{return JSON.parse(localStorage.getItem('tmk_gearsel')||'[]');}catch(e){return[];}}
 function toggleSelGear(id){const o=getSelGear();const i=o.indexOf(id);if(i>=0)o.splice(i,1);else o.push(id);try{localStorage.setItem('tmk_gearsel',JSON.stringify(o));}catch(e){}}
 function gearSelected(t){const sel=getSelGear();return gearApplicable(t).filter(g=>sel.indexOf(g.id)>=0);}
-/* reusable card — tap gear to add it to your rental, then rent the selected items */
+/* reusable card, tap gear to add it to your rental, then rent the selected items */
 function gearRecoCard(t){
   const all=gearApplicable(t);
   if(!all.length)return '';
@@ -11003,7 +11008,7 @@ function gearRecoCard(t){
       +'<span class="msr gr-ic">'+g.icon+'</span>'
       +'<div class="gr-tx"><b>'+esc(g.name)+'</b><small>₹'+g.price+'/day · '+esc(g.why)+'</small></div></div>';
   }).join('');
-  /* No WhatsApp "Rent" CTA — the selection is paid at checkout with the trek. This is
+  /* No WhatsApp "Rent" CTA, the selection is paid at checkout with the trek. This is
      just a running summary; the full daily total flows into the booking total. */
   const footer=sel.length
     ? '<div class="gr-kit gr-kit-sel"><span class="gr-kit-ic msr">shopping_bag</span>'
@@ -11165,7 +11170,7 @@ function activityBookForm(name,priceStr){
   const m=g('actBookModal');
   if(!m){bookActivity(name,priceStr);return;}   /* graceful fallback if the modal isn't present */
   g('abAct').textContent=name;
-  g('abPrice').textContent=(priceStr?priceStr+' / person':'')+' · pay to reserve your spot — our team confirms the date & any balance';
+  g('abPrice').textContent=(priceStr?priceStr+' / person':'')+' · pay to reserve your spot, our team confirms the date & any balance';
   g('abName').value=getSavedName()||'';
   g('abPhone').value=getSavedMobile()||'';
   g('abPax').value='1';g('abDate').value='';g('abNotes').value='';
@@ -11188,9 +11193,9 @@ function activityBookForm(name,priceStr){
 async function bookActivity(name,priceStr,details){
   details=details||{};
   const amount=parseInt(String(priceStr).replace(/[^\d]/g,''))||0;
-  if(amount<1){note('This activity is not bookable online yet — please contact us.','Unavailable');return;}
+  if(amount<1){note('This activity is not bookable online yet, please contact us.','Unavailable');return;}
   if(!isLoggedIn()){note('Please sign in to book this activity.','Sign in required').then(()=>{_loginReturn='activities';go('login');});return;}
-  if(!window.Razorpay&&!(await loadRazorpay())){note('Payment gateway is still loading — please wait a few seconds and tap Book again.','Please wait');return;}
+  if(!window.Razorpay&&!(await loadRazorpay())){note('Payment gateway is still loading, please wait a few seconds and tap Book again.','Please wait');return;}
   if(!sbOn){note('Payment service not configured. Please contact Tripomonk.','Payment error');return;}
   const leadName=(details.name||getSavedName()||(getUserEmail()?getUserEmail().split('@')[0]:'Guest'));
   const phone=details.phone||getSavedMobile()||'';
@@ -11200,15 +11205,15 @@ async function bookActivity(name,priceStr,details){
   let order;
   try{order=await rzpCall('create',{booking});}
   catch(e){note('Could not reach payment service: '+e,'Payment error');return;}
-  if(!order||!order.order_id){note('Could not start payment — '+((order&&order.error)?order.error:'no order returned')+' (amount ₹'+amount+')','Payment error');return;}
+  if(!order||!order.order_id){note('Could not start payment, '+((order&&order.error)?order.error:'no order returned')+' (amount ₹'+amount+')','Payment error');return;}
   const rzp=new window.Razorpay({
     key:order.key_id, order_id:order.order_id, amount:order.amount, currency:order.currency||'INR',
-    name:'Tripomonk', description:name+' — Adventure Activity', image:'icons/icon-192.png',
+    name:'Tripomonk', description:name+', Adventure Activity', image:'icons/icon-192.png',
     prefill:{name:leadName, email:getUserEmail()||'', contact:phone}, notes:{activity:name,people:String(pax),date:datePref||'flexible',info:extra}, theme:{color:'#2f6bff'},
     handler:async function(response){
       let res;
       try{res=await rzpCall('verify',{razorpay_order_id:response.razorpay_order_id,razorpay_payment_id:response.razorpay_payment_id,razorpay_signature:response.razorpay_signature,booking});}catch(e){res=null;}
-      if(!res||!res.ok){note('Payment received but we could not verify it instantly. Our team will confirm shortly — payment ID: '+(response.razorpay_payment_id||'—'),'Verification pending');return;}
+      if(!res||!res.ok){note('Payment received but we could not verify it instantly. Our team will confirm shortly, payment ID: '+(response.razorpay_payment_id||'-'),'Verification pending');return;}
       saveUserName(leadName);
       const sbk=(res&&res.booking)||{};
       const b={id:response.razorpay_payment_id,name:leadName,trek:sbk.trek||name+' (Activity)',img:'',date:sbk.date||datePref||'To be scheduled',pax:pax,total:sbk.total||amount,paid:sbk.paid||amount,ts:Date.now(),status:'Confirmed',checkedIn:false,paymentId:response.razorpay_payment_id};
@@ -11216,11 +11221,11 @@ async function bookActivity(name,priceStr,details){
       if(window.fbTrack)window.fbTrack('Purchase',{value:Number(b.total)||Number(b.paid)||0,currency:'INR',content_name:b.trek||'',content_type:'product'});
       note('Payment successful! '+name+' is booked. Our team will contact you to schedule the date.','Booked ✓').then(()=>go('bookings'));
     },
-    modal:{ondismiss:function(){note('Payment cancelled — your activity is not yet booked.','Cancelled');}}
+    modal:{ondismiss:function(){note('Payment cancelled, your activity is not yet booked.','Cancelled');}}
   });
   rzp.open();
 }
-function downloadChecklist(){const NL=String.fromCharCode(10);let lines=['TRIPOMONK — PACKING CHECKLIST',''];Object.keys(packing).forEach(k=>{lines.push(k.toUpperCase());packing[k].forEach(i=>lines.push('  [ ] '+i[1]));lines.push('');});const a=document.createElement('a');a.href='data:text/plain;charset=utf-8,'+encodeURIComponent(lines.join(NL));a.download='Tripomonk_Packing_Checklist.txt';document.body.appendChild(a);a.click();a.remove();}
+function downloadChecklist(){const NL=String.fromCharCode(10);let lines=['TRIPOMONK, PACKING CHECKLIST',''];Object.keys(packing).forEach(k=>{lines.push(k.toUpperCase());packing[k].forEach(i=>lines.push('  [ ] '+i[1]));lines.push('');});const a=document.createElement('a');a.href='data:text/plain;charset=utf-8,'+encodeURIComponent(lines.join(NL));a.download='Tripomonk_Packing_Checklist.txt';document.body.appendChild(a);a.click();a.remove();}
 
 /* captain */
 async function captainLogin(){
@@ -11262,7 +11267,7 @@ async function capScan(){
 function capStopScan(){if(_capRAF)cancelAnimationFrame(_capRAF);_capRAF=null;if(_capStream){_capStream.getTracks().forEach(t=>t.stop());_capStream=null;}const c=document.getElementById('capCam');if(c)c.style.display='none';}
 function captainTestLast(){const b=getBookings()[0];if(!b){note('Make a booking first, then test.');return;}const code=ticketPayload(b);document.getElementById('capInput').value=code;captainVerify(code);}
 
-/* ===== Guide portal — approved trek leaders get a dashboard, QR check-in & a public profile ===== */
+/* ===== Guide portal, approved trek leaders get a dashboard, QR check-in & a public profile ===== */
 let _myGuide=null, _guidePubId=null, _gStream=null, _gRAF=null;
 /* guide availability calendar state */
 let _gAvail={}, _gBooked=new Set(), _gCal=new Date(), _gBrush='available', _gRange=false, _gRangeStart=null;
@@ -11273,15 +11278,15 @@ async function loadMyGuide(){
   try{
     if(!_guidesLoaded)await loadGuides();
     const uid=await authUid();
-    /* 1) linked by user_id — the only trustworthy client-side signal */
+    /* 1) linked by user_id, the only trustworthy client-side signal */
     _myGuide=(guides||[]).find(g=>g.user_id&&String(g.user_id)===String(uid))||null;
-    /* NO name-based fallback: matching a guide by display name is insecure — a stale cached
+    /* NO name-based fallback: matching a guide by display name is insecure, a stale cached
        name or a name collision would show another person (e.g. the owner) their Guide
        Dashboard. Identity is user_id (above) or the edge fn's authoritative EMAIL link (below). */
-    /* 2) authoritative — ask the guide edge fn, which auto-links this account by EMAIL
+    /* 2) authoritative, ask the guide edge fn, which auto-links this account by EMAIL
           (guide_contacts / approved application) and returns the guide even if user_id wasn't set */
     if(!_myGuide){try{const sb=getSupaClient();if(sb){const rr=await sb.functions.invoke('guide',{body:{action:'me'}});if(rr&&rr.data&&rr.data.ok&&rr.data.guide){const gid=rr.data.guide.id;_myGuide=(guides||[]).find(g=>String(g.id)===String(gid))||rr.data.guide;if(rr.data.guide.day_rate!==undefined)_myGuide.day_rate=rr.data.guide.day_rate;}}}catch(e){}}
-    /* day_rate is private (SQL-guide-rate-private.sql) — the public guide list never has it,
+    /* day_rate is private (SQL-guide-rate-private.sql), the public guide list never has it,
        so a guide gets ONLY their own rate from the guide edge function */
     else if(_myGuide.day_rate===undefined){try{const sb=getSupaClient();const rr=sb&&await sb.functions.invoke('guide',{body:{action:'me'}});if(rr&&rr.data&&rr.data.ok&&rr.data.guide&&String(rr.data.guide.id)===String(_myGuide.id))_myGuide.day_rate=rr.data.guide.day_rate??null;}catch(e){}}
   }catch(e){_myGuide=null;}
@@ -11307,7 +11312,7 @@ async function renderGuideDash(){
   _gAvail={};((data&&data.availability)||[]).forEach(a=>{if(a&&a.day)_gAvail[a.day]=a.status;});
   _gBooked=new Set(((data&&data.booked)||[]).filter(Boolean));
   _gCal=new Date();
-  /* reviews on my treks — from the SAME shared reviews data */
+  /* reviews on my treks, from the SAME shared reviews data */
   try{if(typeof loadReviews==='function'&&(!reviewsData||!reviewsData.length))await loadReviews();}catch(e){}
   const names=mine.map(t=>t.n);
   const rv=(typeof reviewsData!=='undefined'?reviewsData:[]).filter(r=>names.includes(r.trek));
@@ -11315,22 +11320,22 @@ async function renderGuideDash(){
   const av=g.photo?`<div class="gd-av" style="background-image:url('${esc(g.photo)}')"></div>`:`<div class="gd-av gd-av-i">${esc((g.name||'G').slice(0,1).toUpperCase())}</div>`;
   box.innerHTML=`
     <div class="gd-card">${av}<div style="min-width:0"><b>${esc(g.name||'Guide')}</b>${g.verified?' <span class="gd-verified"><span class="msr">verified</span></span>':''}<br><small>${esc([g.city,g.state].filter(Boolean).join(', ')||'Trek Leader')}</small></div></div>
-    <div class="gd-stats gd-stats-4"><div><b>${mine.length}</b><small>Treks</small></div><div><b>${noStats?'—':trekkers}</b><small>Trekkers</small></div><div><b>${noStats?'—':('₹'+Number(earned).toLocaleString('en-IN'))}</b><small>Earned</small></div><div><b>${rv.length?rAvg.toFixed(1)+'★':'—'}</b><small>Rating</small></div></div>
+    <div class="gd-stats gd-stats-4"><div><b>${mine.length}</b><small>Treks</small></div><div><b>${noStats?'-':trekkers}</b><small>Trekkers</small></div><div><b>${noStats?'-':('₹'+Number(earned).toLocaleString('en-IN'))}</b><small>Earned</small></div><div><b>${rv.length?rAvg.toFixed(1)+'★':'-'}</b><small>Rating</small></div></div>
     <div class="gd-rate" id="gRateBox">${guideRateHTML(g)}</div>
     <div class="sec-h" style="margin:22px 4px 10px"><b>My availability</b> <small class="muted" style="font-weight:600;font-size:11px">· tap dates to update</small></div>
     <div id="gAvailBody"></div>
-    <div class="gd-scan" onclick="guideScan()"><div class="ch-ic"><span class="msr">qr_code_scanner</span></div><b>Scan trekker tickets</b><small>Check in trekkers on your treks — works from your phone.</small><span class="ch-go">Open scanner</span></div>
+    <div class="gd-scan" onclick="guideScan()"><div class="ch-ic"><span class="msr">qr_code_scanner</span></div><b>Scan trekker tickets</b><small>Check in trekkers on your treks, works from your phone.</small><span class="ch-go">Open scanner</span></div>
     <div id="gCam" style="display:none;margin:12px 0"><video id="gVideo" playsinline muted style="width:100%;border-radius:16px;background:#000;aspect-ratio:1/1;object-fit:cover"></video><button class="btn ghost sm" style="margin-top:8px;width:100%" onclick="guideStopScan()">Stop scanning</button></div>
     <div class="cap-or"><span>or enter the ticket code</span></div>
     <div class="field"><label>Ticket code</label><div class="inp"><span class="ic" data-i="ticket"></span><input id="gInput" placeholder="TMK2|…"/></div></div>
     <button class="btn" onclick="guideVerify(document.getElementById('gInput').value)">Verify &amp; check in</button>
     <div id="gResult" style="margin-top:16px"></div>
     <div class="sec-h" style="margin:24px 4px 10px"><b>My treks &amp; trekkers</b></div>
-    ${mine.length?mine.map(t=>{const bs=bkFor(t.n);const pax=bs.reduce((s,b)=>s+(Number(b.pax)||1),0);const ci=bs.filter(b=>b.checked_in).reduce((s,b)=>s+(Number(b.pax)||1),0);return guideTrekRow(t,noStats?'':(pax+' booked · '+ci+' checked in'));}).join(''):'<div class="note2">No treks assigned yet — our team assigns treks to you from the admin panel.</div>'}
+    ${mine.length?mine.map(t=>{const bs=bkFor(t.n);const pax=bs.reduce((s,b)=>s+(Number(b.pax)||1),0);const ci=bs.filter(b=>b.checked_in).reduce((s,b)=>s+(Number(b.pax)||1),0);return guideTrekRow(t,noStats?'':(pax+' booked · '+ci+' checked in'));}).join(''):'<div class="note2">No treks assigned yet, our team assigns treks to you from the admin panel.</div>'}
     <div class="sec-h" style="margin:24px 4px 10px"><b>Earnings &amp; payments</b></div>
     ${noStats?'<div class="note2">Deploy the guide portal to see your earnings &amp; payment history.</div>':`
       <div class="gd-earn"><div><small>Paid out</small><b>₹${Number(earned).toLocaleString('en-IN')}</b></div>${pending?`<div><small>Pending</small><b>₹${Number(pending).toLocaleString('en-IN')}</b></div>`:''}</div>
-      ${payments.length?payments.map(p=>guidePayRow(p)).join(''):'<div class="note2">No payments recorded yet — your payout history from Tripomonk appears here.</div>'}`}
+      ${payments.length?payments.map(p=>guidePayRow(p)).join(''):'<div class="note2">No payments recorded yet, your payout history from Tripomonk appears here.</div>'}`}
     <div class="sec-h" style="margin:24px 4px 10px"><b>Reviews &amp; ratings</b></div>
     ${rv.length?`<div class="gd-rev-head"><b style="font-size:22px">${rAvg.toFixed(1)}</b> <span style="color:var(--yellow)">${'★'.repeat(Math.round(rAvg))}</span> <small class="muted">(${rv.length} on your treks)</small></div>${rv.slice(0,6).map(r=>guideRevRow(r)).join('')}`:'<div class="note2">No reviews on your treks yet.</div>'}
     <div style="text-align:center;margin:18px 0 6px"><button class="btn ghost sm" onclick="openGuideProfile('${jsq(g.id)}')"><span class="msr">badge</span> View my public profile</button></div>
@@ -11338,7 +11343,7 @@ async function renderGuideDash(){
   hydrate(box);
   renderGuideAvail();
 }
-/* ---- Basic Rate (₹/day) — editable inline by the guide ---- */
+/* ---- Basic Rate (₹/day), editable inline by the guide ---- */
 function guideRateHTML(g){const r=g&&g.day_rate;
   return '<div><small>Your basic rate</small><b>'+(r?('₹'+Number(r).toLocaleString('en-IN')+' <i>/ day</i>'):'Not set yet')+'</b></div>'
     +'<button class="btn ghost sm" onclick="guideEditRate('+(r||0)+')">'+(r?'Edit':'Set rate')+'</button>';}
@@ -11351,7 +11356,7 @@ async function guideSaveRate(){const el=document.getElementById('gRateInp');cons
   const box=document.getElementById('gRateBox');if(box)box.innerHTML=guideRateHTML(_myGuide||{day_rate:v});
   let ok=false,err='';
   try{const sb=getSupaClient();if(sb){const rr=await sb.functions.invoke('guide',{body:{action:'set_rate',rate:v}});const r=rr&&rr.data;ok=!!(r&&r.ok);err=(r&&r.error)||'';}}catch(e){err=String(e&&e.message||e);}
-  if(typeof toast==='function')toast(ok?'Basic rate saved ✓':(/sign in|invalid session|not a registered/i.test(err)?'Please sign in as the guide to save':'Rate not saved — deploy the updated guide function'+(err&&!/non-2xx/i.test(err)?' ('+err+')':'')));}
+  if(typeof toast==='function')toast(ok?'Basic rate saved ✓':(/sign in|invalid session|not a registered/i.test(err)?'Please sign in as the guide to save':'Rate not saved, deploy the updated guide function'+(err&&!/non-2xx/i.test(err)?' ('+err+')':'')));}
 /* ---- Availability calendar ---- */
 function _gIso(y,m,d){return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');}
 function _gDaysBetween(a,b){const out=[];let d=new Date(a+'T00:00:00'),e=new Date(b+'T00:00:00');while(d<=e){out.push(d.toISOString().slice(0,10));d.setDate(d.getDate()+1);}return out;}
@@ -11366,7 +11371,7 @@ async function _guideSaveAvail(days,status){
   if(typeof toast==='function'){
     if(ok)toast('Availability saved ✓');
     else if(/sign in|invalid session|not a registered/i.test(err))toast('Please sign in as the guide to save');
-    else toast('Availability not saved — run SQL-guide-availability.sql and deploy the updated guide function'+(err&&!/non-2xx/i.test(err)?' ('+err+')':''));
+    else toast('Availability not saved, run SQL-guide-availability.sql and deploy the updated guide function'+(err&&!/non-2xx/i.test(err)?' ('+err+')':''));
   }
 }
 function guideDayTap(iso){
@@ -11397,7 +11402,7 @@ function renderGuideAvail(){
     <div class="gcal-dow">${['S','M','T','W','T','F','S'].map(x=>'<span>'+x+'</span>').join('')}</div>
     <div class="gcal-grid">${cells}</div>
     <div class="gcal-legend"><span><i class="s-available"></i>Available</span><span><i class="s-tentative"></i>Tentative</span><span><i class="s-unavailable"></i>Unavailable</span><span><i class="s-booked"></i>Booked</span></div>
-    ${_gRange?'<div class="gcal-hint">'+(_gRangeStart?('Start '+_gRangeStart+' — now tap the end date'):'Tap the start date, then the end date')+'</div>':''}`;
+    ${_gRange?'<div class="gcal-hint">'+(_gRangeStart?('Start '+_gRangeStart+', now tap the end date'):'Tap the start date, then the end date')+'</div>':''}`;
   hydrate(box);
 }
 function guideTrekRow(t,stats){return `<div class="gd-trek" onclick="openDetailByName('${jsq(t.n)}')"><div class="gd-trek-img" style="background-image:url('${esc((t.img||'').split('?')[0])}')"></div><div style="flex:1;min-width:0"><b>${esc(t.n)}</b><br><small>${esc(t.region||'')}${t.days?' · '+t.days+'D':''}${t.lvl?' · '+esc(t.lvl):''}${stats?' · '+esc(stats):''}</small></div><span class="msr" style="color:var(--muted)">chevron_right</span></div>`;}
@@ -11421,7 +11426,7 @@ async function guideVerify(txt){
   r.innerHTML='<div class="verify"><b>Checking booking…</b></div>';
   let res=null;
   try{const sb=getSupaClient();if(sb){const rr=await sb.functions.invoke('guide',{body:{action:'verify_booking',id:t.id}});res=rr&&rr.data;}}catch(e){}
-  if(!res||!res.ok){r.innerHTML=`<div class="verify bad"><b>${ic('alert',20)} Not verified</b><div style="font-size:13px;color:var(--muted)">${esc((res&&res.error)||'Could not verify — the guide portal may not be deployed yet.')}</div></div>`;hydrate(r);return;}
+  if(!res||!res.ok){r.innerHTML=`<div class="verify bad"><b>${ic('alert',20)} Not verified</b><div style="font-size:13px;color:var(--muted)">${esc((res&&res.error)||'Could not verify, the guide portal may not be deployed yet.')}</div></div>`;hydrate(r);return;}
   const b=res.booking||{};
   if(res.scoped===false){r.innerHTML=`<div class="verify warn"><b>${ic('alert',20)} Not one of your treks</b><div style="font-size:13px;color:var(--muted)">${esc(b.name||'This trekker')} is booked on “${esc(b.trek||'')}”, which isn't assigned to you.</div></div>`;hydrate(r);return;}
   try{sfx('like');}catch(e){}
@@ -11512,7 +11517,7 @@ function renderHero(hh,t){
   b.onclick=e=>{e.stopPropagation();playHeroVideo(hh,vid);};
   hh.appendChild(b);
 }
-/* muted, controls-hidden, looping cover video — autoplays on open */
+/* muted, controls-hidden, looping cover video, autoplays on open */
 function autoplayHeroCover(hh,v,url){
   const wrap=document.createElement('div');
   wrap.className='hero-embed hero-cover';
@@ -11530,13 +11535,13 @@ function autoplayHeroCover(hh,v,url){
   /* YouTube always shows a title + logo at the very edges; oversizing the iframe pushes
      those out of the visible frame (Vimeo background mode + mp4 have no chrome, so 1x). */
   if(v.kind!=='file')coverHeroIframe(hh,wrap.querySelector('iframe'),16/9,v.kind==='youtube'?1.3:1);
-  /* no unmute button — the cover plays silently on loop, like a moving cover photo */
+  /* no unmute button, the cover plays silently on loop, like a moving cover photo */
 }
 /* size a 16:9 iframe so it COVERS the hero box (crop the overflow) instead of letterboxing */
 function coverHeroIframe(hh,ifr,aspect,scale){
   if(!ifr)return;scale=scale||1;
   const fit=()=>{const cw=hh.offsetWidth||360,ch=hh.offsetHeight||320;let w,h;
-    /* fill by the SHORT side and overflow the long side — keeps the video's real aspect
+    /* fill by the SHORT side and overflow the long side, keeps the video's real aspect
        (no horizontal squish), then scale up to crop platform branding at the edges */
     if(cw/ch>aspect){w=cw;h=Math.ceil(cw/aspect);}else{h=ch;w=Math.ceil(ch*aspect);}
     w=Math.ceil(w*scale);h=Math.ceil(h*scale);
@@ -11564,10 +11569,10 @@ function playHeroVideo(hh,url){
    the repo at itineraries/<slug>.pdf, (3) an auto-generated one. */
 /* ============================================================
    TREK LEADERS / GUIDES (Layer 1)
-   A guide is the qualified person who leads a trek — the thing a customer is most
+   A guide is the qualified person who leads a trek, the thing a customer is most
    anxious about when booking. Guides are admin-managed (your own roster) and assigned
    per trek (trek.guide_id). Shown on the trek page as "Your trek leader".
-   Public read is fine — a guide profile is a trust signal, like a host badge.
+   Public read is fine, a guide profile is a trust signal, like a host badge.
    ============================================================ */
 let guides=[],_guidesLoaded=false;
 function guideById(id){if(!id)return null;return guides.find(g=>String(g.id)===String(id))||null;}
@@ -11616,7 +11621,7 @@ function renderDetailLeader(t){
 }
 
 /* Fetch a file and hand it to the OS as a download. `<a download>` is IGNORED for
-   cross-origin URLs, so the old code fell back to navigating — and inside a standalone
+   cross-origin URLs, so the old code fell back to navigating, and inside a standalone
    PWA that replaced the whole app with a chrome-less PDF view the user couldn't leave.
    A blob download navigates nothing, so there is nothing to come back from. */
 async function saveFileFromUrl(url,filename){
@@ -11663,7 +11668,7 @@ function genItineraryPDF(t){
   const C=c=>doc.setTextColor(c[0],c[1],c[2]);
   function chrome(){doc.setDrawColor(214,222,236);doc.setLineWidth(1);doc.line(L,42,R,42);
     doc.setFont('helvetica','normal');doc.setFontSize(8.5);C([135,144,158]);
-    doc.text('Tripomonk — '+t.n+' Trek',L,35);
+    doc.text('Tripomonk, '+t.n+' Trek',L,35);
     doc.text('tripomonk@gmail.com  •  +91 89248 13959',L,H-26);doc.text('Page '+page,R,H-26,{align:'right'});}
   function brk(h){if(y+h>MAXY){doc.addPage();page++;y=64;chrome();}}
   function h2(s){brk(46);doc.setFont('helvetica','bold');doc.setFontSize(14);C(AC);doc.text(s,L,y);y+=7;doc.setDrawColor(47,107,255);doc.setLineWidth(.9);doc.line(L,y,L+32,y);y+=18;}
@@ -11676,22 +11681,22 @@ function genItineraryPDF(t){
   doc.setFont('helvetica','bold');doc.setFontSize(11);C(AC);doc.text(t.days+' Days / '+nights+' Nights   •   '+t.region+'   •   '+t.lvl,L,y);y+=16;
   doc.setFont('helvetica','italic');doc.setFontSize(10.5);C(MU);doc.splitTextToSize(t.desc,R-L).forEach(ln=>{doc.text(ln,L,y);y+=14;});y+=10;
   h2('Trek at a glance');
-  [['Region',t.region],['Max altitude',t.alt],['Total distance',t.dist+' (round trip)'],['Duration',t.days+' days / '+nights+' nights'],['Difficulty',t.lvl],['Best season',t.best],['Climate & temp',t.climate+' · '+t.temp],['Air quality',t.aqi+' (AQI '+t.aqiVal+')'],['Pickup & drop','From the trek base — transport in package']].forEach(rw=>{
+  [['Region',t.region],['Max altitude',t.alt],['Total distance',t.dist+' (round trip)'],['Duration',t.days+' days / '+nights+' nights'],['Difficulty',t.lvl],['Best season',t.best],['Climate & temp',t.climate+' · '+t.temp],['Air quality',t.aqi+' (AQI '+t.aqiVal+')'],['Pickup & drop','From the trek base, transport in package']].forEach(rw=>{
     brk(18);doc.setFont('helvetica','bold');doc.setFontSize(10);C(BL);doc.text(rw[0],L,y);
     doc.setFont('helvetica','normal');C(MU);const v=doc.splitTextToSize(String(rw[1]),R-L-150);doc.text(v,L+150,y);y+=Math.max(16,v.length*13);});
   y+=6;
   h2('Day-by-day itinerary');
   const it=trekItin(t);
   it.forEach((d,i)=>{brk(54);
-    doc.setFont('helvetica','bold');doc.setFontSize(11.5);C(BL);doc.text('Day '+(i+1)+' — '+d[0],L,y);y+=14;
+    doc.setFont('helvetica','bold');doc.setFontSize(11.5);C(BL);doc.text('Day '+(i+1)+', '+d[0],L,y);y+=14;
     doc.setFont('helvetica','italic');doc.setFontSize(9.5);C(AC);doc.text(d[2]+'   •   '+d[3],L,y);y+=14;
     para(d[1],10.5,MU);
     doc.setFont('helvetica','bold');doc.setFontSize(9.5);C(BL);brk(14);
     doc.text('Overnight: '+(i===it.length-1?'Trip ends.':'Tents / guesthouse (sharing).')+'    Meals: '+(i===0?'dinner':'breakfast, lunch, dinner'),L,y);y+=20;});
   h2('Difficulty & fitness');
   para('Grade: '+t.lvl+'. '+(t.lvl==='Easy'?'A gentle, well-defined trail suitable for reasonably fit first-timers.':t.lvl==='Moderate'?'Needs basic hill fitness and stamina; some long days.':'A demanding high-altitude trek for experienced, fit trekkers.'),10.5,BL);
-  para('Prepare: build stamina with 4–5 km brisk walks or jogs, 4–5 times a week, for at least 3–4 weeks before the trek — ideally with stairs or an incline.');
-  para('Altitude (AMS): above ~3,000 m, mild headache or breathlessness is possible. Walk slowly, hydrate, and tell your guide immediately if you feel unwell. We never rush a trekker showing AMS symptoms — safety comes before the summit.');
+  para('Prepare: build stamina with 4–5 km brisk walks or jogs, 4–5 times a week, for at least 3–4 weeks before the trek, ideally with stairs or an incline.');
+  para('Altitude (AMS): above ~3,000 m, mild headache or breathlessness is possible. Walk slowly, hydrate, and tell your guide immediately if you feel unwell. We never rush a trekker showing AMS symptoms, safety comes before the summit.');
   h2("What's included");
   bullets(['Transport from the trek base, to-and-fro (as per package)','Accommodation in tents / guesthouses on a sharing basis','All meals on the trek (vegetarian)','Experienced local trek guide and support staff','Forest / area permits and entry fees (Indian nationals)','Basic first-aid kit and oximeter with the guide']);
   h2('Not included');
@@ -11699,9 +11704,9 @@ function genItineraryPDF(t){
   h2('Packing list');
   Object.keys(packing).forEach(k=>{brk(22);doc.setFont('helvetica','bold');doc.setFontSize(10.5);C(BL);doc.text(k,L,y);y+=14;bullets(packing[k].map(x=>x[1]));});
   h2('Know before you go');
-  bullets(['Connectivity: mobile network is patchy on the trail — inform family in advance.','Cash: carry enough for personal expenses, ponies and tips; ATMs are unreliable beyond the base town.','ID & permits: carry original government photo ID + 2 copies.','Electricity: charging is limited on the trail — carry a power bank.','Fitness: start your walking / jogging routine at least 3–4 weeks out.','Booking & cancellation: terms are in your Tripomonk booking confirmation.']);
+  bullets(['Connectivity: mobile network is patchy on the trail, inform family in advance.','Cash: carry enough for personal expenses, ponies and tips; ATMs are unreliable beyond the base town.','ID & permits: carry original government photo ID + 2 copies.','Electricity: charging is limited on the trail, carry a power bank.','Fitness: start your walking / jogging routine at least 3–4 weeks out.','Booking & cancellation: terms are in your Tripomonk booking confirmation.']);
   brk(26);doc.setFont('helvetica','bold');doc.setFontSize(11);C(AC);
-  doc.splitTextToSize('Ready to book or want custom dates? Talk to us on WhatsApp — we have walked this trail.',R-L).forEach(ln=>{doc.text(ln,L,y);y+=15;});
+  doc.splitTextToSize('Ready to book or want custom dates? Talk to us on WhatsApp, we have walked this trail.',R-L).forEach(ln=>{doc.text(ln,L,y);y+=15;});
   doc.save(itinSlug(t)+'-itinerary.pdf');
 }
 
@@ -11734,7 +11739,7 @@ function logEvent(action,meta){
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'){trackScreenLeave();flushEvents();}});
 window.addEventListener('pagehide',function(){trackScreenLeave();flushEvents();});
 /* =========================================================================
-   ADVENTURE READINESS SYSTEM — Individual Fitness Score + Required Trek Score
+   ADVENTURE READINESS SYSTEM, Individual Fitness Score + Required Trek Score
    ========================================================================= */
 
 /* ---- Required Trek Score (0–100). Admin-set; an explicit t.req / t.req_score
@@ -11764,7 +11769,7 @@ function reqBand(s){return s<40?'Easy':s<50?'Easy+':s<65?'Moderate':s<80?'Modera
 
 /* ---- The assessment schema drives BOTH the form and the scoring ---- */
 /* No wearable integration yet, so the score is built entirely from self-reported
-   inputs — the smartwatch 15% is redistributed to the real physical pillars so the
+   inputs, the smartwatch 15% is redistributed to the real physical pillars so the
    score is honest and fully functional on its own. */
 const FIT_WEIGHTS={activity:.25,experience:.20,endurance:.25,health:.18,age:.06,bmi:.06};
 const FIT_SECTIONS=[
@@ -11844,7 +11849,7 @@ function computeFitness(d){
 }
 
 /* ---- readiness = user score vs required trek score (Green / Yellow / Red) ---- */
-/* Personalised Trek Match — how doable THIS trek is for THIS user, as a %.
+/* Personalised Trek Match, how doable THIS trek is for THIS user, as a %.
    The same trek scores differently for every user: it compares the user's overall
    readiness (fitness + endurance + experience) against the trek's required score
    (which already blends difficulty, altitude and duration). Returns { pct, k, label, msg }. */
@@ -11854,8 +11859,8 @@ function readiness(user,req){
   pct=Math.max(5,Math.min(100,pct));
   let k,label,msg;
   if(pct>=80){k='green';label='Good match';
-    msg=pct>=95?'You are well prepared — your readiness matches this trek. You are good to go.'
-               :'Your readiness matches most of the physical demands of this trek. You are ready — a little endurance work beforehand still helps.';}
+    msg=pct>=95?'You are well prepared, your readiness matches this trek. You are good to go.'
+               :'Your readiness matches most of the physical demands of this trek. You are ready, a little endurance work beforehand still helps.';}
   else if(pct>=55){k='yellow';label='Moderate match';
     msg='A moderate match. A few weeks of targeted preparation (endurance + hill walks) will make this trek comfortable for you.';}
   else{k='red';label='Challenging for you';
@@ -11868,8 +11873,8 @@ function readinessCardHTML(t){
   const req=trekReqScore(t);
   if(!hasFitness()){
     return `<div class="fit-card"><div class="fit-card-h"><span class="msr">bolt</span> Your Trek Match</div>
-      <p class="fit-msg" style="margin-top:8px">See how well this trek matches <b>your</b> fitness, experience and the trek's demands — take the 2-minute readiness check.</p>
-      <div class="fit-req-row"><div><small>Difficulty</small><b>${esc(t.lvl||reqBand(req))}</b></div><div><small>Trek needs</small><b>${req}</b></div><div><small>Your match</small><b>—</b></div></div>
+      <p class="fit-msg" style="margin-top:8px">See how well this trek matches <b>your</b> fitness, experience and the trek's demands, take the 2-minute readiness check.</p>
+      <div class="fit-req-row"><div><small>Difficulty</small><b>${esc(t.lvl||reqBand(req))}</b></div><div><small>Trek needs</small><b>${req}</b></div><div><small>Your match</small><b>-</b></div></div>
       <button class="btn fit-cta" onclick="go('fitness')"><span class="msr">fitness_center</span> Check my Trek Match</button></div>`;
   }
   const you=computeFitness().score,rd=readiness(you,req);
@@ -11882,7 +11887,7 @@ function readinessCardHTML(t){
 }
 /* difficulty-band colour for a required trek score */
 function bandColor(s){return s<50?'#2fbf8f':s<65?'#2f6bff':s<80?'#e0952a':s<90?'#ff7a5c':'#a06bff';}
-/* small circular Trek Score badge — the trek's REQUIRED score, band-coloured ring.
+/* small circular Trek Score badge, the trek's REQUIRED score, band-coloured ring.
    cls 'on-photo' adds a frosted dark disc so it reads over any card image. */
 function trekScoreBadge(t,cls){
   const s=trekReqScore(t);if(!s)return '';
@@ -11892,7 +11897,7 @@ function trekScoreBadge(t,cls){
   return `<div class="trek-score ${cls||''}" style="color:${col}" title="Trek Score ${s} / 100" data-score="${s}" data-circ="${C.toFixed(2)}"><svg viewBox="0 0 46 46"><circle class="tsc-bg" cx="23" cy="23" r="${R}"/><circle class="tsc-fg" cx="23" cy="23" r="${R}" style="stroke:${col};stroke-dasharray:${C.toFixed(2)};stroke-dashoffset:${C.toFixed(2)}"/></svg><span class="tsc-num">0</span></div>`;
 }
 /* Count-up + ring sweep, fired once per badge when it scrolls into view.
-   Geometric (getBoundingClientRect) not IntersectionObserver — the coverflow cards
+   Geometric (getBoundingClientRect) not IntersectionObserver, the coverflow cards
    animate with opacity/transform, which IO can miss (same reason lazyBg is geometric). */
 let _tsScrollWired=false;
 function runTrekScore(el){
@@ -11923,7 +11928,7 @@ function animateTrekScores(){
     window.addEventListener('resize',onScroll,{passive:true});
   }
 }
-/* compact readiness chip for the search card footer — status word only; the
+/* compact readiness chip for the search card footer, status word only; the
    circular badge already shows the number, so we don't repeat it. */
 function readinessChip(t){
   if(!hasFitness())return '';
@@ -11963,7 +11968,7 @@ function renderFitness(){
 function fitnessIntroHTML(){
   return `<div class="fit-intro"><div class="fit-intro-ic"><span class="msr">bolt</span></div>
     <h2>Know your Adventure Readiness</h2>
-    <p>Answer a few quick questions and we'll score your fitness out of 100 — then match you to treks you're ready for, and build prep plans for the ones you're not ready for yet.</p>
+    <p>Answer a few quick questions and we'll score your fitness out of 100, then match you to treks you're ready for, and build prep plans for the ones you're not ready for yet.</p>
     <div class="fit-intro-grid"><div><span class="msr">favorite</span>Cardio</div><div><span class="msr">fitness_center</span>Strength</div><div><span class="msr">directions_run</span>Endurance</div><div><span class="msr">terrain</span>Experience</div></div>
     <button class="btn" onclick="go('fitnessTest')"><span class="msr">arrow_forward</span> Start assessment</button>
     <p class="fit-intro-note">Takes about 2 minutes · Private to you</p></div>`;
@@ -12017,7 +12022,7 @@ function fitSubmit(){
    Renders a solid deterministic plan INSTANTLY (always works, offline-safe), then
    asks Claude (via the fitness-coach edge function) to personalise today's session
    + a coaching note. If the GEMINI_API_KEY secret isn't set, or the function isn't
-   deployed, the deterministic plan simply stays — nothing breaks. */
+   deployed, the deterministic plan simply stays, nothing breaks. */
 let _planTrek='';
 function openTrainingPlan(name){_planTrek=name||'';go('trainingPlan');}
 function trekByName(n){return treks.find(t=>t.n===n)||(typeof cmpAvail==='function'?cmpAvail().find(t=>t.n===n):null)||null;}
@@ -12028,7 +12033,7 @@ function planStore(){try{return JSON.parse(localStorage.getItem('tmk_plan')||'nu
 /* ---- cross-device sync ----
    The plan lives in localStorage for instant, offline-capable ticking, and is mirrored
    to profiles.training so the same person sees one streak on every device (and so the
-   admin can see who is actually training). Writes are debounced — ticking four sessions
+   admin can see who is actually training). Writes are debounced, ticking four sessions
    in a row is one network call, not four. */
 let _planPushT=null;
 function planSave(p,skipPush){
@@ -12104,7 +12109,7 @@ function planTrackHTML(){
       <div class="ptrk-stat ${allDone?'done':''}"><span class="msr">${allDone?'task_alt':'radio_button_unchecked'}</span><b>${doneToday}/${_planCtx.total}</b><small>today</small></div>
     </div>
     <div class="ptrk-strip">${strip}</div>
-    ${allDone?`<div class="ptrk-done"><span class="msr">celebration</span> Today complete — nice work! Keep the streak going.</div>`:''}
+    ${allDone?`<div class="ptrk-done"><span class="msr">celebration</span> Today complete, nice work! Keep the streak going.</div>`:''}
   </div>`;
 }
 function refreshPlanTracking(){
@@ -12170,7 +12175,7 @@ async function aiEnhancePlan(t,you,goal,days){
 }
 
 /* Kill any playing media before switching screens. A hidden view (display:none) keeps
-   its <video> and — worse — its YouTube/Vimeo iframe playing audio in the background.
+   its <video> and, worse, its YouTube/Vimeo iframe playing audio in the background.
    Pause every video, and revert each played embed back to its tap-to-play poster. */
 function stopAllMedia(){
   document.querySelectorAll('video').forEach(v=>{try{v.pause();}catch(e){}});
@@ -12181,7 +12186,7 @@ function stopAllMedia(){
       +`<div class="play-ic"><span class="msr" style="font-size:44px;color:rgba(255,255,255,.95);text-shadow:0 2px 12px rgba(0,0,0,.5)">play_circle</span></div>`;
     cell.setAttribute('onclick','loadEmbed(this)');
   });
-  /* generic embeds (trek detail etc.) — blank the src so their audio stops too */
+  /* generic embeds (trek detail etc.), blank the src so their audio stops too */
   document.querySelectorAll('.vembed iframe').forEach(f=>{try{f.src='about:blank';}catch(e){}});
   /* the hero drops back to its poster + play badge, ready for the next open */
   document.querySelectorAll('.hero-embed').forEach(el=>{
@@ -12190,7 +12195,7 @@ function stopAllMedia(){
   });
 }
 /* ============================================================================
-   TmkSwitch — premium spring toggle.
+   TmkSwitch, premium spring toggle.
    A role="switch" button that flips on click anywhere. 38x22 track, 14px knob
    4px in from every edge, travels 16px. Transform + opacity ONLY: travel/stretch/
    squash are transforms, colour is a layer faded in by opacity. The moving knob is
@@ -12280,7 +12285,7 @@ function TmkSwitch(opts){
   let anims = [];
   function cancelAnims(){ anims.forEach(a=>{ try{a.cancel();}catch(e){} }); anims=[]; }
   // Read the knob's current on-screen translateX so a new flight (or a release)
-  // continues from the exact pose — a mid-flight tap reverses without a jump.
+  // continues from the exact pose, a mid-flight tap reverses without a jump.
   function curTX(node, fallback){
     try{ const m = new DOMMatrixReadOnly(getComputedStyle(node).transform); if(!isNaN(m.m41)) return m.m41; }catch(e){}
     return fallback;
@@ -12326,7 +12331,7 @@ function TmkSwitch(opts){
       let S = stretchMax * v[i];
       S = Math.min(S, 0.8*Math.abs(toLeft-fromLeft) || 0.8*T.TRAVEL);
       // calm feels (bounce<0.5): also cap at 60% of the distance still to go so the
-      // front edge never reaches the wall and waits — smooth min, faded out by 0.5.
+      // front edge never reaches the wall and waits, smooth min, faded out by 0.5.
       if(bounce < 0.5){
         const toGo = Math.abs(toLeft - tx);
         const lim  = 0.6*toGo;
@@ -12400,7 +12405,7 @@ function TmkSwitch(opts){
 /* Upgrade declarative placeholders: <span data-tsw data-on="1" data-cb="fnName"
    data-label="..."></span>. The callback (global fn name) is called with the new
    boolean on every change; it must NOT re-render the view (that would kill the
-   animation) — just update the backing store. Returns the list of apis made. */
+   animation), just update the backing store. Returns the list of apis made. */
 function tswUpgradeAll(root){
   const scope = root || document;
   const out = [];
@@ -12422,7 +12427,7 @@ function tswUpgradeAll(root){
    + fires onChange). The switch's own click is stopPropagation'd so a direct tap on
    it doesn't double-fire through the row. */
 function tswRow(id){ const el=document.getElementById(id); if(el&&el._tsw) el._tsw.toggle(); }
-/* onChange handlers — persist + side effects ONLY, never re-render the view (a
+/* onChange handlers, persist + side effects ONLY, never re-render the view (a
    re-render rebuilds the switch element and kills the flight mid-animation). */
 function tswSound(v){ setSound(!!v); }                       // persists + previews a blip
 function tswNotifPref(v, api){
@@ -12444,7 +12449,7 @@ async function tswPrivate(v){
 function go(id){const el=document.getElementById(id);if(!el)return;
   stopAllMedia();
   if(id==='captain'&&!isStaffUser()){note('Trip Captain access is for staff only.','Restricted');return;}
-  /* In-app admin removed — the admin panel is now the standalone console at /admin/.
+  /* In-app admin removed, the admin panel is now the standalone console at /admin/.
      Any attempt to open an admin screen inside the app launches the console instead. */
   if(id==='admin'||id==='adminTrip'){openAdminConsole();return;}
   /* hide any live news banner when entering the login/signup flow */
@@ -12557,7 +12562,7 @@ function closeTopOverlay(){
 window.addEventListener('popstate',function(){
   /* Back with an overlay open → just close it, and re-buffer a history entry so the screen
      stack depth (and the next Back) stays correct. Overlays don't push history on open, so the
-     entry Back consumed belongs to the current screen — restore it. */
+     entry Back consumed belongs to the current screen, restore it. */
   if(closeTopOverlay()){try{history.pushState({s:cur},'');}catch(e){}return;}
   _showPrev();
 });
@@ -12577,7 +12582,7 @@ function restoreNav(){try{const n=JSON.parse(localStorage.getItem('tmk_nav')||'n
   if(n.s==='person'){go('community');return;}
   /* road trip detail needs its trek re-rendered (go('trip') alone paints nothing) */
   if(n.s==='trip'){const t=treks[n.t||0];if(t&&isTour(t)){openTrip(n.t||0);return;}go(lastTab||'home');return;}
-  /* destination page needs curDest, which isn't a view id — restore it, else fall home */
+  /* destination page needs curDest, which isn't a view id, restore it, else fall home */
   if(n.s==='dest'){
     if(n.d&&typeof destById==='function'&&destById(n.d)){openDest(n.d);return;}
     if(n.d&&typeof loadDestinations==='function'){loadDestinations(true).then(()=>{(n.d&&destById(n.d))?openDest(n.d):go(lastTab||'home');}).catch(()=>go(lastTab||'home'));return;}
@@ -12624,10 +12629,10 @@ refreshNotifBadge();  /* show red dot if there's new community activity */
 setInterval(refreshNotifBadge,60000);  /* poll for new activity every minute */
 handleDeepLink();     /* open a trek directly from a shared link */
 /* ---- pull-to-refresh ---- */
-/* soft refresh — reloads the current screen's data in the background, no page reload / no layout shift */
+/* soft refresh, reloads the current screen's data in the background, no page reload / no layout shift */
 async function refreshCurrent(){
   try{
-    await loadTreks(true);   /* pull-to-refresh is authoritative — go straight to the DB */
+    await loadTreks(true);   /* pull-to-refresh is authoritative, go straight to the DB */
     /* pull-to-refresh is authoritative: refetch news and overwrite the SWR cache
        so renderNews() paints the just-fetched copy instead of a stale one */
     _newsCache=null;const freshNews=await loadNews();if(freshNews&&freshNews.length)swrSet('news',freshNews);
@@ -12685,7 +12690,7 @@ async function refreshCurrent(){
     const bar=document.getElementById('installBar');if(!bar)return;
     if(!isMobile()||installed()||dismissed())return;
     const store=storeUrl();
-    /* iOS Safari has no install prompt — tell people where the button is */
+    /* iOS Safari has no install prompt, tell people where the button is */
     if(!store&&!deferred&&isIOS()){
       const sub=document.getElementById('ibSub');
       if(sub)sub.textContent='Tap Share, then “Add to Home Screen”';
@@ -12724,29 +12729,29 @@ async function refreshCurrent(){
         return;
       }
     };
-    /* store link needs no browser prompt — offer it right away */
+    /* store link needs no browser prompt, offer it right away */
     setTimeout(show,1200);
   });
 })();
 
-/* deep link: someone opened a shared promise link — take them straight to the pledge */
+/* deep link: someone opened a shared promise link, take them straight to the pledge */
 document.addEventListener('DOMContentLoaded',()=>{try{if(/take-promise/.test(location.hash||'')){setTimeout(()=>{try{go('pledge');}catch(e){}},600);}}catch(e){}});
 
 /* A guide who applied via /guide-apply/ is redirected here to explore. We deliberately do NOT
-   auto-create or pre-fill a profile from their application — that would duplicate the one normal
+   auto-create or pre-fill a profile from their application, that would duplicate the one normal
    app profile. They get their single real profile only through the normal sign-in flow. Any stale
    payload from an older build is cleared so nothing lingers. */
 document.addEventListener('DOMContentLoaded',()=>{try{localStorage.removeItem('tmk_guide_signup');}catch(e){}});
 
 /* ---------- offline banner ----------
    Saved treks, e-tickets (with their QR) and the packing list keep working offline; booking,
-   chat and community need a connection — say so instead of failing with network errors. */
+   chat and community need a connection, say so instead of failing with network errors. */
 function paintOffline(){
   let b=document.getElementById('offlineBar');
   if(!navigator.onLine){
     if(!b){b=document.createElement('div');b.id='offlineBar';b.setAttribute('role','status');document.body.appendChild(b);}
     b.className='offline-bar show';
-    b.innerHTML='<span class="msr" aria-hidden="true">cloud_off</span><span>You’re offline — saved treks and your e-tickets still work. Booking and chat need internet.</span>';
+    b.innerHTML='<span class="msr" aria-hidden="true">cloud_off</span><span>You’re offline, saved treks and your e-tickets still work. Booking and chat need internet.</span>';
   }else if(b&&b.classList.contains('show')){
     b.className='offline-bar show on';b.innerHTML='<span class="msr" aria-hidden="true">wifi</span><span>Back online</span>';
     setTimeout(()=>{if(navigator.onLine)b.classList.remove('show');},2200);
@@ -12802,7 +12807,7 @@ function sfx(kind){
     s.notes.forEach(([freq,at])=>{
       const o=_actx.createOscillator(),g=_actx.createGain();
       o.type=s.type;o.frequency.setValueAtTime(freq,t0+at);
-      /* quick attack, smooth decay — a click is what a raw gate sounds like */
+      /* quick attack, smooth decay, a click is what a raw gate sounds like */
       g.gain.setValueAtTime(0,t0+at);
       g.gain.linearRampToValueAtTime(s.vol,t0+at+.012);
       g.gain.exponentialRampToValueAtTime(.0001,t0+at+s.dur);
@@ -12813,7 +12818,7 @@ function sfx(kind){
 }
 
 /* ============================================================
-   HOST YOUR OWN TRIP — stage 1: apply -> admin review -> verified host
+   HOST YOUR OWN TRIP, stage 1: apply -> admin review -> verified host
    ------------------------------------------------------------
    Not collected here on purpose: government ID, bank details, GST.
    Storing those turns this database into a KYC breach target. Take them
@@ -12848,7 +12853,7 @@ function hostField(f){
   return '<div class="field"><label>'+label+(req?' *':'')+'</label>'
     +'<div class="inp"><input id="'+id+'" type="'+type+'" placeholder="'+ph+'"/></div></div>';
 }
-/* ===== Become a Trek Leader / Guide — in-depth application (evaluated in admin) ===== */
+/* ===== Become a Trek Leader / Guide, in-depth application (evaluated in admin) ===== */
 let _guideApp=null;
 async function renderBecomeGuide(){
   const box=document.getElementById('guideBody');if(!box)return;
@@ -12944,17 +12949,17 @@ async function renderBecomeHost(){
   body.innerHTML='<div class="skel skel-card" style="height:140px"></div>';
   await loadHostApp();
 
-  /* already applied — show status, not the form again */
+  /* already applied, show status, not the form again */
   if(_hostApp){
     const s=_hostApp.status;
     const label=s==='approved'?'Verified Host':s==='rejected'?'Not approved':'Under review';
     const icon=s==='approved'?'verified':s==='rejected'?'cancel':'schedule';
     const msg=s==='approved'
-      ? 'You can now create trips. Tripomonk handles operations — you focus on your community.'
+      ? 'You can now create trips. Tripomonk handles operations, you focus on your community.'
       : s==='rejected'
       ? 'Your application was not approved this time.'
       : 'We review applications within a few days. We may reach out on WhatsApp to verify details.';
-    /* a visible 3-step tracker — "under review" with no sense of progress is
+    /* a visible 3-step tracker, "under review" with no sense of progress is
        the main reason applicants message you asking what happened */
     const step=s==='approved'?3:s==='rejected'?2:2;
     const steps=[['Applied','done'],
@@ -12970,10 +12975,10 @@ async function renderBecomeHost(){
       +(s==='approved'?'<button class="btn" onclick="openHostDash()">Open host dashboard</button>'
         +'<button class="btn ghost" style="margin-top:10px" onclick="openHostTrip()">Create a trip</button>'
         +'<div id="myTripsBox" style="margin-top:18px"></div>':'')
-      +(s==='pending'?'<p class="host-note">Applied '+timeAgo(_hostApp.created_at)+'. We collect ID and payout details on the verification call — never in the app.</p>'
+      +(s==='pending'?'<p class="host-note">Applied '+timeAgo(_hostApp.created_at)+'. We collect ID and payout details on the verification call, never in the app.</p>'
         +'<button class="btn ghost" onclick="openHostProfile()">Edit my application</button>'
         +'<button class="btn ghost" style="margin-top:10px" onclick="wa(\'Hi Tripomonk, checking on my host application.\')">Ask about my application</button>':'')
-      +(s==='rejected'?'<button class="btn ghost" onclick="wa(\'Hi Tripomonk, about my host application —\')">Talk to us</button>':'');
+      +(s==='rejected'?'<button class="btn ghost" onclick="wa(\'Hi Tripomonk, about my host application...\')">Talk to us</button>':'');
     hydrate(body);
     if(s==='approved')renderMyTrips();
     return;
@@ -12983,7 +12988,7 @@ async function renderBecomeHost(){
   _hwStep=0;renderHostWizard();
 }
 /* ============================================================
-   HOST ONBOARDING WIZARD — card-style, multi-step
+   HOST ONBOARDING WIZARD, card-style, multi-step
    ============================================================ */
 const HOST_WIZARD=[
   {key:'host_type',title:'Who are you?',sub:'Choose one',type:'single',opts:['Travel Influencer','Trek Leader','Photographer','Content Creator','Bike Ride Organizer','Camping Organizer','College Club / Community','Adventure Enthusiast','Tour Guide','Other']},
@@ -12998,7 +13003,7 @@ const HOST_WIZARD=[
   {key:'why_host',title:'Why do you want to host?',sub:'Choose one',type:'single',opts:['Share my travel experience','Earn extra income','Build a travel community','Create amazing content','Lead adventures','Start my own travel brand']},
   {key:'basic',title:'Basic details',sub:'Mobile, WhatsApp, email and date of birth are required (hosts must be 18+)',type:'form',fields:[['bd_name','Full name','text',true],['bd_mobile','Mobile number','tel',true],['bd_whatsapp','WhatsApp number','tel',true],['bd_email','Email address','email',true],['bd_city','City','text',false],['bd_dob','Date of birth','date',true]]},
   {key:'socials',title:'Social profiles',sub:'Add any you like',type:'form',fields:[['so_insta','Instagram','text',false],['so_yt','YouTube','text',false],['so_fb','Facebook','text',false],['so_li','LinkedIn','text',false],['so_web','Website (optional)','text',false]]},
-  {key:'bio',title:'Tell us about yourself',sub:'A short bio — max 300 characters',type:'bio'},
+  {key:'bio',title:'Tell us about yourself',sub:'A short bio, max 300 characters',type:'bio'},
   {key:'commission',title:'How you earn',sub:'Please read and agree before you submit',type:'consent'},
   {key:'review',title:'Review & submit',sub:'Check your details, then submit for verification',type:'review'}
 ];
@@ -13083,19 +13088,19 @@ function renderHostWizard(){
   }else if(st.type==='consent'){
     const on=!!_hwAns.consent;
     inner='<div class="hw-fee">'
-      +'<div class="hw-fee-hero"><div class="hw-fee-big">90%</div><div class="hw-fee-lbl">of the <b>profit</b> is yours<br>Tripomonk keeps <b>10%</b> — profit-share only</div></div>'
-      +'<div class="hw-fee-ex"><span>How it works — example figures</span>'
+      +'<div class="hw-fee-hero"><div class="hw-fee-big">90%</div><div class="hw-fee-lbl">of the <b>profit</b> is yours<br>Tripomonk keeps <b>10%</b>, profit-share only</div></div>'
+      +'<div class="hw-fee-ex"><span>How it works, example figures</span>'
         +'<div class="hw-fee-rows">'
           +'<div class="hw-fee-row"><small>Trip booking</small><b>₹10,000</b></div>'
           +'<div class="hw-fee-row"><small>− Operations cost (stay, food, transport, guides, permits)</small><b>−₹6,000</b></div>'
           +'<div class="hw-fee-row profit"><small>= Profit</small><b>₹4,000</b></div>'
         +'</div>'
         +'<div class="hw-fee-split"><div><small>You keep · 90%</small><b>₹3,600</b></div><div><small>Tripomonk · 10%</small><b>₹400</b></div></div>'
-        +'<p class="hw-fee-note">Illustrative only — actual operations cost is agreed with you per trip and can differ.</p>'
+        +'<p class="hw-fee-note">Illustrative only, actual operations cost is agreed with you per trip and can differ.</p>'
       +'</div>'
       +'<ul class="hw-fee-list">'
         +'<li><span class="msr">receipt_long</span>Operations costs are agreed with you, then deducted first</li>'
-        +'<li><span class="msr">handshake</span>Only the remaining <b>profit</b> is shared — never your costs</li>'
+        +'<li><span class="msr">handshake</span>Only the remaining <b>profit</b> is shared, never your costs</li>'
         +'<li><span class="msr">campaign</span>Tripomonk brings payments, marketing &amp; support</li>'
         +'<li><span class="msr">account_balance</span>Payout after your trip is completed</li>'
       +'</ul>'
@@ -13117,8 +13122,8 @@ function renderHostWizard(){
       +rev('Name',b.bd_name)+rev('Mobile',b.bd_mobile)+rev('City',b.bd_city)
       +rev('Instagram',s.so_insta)+rev('Website',s.so_web)
       +rev('Bio',_hwAns.bio)
-      +(_hwAns.consent?'<div class="hw-rev"><small>Profit share</small><b>90% to you (after ops cost) — agreed ✓</b></div>':'')
-      +'</div><p class="host-note">Government ID, PAN and bank/payout details are collected securely on your verification call after approval — never in the app.</p>';
+      +(_hwAns.consent?'<div class="hw-rev"><small>Profit share</small><b>90% to you (after ops cost), agreed ✓</b></div>':'')
+      +'</div><p class="host-note">Government ID, PAN and bank/payout details are collected securely on your verification call after approval, never in the app.</p>';
   }
   const isLast=_hwStep===n-1;
   body.innerHTML=`<div class="hw-top"><div class="hw-prog"><i style="width:${pct}%"></i></div>
@@ -13162,13 +13167,13 @@ async function submitHostApp(){
   if(btn){btn.disabled=false;btn.textContent='Submit for verification';}
   if(r.error){
     const dup=r.error.code==='23505';
-    note(dup?'You have already applied — we are reviewing it.':'Could not submit: '+r.error.message,dup?'Already applied':'Error');
+    note(dup?'You have already applied, we are reviewing it.':'Could not submit: '+r.error.message,dup?'Already applied':'Error');
     if(dup)renderBecomeHost();
     return;
   }
   sfx('repost');
   if(window.fbTrack)window.fbTrack('Lead',{content_name:'Host application'});
-  /* await, then re-render — otherwise the status screen paints behind the modal
+  /* await, then re-render, otherwise the status screen paints behind the modal
      and the applicant never sees that their application actually landed */
   await note('Application received. We usually review within 2–3 days and may message you on WhatsApp.','Submitted ✓');
   await loadHostApp();     /* pull the row back so the status screen is real, not assumed */
@@ -13176,7 +13181,7 @@ async function submitHostApp(){
   /* Land them on HOME, not back inside the form they just finished. Nothing more is
      required of them here, and re-showing the wizard read as "it didn't submit". */
   go('home');
-  /* Review takes a couple of days — use that time to get their public profile filled in,
+  /* Review takes a couple of days, use that time to get their public profile filled in,
      since that's what trekkers will see next to their trips. */
   if(!getSavedPhoto()||!getSavedUsername()){
     setTimeout(()=>{
@@ -13189,7 +13194,7 @@ async function submitHostApp(){
 /* ---- admin: review host applications ---- */
 const instaUrl=h=>{h=String(h||'').trim();if(/^https?:/i.test(h))return h;return 'https://instagram.com/'+h.replace(/^@/,'');};
 
-/* Hosts is three different jobs — reviewing applications, browsing approved hosts and
+/* Hosts is three different jobs, reviewing applications, browsing approved hosts and
    publishing their trips. At a handful of each they fitted in one list; at a few hundred
    they don't. Split into sub-tabs, each searchable and filterable by status. */
 let _hostSub='Applications',_hostAppQ='',_hostAppStatus='All',_hostTripQ='',_hostTripStatus='All';
@@ -13283,10 +13288,10 @@ function admHostAppCard(a){
           ? '<button class="no" onclick="reviewHost(\''+esc(a.id)+'\',\'rejected\',\''+jsq(a.full_name)+'\')">Reject</button>' : '')
         +(a.status==='approved'
           ? '<button class="no" onclick="reviewHost(\''+esc(a.id)+'\',\'rejected\',\''+jsq(a.full_name)+'\')">Revoke access</button>' : '')
-        +'<button onclick="wa(\'Hi '+jsq(a.full_name)+', about your Tripomonk host application —\')">WhatsApp</button>'
+        +'<button onclick="wa(\'Hi '+jsq(a.full_name)+', about your Tripomonk host application...\')">WhatsApp</button>'
         +'</div></div>';
 }
-/* rich review card for a host-submitted trip — hero image, status, key facts, clear actions */
+/* rich review card for a host-submitted trip, hero image, status, key facts, clear actions */
 function adminTripCard(t){
   const id=esc(t.id),ttl=jsq(t.title);
   const st=t.status==='live'?'approved':t.status==='rejected'?'rejected':'pending';
@@ -13336,19 +13341,19 @@ async function reviewHost(id,status,name){
   const sb=getSupaClient();if(!sb)return;
   hostRowAnim(id,'working');
   let done=false,reason='';
-  /* 1) service-role admin fn — bypasses RLS entirely (works if the admin fn is deployed with
+  /* 1) service-role admin fn, bypasses RLS entirely (works if the admin fn is deployed with
         set_host_app_status AND the guard exempts service_role). */
   try{const r=await adminCall('set_host_app_status',{id,status});if(r&&r.ok)done=true;else reason=(r&&r.error)||'';}
   catch(e){reason=String((e&&e.message)||e);}
   /* 2) fallback: direct owner write, and READ BACK the real status. This is what surfaces the
-        truth — a 0-row result means the UPDATE policy is missing; a row whose status did NOT
+        truth, a 0-row result means the UPDATE policy is missing; a row whose status did NOT
         change means the host_app_guard trigger reverted it (it doesn't see you as admin). */
   if(!done){
     const r=await sb.from('host_applications')
       .update({status:status,reviewed_at:new Date().toISOString()}).eq('id',id).select('id,status');
     if(r.error)reason=r.error.message||r.error.code||reason;
-    else if(!r.data||!r.data.length)reason='0 rows changed — the admin UPDATE policy is missing. Run SQL-FIX-host-approval.sql.';
-    else if(r.data[0].status!==status)reason='The database reverted the status to "'+r.data[0].status+'" — the host_app_guard trigger isn\'t recognising your login as admin. Re-run the latest SQL-FIX-host-approval.sql.';
+    else if(!r.data||!r.data.length)reason='0 rows changed, the admin UPDATE policy is missing. Run SQL-FIX-host-approval.sql.';
+    else if(r.data[0].status!==status)reason='The database reverted the status to "'+r.data[0].status+'", the host_app_guard trigger isn\'t recognising your login as admin. Re-run the latest SQL-FIX-host-approval.sql.';
     else done=true;
   }
   if(!done){
@@ -13357,7 +13362,7 @@ async function reviewHost(id,status,name){
     note(reason+(mail?('\n\nSigned in as: '+mail):''),'Could not '+(status==='approved'?'approve':'reject')+' '+name);
     return;
   }
-  /* success — play the animation, patch the cache in place, then re-render so counts update */
+  /* success, play the animation, patch the cache in place, then re-render so counts update */
   hostRowAnim(id,status);
   const a=(_appsCache||[]).find(x=>String(x.id)===String(id));if(a)a.status=status;
   _ovCache=null;
@@ -13384,7 +13389,7 @@ function toggleExc(o){const i=_htExc.indexOf(o);i>=0?_htExc.splice(i,1):_htExc.p
 function renderHostTrip(){
   const d=document.getElementById('htDiff');
   if(d)d.innerHTML=HT_DIFF.map(x=>'<span class="tap '+(_htDiff===x?'sel':'')+'" onclick="pickHtDiff(\''+x+'\')">'+x+'</span>').join('');
-  /* tap-to-fill quick picks — a host should mostly select, not type */
+  /* tap-to-fill quick picks, a host should mostly select, not type */
   const mx=document.getElementById('htMaxChips');
   if(mx){const cur=(document.getElementById('htMax')||{}).value;
     mx.innerHTML=HT_MAX_OPTS.map(x=>'<span class="tap '+(String(cur)===String(x)?'sel':'')+'" onclick="pickHtMax('+x+')">'+x+'</span>').join('');}
@@ -13442,7 +13447,7 @@ function htEndFromStart(){
   if(s.value){e.min=s.value;if(e.value&&e.value<s.value)e.value=s.value;}
   htDaysFromRange();
 }
-/* days is derived from the range — inclusive, so a same-day trip is 1 day */
+/* days is derived from the range, inclusive, so a same-day trip is 1 day */
 function htDaysFromRange(){
   const s=(document.getElementById('htDate')||{}).value,e=(document.getElementById('htEnd')||{}).value;
   const d=document.getElementById('htDays');if(!d)return;
@@ -13520,13 +13525,13 @@ async function openHostTrip(id){
     const r=await sb.from('host_trips').select('*').eq('id',id).eq('host_id',uid).maybeSingle();
     const t=r.data;
     if(!t){note('Trip not found.','Error');_editTripId=null;return;}
-    if(t.status==='live'){note('Live trips are locked — message us to change them.','Locked');_editTripId=null;return;}
+    if(t.status==='live'){note('Live trips are locked, message us to change them.','Locked');_editTripId=null;return;}
     _htDiff=t.difficulty||'Moderate';_htImgData=t.img||'';
     _htMedia=Array.isArray(t.media)?t.media.filter(x=>x&&x.url).map(x=>({kind:(x.type==='video'||isVideoUrl(x.url))?'video':'image',url:x.url,isNew:false})):[];
     set('htTitle',t.title);set('htDest',t.destination);set('htDate',t.start_date);set('htEnd',t.end_date);
     set('htDays',t.days);set('htMax',t.max_people);set('htPrice',t.price);
     set('htDesc',t.description);
-    /* stored inclusions/exclusions are newline/comma text — split back into chips */
+    /* stored inclusions/exclusions are newline/comma text, split back into chips */
     const splt=s=>String(s||'').split(/[\n,]+/).map(x=>x.trim()).filter(Boolean);
     _htInc=splt(t.inclusions);_htExc=splt(t.exclusions);
     htDaysFromRange();
@@ -13562,14 +13567,14 @@ async function submitHostTrip(){
   let imgUrl='';
   try{
     if(_htFile){
-      /* compress before upload — hosts will pick straight off their camera roll */
+      /* compress before upload, hosts will pick straight off their camera roll */
       const small=await compressImage(_htFile,{maxW:1440,quality:.82});
       const path='trips/'+Date.now()+'_'+Math.random().toString(36).slice(2)+'.jpg';
       const up=await sb.storage.from('community').upload(path,small,{cacheControl:'3600',upsert:false});
       if(up.error)throw new Error(up.error.message);
       imgUrl=sb.storage.from('community').getPublicUrl(path).data.publicUrl;
     }
-    /* upload the trek gallery — photos + videos (incl. the host's own video).
+    /* upload the trek gallery, photos + videos (incl. the host's own video).
        Already-uploaded items (on edit) keep their URL; new picks are uploaded. */
     const mediaArr=[];
     if(_htMedia.length&&btn)btn.textContent='Uploading media…';
@@ -13601,14 +13606,14 @@ async function submitHostTrip(){
     row.media=mediaArr;   /* the trek gallery (may be empty if the host removed everything) */
     let r;
     if(_editTripId){
-      /* status deliberately not sent — the DB trigger pins it regardless */
+      /* status deliberately not sent, the DB trigger pins it regardless */
       r=await sb.from('host_trips').update(row).eq('id',_editTripId).eq('host_id',uid).select('id');
     }else{
       row.status='draft';
       r=await sb.from('host_trips').insert(row).select('id');
     }
     if(r.error)throw new Error(r.error.message);
-    if(!r.data||!r.data.length)throw new Error(_editTripId?'Nothing saved — you can only edit your own trips.':'Not saved — your host approval may have changed.');
+    if(!r.data||!r.data.length)throw new Error(_editTripId?'Nothing saved, you can only edit your own trips.':'Not saved, your host approval may have changed.');
     sfx('repost');
     await note(_editTripId?'Trip updated. We review changes before they go live.':'Trip submitted. We review it before it goes live.','Saved ✓');
     const wasEdit=_editTripId;_editTripId=null;
@@ -13626,7 +13631,7 @@ async function myHostTrips(){
   try{const r=await sb.from('host_trips').select('*').eq('host_id',uid).order('created_at',{ascending:false});
     const trips=r.data||[];
     /* auto-close the host's OWN live trips whose dates are over. RLS-safe (host_id=uid).
-       Existing bookings are untouched — they live in the bookings table / on the ticket. */
+       Existing bookings are untouched, they live in the bookings table / on the ticket. */
     const stale=trips.filter(t=>t.status==='live'&&hostTripEnded(t));
     if(stale.length){stale.forEach(t=>{t.status='closed';});
       Promise.all(stale.map(t=>sb.from('host_trips').update({status:'closed'}).eq('id',t.id).eq('host_id',uid))).catch(()=>{});}
@@ -13687,7 +13692,7 @@ async function openAdminTrip(id){
       +(t.status!=='live'?'<button class="ok" onclick="reviewTrip(\''+esc(t.id)+'\',\'live\',\''+jsq(t.title)+'\',1)">Publish</button>'
                          :'<button onclick="reviewTrip(\''+esc(t.id)+'\',\'draft\',\''+jsq(t.title)+'\',1)">Unpublish</button>')
       +(t.status!=='rejected'?'<button class="no" onclick="reviewTrip(\''+esc(t.id)+'\',\'rejected\',\''+jsq(t.title)+'\',1)">Reject</button>':'')
-      +'<button onclick="wa(\'Hi '+jsq(t.host_name)+', about your trip '+jsq(t.title)+' —\')">Message host</button>'
+      +'<button onclick="wa(\'Hi '+jsq(t.host_name)+', about your trip '+jsq(t.title)+'...\')">Message host</button>'
     +'</div>';
   hydrate(box);
 }
@@ -13715,32 +13720,32 @@ async function reviewTrip(id,status,title,fromDetail){
   if(!done2){
     const r=await sb.from('host_trips').update({status:status}).eq('id',id).select('id,status');
     if(r.error)reason=r.error.message||r.error.code||reason;
-    else if(!r.data||!r.data.length)reason='0 rows changed — run SQL-FIX-host-trips.sql in Supabase (adds the admin-publish policy).';
-    else if(r.data[0].status!==status)reason='The database reverted the status to "'+r.data[0].status+'" — the host_trip_guard trigger isn\'t recognising your login as admin. Re-run the latest SQL-FIX-host-trips.sql.';
+    else if(!r.data||!r.data.length)reason='0 rows changed, run SQL-FIX-host-trips.sql in Supabase (adds the admin-publish policy).';
+    else if(r.data[0].status!==status)reason='The database reverted the status to "'+r.data[0].status+'", the host_trip_guard trigger isn\'t recognising your login as admin. Re-run the latest SQL-FIX-host-trips.sql.';
     else done2=true;
   }
   if(!done2){
-    note(reason+'\n\nSigned in as: '+(getUserEmail()||'unknown')+'. The DB only lets the owner account publish trips — run SQL-FIX-host-trips.sql, or deploy the updated admin function.','Could not '+verb.toLowerCase()+' trip');
+    note(reason+'\n\nSigned in as: '+(getUserEmail()||'unknown')+'. The DB only lets the owner account publish trips, run SQL-FIX-host-trips.sql, or deploy the updated admin function.','Could not '+verb.toLowerCase()+' trip');
     return;
   }
   const done={live:'is now live.',draft:'moved back to draft.',rejected:'was rejected.'}[status]||'updated.';
   await note('"'+title+'" '+done,'Done');
   if(fromDetail)go('admin');   /* back to the list after acting from the detail view */
   _ovCache=null;
-  renderAdminHosts(true);      /* status changed — refetch, don't reuse the cached list */
+  renderAdminHosts(true);      /* status changed, refetch, don't reuse the cached list */
 }
 
 /* ============================================================
    HOME · HOST TRIPS
    A rail of live host trips. Until any exist, the same slot recruits
-   hosts instead — an empty section on the home screen is dead space.
+   hosts instead, an empty section on the home screen is dead space.
    ============================================================ */
-/* verified hosts for the home rail. name is required — a badged profile with a
+/* verified hosts for the home rail. name is required, a badged profile with a
    null name cannot be rendered or opened, so it is excluded rather than shown blank. */
 /* Collapse profiles that share a display name to ONE card. Test/incomplete accounts
    (the founder's duplicate "Vikas" sign-ins) otherwise stack up in the rail. Keep the
    most-complete row: a custom photo beats a username beats bare existence. The real fix
-   is cleaning the duplicate ACCOUNTS in the DB — this just stops the rail looking broken
+   is cleaning the duplicate ACCOUNTS in the DB, this just stops the rail looking broken
    meanwhile, and does NOT hide two genuinely different same-name hosts once both have a
    photo or username. */
 function dedupeHosts(rows){
@@ -13779,14 +13784,14 @@ async function resolveHostNames(trips){
 }
 /* A hosted trip is "over" once today is past its last day. Uses end_date if set,
    otherwise start_date + (days-1). Ended trips auto-close: they drop off the home rail
-   and host profiles — but any bookings made for them are untouched (bookings are
+   and host profiles, but any bookings made for them are untouched (bookings are
    self-contained, so they keep showing in the Bookings panel). */
 function hostTripEnded(t){
   if(!t)return false;
   let end=t.end_date||'';
   if(!end&&t.start_date){try{const d=new Date(t.start_date+'T00:00:00');d.setDate(d.getDate()+Math.max(0,(parseInt(t.days)||1)-1));
     end=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}catch(e){}}
-  if(!end)return false;                 /* no date info — never auto-hide */
+  if(!end)return false;                 /* no date info, never auto-hide */
   return String(end)<todayISO(0);       /* strictly before today = the trip is over */
 }
 function loadLiveHostTrips(){const f=loadLiveHostTrips._s||(loadLiveHostTrips._s=shareInflight(_loadLiveHostTrips));return f();}
@@ -13816,7 +13821,7 @@ function hostTripCard(t){
         +(t.difficulty?'<i>'+esc(t.difficulty)+'</i>':'')
       +'</div></div></div>';
 }
-/* a face + name + verified tick — tapping opens their community profile */
+/* a face + name + verified tick, tapping opens their community profile */
 function verifiedHostChip(h){
   return '<div class="vhost" onclick="openPerson(\''+jsq(h.name)+'\')">'
     +'<div class="vhring">'+avatar(h.name,54)+'</div>'
@@ -13847,7 +13852,7 @@ async function loadAllHosts(){
     _hostsLoaded=true;
   }catch(e){allHosts=[];_hostsLoaded=true;}
 }
-/* live trips per host, keyed by name — used on the host list AND their profile */
+/* live trips per host, keyed by name, used on the host list AND their profile */
 let _tripsByHost=null;
 async function loadTripCountsByHost(){
   const sb=getSupaClient();if(!sb){_tripsByHost={};return;}
@@ -13940,7 +13945,7 @@ function renderHostsList(){
   hydrate(box);
 }
 /* Resolve a Trek Guide to their MAIN user account so a guide and the same person's host/user profile
-   are ONE profile — same photo, same name, same tap target. Match by guides.user_id (set server-side
+   are ONE profile, same photo, same name, same tap target. Match by guides.user_id (set server-side
    when an email/mobile matched at approval / "link account"), else by exact name. When matched we
    register the account photo so avatar() shows it, and the home tile opens the unified person profile. */
 let _guideAcct={}, _guideAcctDone=false;
@@ -14000,7 +14005,7 @@ function guideGridCell(g){
     +'<div class="hg-av">'+inner+(g.verified?'<span class="hg-tick gtick"><span class="msr">check</span></span>':'')+'</div>'
   +'</div>';
 }
-/* "Trek Leader" card on a person's unified profile — shown when that person is also a guide */
+/* "Trek Leader" card on a person's unified profile, shown when that person is also a guide */
 function personGuideCard(g){
   const facts=[];
   if(g.years)facts.push(esc(g.years)+(/[a-z]/i.test(String(g.years))?'':' yrs')+' leading');
@@ -14020,7 +14025,7 @@ function verifiedTickFor(name,g){
   if(!host&&!guide)return '';
   return '<span class="vbadge" title="'+(host?'Verified Host':'Verified Trek Leader')+'"><span class="msr">check</span></span>';
 }
-/* Role cards on a person's unified profile — Host + Trek Leader shown SIDE BY SIDE as compact,
+/* Role cards on a person's unified profile, Host + Trek Leader shown SIDE BY SIDE as compact,
    whole-card-tappable tiles. Renders 1 or 2 depending on which roles the person holds. */
 function personRoleCard(kind,icon,title,sub,go,tap){
   return '<button class="prole '+kind+'" onclick="'+tap+'">'
@@ -14052,7 +14057,7 @@ function profileLinksHTML(name,g,current,opts){
   if(!show.length)return '';
   return '<div class="prole-wrap">'+show.map(k=>{const s=profileCardSpec(k,name,g);return personRoleCard(s.kind,s.icon,s.title,s.sub,s.go,s.tap);}).join('')+'</div>';
 }
-/* box: Our Hosts — 3-col grid of host profiles (from the main user DB) + "Become a Host" CTA */
+/* box: Our Hosts, 3-col grid of host profiles (from the main user DB) + "Become a Host" CTA */
 function hostsHomeBox(){
   const list=verifiedHosts.slice(0,6);
   const grid=list.length
@@ -14064,7 +14069,7 @@ function hostsHomeBox(){
     +'<button class="homebox-cta" onclick="go(\'becomeHost\')"><span class="msr">add_home</span><span>Become a Host</span></button>'
   +'</div>';
 }
-/* box: Our Trek Guides — 3-col grid of guide profiles + "Check Eligibility" CTA */
+/* box: Our Trek Guides, 3-col grid of guide profiles + "Check Eligibility" CTA */
 function guidesHomeBox(){
   const signedIn=(typeof isLoggedIn==='function'&&isLoggedIn());
   const gl=(guides||[]).filter(g=>g&&(g.name||_guideAcct[g.id])).slice(0,6);
@@ -14094,28 +14099,28 @@ function renderHomeHosts(){
   if(!_guidesLoaded){loadGuides().then(()=>renderHomeHosts());return;}   /* fill guides when they load */
   if(!_guideAcctDone){_guideAcctDone=true;resolveGuideAccounts().then(()=>renderHomeHosts());}  /* then link to main accounts */
 }
-/* green WhatsApp button — reused on every booking screen so doubts get answered fast */
+/* green WhatsApp button, reused on every booking screen so doubts get answered fast */
 function waButton(msg,label){
   return '<button class="wa-btn" onclick="wa(\''+jsq(msg)+'\')">'
     +'<svg class="wa-ic" viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path fill="#fff" d="M12 2a10 10 0 0 0-8.53 15.2L2 22l4.94-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-2.93.77.78-2.86-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.14c-.25-.12-1.46-.72-1.69-.8-.22-.08-.39-.12-.55.13-.16.25-.63.8-.78.97-.14.16-.29.18-.53.06-.25-.12-1.04-.38-1.98-1.22-.73-.65-1.23-1.46-1.37-1.71-.14-.25-.02-.38.11-.5.11-.11.25-.29.37-.43.13-.14.17-.25.25-.41.08-.16.04-.31-.02-.43-.06-.12-.55-1.33-.76-1.82-.2-.48-.4-.41-.55-.42h-.47c-.16 0-.43.06-.65.31-.22.25-.86.84-.86 2.05s.88 2.38 1 2.54c.12.16 1.73 2.64 4.19 3.7.59.25 1.04.4 1.4.51.59.19 1.12.16 1.54.1.47-.07 1.46-.6 1.66-1.17.21-.58.21-1.07.14-1.17-.06-.11-.22-.17-.47-.29Z"/></svg>'
     +esc(label||'Chat on WhatsApp')+'</button>';
 }
-/* trust card with icons — reassures people before they book */
+/* trust card with icons, reassures people before they book */
 function trustCard(host,title){
   const item=(icon,t,s)=>'<div class="trust-item"><span class="msr">'+icon+'</span><div><b>'+t+'</b><small>'+s+'</small></div></div>';
   return '<div class="trust-card">'
     +'<div class="trust-h"><span class="msr">verified_user</span> Book with confidence</div>'
     +'<div class="trust-list">'
-    +item('shield','Operated by Tripomonk','All logistics, safety &amp; support handled by us'+(host?' — '+esc(host)+' leads on the ground':'')+'.')
+    +item('shield','Operated by Tripomonk','All logistics, safety &amp; support handled by us'+(host?', '+esc(host)+' leads on the ground':'')+'.')
     +item('lock','Secure payment','Paid securely via Razorpay. 25% advance to confirm, balance before departure.')
     +item('published_with_changes','Transparent cancellation','A clear refund policy is shown before you pay.')
-    +item('support_agent','Real human support','Our team is one message away — before and during your trek.')
+    +item('support_agent','Real human support','Our team is one message away, before and during your trek.')
     +'</div>'
     +waButton('Hi Tripomonk, I have a question about the '+(title||'trip')+' before booking. Can you help?','Have doubts? Chat on WhatsApp')
     +'</div>';
 }
 let _htvTrip=null,_htvPax=1;
-/* the trek gallery on the public trip page — photos + playable videos */
+/* the trek gallery on the public trip page, photos + playable videos */
 function mediaGallery(media){
   if(!Array.isArray(media)||!media.length)return '';
   const items=media.map(m=>{
@@ -14144,7 +14149,7 @@ async function openHostTripDetail(id){
   go('hostTripView');
   const box=document.getElementById('htvBody');
   if(box)box.innerHTML='<div class="skel skel-card" style="height:200px"></div>';
-  /* fetch fresh so price/status are current — a cached rail item could be stale */
+  /* fetch fresh so price/status are current, a cached rail item could be stale */
   const sb=getSupaClient();
   let t=liveHostTrips.find(x=>String(x.id)===String(id));
   if(sb){try{const r=await sb.from('host_trips').select('*').eq('id',id).maybeSingle();if(r.data)t=r.data;}catch(e){}}
@@ -14190,14 +14195,14 @@ function htvRecalc(){
   document.getElementById('htvPrice').textContent=INR(total);
   document.getElementById('htvPriceSub').textContent=_htvPax+(_htvPax===1?' person · ':' people · ')+INR(t.price||0)+' each · 25% advance';
 }
-/* book a hosted trip — opens a proper details page (like the trek flow), then pays */
+/* book a hosted trip, opens a proper details page (like the trek flow), then pays */
 async function bookHostTrip(){
   const t=_htvTrip;if(!t){note('Please reopen this trip.','Nothing selected');return;}
   if(!isLoggedIn()){note('Please sign in to book.','Sign in required').then(()=>{_loginReturn='home';go('login');});return;}
   if(!(getUserEmail()||'')){note('Your account has no email. Please sign in with email.','Cannot book');return;}
   go('htBook');
 }
-/* the hosted-trip booking form — collects the same details a trek booking needs, on one page */
+/* the hosted-trip booking form, collects the same details a trek booking needs, on one page */
 function renderHtBook(){
   const box=document.getElementById('htBookBody');if(!box)return;
   const t=_htvTrip;
@@ -14227,7 +14232,7 @@ function renderHtBook(){
 }
 async function htPay(){
   const t=_htvTrip;if(!t){note('Please reopen this trip.','Nothing selected');return;}
-  if(!window.Razorpay&&!(await loadRazorpay())){note('Payment is still loading — wait a moment and tap again.','Please wait');return;}
+  if(!window.Razorpay&&!(await loadRazorpay())){note('Payment is still loading, wait a moment and tap again.','Please wait');return;}
   if(!sbOn){note('Payment service not configured. Please contact Tripomonk.','Payment error');return;}
   const g=id=>document.getElementById(id);
   const name=(g('htName').value||'').trim();
@@ -14246,27 +14251,27 @@ async function htPay(){
   let order;
   try{order=await rzpCall('create',{booking});}
   catch(e){note('Could not reach payment service: '+e,'Payment error');return;}
-  if(!order||!order.order_id){note('Could not start payment — '+((order&&order.error)?order.error:'no order returned'),'Payment error');return;}
+  if(!order||!order.order_id){note('Could not start payment, '+((order&&order.error)?order.error:'no order returned'),'Payment error');return;}
   const rzp=new window.Razorpay({
     key:order.key_id, order_id:order.order_id, amount:order.amount, currency:order.currency||'INR',
-    name:'Tripomonk', description:t.title+' — hosted trip', image:'icons/icon-192.png',
+    name:'Tripomonk', description:t.title+', hosted trip', image:'icons/icon-192.png',
     prefill:{name,email,contact:phone}, notes:{hosttrip:t.id}, theme:{color:'#2f6bff'},
     handler:async function(response){
       let res;try{res=await rzpCall('verify',{razorpay_order_id:response.razorpay_order_id,razorpay_payment_id:response.razorpay_payment_id,razorpay_signature:response.razorpay_signature,booking});}catch(e){res=null;}
-      if(!res||!res.ok){note('Payment received but we could not verify it instantly. Our team will confirm shortly — payment ID: '+(response.razorpay_payment_id||'—'),'Verification pending');return;}
+      if(!res||!res.ok){note('Payment received but we could not verify it instantly. Our team will confirm shortly, payment ID: '+(response.razorpay_payment_id||'-'),'Verification pending');return;}
       const sbk=(res&&res.booking)||{};
       const b={id:response.razorpay_payment_id,name,trek:sbk.trek||t.title,img:t.img||'',date:sbk.date||t.start_date||'As scheduled',startISO:t.start_date||'',pax:_htvPax,total:sbk.total||(t.price*_htvPax),paid:sbk.paid,ts:Date.now(),status:'Confirmed (advance paid)',checkedIn:false,paymentId:response.razorpay_payment_id};
       const all=getBookings();all.unshift(b);saveBookings(all);
       if(window.fbTrack)window.fbTrack('Purchase',{value:Number(b.total)||Number(b.paid)||0,currency:'INR',content_name:b.trek||'',content_type:'product'});
       note('Advance paid! '+t.title+' is confirmed. Tripomonk will contact you with the rest.','Booked ✓').then(()=>go('bookings'));
     },
-    modal:{ondismiss:function(){note('Payment cancelled — the trip is not booked yet.','Cancelled');}}
+    modal:{ondismiss:function(){note('Payment cancelled, the trip is not booked yet.','Cancelled');}}
   });
   rzp.open();
 }
 
 /* ============================================================
-   HOST DASHBOARD — for approved hosts only.
+   HOST DASHBOARD, for approved hosts only.
    Hosts edit their own profile and their own trips. They can never
    change status: that is pinned by a DB trigger, not by this screen.
    ============================================================ */
@@ -14289,7 +14294,7 @@ async function renderHostDash(){
   const a=_hostApp;
   head.innerHTML='<div class="hdhead"><div class="hdtop">'
     +avatar(myName(),46)
-    /* we already know they're approved to be on this screen — don't depend on the
+    /* we already know they're approved to be on this screen, don't depend on the
        hostByName cache, which is only filled by the community feed */
     +'<div class="hdwho"><b>'+esc(a.full_name||myName())
     +'<span class="vbadge" title="Verified Host"><span class="msr">check</span></span></b>'
@@ -14318,7 +14323,7 @@ function renderHdBody(){
   if(hdTab==='Earnings'){renderHdEarnings(box);return;}
   if(!_hdTrips.length){
     box.innerHTML='<div class="hdempty"><span class="msr">landscape</span>'
-      +'<p>No trips yet. Create your first one — we handle the operations once it is approved.</p>'
+      +'<p>No trips yet. Create your first one, we handle the operations once it is approved.</p>'
       +'<button class="btn" style="max-width:230px;margin:0 auto" onclick="openHostTrip()">Create a trip</button></div>';
     return;
   }
@@ -14327,7 +14332,7 @@ function renderHdBody(){
     +_hdTrips.map(hdTripRow).join('');
   hydrate(box);
 }
-/* a trip is "old" once its end date (or start date) has passed — ISO YYYY-MM-DD compares lexically */
+/* a trip is "old" once its end date (or start date) has passed, ISO YYYY-MM-DD compares lexically */
 function isPastTrip(t){
   const d=String((t&&(t.end_date||t.start_date))||'').slice(0,10);
   if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return false;   /* unknown date format → treat as not-past (safe) */
@@ -14353,7 +14358,7 @@ function hdTripRow(t){
        : (isPastTrip(t)
           ? '<span class="tlock">This trip has ended.</span>'
             +'<div class="tact"><button class="dz" onclick="deleteHostTrip(\''+jsq(t.id)+'\',\''+jsq(t.title)+'\')">Delete old trip</button>'+mk+'</div>'
-          : '<span class="tlock">Live trips are locked — message us to change dates, price or seats.</span>'
+          : '<span class="tlock">Live trips are locked, message us to change dates, price or seats.</span>'
             +'<div class="tact">'+mk
             +'<button onclick="wa(\'Hi Tripomonk, I need to update my live trip: '+jsq(t.title)+'\')">Message us</button></div>'))
     +'</div>'
@@ -14361,7 +14366,7 @@ function hdTripRow(t){
 }
 async function deleteHostTrip(id,title){
   const t=_hdTrips.find(x=>String(x.id)===String(id));
-  if(t&&t.status==='live'&&!isPastTrip(t)){note('Upcoming live trips are locked — message us to change or cancel.','Locked');return;}
+  if(t&&t.status==='live'&&!isPastTrip(t)){note('Upcoming live trips are locked, message us to change or cancel.','Locked');return;}
   const warn=(t&&t.status==='live')?'Delete "'+title+'"? This past trip will be removed from your dashboard. Your booking records stay intact. This cannot be undone.':'Delete "'+title+'"? This cannot be undone.';
   if(!(await askConfirm(warn,'Delete trip')))return;
   const sb=getSupaClient();const uid=sb?await authUid():null;
@@ -14372,7 +14377,7 @@ async function deleteHostTrip(id,title){
   renderHostDash();
 }
 function slugify(s){return String(s||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');}
-/* clean, readable shareable link — e.g. app.tripomonk.com/#trip=kedarkantha-winter-summit
+/* clean, readable shareable link, e.g. app.tripomonk.com/#trip=kedarkantha-winter-summit
    (no index.html, no raw UUID). Falls back to the id if the title has no usable slug. */
 function hostTripUrl(id,title){
   const slug=slugify(title);
@@ -14390,7 +14395,7 @@ async function openHostTripBySlug(key){
   else note('This trip isn’t available right now.','Not found');
 }
 function findHostTrip(id){return (_hdTrips||[]).find(x=>String(x.id)===String(id))||(liveHostTrips||[]).find(x=>String(x.id)===String(id));}
-/* share a trip to OTHER platforms — native share sheet, or copy the link */
+/* share a trip to OTHER platforms, native share sheet, or copy the link */
 async function shareHostTrip(id,title){
   const t=findHostTrip(id);
   if(t&&t.status&&t.status!=='live'){note('This trip goes public once Tripomonk publishes it. You can share it then to get bookings.','Not live yet');return;}
@@ -14413,9 +14418,9 @@ async function postTripToCommunity(id){
   if(t.status!=='live'){note('Only published (live) trips can be shared to the community.','Not live yet');return;}
   if(!(await askConfirm('Share “'+t.title+'” to the community feed as a post?','Post to feed')))return;
   const dates=t.start_date?new Date(t.start_date+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'';
-  /* clean, trek-themed caption — no raw link (looks like spam). The trek tag on the
+  /* clean, trek-themed caption, no raw link (looks like spam). The trek tag on the
      post is the tappable CTA that opens the full trip page. */
-  const txt='🏔️ Trekking together — '+t.title
+  const txt='🏔️ Trekking together, '+t.title
     +'\n\n📍 '+t.destination
     +(dates?'\n🗓️ '+dates:'')
     +(t.days?'\n⛺ '+t.days+' days on the trail':'')
@@ -14429,7 +14434,7 @@ async function postTripToCommunity(id){
   note('Shared to the community feed! It will help trekkers discover your trip.','Posted');
 }
 /* ============================================================
-   HOST EARNINGS — verified hosts only (this whole dashboard is
+   HOST EARNINGS, verified hosts only (this whole dashboard is
    gated by isVerifiedHost). Shows the host's 90% share from trip
    bookings + referral rewards. Numbers are real: pulled from the
    bookings table best-effort, never faked. Empty until real
@@ -14508,7 +14513,7 @@ function tripOpsCostPP(t){
 /* pull the host's real earnings from confirmed bookings on their own trips.
    MODEL: host keeps 90% of the PROFIT (booking revenue − Tripomonk's operations
    cost), never 90% of gross bookings. Trips without a finalised operations cost
-   show their revenue but their payout is "awaiting costing" — we never guess it. */
+   show their revenue but their payout is "awaiting costing", we never guess it. */
 async function loadHostEarnings(){
   const trips=_hdTrips||[];
   const titles=trips.map(t=>t.title).filter(Boolean);
@@ -14560,7 +14565,7 @@ async function renderHdEarnings(box){
   const empty=isEmpty
     ?'<div class="earn-empty"><span class="msr">savings</span><p>No earnings yet. When trekkers book your live trips, your <b>90% share of the profit</b> and referral rewards appear here.</p></div>'
     :'';
-  /* revenue on trips Tripomonk hasn\'t costed yet — surfaced so we never imply a payout we can\'t compute */
+  /* revenue on trips Tripomonk hasn\'t costed yet, surfaced so we never imply a payout we can\'t compute */
   const pendingBanner=e.pendingRevenue>0
     ?'<div class="earn-pending"><span class="msr">hourglass_top</span><p><b>'+m(e.pendingRevenue)+'</b> in bookings is awaiting operations costing. Your <b>90% profit share</b> appears here once Tripomonk finalises the trip cost.</p></div>'
     :'';
@@ -14573,12 +14578,12 @@ async function renderHdEarnings(box){
     +'<div class="earn-line grand"><span>You earn (90% of profit)</span><b>'+m(e.tripNet)+'</b></div>'
     +(e.advance?'<div class="earn-foot">'+m(e.advance)+' advance collected so far · balance settles after each trip</div>':'')
     +'</div>':'';
-  /* how-it-works explainer — shows the model even before any trip is costed */
+  /* how-it-works explainer, shows the model even before any trip is costed */
   const modelCard=(e.bookings>0&&e.knownRevenue===0)?'<div class="earn-card">'
     +'<div class="earn-ch"><span class="msr">calculate</span><b>How your payout is worked out</b></div>'
     +'<div class="earn-line"><span>Booking revenue</span><b>'+m(e.revenue)+'</b></div>'
     +'<div class="earn-line sub"><span>− Operations cost (guides, permits, stay, transport, safety)</span><b>set by Tripomonk</b></div>'
-    +'<div class="earn-line sub"><span>= Trip profit</span><b>—</b></div>'
+    +'<div class="earn-line sub"><span>= Trip profit</span><b>-</b></div>'
     +'<div class="earn-line grand"><span>You earn 90% of the profit</span><b>Pending</b></div>'
     +'</div>':'';
   const withEarn=e.booked.filter(x=>x.costKnown);
@@ -14595,18 +14600,18 @@ async function renderHdEarnings(box){
     +'<div class="ref-box"><div class="ref-code"><small>YOUR CODE</small><b>'+esc(code)+'</b></div>'
     +'<div class="ref-acts"><button class="mk" onclick="copyReferral()"><span class="msr">link</span> Copy link</button>'
     +'<button class="mk" onclick="shareReferral()"><span class="msr">ios_share</span> Share</button></div></div>'
-    +'<p class="host-note" style="margin:10px 0 0">Share your link — when a new trekker opens it and books their first trip within 30 days, you earn a reward. It’s added to your Tripomonk wallet after their trek.</p>'
+    +'<p class="host-note" style="margin:10px 0 0">Share your link, when a new trekker opens it and books their first trip within 30 days, you earn a reward. It’s added to your Tripomonk wallet after their trek.</p>'
     +'</div>';
-  const payout='<p class="host-note" style="text-align:center;margin-top:4px">You earn 90% of the profit on each trip (booking revenue minus operations cost). Payouts settle after each trip — bank & ID details are handled on your verification call, never in the app.</p>';
+  const payout='<p class="host-note" style="text-align:center;margin-top:4px">You earn 90% of the profit on each trip (booking revenue minus operations cost). Payouts settle after each trip, bank & ID details are handled on your verification call, never in the app.</p>';
   box.innerHTML=hero+empty+pendingBanner+tripCard+modelCard+breakdown+refCard+payout;
   hydrate(box);
 }
 /* ---- host profile (public-facing details) ---- */
-/* commission info — only ever shown INSIDE the host dashboard (verified hosts) */
+/* commission info, only ever shown INSIDE the host dashboard (verified hosts) */
 function commissionCard(){
   return '<div class="commission-box" style="margin:0 0 16px">'
     +'<div class="cb-row"><span class="msr">payments</span><div><b>How you earn</b>'
-    +'<small>You keep <b>90% of the profit</b> on every trip — that\'s the booking revenue minus operations cost (guides, permits, stay, transport, safety), which Tripomonk runs and covers. Tripomonk keeps the other <b>10% of the profit</b>. Your payout is settled after the trip.</small></div></div>'
+    +'<small>You keep <b>90% of the profit</b> on every trip, that\'s the booking revenue minus operations cost (guides, permits, stay, transport, safety), which Tripomonk runs and covers. Tripomonk keeps the other <b>10% of the profit</b>. Your payout is settled after the trip.</small></div></div>'
     +'</div>';
 }
 function renderHdProfileSummary(box){
@@ -14620,7 +14625,7 @@ function renderHdProfileSummary(box){
     +'</div>'
     +(a.bio?'<p class="host-note" style="margin:0 0 14px">'+esc(a.bio)+'</p>':'')
     +'<button class="btn" onclick="openHostProfile()">Edit profile</button>'
-    +'<p class="host-note">ID and payout details are handled on your verification call — never in the app.</p>';
+    +'<p class="host-note">ID and payout details are handled on your verification call, never in the app.</p>';
   hydrate(box);
 }
 const HP_FIELDS=[
@@ -14650,7 +14655,7 @@ function renderHostProfile(){
     +HP_FIELDS.map(f=>'<div class="field"><label>'+f[1]+'</label>'
       +(f[2]==='tel'?telInput(f[0],val[f[0]]||'')
         :'<div class="inp"><input id="'+f[0]+'" type="'+f[2]+'" value="'+esc(val[f[0]]||'')+'"/></div>')+'</div>').join('')
-    +'<div class="field"><label>Short bio</label><textarea id="hpBio" class="hw-bio" maxlength="300" placeholder="A short intro shown on your public host page — your experience, the vibe of your trips…" oninput="var c=document.getElementById(\'hpBioC\');if(c)c.textContent=this.value.length">'+esc(a.bio||'')+'</textarea><div class="hw-bioc"><span id="hpBioC">'+String(a.bio||'').length+'</span>/300</div></div>'
+    +'<div class="field"><label>Short bio</label><textarea id="hpBio" class="hw-bio" maxlength="300" placeholder="A short intro shown on your public host page, your experience, the vibe of your trips…" oninput="var c=document.getElementById(\'hpBioC\');if(c)c.textContent=this.value.length">'+esc(a.bio||'')+'</textarea><div class="hw-bioc"><span id="hpBioC">'+String(a.bio||'').length+'</span>/300</div></div>'
     +'<div class="field"><label>Travel experience</label><div class="inp"><input id="hpExp" value="'+esc(a.experience||'')+'"/></div></div>'
     +'<div class="field"><label>Trips you host</label><div class="inp"><input id="hpTypes" value="'+esc(a.trip_types||'')+'"/></div></div>'
     +'<div class="field"><label>Preferred destinations</label><div class="inp"><input id="hpDests" value="'+esc(a.destinations||'')+'"/></div></div>'
@@ -14668,7 +14673,7 @@ async function saveHostProfile(){
   if(!sb||!uid){note('Please sign in.','Sign in required');return;}
   const btn=document.getElementById('hpSave');
   if(btn){btn.disabled=true;btn.textContent='Saving…';}
-  /* status is deliberately NOT sent — the DB trigger pins it anyway */
+  /* status is deliberately NOT sent, the DB trigger pins it anyway */
   const r=await sb.from('host_applications').update({
     full_name:name,city:v('hpCity'),mobile:mobile,instagram:v('hpInsta'),youtube:v('hpYt'),
     website:v('hpSite'),followers:v('hpFollowers'),languages:v('hpLangs'),bio:v('hpBio'),
@@ -14676,7 +14681,7 @@ async function saveHostProfile(){
   }).eq('id',_hostApp.id).eq('user_id',uid).select('id');
   if(btn){btn.disabled=false;btn.textContent='Save changes';}
   if(r.error){note('Could not save: '+r.error.message,'Error');return;}
-  if(!r.data||!r.data.length){note('Nothing was saved — you can only edit your own profile.','Not saved');return;}
+  if(!r.data||!r.data.length){note('Nothing was saved, you can only edit your own profile.','Not saved');return;}
   await loadHostApp();
   await note('Profile updated.','Saved ✓');
   back();
