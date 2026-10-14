@@ -780,14 +780,19 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   .dfact.good .dfact-ic{color:#6ee7a0}
   .dfact-l{flex:1;font-size:12.5px;color:var(--muted);min-width:0}
   .dfact-v{font-size:13px;font-weight:600;text-align:right;min-width:0;overflow-wrap:anywhere;max-width:58%}
-  /* scannable fact tiles for the trek-detail key facts */
-  .dfact-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:2px}
-  .dfact-tile{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:12px 13px;display:flex;flex-direction:column;gap:4px;min-width:0}
-  .dfact-tile .dfact-tic{color:var(--accent2);display:flex;margin-bottom:1px}
-  .dfact-tile .dfact-tic .msr{font-size:19px}
-  .dfact-tile b{font-size:14.5px;font-weight:700;line-height:1.15;overflow-wrap:anywhere}
-  .dfact-tile small{font-size:10.5px;color:var(--muted);letter-spacing:.02em}
+  /* minimal fact tiles: label + subtle icon on top, big value, optional meter bar */
+  .dfact-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:2px;align-items:stretch}
+  .dfact-tile{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:13px 14px;min-width:0}
   .dfact-tile.span2{grid-column:1 / -1}
+  .dfact-th{display:flex;align-items:center;justify-content:space-between;gap:6px}
+  .dfact-th small{font-size:10.5px;font-weight:600;color:var(--muted);letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dfact-th .dfact-tic{color:var(--muted2);display:flex;flex:none}
+  .dfact-th .dfact-tic .msr{font-size:17px}
+  .dfact-tile>b{display:block;font-size:17px;font-weight:700;margin-top:7px;line-height:1.15;overflow-wrap:anywhere}
+  .dfact-bar{height:6px;border-radius:999px;background:var(--stroke2);margin-top:11px;position:relative}
+  .dfact-bar>i{position:absolute;left:0;top:0;height:100%;border-radius:999px;background:var(--accent2)}
+  .dfact-bar.grad{background:linear-gradient(90deg,#3fb950 0%,#e3b341 40%,#f0883e 60%,#f85149 80%,#bc8cff 100%)}
+  .dfact-bar.grad>i{top:50%;height:11px;width:11px;border-radius:50%;background:#fff;transform:translate(-50%,-50%);box-shadow:0 1px 5px rgba(0,0,0,.55)}
   .dfact-sub{font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:16px 2px 9px}
   /* ---- trek hero: photo, or a video the admin attached ---- */
   .hero-play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;

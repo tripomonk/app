@@ -2902,35 +2902,50 @@ function forecastStrip(days){
     +`<span class="fc-tl">${d.tmin!=null?Math.round(d.tmin)+'°':''}</span>`
     +`</div>`;}).join('')+'</div>';
 }
-/* one compact fact tile: icon on top, value, then label. Used for the scannable grid. */
-function dTile(icon,label,val,cls){
-  const glyph=String(icon||'').indexOf('msr:')===0 ? '<span class="msr">'+icon.slice(4)+'</span>' : ic(icon,19);
-  return '<div class="dfact-tile'+(cls?' '+cls:'')+'"><span class="dfact-tic">'+glyph+'</span><b>'+esc(val==null||val===''?'-':val)+'</b><small>'+esc(label)+'</small></div>';
+/* one minimal fact tile: label + subtle icon on top, big value, optional meter bar.
+   bar = null | {pct:0-100} (brand-blue fill) | {pct:0-100, grad:true} (AQI gradient + thumb). */
+function dTile(icon,label,val,bar,cls){
+  const glyph=String(icon||'').indexOf('msr:')===0 ? '<span class="msr">'+icon.slice(4)+'</span>' : ic(icon,17);
+  let barHtml='';
+  if(bar&&bar.pct!=null){
+    const p=Math.max(0,Math.min(100,bar.pct));
+    barHtml = bar.grad
+      ? '<div class="dfact-bar grad"><i style="left:'+p+'%"></i></div>'
+      : '<div class="dfact-bar"><i style="width:'+p+'%"></i></div>';
+  }
+  return '<div class="dfact-tile'+(cls?' '+cls:'')+'">'
+    +'<div class="dfact-th"><small>'+esc(label)+'</small><span class="dfact-tic">'+glyph+'</span></div>'
+    +'<b>'+esc(val==null||val===''?'-':val)+'</b>'+barHtml+'</div>';
 }
+/* meter positions — brand-blue fill; air quality keeps its semantic gradient */
+function _elevPct(e){const n=parseInt(String(e||'').replace(/[^\d]/g,''),10);return n?Math.min(100,Math.max(8,Math.round(n/18000*100))):null;}
+function _lvlPct(l){l=(l||'').toLowerCase();if(/difficult|hard|advanced|expert|challeng/.test(l))return 100;if(/moderate/.test(l))return 66;if(/easy|beginner/.test(l))return 34;return 50;}
+function _aqiPct(a){return Math.min(97,Math.max(3,Math.round(a/300*100)));}
 function factsHTML(t,live){
   const fc=(live&&live.days)?forecastStrip(live.days):'';
   const tempVal=(live&&live.tmin!=null&&live.tmax!=null)?(Math.round(live.tmin)+'° to '+Math.round(live.tmax)+'°C'):(t.temp||'-');
   const tempLabel=(live&&live.tmin!=null)?'Temp today':'Temp (typical)';
   /* no live reading = no air-quality tile at all, rather than a made-up number */
-  const aqiTile=(live&&live.aqi!=null)?[['air','Air quality',aqiBand(live.aqi)+' · '+live.aqi]]:[];
-  const grid=(tiles)=>'<div class="dfact-grid">'+tiles.map((x,i)=>dTile(x[0],x[1],x[2],(tiles.length%2&&i===tiles.length-1)?'span2':'')).join('')+'</div>';
+  const aqiTile=(live&&live.aqi!=null)?[['air','Air quality',aqiBand(live.aqi),{pct:_aqiPct(live.aqi),grad:true}]]:[];
+  const grid=(tiles)=>'<div class="dfact-grid">'+tiles.map((x,i)=>dTile(x[0],x[1],x[2],x[3]||null,(tiles.length%2&&i===tiles.length-1)?'span2':'')).join('')+'</div>';
   const sub=(title)=>'<div class="dfact-sub">'+title+'</div>';
   if(isTour(t)){
     /* road trips get a TRIP-appropriate set, no elevation/fitness/railhead trek placeholders */
     const pk=pickupInfo(t);
     return fc
-      +grid([['calendar','Best time',t.best],['altitude','Level',t.lvl],['clock','Duration',t.dur],
-             ['temp',tempLabel,tempVal],['community','Group size',(KNOW[0]&&KNOW[0][1])||'8–15'],
-             ['user','Min age',(KNOW[1]&&KNOW[1][1])||'10+ yrs']].concat(aqiTile))
+      +grid([['calendar','Best time',t.best,null],['altitude','Level',t.lvl,(t.lvl?{pct:_lvlPct(t.lvl)}:null)],
+             ['clock','Duration',t.dur,null],['temp',tempLabel,tempVal,null],
+             ['community','Group size',(KNOW[0]&&KNOW[0][1])||'8–15',null],['user','Min age',(KNOW[1]&&KNOW[1][1])||'10+ yrs',null]].concat(aqiTile))
       +sub('Getting there')+'<div class="dfacts">'
         +dRow('pin','Pickup',pk.city)
         +(pk.drop?dRow('pin','Drop-off',pk.drop):'')+'</div>';
   }
   const b=baseInfo(t);
   return fc
-    +grid([['altitude','Elevation',t.elev],['cloud','Climate',t.climate],['msr:hiking','Difficulty',t.lvl],
-           ['community','Group size',(KNOW[0]&&KNOW[0][1])||'8–15'],['user','Min age',(KNOW[1]&&KNOW[1][1])||'10+ yrs'],
-           ['temp',tempLabel,tempVal]].concat(aqiTile))
+    +grid([['altitude','Elevation',t.elev,(t.elev?{pct:_elevPct(t.elev)}:null)],
+           ['msr:hiking','Difficulty',t.lvl,(t.lvl?{pct:_lvlPct(t.lvl)}:null)],
+           ['cloud','Climate',t.climate,null],['community','Group size',(KNOW[0]&&KNOW[0][1])||'8–15',null],
+           ['user','Min age',(KNOW[1]&&KNOW[1][1])||'10+ yrs',null],['temp',tempLabel,tempVal,null]].concat(aqiTile))
     +sub('Getting there')+'<div class="dfacts">'
       +dRow('pin','Base town',b.town)
       +dRow('distance','Nearest rail',b.rail)
@@ -10000,7 +10015,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='536';   /* bump with the service-worker CACHE version, lets the admin confirm the phone is on the latest code */
+const APP_BUILD='537';   /* bump with the service-worker CACHE version, lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
