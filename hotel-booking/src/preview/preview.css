@@ -1,0 +1,20 @@
+/* Harness-only global styles (not part of the module). */
+html, body { margin: 0; background: #f4f6fa; }
+.pv-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px max(16px, env(safe-area-inset-right, 0px)) 7px max(16px, env(safe-area-inset-left, 0px));
+  background: #050b1f; color: #c9d4e8;
+  font: 500 12.5px/1.2 'Mukta', system-ui, sans-serif;
+  overflow-x: auto; white-space: nowrap;
+  scrollbar-width: none;
+}
+.pv-bar::-webkit-scrollbar { display: none; }
+.pv-tag { color: #ffd27a; font-family: 'Poppins', system-ui, sans-serif; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; font-size: 11px; }
+.pv-sep { width: 1px; height: 16px; background: #26304f; flex: none; }
+.pv-link {
+  color: #c9d4e8; text-decoration: none; padding: 5px 10px; border-radius: 999px; border: 1px solid #26304f;
+  background: transparent; cursor: pointer; font: inherit;
+}
+.pv-link:hover { color: #fff; border-color: #4a5a85; }
+.pv-link.active { background: #0065ff; border-color: #0065ff; color: #fff; }
+.pv-link:focus-visible { outline: 2px solid #8fb8ff; outline-offset: 2px; }

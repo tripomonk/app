@@ -1,0 +1,116 @@
+/* Shared composite components: QR posters, booking voucher, commission card. Scoped. */
+
+/* ---------------- QR posters ---------------- */
+.dd-scope .dd-poster {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4.45;
+  border-radius: 1em;
+  overflow: hidden;
+  color: #fff;
+  font-family: var(--dd-font-display);
+  box-shadow: 0 14px 40px rgba(7, 15, 38, 0.28);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.dd-scope .dd-poster--hotel { background: #08112b; }
+.dd-scope .dd-poster--direct { background: var(--dd-blue); }
+.dd-scope .dd-poster-scene { position: absolute; inset: 0 0 auto 0; height: 42%; }
+.dd-scope .dd-poster-scene svg { width: 100%; height: 100%; display: block; }
+.dd-scope .dd-poster-scene::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(8, 17, 43, 0) 35%, #08112b 98%);
+}
+.dd-scope .dd-poster-inner {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column; align-items: center;
+  width: 100%; height: 100%;
+  padding: 1em 1.2em 0.9em;
+  gap: 0.45em;
+}
+.dd-scope .dd-poster-logo { align-self: flex-start; }
+.dd-scope .dd-poster-deva { font-family: var(--dd-font-deva); color: #ffc970; font-size: 0.95em; margin-top: 1.5em; line-height: 1.1; }
+.dd-scope .dd-poster-title {
+  font-weight: 700; font-size: 1.85em; line-height: 0.98; letter-spacing: 0.01em;
+  color: #ffd27a; text-transform: uppercase;
+  text-shadow: 0 2px 18px rgba(255, 159, 46, 0.35);
+}
+.dd-scope .dd-poster-kicker { font-size: 0.66em; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: #fff; }
+.dd-scope .dd-poster-qr {
+  background: #fff; border-radius: 0.7em; padding: 0.55em;
+  margin-top: 0.35em; line-height: 0;
+}
+.dd-scope .dd-poster-qr svg { width: 100%; height: auto; }
+.dd-scope .dd-poster-scan { font-weight: 700; font-size: 0.92em; letter-spacing: 0.08em; text-transform: uppercase; margin-top: 0.2em; }
+.dd-scope .dd-poster-sub { font-family: var(--dd-font-body); font-size: 0.7em; color: rgba(255, 255, 255, 0.82); margin-top: -0.35em; }
+.dd-scope .dd-poster-code {
+  margin-top: auto;
+  background: #ffd27a; color: #0b1f44;
+  border-radius: 0.5em; padding: 0.42em 0.9em;
+  font-weight: 700; font-size: 0.95em; letter-spacing: 0.02em;
+}
+.dd-scope .dd-poster-code--placeholder { background: rgba(255, 255, 255, 0.14); color: #fff; border: 1px dashed rgba(255, 255, 255, 0.5); }
+.dd-scope .dd-poster-ask { font-family: var(--dd-font-body); font-size: 0.62em; color: rgba(255, 255, 255, 0.75); margin-top: -0.25em; }
+
+.dd-scope .dd-poster--direct .dd-poster-inner { padding-top: 1.2em; }
+.dd-scope .dd-poster--direct::before {
+  content: ''; position: absolute; right: -18%; top: -14%;
+  width: 70%; aspect-ratio: 1; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+}
+.dd-scope .dd-poster--direct::after {
+  content: ''; position: absolute; left: -22%; bottom: -16%;
+  width: 62%; aspect-ratio: 1; border-radius: 50%;
+  background: rgba(7, 15, 38, 0.14);
+}
+.dd-scope .dd-poster-direct-title { font-weight: 700; font-size: 1.42em; line-height: 1.08; margin-top: 1.4em; }
+.dd-scope .dd-poster-direct-title em { font-style: normal; color: #f2ff3c; }
+.dd-scope .dd-poster-channel {
+  margin-top: auto;
+  display: inline-flex; align-items: center; gap: 0.4em;
+  background: #0b1f44; color: #fff;
+  border-radius: 999px; padding: 0.45em 0.95em;
+  font-size: 0.68em; font-weight: 600; letter-spacing: 0.02em;
+}
+.dd-scope .dd-poster-channel i { width: 0.6em; height: 0.6em; border-radius: 50%; background: #f2ff3c; display: inline-block; }
+.dd-scope .dd-poster-url { font-family: var(--dd-font-body); font-size: 0.62em; color: rgba(255, 255, 255, 0.85); }
+
+/* ---------------- Voucher (demo confirmation document) ---------------- */
+.dd-scope .dd-voucher {
+  position: relative;
+  border: 1px solid var(--dd-line);
+  border-radius: 14px;
+  background: #fff;
+  overflow: hidden;
+}
+.dd-scope .dd-voucher-watermark {
+  position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
+  font-family: var(--dd-font-display); font-weight: 700; font-size: 44px; letter-spacing: 0.1em;
+  color: rgba(184, 50, 50, 0.07); transform: rotate(-18deg); white-space: nowrap;
+}
+.dd-scope .dd-voucher-head {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 16px 20px; border-bottom: 1px dashed var(--dd-line-strong);
+}
+.dd-scope .dd-voucher-body { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px; padding: 20px; }
+.dd-scope .dd-voucher-qr { text-align: center; font-size: 12px; color: var(--dd-muted); }
+.dd-scope .dd-voucher-qr svg { display: block; margin: 0 auto 6px; }
+@media (max-width: 560px) {
+  .dd-scope .dd-voucher-body { grid-template-columns: 1fr; }
+}
+
+/* ---------------- Commission meter ---------------- */
+.dd-scope .dd-meter { display: flex; height: 10px; border-radius: 999px; overflow: hidden; gap: 2px; background: var(--dd-neutral-bg); }
+.dd-scope .dd-meter span { display: block; height: 100%; }
+.dd-scope .dd-meter span:first-child { border-radius: 999px 0 0 999px; }
+.dd-scope .dd-meter span:last-child { border-radius: 0 999px 999px 0; }
+.dd-scope .dd-meter-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--dd-muted); }
+.dd-scope .dd-meter-legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+/* Diya flicker (ambient, subtle; disabled for reduced motion by the base stylesheet) */
+.dd-scope .dd-diya-flicker-0 { animation: dd-flicker 3.2s ease-in-out infinite; }
+.dd-scope .dd-diya-flicker-1 { animation: dd-flicker 2.6s ease-in-out infinite 0.8s; }
+.dd-scope .dd-diya-flicker-2 { animation: dd-flicker 3.8s ease-in-out infinite 1.6s; }
+@keyframes dd-flicker { 0%, 100% { opacity: 1; } 50% { opacity: 0.62; } }
