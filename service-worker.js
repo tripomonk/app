@@ -1,7 +1,7 @@
 /* Tripomonk service worker — caches the app shell so it loads instantly
    and works offline. Bump CACHE when you change index.html / app.js so
    users get the new version. */
-const CACHE = 'tripomonk-v538';
+const CACHE = 'tripomonk-v539';
 const ASSETS = [
   './',
   './index.html',
@@ -112,6 +112,11 @@ self.addEventListener('fetch', e => {
   // console's own static files, are never served the app's index.html fallback, and follow
   // the /admin → /admin/ redirect normally. The app never "opens" for the admin URL.
   if (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) return;
+
+  // The Dev Deepawali 2026 booking system (/dd/) is a SEPARATE React SPA. Let the browser
+  // handle it natively so it loads its own index.html + assets and is never served this
+  // app's shell. Same treatment as /admin/.
+  if (url.pathname === '/dd' || url.pathname.startsWith('/dd/')) return;
 
   // Live data / config that must always be fresh: never cache. Network first,
   // fall back to cache only when truly offline.
