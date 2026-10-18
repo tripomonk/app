@@ -3158,6 +3158,11 @@ async function shareTrek(){
 function handleDeepLink(){
   captureReferral();
   const h=window.location.hash||'';
+  /* A shared deep link (#trek/#trip/#circle) opens its target ~400ms into boot, but boot's
+     history buffer can emit one stray popstate that _showPrev would turn into go('home'),
+     bouncing the user off the shared screen. Flag it so the popstate handler absorbs that
+     ONE stray pop (see the popstate listener). Lets a shared circle open for signed-out users. */
+  if(/#(trek|trip|htrip|circle)=/.test(h)) window.__dlGuard=Date.now();
   const m=h.match(/#trek=([^&]+)/);
   /* #trek= carries the trek name; links rescued by 404.html carry its /t/<slug> instead */
   if(m){const key=decodeURIComponent(m[1]);setTimeout(()=>{try{const t=treks.find(x=>x.n===key)||treks.find(x=>slugify(x.n)===key);openDetailByName(t?t.n:key);}catch(e){}},400);return;}
@@ -3169,7 +3174,7 @@ function handleDeepLink(){
   if(mh){const id=decodeURIComponent(mh[1]);setTimeout(()=>{try{openHostTripDetail(id);}catch(e){}},400);return;}
   /* trip-circle invite link: #circle=<code|id> (404.html maps /circle/<code> → here) */
   const mc=h.match(/#circle=([^&]+)/);
-  if(mc){const key=decodeURIComponent(mc[1]);setTimeout(()=>{try{openCircle(key);}catch(e){}},400);return;}
+  if(mc){const key=decodeURIComponent(mc[1]);setTimeout(async()=>{try{await openCircle(key);window.__dlGuard=Date.now();}catch(e){}},400);return;}
   /* resume a circle the user was joining when they were sent to sign in, open + auto-join */
   try{const pc=localStorage.getItem('tmk_pending_circle');if(pc&&typeof isLoggedIn==='function'&&isLoggedIn()){localStorage.removeItem('tmk_pending_circle');setTimeout(()=>{try{resumePendingCircle(pc);}catch(e){}},500);}}catch(e){}
 }
@@ -4702,7 +4707,7 @@ function renderCirclePage(r){
       h+='<div class="tc-nudge"><span class="msr">'+(need>0?'bolt':'check_circle')+'</span>'+(need>0?('<b>'+need+' more</b> '+(need===1?'spot':'spots')+' booked to confirm this trip'):'Minimum reached, confirming now')+'</div>';
     }else{
       const want=cc.total||0;
-      h+='<div class="tc-nudge"><span class="msr">campaign</span>Bookings aren’t open for this trek yet, <b>'+want+'</b> '+(want===1?'person wants':'people want')+' it. Request a spot and we’ll notify everyone when it opens.</div>';
+      h+='<div class="tc-nudge"><span class="msr">campaign</span><span class="tc-nudge-tx"><b>Bookings aren’t open yet</b><small><b>'+want+'</b> '+(want===1?'person wants':'people want')+' in. Request a spot and we’ll notify everyone the moment it opens.</small></span></div>';
     }
   }
   h+='<div class="tc-actions">';
@@ -10015,7 +10020,7 @@ async function adminDelReview(id){
   renderAdminReviewList();
 }
 /* ----- Settings ----- */
-const APP_BUILD='537';   /* bump with the service-worker CACHE version, lets the admin confirm the phone is on the latest code */
+const APP_BUILD='538';   /* bump with the service-worker CACHE version, lets the admin confirm the phone is on the latest code */
 function renderAdminSettings(){document.getElementById('adminBody').innerHTML=`
   <div class="panel" style="margin-bottom:14px"><b style="display:block;margin-bottom:10px">Contact</b>
     <div class="field"><label>WhatsApp number (country code, no +)</label><div class="inp"><input id="setWa" value="${esc(getWa())}" placeholder="918924813959"></div></div>
@@ -12581,7 +12586,23 @@ window.addEventListener('popstate',function(){
      stack depth (and the next Back) stays correct. Overlays don't push history on open, so the
      entry Back consumed belongs to the current screen, restore it. */
   if(closeTopOverlay()){try{history.pushState({s:cur},'');}catch(e){}return;}
+  /* Absorb the stray popstate(s) that fire right after a shared deep link opens, so the
+     shared screen (e.g. a Trip Circle opened from a link) stays put instead of bouncing home.
+     Keep absorbing for the whole guard window (boot can emit more than one). */
+  if(window.__dlGuard && Date.now()-window.__dlGuard < 2500){ try{history.pushState({s:cur},'');}catch(e){} return; }
   _showPrev();
+});
+/* Open a shared deep link even when the app is ALREADY running (tapping a /circle/, /t/ or
+   /trip/ link while a tab/PWA is open changes the hash without a reload, so boot's
+   handleDeepLink never fires). Open the target immediately, data is already loaded. */
+window.addEventListener('hashchange',function(){
+  const h=window.location.hash||''; let m;
+  try{
+    if((m=h.match(/#circle=([^&]+)/))){ window.__dlGuard=Date.now(); openCircle(decodeURIComponent(m[1])); }
+    else if((m=h.match(/#trip=([^&]+)/))){ openHostTripBySlug(decodeURIComponent(m[1])); }
+    else if((m=h.match(/#htrip=([^&]+)/))){ openHostTripDetail(decodeURIComponent(m[1])); }
+    else if((m=h.match(/#trek=([^&]+)/))){ const k=decodeURIComponent(m[1]); const t=treks.find(x=>x.n===k)||treks.find(x=>slugify(x.n)===k); openDetailByName(t?t.n:k); }
+  }catch(e){}
 });
 /* keep this device's photo/cover/name in sync when it returns to the foreground —
    so a change made on another device shows up without needing a re-login */
