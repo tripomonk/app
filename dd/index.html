@@ -13,7 +13,45 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Tiro+Devanagari+Hindi&display=swap"
     />
-    <script type="module" crossorigin src="/dd/assets/index-CXDX4z1Z.js"></script>
+    <!-- Meta Pixel (ad measurement), consent-gated (DPDP). Loads ONLY after "Accept".
+         Reuses the main app's pixel id + the shared tmk_cookie_choice key (same origin),
+         so a choice made on app.tripomonk.com carries over here. React fires conversion
+         events via window.fbTrack(ev, params). -->
+    <script>
+    (function () {
+      var META_PIXEL_ID = "1255299368497790", KEY = "tmk_cookie_choice", loaded = false;
+      function load() {
+        if (loaded) return; loaded = true;
+        !function (f, b, e, v, n, t, s) { if (f.fbq) return; n = f.fbq = function () { n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments) };
+          if (!f._fbq) f._fbq = n; n.push = n; n.loaded = !0; n.version = "2.0"; n.queue = []; t = b.createElement(e); t.async = !0;
+          t.src = v; s = b.getElementsByTagName(e)[0]; s.parentNode.insertBefore(t, s)
+        }(window, document, "script", "https://connect.facebook.net/en_US/fbevents.js");
+        window.fbq("consent", "grant"); window.fbq("init", META_PIXEL_ID); window.fbq("track", "PageView");
+      }
+      function get() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
+      function set(v) { try { localStorage.setItem(KEY, v); } catch (e) {} }
+      function apply(v) {
+        if (v === "yes") { load(); try { window.fbq && window.fbq("consent", "grant"); } catch (e) {} }
+        else { try { window.fbq && window.fbq("consent", "revoke"); } catch (e) {} }
+      }
+      window.tmkCookies = { get: get, set: function (v) { set(v); apply(v); hide(); } };
+      window.fbTrack = function (ev, params) { try { if (window.fbq && get() === "yes") window.fbq("track", ev, params || {}); } catch (e) {} };
+      var ck = get();
+      if (ck === "yes") load();
+      function hide() { var n = document.getElementById("tmk-ck"); if (n) n.remove(); }
+      function show() {
+        if (get()) return;
+        var d = document.createElement("div"); d.id = "tmk-ck";
+        d.setAttribute("style", "position:fixed;left:12px;right:12px;bottom:12px;z-index:99999;max-width:460px;margin:0 auto;background:#0a1626;color:#eef3fb;border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:14px 16px;box-shadow:0 18px 50px -18px rgba(0,0,0,.6);font-family:Poppins,system-ui,sans-serif;font-size:13.5px;line-height:1.5");
+        d.innerHTML = '<div style="margin-bottom:10px">May we use the Meta Pixel to measure our ads? Nothing loads unless you accept. <a href="https://app.tripomonk.com/privacy.html" target="_blank" rel="noopener" style="color:#4f8bff">Privacy</a></div><div style="display:flex;gap:8px;justify-content:flex-end"><button id="tmk-no" style="background:transparent;color:#eef3fb;border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:8px 16px;font:inherit;font-weight:600;cursor:pointer">Decline</button><button id="tmk-yes" style="background:#2f6bff;color:#fff;border:0;border-radius:999px;padding:8px 18px;font:inherit;font-weight:600;cursor:pointer">Accept</button></div>';
+        document.body.appendChild(d);
+        document.getElementById("tmk-yes").onclick = function () { set("yes"); apply("yes"); hide(); };
+        document.getElementById("tmk-no").onclick = function () { set("no"); apply("no"); hide(); };
+      }
+      if (document.readyState !== "loading") show(); else document.addEventListener("DOMContentLoaded", show);
+    })();
+    </script>
+    <script type="module" crossorigin src="/dd/assets/index-BSY2FMmI.js"></script>
     <link rel="stylesheet" crossorigin href="/dd/assets/index-C0JUkNzB.css">
   </head>
   <body>
