@@ -6,7 +6,7 @@
 <meta name="referrer" content="strict-origin-when-cross-origin"/>
 <script>/* Clickjacking guard: the app is never meant to run inside a frame. Defense-in-depth —
    the authoritative fix is an X-Frame-Options / CSP frame-ancestors header at the CDN edge. */
-(function(){try{if(window.self!==window.top){window.top.location.replace(window.self.location.href);}}catch(e){try{document.documentElement.style.visibility='hidden';}catch(_e){}}})();</script>
+(function(){try{if(window.self!==window.top){window.top.location.replace(window.self.location.href);}}catch(e){/* framed + cross-origin top: do NOT hide the page (that blanked the app in some in-app browsers). Real protection is the X-Frame-Options / CSP frame-ancestors header. */}})();</script>
 <title>Tripomonk, Book Guided Himalayan Treks in India</title>
 <meta name="description" content="Book guided Himalayan treks across Uttarakhand, Himachal, Ladakh, Kashmir, Sikkim &amp; the Northeast. 140+ curated treks with certified leaders, fixed departures, gear rental and safety-first itineraries."/>
 <meta name="theme-color" content="#0a1626"/>
@@ -146,10 +146,10 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,1,0&display=block" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<link rel="stylesheet" href="vendor/leaflet.css"/>
+<script src="vendor/leaflet.js"></script>
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="vendor/qrcode.js"></script>
 <style>
   :root{
     --bg:#0a1626; --bg2:#0c1c30; --card:rgba(255,255,255,.055); --card2:rgba(255,255,255,.09);
@@ -5693,7 +5693,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   <aside class="deskrail" id="deskRail" aria-label="Suggestions"></aside>
 
 </div></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="vendor/supabase.min.js"></script>
 <!-- Razorpay checkout.js is loaded on demand by loadRazorpay() in app.js -->
 <script src="config.js"></script>
 <script src="app.js"></script>

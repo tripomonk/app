@@ -1,13 +1,18 @@
 /* Tripomonk service worker — caches the app shell so it loads instantly
    and works offline. Bump CACHE when you change index.html / app.js so
    users get the new version. */
-const CACHE = 'tripomonk-v539';
+const CACHE = 'tripomonk-v540';
 const ASSETS = [
   './',
   './index.html',
   './config.js',
   './app.js',
   './manifest.webmanifest',
+  './vendor/supabase.min.js',
+  './vendor/leaflet.js',
+  './vendor/leaflet.css',
+  './vendor/jspdf.umd.min.js',
+  './vendor/qrcode.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png'
