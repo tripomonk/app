@@ -248,6 +248,16 @@ footer a.lk{color:var(--gold-lt)}
   </div>
 </section>
 
+<!-- BOAT RIDE ONLY -->
+<section class="sec" id="boatonly" style="padding-top:0">
+  <div class="wrap sec-h reveal">
+    <div class="eyebrow">Short on time?</div>
+    <h2>Just want the boat ride?</h2>
+    <p>If you only want the pre-booked Dev Deepawali boat ride on the Ganga — without the stay and tour — you can book just the boat ride.</p>
+    <a class="btn btn-ghost" style="margin-top:20px" href="https://app.tripomonk.com/dd/#/dev-diwali?src=direct-qr"><span class="msr" style="font-size:19px">sailing</span>&nbsp;Book only the boat ride</a>
+  </div>
+</section>
+
 <!-- PHOTOS & REVIEWS -->
 <section class="sec" id="gallery" style="padding-top:0">
   <div class="wrap sec-h reveal" style="margin-bottom:0">
@@ -319,18 +329,24 @@ footer a.lk{color:var(--gold-lt)}
   ];
   // prices MUST match the server map in supabase/functions/razorpay (kind: devdiwali)
   var TIERS=[
-    {id:'experience',ic:'auto_awesome',name:'Dev Deepawali Experience',feat:true,price:19999,
+    {id:'experience',ic:'auto_awesome',name:'Dev Deepawali Experience',feat:true,price:13999,
       duration:'2 Nights / 3 Days',sharing:'Triple sharing',
       forw:'The complete Dev Deepawali — stay, aarti, the boat and the glow.',
       itin:ITIN,
       inc:['2 nights in premium hotels near the ghats','Half-board meals (breakfast + dinner)','Pre-booked Dev Deepawali boat ride on the Ganga','Sunrise boat ride at Assi Ghat','Evening Ganga Aarti experience','All sightseeing as per the itinerary','Dedicated tour manager throughout','No-cost EMI available'],
       exc:['Travel to & from Varanasi (train / flight / bus)','Pick-up & drop (not included with the boat-ride package)','Personal expenses, shopping and tips','Personal medical expenses','Temple donations and optional activities','Anything not listed under inclusions · GST as applicable']},
-    {id:'premium',ic:'king_bed',name:'Dev Deepawali Experience',feat:false,price:21999,
+    {id:'premium',ic:'king_bed',name:'Dev Deepawali Experience',feat:false,price:14999,
       duration:'2 Nights / 3 Days',sharing:'Double sharing',
       forw:'The complete Dev Deepawali in a double room — more comfort, same magic.',
       itin:ITIN,
       inc:['2 nights in premium hotels near the ghats (double sharing)','Half-board meals (breakfast + dinner)','Pre-booked Dev Deepawali boat ride on the Ganga','Sunrise boat ride at Assi Ghat','Evening Ganga Aarti experience','All sightseeing as per the itinerary','Dedicated tour manager throughout','No-cost EMI available'],
-      exc:['Travel to & from Varanasi (train / flight / bus)','Pick-up & drop (not included with the boat-ride package)','Personal expenses, shopping and tips','Personal medical expenses','Temple donations and optional activities','Anything not listed under inclusions · GST as applicable']}
+      exc:['Travel to & from Varanasi (train / flight / bus)','Pick-up & drop (not included with the boat-ride package)','Personal expenses, shopping and tips','Personal medical expenses','Temple donations and optional activities','Anything not listed under inclusions · GST as applicable']},
+    {id:'allgirls',ic:'diversity_1',name:'All-Girls Special',tag:'Women only',feat:false,price:13999,
+      duration:'2 Nights / 3 Days',sharing:'Triple sharing · Double ₹14,999',
+      forw:'A women-only Dev Deepawali departure with a female trip coordinator — same itinerary, same rates.',
+      itin:ITIN,
+      inc:['Women-only group with a female trip coordinator','2 nights in premium hotels near the ghats','Half-board meals (breakfast + dinner)','Pre-booked Dev Deepawali boat ride on the Ganga','Sunrise boat ride at Assi Ghat','Evening Ganga Aarti experience','All sightseeing as per the itinerary','No-cost EMI available'],
+      exc:['Travel to & from Varanasi (train / flight / bus)','Pick-up & drop (not included with the boat-ride package)','Personal expenses, shopping and tips','Personal medical expenses','Temple donations and optional activities','Anything not listed under inclusions · GST as applicable','Double sharing (₹14,999) available on request — WhatsApp us']}
   ];
   var INR=function(n){return '₹'+Number(n||0).toLocaleString('en-IN');};
   var el=function(t,c,h){var e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e;};
@@ -345,7 +361,7 @@ footer a.lk{color:var(--gold-lt)}
     var li=t.inc.slice(0,5).map(function(i){return '<li><span class="msr">check</span>'+i+'</li>';}).join('');
     var more=t.inc.length>5?'<li class="pkg-more">+ '+(t.inc.length-5)+' more · full itinerary inside</li>':'';
     var c=el('div','tier reveal'+(t.feat?' feat':''));
-    c.innerHTML=(t.feat?'<span class="tag">Most loved</span>':'')+
+    c.innerHTML=((t.tag||t.feat)?'<span class="tag">'+(t.tag||'Most loved')+'</span>':'')+
       '<span class="msr ic">'+t.ic+'</span><h3>'+t.name+'</h3><div class="tsub">'+t.duration+' · '+t.sharing+'</div>'+
       '<p class="for">'+t.forw+'</p><ul>'+li+more+'</ul>'+
       '<div class="amt">'+INR(t.price)+' <small>/ person</small></div><div class="adv">reserve from '+INR(Math.round(t.price*0.5))+'</div>'+
