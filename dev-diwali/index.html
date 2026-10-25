@@ -18,11 +18,50 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" />
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<!-- Meta Pixel (ad measurement), consent-gated (DPDP). Loads ONLY after "Accept".
+     Reuses the main app's pixel id + the shared tmk_cookie_choice key (same origin),
+     so a choice made on app.tripomonk.com / the /dd/ boat page carries over here.
+     Conversion events fire via window.fbTrack(ev, params). -->
+<script>
+(function () {
+  var META_PIXEL_ID = "1255299368497790", KEY = "tmk_cookie_choice", loaded = false;
+  function load() {
+    if (loaded) return; loaded = true;
+    !function (f, b, e, v, n, t, s) { if (f.fbq) return; n = f.fbq = function () { n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments) };
+      if (!f._fbq) f._fbq = n; n.push = n; n.loaded = !0; n.version = "2.0"; n.queue = []; t = b.createElement(e); t.async = !0;
+      t.src = v; s = b.getElementsByTagName(e)[0]; s.parentNode.insertBefore(t, s)
+    }(window, document, "script", "https://connect.facebook.net/en_US/fbevents.js");
+    window.fbq("consent", "grant"); window.fbq("init", META_PIXEL_ID); window.fbq("track", "PageView");
+  }
+  function get() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
+  function set(v) { try { localStorage.setItem(KEY, v); } catch (e) {} }
+  function apply(v) {
+    if (v === "yes") { load(); try { window.fbq && window.fbq("consent", "grant"); } catch (e) {} }
+    else { try { window.fbq && window.fbq("consent", "revoke"); } catch (e) {} }
+  }
+  window.tmkCookies = { get: get, set: function (v) { set(v); apply(v); hide(); } };
+  window.fbTrack = function (ev, params) { try { if (window.fbq && get() === "yes") window.fbq("track", ev, params || {}); } catch (e) {} };
+  var ck = get();
+  if (ck === "yes") load();
+  function hide() { var n = document.getElementById("tmk-ck"); if (n) n.remove(); }
+  function show() {
+    if (get()) return;
+    var d = document.createElement("div"); d.id = "tmk-ck";
+    d.setAttribute("style", "position:fixed;left:12px;right:12px;bottom:12px;z-index:99999;max-width:460px;margin:0 auto;background:#120a24;color:#f4efe6;border:1px solid rgba(243,179,70,.28);border-radius:16px;padding:14px 16px;box-shadow:0 18px 50px -18px rgba(0,0,0,.6);font-family:Poppins,system-ui,sans-serif;font-size:13.5px;line-height:1.5");
+    d.innerHTML = '<div style="margin-bottom:10px">May we use the Meta Pixel to measure our ads? Nothing loads unless you accept. <a href="https://app.tripomonk.com/privacy.html" target="_blank" rel="noopener" style="color:#ffd98a">Privacy</a></div><div style="display:flex;gap:8px;justify-content:flex-end"><button id="tmk-no" style="background:transparent;color:#f4efe6;border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:8px 16px;font:inherit;font-weight:600;cursor:pointer">Decline</button><button id="tmk-yes" style="background:linear-gradient(180deg,#ffd98a,#f3b346);color:#3a1e04;border:0;border-radius:999px;padding:8px 18px;font:inherit;font-weight:600;cursor:pointer">Accept</button></div>';
+    document.body.appendChild(d);
+    document.getElementById("tmk-yes").onclick = function () { set("yes"); apply("yes"); hide(); };
+    document.getElementById("tmk-no").onclick = function () { set("no"); apply("no"); hide(); };
+  }
+  if (document.readyState !== "loading") show(); else document.addEventListener("DOMContentLoaded", show);
+})();
+</script>
 <style>
 :root{
   --ink:#0b0e1a; --ink2:#111730; --card:rgba(255,255,255,.04); --line:rgba(243,179,70,.16);
   --gold:#f3b346; --gold-lt:#ffd98a; --gold-deep:#c98a2b; --saffron:#ff7a21;
   --ivory:#f4efe6; --muted:#9aa0b4; --ok:#35c97a;
+  --pink:#ff5d8f; --rose:#ff8fb0; --marigold:#ff8f1f; --violet:#9b6bff; --teal:#28d6c6; --lime:#8bd84f;
   --sans:"Poppins",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -138,6 +177,38 @@ header{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-
 .cat-opt-r small{display:block;font-size:10.5px;color:var(--muted)}
 .cat-opt-go{font-size:22px;color:var(--muted);flex:none}
 
+/* ---- festive layer ---- */
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:
+  radial-gradient(38% 28% at 10% 6%, rgba(255,93,143,.12), transparent 70%),
+  radial-gradient(42% 32% at 92% 12%, rgba(155,107,255,.12), transparent 70%),
+  radial-gradient(44% 34% at 84% 86%, rgba(40,214,198,.10), transparent 72%),
+  radial-gradient(52% 40% at 50% 104%, rgba(255,143,31,.14), transparent 72%)}
+header,.hero,.strip,.sec,footer,.ov{position:relative;z-index:1}
+/* fairy lights string */
+.lights{display:flex;justify-content:center;align-items:center;gap:0;flex-wrap:wrap;height:20px;overflow:hidden;margin:0;padding:0}
+.lights i{width:8px;height:8px;border-radius:50%;margin:0 9px;background:currentColor;box-shadow:0 0 8px 1px currentColor;animation:twinkle 2.4s ease-in-out infinite}
+@keyframes twinkle{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.78)}}
+@media (prefers-reduced-motion:reduce){.lights i{animation:none}}
+.lights-sec{margin:0 auto 30px;max-width:420px}
+/* colourful experience-strip icons */
+.xp .it:nth-child(1) .msr{color:var(--marigold)}
+.xp .it:nth-child(2) .msr{color:var(--teal)}
+.xp .it:nth-child(3) .msr{color:var(--gold-lt)}
+.xp .it:nth-child(4) .msr{color:var(--pink)}
+.xp .it:nth-child(5) .msr{color:var(--violet)}
+.xp .it:nth-child(6) .msr{color:var(--lime)}
+.xp .it .msr{filter:drop-shadow(0 0 10px currentColor);opacity:.95}
+/* hero: extra colour blooms + floating sparks */
+.hero::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:
+  radial-gradient(34% 30% at 16% 30%, rgba(255,93,143,.22), transparent 66%),
+  radial-gradient(34% 30% at 84% 26%, rgba(155,107,255,.20), transparent 66%),
+  radial-gradient(40% 26% at 50% 86%, rgba(255,143,31,.22), transparent 70%)}
+.sparks{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+.sparks i{position:absolute;width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 10px 2px currentColor;animation:floatUp linear infinite;opacity:.8}
+@keyframes floatUp{0%{transform:translateY(20px);opacity:0}12%{opacity:.9}100%{transform:translateY(-120px);opacity:0}}
+@media (prefers-reduced-motion:reduce){.sparks i{animation:none;opacity:.5}}
+.sec-h .eyebrow{text-shadow:0 0 18px rgba(243,179,70,.45)}
+
 /* footer */
 footer{border-top:1px solid var(--line);text-align:center;padding:38px 20px}
 footer .fb{font-size:18px;font-weight:600;margin-bottom:6px}
@@ -250,11 +321,13 @@ footer a.lk{color:var(--gold-lt)}
   <a class="brand" href="/"><img class="logo" src="/icons/logo.svg" alt="Tripomonk"/><span>tri<b>pomonk</b></span></a>
   <span class="chip">24 Nov 2026 · Varanasi</span>
 </header>
+<div class="lights" data-lights="26" aria-hidden="true"></div>
 
 <!-- HERO -->
 <section class="hero">
   <video class="hero-video" autoplay muted loop playsinline preload="metadata" poster="/illustrations/varanasi-ghats.webp"></video>
   <div class="hero-shade"></div>
+  <div class="sparks" data-sparks="16" aria-hidden="true"></div>
   <div class="inner">
     <svg class="diya"><use href="#s-diya"/></svg>
     <div class="deva-top">देव दीपावली</div>
@@ -291,6 +364,7 @@ footer a.lk{color:var(--gold-lt)}
       <h2>The Dev Deepawali Trip</h2>
       <p>Pick your group, then your room. Two room options — triple ₹13,999 and double ₹14,999 per person. Pay 50% now to confirm.</p>
     </div>
+    <div class="lights lights-sec" data-lights="22" aria-hidden="true"></div>
     <div class="cats" id="cats"></div>
     <p class="note-line">Prices per person for 2026 departures · secure payment by Razorpay · GST as applicable.</p>
   </div>
@@ -316,6 +390,7 @@ footer a.lk{color:var(--gold-lt)}
   </div>
 </section>
 
+<div class="lights" data-lights="26" aria-hidden="true"></div>
 <footer>
   <div class="fb"><img src="/icons/logo.svg" alt="" style="width:30px;height:30px;border-radius:8px;vertical-align:-8px;margin-right:7px"/>tri<b style="font-weight:600">pomonk</b></div>
   <small>Dev Deepawali 2026 · Varanasi, Uttar Pradesh<br>
@@ -417,6 +492,21 @@ footer a.lk{color:var(--gold-lt)}
 
   /* experience strip */
   var xp=$('xp');XP.forEach(function(x){xp.appendChild(el('div','it','<span class="msr">'+x[0]+'</span><b>'+x[1]+'</b>'));});
+
+  /* festive decorations: fairy-light strings + hero sparks */
+  var FC=['var(--gold-lt)','var(--pink)','var(--teal)','var(--marigold)','var(--violet)','var(--lime)'];
+  Array.prototype.forEach.call(document.querySelectorAll('[data-lights]'),function(strip){
+    var n=parseInt(strip.getAttribute('data-lights'),10)||20;
+    for(var i=0;i<n;i++){var b=document.createElement('i');b.style.color=FC[i%FC.length];b.style.animationDelay=(i*0.12).toFixed(2)+'s';strip.appendChild(b);}
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-sparks]'),function(box){
+    var n=parseInt(box.getAttribute('data-sparks'),10)||12;
+    for(var i=0;i<n;i++){var s=document.createElement('i');s.style.color=FC[i%FC.length];
+      var sz=(4+Math.random()*5).toFixed(1);s.style.width=sz+'px';s.style.height=sz+'px';
+      s.style.left=(Math.random()*100).toFixed(1)+'%';s.style.bottom=(Math.random()*35).toFixed(1)+'%';
+      var dur=5+Math.random()*6;s.style.animationDuration=dur.toFixed(2)+'s';s.style.animationDelay=(-Math.random()*dur).toFixed(2)+'s';
+      box.appendChild(s);}
+  });
 
   /* trip categories — each opens its two room options */
   var cc=$('cats');
@@ -545,6 +635,7 @@ footer a.lk{color:var(--gold-lt)}
     var booking={kind:'devdiwali',tier:cur.id,pax:pax,name:name,email:email,phone:phone};
     post('create',{booking:booking}).then(function(o){
       if(!o||o.error||!o.order_id){throw new Error((o&&o.error)||'Could not start payment');}
+      if(window.fbTrack)window.fbTrack('InitiateCheckout',{value:cur.price*pax,currency:'INR',content_name:cur.name,num_items:pax});
       var rzp=new Razorpay({
         key:o.key_id,order_id:o.order_id,amount:o.amount,currency:o.currency||'INR',
         name:'Tripomonk',description:(o.booking&&o.booking.trek)||'Dev Diwali 2026',
@@ -556,6 +647,7 @@ footer a.lk{color:var(--gold-lt)}
           post('verify',{razorpay_order_id:resp.razorpay_order_id,razorpay_payment_id:resp.razorpay_payment_id,razorpay_signature:resp.razorpay_signature,booking:booking})
           .then(function(v){
             if(v&&v.ok){
+              if(window.fbTrack)window.fbTrack('Purchase',{value:cur.price*pax,currency:'INR',content_name:cur.name,num_items:pax});
               $('bkForm').style.display='none';$('bkDone').style.display='';
               $('dId').textContent='Booking ID · '+(v.id||resp.razorpay_payment_id);
             }else{paying=false;$('payBtn').disabled=false;refreshSumm();$('bkErr').textContent=(v&&v.error)||'Payment received but confirmation failed — contact us with your payment id.';}
