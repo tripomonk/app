@@ -438,6 +438,18 @@ footer{background:var(--bg);border-top:1px solid var(--line)}
 footer .fb{color:var(--ink)}
 footer small{color:var(--muted)}
 footer a.lk{color:var(--pink)}
+
+/* highlighted boat-ride-only card */
+#boatonly{padding-bottom:60px}
+.boat-card{position:relative;max-width:620px;margin:0 auto;text-align:center;padding:40px 28px 34px;border-radius:24px;background:linear-gradient(160deg,#e9fbf6,#eef5ff 60%,#f4efff);border:1px solid #d6efea;box-shadow:0 22px 50px -30px rgba(12,182,166,.5);overflow:hidden}
+.boat-card::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(70% 60% at 50% -10%,rgba(12,182,166,.14),transparent 70%)}
+.boat-card>*{position:relative;z-index:1}
+.boat-card-ic{width:58px;height:58px;border-radius:18px;display:grid;place-items:center;margin:0 auto 14px;font-size:30px;color:#fff;background:linear-gradient(140deg,var(--teal),var(--blue));box-shadow:0 12px 26px -12px rgba(12,182,166,.7)}
+.boat-card .eyebrow{color:var(--teal)}
+.boat-card h2{color:var(--ink)}
+.boat-card p{color:var(--muted);margin-top:12px}
+.btn-boat{margin-top:22px;background:linear-gradient(135deg,var(--teal),var(--blue));color:#fff;box-shadow:0 14px 30px -14px rgba(12,182,166,.6)}
+@media (max-width:560px){.boat-card{padding:30px 18px 26px;border-radius:18px}.boat-card-ic{width:48px;height:48px;font-size:25px}}
 </style>
 </head>
 <body>
@@ -502,11 +514,14 @@ footer a.lk{color:var(--pink)}
 
 <!-- BOAT RIDE ONLY -->
 <section class="sec" id="boatonly" style="padding-top:0">
-  <div class="wrap sec-h reveal">
-    <div class="eyebrow">Short on time?</div>
-    <h2>Just want the boat ride?</h2>
-    <p>If you only want the pre-booked Dev Deepawali boat ride on the Ganga — without the stay and tour — you can book just the boat ride.</p>
-    <a class="btn btn-ghost" style="margin-top:20px" href="https://app.tripomonk.com/dd/#/dev-diwali?src=direct-qr"><span class="msr" style="font-size:19px">sailing</span>&nbsp;Book only the boat ride</a>
+  <div class="wrap">
+    <div class="boat-card reveal">
+      <span class="boat-card-ic msr">sailing</span>
+      <div class="eyebrow">Short on time?</div>
+      <h2>Just want the boat ride?</h2>
+      <p>If you only want the pre-booked Dev Deepawali boat ride on the Ganga, without the stay and tour, you can book just the boat ride.</p>
+      <a class="btn btn-boat" href="https://app.tripomonk.com/dd/#/dev-diwali?src=direct-qr"><span class="msr" style="font-size:19px">sailing</span>&nbsp;Book only the boat ride</a>
+    </div>
   </div>
 </section>
 
