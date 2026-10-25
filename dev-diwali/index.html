@@ -103,6 +103,41 @@ header{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-
 .tier .adv{font-size:12.5px;color:var(--gold-lt);margin:3px 0 18px}
 .note-line{text-align:center;font-size:13px;color:var(--muted);margin-top:24px}
 
+/* trip category boxes */
+.cats{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;align-items:stretch;max-width:720px;margin:0 auto}
+.cat{position:relative;cursor:pointer;background:linear-gradient(180deg,rgba(243,179,70,.08),rgba(255,255,255,.02));border:1px solid var(--line);border-radius:22px;padding:28px 24px 22px;display:flex;flex-direction:column;overflow:hidden;transition:transform .18s cubic-bezier(.2,.7,.2,1),box-shadow .3s,border-color .2s}
+.cat::after{content:"";position:absolute;inset:0;background:radial-gradient(120% 90% at 100% 0,rgba(243,179,70,.16),transparent 60%);pointer-events:none}
+.cat:hover{transform:translateY(-4px);border-color:var(--gold);box-shadow:0 28px 64px -34px rgba(243,179,70,.6)}
+.cat:active{transform:translateY(-1px)}
+.cat--girls{background:linear-gradient(180deg,rgba(255,122,152,.10),rgba(255,255,255,.02))}
+.cat--girls::after{background:radial-gradient(120% 90% at 100% 0,rgba(255,122,152,.20),transparent 60%)}
+.cat--girls:hover{border-color:#ff9bb3;box-shadow:0 28px 64px -34px rgba(255,122,152,.55)}
+.cat-pill{position:absolute;top:14px;right:14px;z-index:2;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;background:linear-gradient(180deg,#ffd0dc,#ff8aa6);color:#5a132a;padding:4px 10px;border-radius:999px}
+.cat-ic{position:relative;z-index:1;width:56px;height:56px;border-radius:16px;display:grid;place-items:center;font-size:30px;color:var(--gold-lt);background:rgba(243,179,70,.12);border:1px solid var(--line);margin-bottom:16px}
+.cat--girls .cat-ic{color:#ffc2d1;background:rgba(255,122,152,.14);border-color:rgba(255,122,152,.25)}
+.cat h3{position:relative;z-index:1;font-size:22px;font-weight:600}
+.cat-sub{position:relative;z-index:1;font-size:13px;color:var(--muted);margin:7px 0 20px;flex:1;line-height:1.5}
+.cat-foot{position:relative;z-index:1;display:flex;align-items:flex-end;justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding-top:16px}
+.cat-from{font-size:19px;font-weight:600;color:var(--ivory)}
+.cat-from small{font-size:12px;font-weight:400;color:var(--muted)}
+.cat-opts2{font-size:12px;color:var(--gold-lt);margin-top:3px}
+.cat--girls .cat-opts2{color:#ffc2d1}
+.cat-go{width:40px;height:40px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:22px;color:#3a1e04;background:linear-gradient(180deg,var(--gold-lt),var(--gold));box-shadow:0 10px 26px -12px rgba(243,179,70,.7)}
+.cat--girls .cat-go{color:#5a132a;background:linear-gradient(180deg,#ffd0dc,#ff8aa6);box-shadow:0 10px 26px -12px rgba(255,122,152,.6)}
+
+/* choose-room options (inside category sheet) */
+.cat-opts{display:flex;flex-direction:column;gap:11px}
+.cat-opt{width:100%;text-align:left;display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:14px;padding:15px 15px;cursor:pointer;font-family:var(--sans);color:var(--ivory);transition:border-color .2s,background .2s,transform .12s}
+.cat-opt:hover{border-color:var(--gold);background:rgba(243,179,70,.08)}
+.cat-opt:active{transform:translateY(1px)}
+.cat-opt-l{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}
+.cat-opt-l b{font-size:15.5px;font-weight:600}
+.cat-opt-l small{font-size:12px;color:var(--muted)}
+.cat-opt-r{text-align:right;flex:none}
+.cat-opt-r b{font-size:18px;font-weight:600;color:var(--gold-lt)}
+.cat-opt-r small{display:block;font-size:10.5px;color:var(--muted)}
+.cat-opt-go{font-size:22px;color:var(--muted);flex:none}
+
 /* footer */
 footer{border-top:1px solid var(--line);text-align:center;padding:38px 20px}
 footer .fb{font-size:18px;font-weight:600;margin-bottom:6px}
@@ -172,6 +207,19 @@ footer a.lk{color:var(--gold-lt)}
 /* mobile: all three packages in ONE line, side by side */
 @media (max-width:560px){
   .wrap{padding:0 14px}
+  .cats{gap:11px;max-width:none}
+  .cat{padding:18px 14px 16px;border-radius:16px}
+  .cat-ic{width:44px;height:44px;border-radius:12px;font-size:24px;margin-bottom:11px}
+  .cat h3{font-size:16px;line-height:1.2}
+  .cat-sub{font-size:11.5px;margin:6px 0 14px}
+  .cat-pill{font-size:9px;padding:3px 7px;top:10px;right:10px}
+  .cat-foot{padding-top:12px;gap:7px}
+  .cat-from{font-size:15px}
+  .cat-from small{font-size:10px}
+  .cat-opts2{font-size:10.5px}
+  .cat-go{width:32px;height:32px;font-size:18px}
+  .cat-opt-l b{font-size:14px}
+  .cat-opt-r b{font-size:16px}
   .tiers{grid-template-columns:repeat(2,1fr);gap:10px;max-width:none}
   .tier{padding:20px 12px;border-radius:14px}
   .tier .tag{font-size:9px;padding:3px 7px;top:-8px}
@@ -240,10 +288,10 @@ footer a.lk{color:var(--gold-lt)}
   <div class="wrap">
     <div class="sec-h reveal">
       <div class="eyebrow">Reserve your journey</div>
-      <h2>Three ways to witness Kashi</h2>
-      <p>Pay 50% now to confirm — balance 7 days before the trip. Limited spots; Dev Deepawali sells out early.</p>
+      <h2>The Dev Deepawali Trip</h2>
+      <p>Pick your group, then your room. Two room options — triple ₹13,999 and double ₹14,999 per person. Pay 50% now to confirm.</p>
     </div>
-    <div class="tiers" id="tiers"></div>
+    <div class="cats" id="cats"></div>
     <p class="note-line">Prices per person for 2026 departures · secure payment by Razorpay · GST as applicable.</p>
   </div>
 </section>
@@ -274,6 +322,9 @@ footer a.lk{color:var(--gold-lt)}
   Questions? <a class="lk" href="https://wa.me/918924813959" target="_blank" rel="noopener">WhatsApp us</a> · <a class="lk" href="/">Explore all journeys</a><br>
   © <span id="ddYr">2026</span> Tripomonk Travel Pvt. Ltd.</small>
 </footer>
+
+<!-- CHOOSE ROOM SHEET (per category) -->
+<div class="ov" id="catOv"><div class="sheet" id="catSheet"></div></div>
 
 <!-- BOOKING SHEET -->
 <div class="ov" id="ov">
@@ -341,13 +392,25 @@ footer a.lk{color:var(--gold-lt)}
       itin:ITIN,
       inc:['2 nights in premium hotels near the ghats (double sharing)','Half-board meals (breakfast + dinner)','Pre-booked Dev Deepawali boat ride on the Ganga','Sunrise boat ride at Assi Ghat','Evening Ganga Aarti experience','All sightseeing as per the itinerary','Dedicated tour manager throughout','No-cost EMI available'],
       exc:['Travel to & from Varanasi (train / flight / bus)','Pick-up & drop (not included with the boat-ride package)','Personal expenses, shopping and tips','Personal medical expenses','Temple donations and optional activities','Anything not listed under inclusions · GST as applicable']},
-    {id:'allgirls',ic:'diversity_1',name:'All-Girls Special',tag:'Women only',feat:false,price:13999,
-      duration:'2 Nights / 3 Days',sharing:'Triple sharing · Double ₹14,999',
-      forw:'A women-only Dev Deepawali departure with a female trip coordinator — same itinerary, same rates.',
+    {id:'allgirls',ic:'diversity_1',name:'All-Girls Dev Deepawali',feat:false,price:13999,
+      duration:'2 Nights / 3 Days',sharing:'Triple sharing',
+      forw:'Women-only departure with a female trip coordinator. Same itinerary, same magic.',
       itin:ITIN,
-      inc:['Women-only group with a female trip coordinator','2 nights in premium hotels near the ghats','Half-board meals (breakfast + dinner)','Pre-booked Dev Deepawali boat ride on the Ganga','Sunrise boat ride at Assi Ghat','Evening Ganga Aarti experience','All sightseeing as per the itinerary','No-cost EMI available'],
-      exc:['Travel to & from Varanasi (train / flight / bus)','Pick-up & drop (not included with the boat-ride package)','Personal expenses, shopping and tips','Personal medical expenses','Temple donations and optional activities','Anything not listed under inclusions · GST as applicable','Double sharing (₹14,999) available on request — WhatsApp us']}
+      inc:['Women-only group with a female trip coordinator','2 nights in premium hotels near the ghats (triple sharing)','Half-board meals (breakfast + dinner)','Pre-booked Dev Deepawali boat ride on the Ganga','Sunrise boat ride at Assi Ghat','Evening Ganga Aarti experience','All sightseeing as per the itinerary','No-cost EMI available'],
+      exc:['Travel to & from Varanasi (train / flight / bus)','Pick-up & drop (not included with the boat-ride package)','Personal expenses, shopping and tips','Personal medical expenses','Temple donations and optional activities','Anything not listed under inclusions · GST as applicable']},
+    {id:'allgirls_double',ic:'diversity_1',name:'All-Girls Dev Deepawali',feat:false,price:14999,
+      duration:'2 Nights / 3 Days',sharing:'Double sharing',
+      forw:'Women-only departure in a double room — more comfort, female trip coordinator.',
+      itin:ITIN,
+      inc:['Women-only group with a female trip coordinator','2 nights in premium hotels near the ghats (double sharing)','Half-board meals (breakfast + dinner)','Pre-booked Dev Deepawali boat ride on the Ganga','Sunrise boat ride at Assi Ghat','Evening Ganga Aarti experience','All sightseeing as per the itinerary','No-cost EMI available'],
+      exc:['Travel to & from Varanasi (train / flight / bus)','Pick-up & drop (not included with the boat-ride package)','Personal expenses, shopping and tips','Personal medical expenses','Temple donations and optional activities','Anything not listed under inclusions · GST as applicable']}
   ];
+  // Two trip categories; each opens its two room options (triple ₹13,999 / double ₹14,999).
+  var CATS=[
+    {id:'regular',ic:'groups',name:'Regular Trip',sub:'Open group · solo, friends, family & couples',tiers:['experience','premium']},
+    {id:'allgirls',ic:'diversity_1',name:'All-Girls Trip',tag:'Women only',sub:'Women-only group with a female coordinator',tiers:['allgirls','allgirls_double']}
+  ];
+  var byId=function(id){return TIERS.filter(function(t){return t.id===id;})[0];};
   var INR=function(n){return '₹'+Number(n||0).toLocaleString('en-IN');};
   var el=function(t,c,h){var e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e;};
   var $=function(id){return document.getElementById(id);};
@@ -355,20 +418,45 @@ footer a.lk{color:var(--gold-lt)}
   /* experience strip */
   var xp=$('xp');XP.forEach(function(x){xp.appendChild(el('div','it','<span class="msr">'+x[0]+'</span><b>'+x[1]+'</b>'));});
 
-  /* tiers */
-  var tc=$('tiers');
-  TIERS.forEach(function(t){
-    var li=t.inc.slice(0,5).map(function(i){return '<li><span class="msr">check</span>'+i+'</li>';}).join('');
-    var more=t.inc.length>5?'<li class="pkg-more">+ '+(t.inc.length-5)+' more · full itinerary inside</li>':'';
-    var c=el('div','tier reveal'+(t.feat?' feat':''));
-    c.innerHTML=((t.tag||t.feat)?'<span class="tag">'+(t.tag||'Most loved')+'</span>':'')+
-      '<span class="msr ic">'+t.ic+'</span><h3>'+t.name+'</h3><div class="tsub">'+t.duration+' · '+t.sharing+'</div>'+
-      '<p class="for">'+t.forw+'</p><ul>'+li+more+'</ul>'+
-      '<div class="amt">'+INR(t.price)+' <small>/ person</small></div><div class="adv">reserve from '+INR(Math.round(t.price*0.5))+'</div>'+
-      '<button class="btn '+(t.feat?'btn-gold':'btn-ghost')+' btn-block" data-id="'+t.id+'">View details</button>';
-    c.querySelector('button').addEventListener('click',function(){openPkg(t.id);});
-    tc.appendChild(c);
+  /* trip categories — each opens its two room options */
+  var cc=$('cats');
+  CATS.forEach(function(cat){
+    var ts=cat.tiers.map(byId).filter(Boolean);
+    var from=Math.min.apply(null,ts.map(function(t){return t.price;}));
+    var c=el('div','cat reveal'+(cat.id==='allgirls'?' cat--girls':''));
+    c.innerHTML=(cat.tag?'<span class="cat-pill">'+cat.tag+'</span>':'')+
+      '<span class="cat-ic msr">'+cat.ic+'</span>'+
+      '<h3>'+cat.name+'</h3><p class="cat-sub">'+cat.sub+'</p>'+
+      '<div class="cat-foot"><div><div class="cat-from">from '+INR(from)+' <small>/ person</small></div>'+
+      '<div class="cat-opts2">'+ts.length+' room options</div></div>'+
+      '<span class="cat-go msr">arrow_forward</span></div>';
+    c.addEventListener('click',function(){openCat(cat.id);});
+    cc.appendChild(c);
   });
+
+  /* category -> choose room sheet (lists the 2 packages) */
+  window.openCat=function(id){
+    var cat=CATS.filter(function(c){return c.id===id;})[0];if(!cat)return;
+    var opts=cat.tiers.map(byId).filter(Boolean).map(function(t){
+      return '<button type="button" class="cat-opt" data-id="'+t.id+'">'+
+        '<span class="cat-opt-l"><b>'+t.sharing+'</b><small>'+t.duration+' · reserve from '+INR(Math.round(t.price*0.5))+'</small></span>'+
+        '<span class="cat-opt-r"><b>'+INR(t.price)+'</b><small>/ person</small></span>'+
+        '<span class="cat-opt-go msr">chevron_right</span></button>';
+    }).join('');
+    $('catSheet').innerHTML=
+      '<div class="sheet-h"><div><h3>'+cat.name+'</h3><div class="pkg-meta">'+cat.sub+'</div></div>'+
+      '<button class="x" onclick="closeCat()" aria-label="Close">×</button></div>'+
+      '<p class="sub" style="margin:6px 0 16px">Choose your room. Tap a package for the full itinerary and to reserve.</p>'+
+      '<div class="cat-opts">'+opts+'</div>'+
+      '<p class="note-line" style="margin-top:16px;text-align:left">Pay 50% now to confirm · balance 7 days before the trip · GST as applicable.</p>';
+    Array.prototype.forEach.call($('catSheet').querySelectorAll('.cat-opt'),function(b){
+      b.addEventListener('click',function(){closeCat();openPkg(b.getAttribute('data-id'));});
+    });
+    $('catSheet').scrollTop=0;
+    $('catOv').classList.add('show');document.body.style.overflow='hidden';
+  };
+  window.closeCat=function(){$('catOv').classList.remove('show');document.body.style.overflow='';};
+  $('catOv').addEventListener('click',function(e){if(e.target===$('catOv'))closeCat();});
 
   /* reveal */
   var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});},{threshold:.12});
