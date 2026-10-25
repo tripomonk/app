@@ -331,16 +331,18 @@ header{background:rgba(255,255,255,.88);border-bottom:1px solid var(--line)}
 .btn-ghost{background:#fff;border-color:var(--line);color:var(--ink)}
 .btn-ghost:hover{border-color:#d7d9e3}
 
-.hero{background:radial-gradient(120% 92% at 50% -12%, #fff1e8, #fdeff6 46%, #eef2ff 100%);padding:60px 20px 54px;border-bottom:1px solid var(--line)}
-.hero .diya{filter:drop-shadow(0 6px 14px rgba(255,106,43,.38))}
-.hero .deva-top{color:var(--saffron);opacity:1}
-.hero h1{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
-.hero .yr{color:var(--saffron);-webkit-text-fill-color:var(--saffron)}
-.hero .tag{color:var(--ink)}
-.hero .note{color:var(--muted)}
-.cd .u{background:#fff;border:1px solid var(--line);box-shadow:0 10px 26px -18px rgba(20,20,45,.3)}
-.cd .n{color:var(--saffron)}
-.cd .l{color:var(--muted)}
+/* photo cover hero (Dev Deepawali, Varanasi) with a dark scrim + light text */
+.hero{position:relative;background-image:linear-gradient(180deg, rgba(14,8,24,.42), rgba(14,8,24,.58) 52%, rgba(14,8,24,.74) 82%, rgba(251,248,244,.98)), url('/dev-diwali/media/cover.jpg');background-size:cover;background-position:center 42%;padding:88px 20px 66px;border-bottom:0}
+.hero .diya{filter:drop-shadow(0 4px 16px rgba(255,170,60,.7))}
+.hero .deva-top{color:#ffd98a;opacity:1}
+.hero h1{background:linear-gradient(180deg,#ffffff,#ffe6a8 70%,#f3b346);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 2px 30px rgba(0,0,0,.25)}
+.hero .yr{color:#ffd98a;-webkit-text-fill-color:#ffd98a}
+.hero .tag{color:#fff}
+.hero .note{color:rgba(255,255,255,.84)}
+.cd .u{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);box-shadow:0 10px 30px -18px rgba(0,0,0,.6);backdrop-filter:blur(6px)}
+.cd .n{color:#ffd98a}
+.cd .l{color:rgba(255,255,255,.82)}
+.hero .btn-ghost{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.4);color:#fff;backdrop-filter:blur(6px)}
 
 .strip{background:var(--bg);border-color:var(--line)}
 .strip .wrap{padding:30px 20px}
