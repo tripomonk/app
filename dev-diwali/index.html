@@ -484,7 +484,7 @@ footer a.lk{color:var(--pink)}
     <div class="sec-h reveal">
       <div class="eyebrow">Reserve your journey</div>
       <h2>The Dev Deepawali Trip</h2>
-      <p>Pick your group, then your room. Two room options — triple ₹13,999 and double ₹14,999 per person. Pay 50% now to confirm.</p>
+      <p>Pick your group, then pick your room. Pay an advance now to confirm, the balance is due before the trip.</p>
     </div>
     <div class="lights lights-sec" data-lights="22" aria-hidden="true"></div>
     <div class="cats" id="cats"></div>
@@ -638,28 +638,66 @@ footer a.lk{color:var(--pink)}
       box.appendChild(s);}
   });
 
-  /* trip categories — each opens its two room options */
-  var cc=$('cats');
-  CATS.forEach(function(cat){
-    var ts=cat.tiers.map(byId).filter(Boolean);
-    var from=Math.min.apply(null,ts.map(function(t){return t.price;}));
-    var c=el('div','cat reveal'+(cat.id==='allgirls'?' cat--girls':''));
-    c.innerHTML=(cat.tag?'<span class="cat-pill">'+cat.tag+'</span>':'')+
-      '<span class="cat-ic msr">'+cat.ic+'</span>'+
-      '<h3>'+cat.name+'</h3><p class="cat-sub">'+cat.sub+'</p>'+
-      '<div class="cat-foot"><div><div class="cat-from">from '+INR(from)+' <small>/ person</small></div>'+
-      '<div class="cat-opts2">'+ts.length+' room options</div></div>'+
-      '<span class="cat-go msr">arrow_forward</span></div>';
-    c.addEventListener('click',function(){openCat(cat.id);});
-    cc.appendChild(c);
-  });
+  /* Booking rules (overridden by the admin-editable config below). */
+  var ADV=50, CLOSE_TS=Date.UTC(2026,10,23), BOOK_OPEN=true;
+
+  /* trip categories — each opens its two room options. Re-rendered after the live config loads. */
+  function renderCats(){
+    var cc=$('cats'); if(!cc)return; cc.innerHTML='';
+    CATS.forEach(function(cat){
+      var ts=cat.tiers.map(byId).filter(Boolean);
+      if(!ts.length)return;
+      var from=Math.min.apply(null,ts.map(function(t){return t.price;}));
+      var c=el('div','cat reveal in'+(cat.id==='allgirls'?' cat--girls':''));
+      c.innerHTML=(cat.tag?'<span class="cat-pill">'+cat.tag+'</span>':'')+
+        '<span class="cat-ic msr">'+cat.ic+'</span>'+
+        '<h3>'+cat.name+'</h3><p class="cat-sub">'+cat.sub+'</p>'+
+        '<div class="cat-foot"><div><div class="cat-from">from '+INR(from)+' <small>/ person</small></div>'+
+        '<div class="cat-opts2">'+ts.length+' room options</div></div>'+
+        '<span class="cat-go msr">arrow_forward</span></div>';
+      c.addEventListener('click',function(){openCat(cat.id);});
+      cc.appendChild(c);
+    });
+  }
+  renderCats();
+
+  /* Admin-editable packages: rebuild TIERS/CATS/itinerary/rules from dd_full_config.
+     Falls back silently to the hardcoded defaults above if the fetch fails. */
+  function applyConfig(cfg){
+    if(!cfg||!Array.isArray(cfg.packages)||!cfg.packages.length)return;
+    var meta=cfg.meta||{};
+    if(Array.isArray(meta.itinerary)&&meta.itinerary.length){
+      ITIN=meta.itinerary.map(function(d){return [d.day,d.title,d.desc];});
+    }
+    TIERS=cfg.packages.map(function(p){return {
+      id:p.id, ic:(p.category==='allgirls'?'diversity_1':'auto_awesome'),
+      name:p.name, price:Number(p.price)||0,
+      duration:p.duration||'2 Nights / 3 Days', sharing:p.sharing||'',
+      forw:p.tagline||'', itin:ITIN,
+      inc:Array.isArray(p.inclusions)?p.inclusions:[],
+      exc:Array.isArray(p.exclusions)?p.exclusions:[]
+    };});
+    var map={}, order=[];
+    cfg.packages.forEach(function(p){
+      if(!map[p.category]){ map[p.category]={id:p.category,ic:p.categoryIcon||'groups',name:p.categoryName,sub:p.categorySub||'',tag:p.categoryTag||null,tiers:[]}; order.push(p.category); }
+      map[p.category].tiers.push(p.id);
+    });
+    CATS=order.map(function(c){return map[c];});
+    if(meta.advancePercent)ADV=Math.max(1,Math.min(100,Number(meta.advancePercent)));
+    BOOK_OPEN=meta.bookingsOpen!==false;
+    if(meta.closeDate){var t=Date.parse(meta.closeDate+'T00:00:00Z'); if(!isNaN(t))CLOSE_TS=t;}
+    var sp=document.querySelector('.summ .pay span'); if(sp)sp.textContent='Pay now to reserve ('+ADV+'%)';
+    renderCats();
+  }
+  fetch(SUPA_URL+'/rest/v1/rpc/dd_full_config',{method:'POST',headers:{apikey:SUPA_ANON,Authorization:'Bearer '+SUPA_ANON,'Content-Type':'application/json'},body:'{}'})
+    .then(function(r){return r.json();}).then(function(cfg){if(cfg&&cfg.ok)applyConfig(cfg);}).catch(function(){});
 
   /* category -> choose room sheet (lists the 2 packages) */
   window.openCat=function(id){
     var cat=CATS.filter(function(c){return c.id===id;})[0];if(!cat)return;
     var opts=cat.tiers.map(byId).filter(Boolean).map(function(t){
       return '<button type="button" class="cat-opt" data-id="'+t.id+'">'+
-        '<span class="cat-opt-l"><b>'+t.sharing+'</b><small>'+t.duration+' · reserve from '+INR(Math.round(t.price*0.5))+'</small></span>'+
+        '<span class="cat-opt-l"><b>'+t.sharing+'</b><small>'+t.duration+' · reserve from '+INR(Math.round(t.price*ADV/100))+'</small></span>'+
         '<span class="cat-opt-r"><b>'+INR(t.price)+'</b><small>/ person</small></span>'+
         '<span class="cat-opt-go msr">chevron_right</span></button>';
     }).join('');
@@ -668,7 +706,7 @@ footer a.lk{color:var(--pink)}
       '<button class="x" onclick="closeCat()" aria-label="Close">×</button></div>'+
       '<p class="sub" style="margin:6px 0 16px">Choose your room. Tap a package for the full itinerary and to reserve.</p>'+
       '<div class="cat-opts">'+opts+'</div>'+
-      '<p class="note-line" style="margin-top:16px;text-align:left">Pay 50% now to confirm · balance 7 days before the trip · GST as applicable.</p>';
+      '<p class="note-line" style="margin-top:16px;text-align:left">Pay '+ADV+'% now to confirm · balance before the trip · GST as applicable.</p>';
     Array.prototype.forEach.call($('catSheet').querySelectorAll('.cat-opt'),function(b){
       b.addEventListener('click',function(){closeCat();openPkg(b.getAttribute('data-id'));});
     });
@@ -705,7 +743,7 @@ footer a.lk{color:var(--pink)}
   var cur=null,pax=1,paying=false;
   window.setPax=function(d){pax=Math.min(20,Math.max(1,pax+d));$('paxQ').textContent=pax;refreshSumm();};
   function refreshSumm(){
-    var total=cur.price*pax, now=Math.round(total*0.5);
+    var total=cur.price*pax, now=Math.round(total*ADV/100);
     $('sTier').textContent=cur.name;$('sPP').textContent=INR(cur.price)+' / person';
     $('sPax').textContent=pax;$('sTotal').textContent=INR(total);$('sPay').textContent=INR(now);
     $('payTx').textContent='Pay '+INR(now)+' to reserve';
@@ -716,7 +754,7 @@ footer a.lk{color:var(--pink)}
     $('bkErr').textContent='';$('bkForm').style.display='';$('bkDone').style.display='none';
     $('payBtn').disabled=false;refreshSumm();
     /* reservations close when the package starts (23 Nov 2026, IST) — the server enforces this too */
-    if(Date.now()+5.5*3600000>=Date.UTC(2026,10,23)){$('payBtn').disabled=true;$('payTx').textContent='Reservations closed';$('bkErr').textContent='Dev Diwali 2026 reservations have closed. WhatsApp us for our next journey.';}
+    if(!BOOK_OPEN||Date.now()+5.5*3600000>=CLOSE_TS){$('payBtn').disabled=true;$('payTx').textContent='Reservations closed';$('bkErr').textContent='Dev Diwali 2026 reservations are closed. WhatsApp us for our next journey.';}
     $('ov').classList.add('show');document.body.style.overflow='hidden';
   };
   window.closeBook=function(){$('ov').classList.remove('show');document.body.style.overflow='';};
@@ -730,18 +768,18 @@ footer a.lk{color:var(--pink)}
     var exc=t.exc.map(function(i){return '<li><span class="msr no">close</span>'+i+'</li>';}).join('');
     $('pkgSheet').innerHTML=
       '<div class="sheet-h"><div><h3>'+t.name+'</h3><div class="pkg-meta">'+t.duration+' · '+t.sharing+' · Varanasi</div></div><button class="x" onclick="closePkg()" aria-label="Close">×</button></div>'+
-      '<div class="pkg-price">'+INR(t.price)+' <small>/ person · pay '+INR(Math.round(t.price*0.5))+' (50%) to reserve</small></div>'+
+      '<div class="pkg-price">'+INR(t.price)+' <small>/ person · pay '+INR(Math.round(t.price*ADV/100))+' ('+ADV+'%) to reserve</small></div>'+
       '<div class="pkg-host"><span class="msr">person</span> Hosted by Abhishek Kamat</div>'+
       '<div class="pkg-sec-t">Day-by-day itinerary</div>'+itin+
       '<div class="pkg-sec-t">What\'s included</div><ul class="pkg-list">'+inc+'</ul>'+
       '<div class="pkg-sec-t">What\'s not included</div><ul class="pkg-list">'+exc+'</ul>'+
       '<div class="pkg-sec-t">Booking &amp; cancellation</div><ul class="pkg-terms">'+
-        '<li>50% advance to confirm (non-refundable); balance 7 days before departure.</li>'+
+        '<li>'+ADV+'% advance to confirm (non-refundable); balance before departure.</li>'+
         '<li>Added to a WhatsApp group after confirmation; boarding details shared 1–2 days prior.</li>'+
         '<li>Cancellation: more than 30 days before — full advance refund; within 30 days — no refund.</li>'+
         '<li>Carry a valid government ID. No-cost EMI available.</li>'+
       '</ul>'+
-      '<button class="btn btn-gold btn-block" style="margin-top:6px" onclick="closePkg();openBook(\''+t.id+'\')"><span class="msr" style="font-size:18px">lock</span>&nbsp;Reserve · pay 50% advance</button>';
+      '<button class="btn btn-gold btn-block" style="margin-top:6px" onclick="closePkg();openBook(\''+t.id+'\')"><span class="msr" style="font-size:18px">lock</span>&nbsp;Reserve · pay '+ADV+'% advance</button>';
     $('pkgSheet').scrollTop=0;
     $('pkgOv').classList.add('show');document.body.style.overflow='hidden';
   };
