@@ -325,8 +325,9 @@ h1,h2{font-family:var(--display);font-weight:400;text-transform:uppercase;letter
 
 /* header */
 header{background:var(--cream);border-bottom:3px solid var(--ink)}
-.brand{color:var(--ink);font-family:var(--display);text-transform:uppercase;letter-spacing:.02em;font-weight:400}
-.brand b{font-weight:400}
+.brand{color:var(--ink);font-family:"Poppins",sans-serif;text-transform:none;letter-spacing:0;font-weight:600}
+.brand b{font-weight:700}
+footer .fb{font-family:"Poppins",sans-serif;text-transform:none}
 .chip{color:var(--red);border:2px solid var(--red);background:#fff;font-weight:700}
 
 /* chunky pill buttons with hard shadow */
@@ -336,17 +337,19 @@ header{background:var(--cream);border-bottom:3px solid var(--ink)}
 .btn-ghost{background:var(--mustard);color:var(--ink);border:2px solid var(--ink);box-shadow:4px 4px 0 var(--ink)}
 .btn-ghost:hover{filter:none;transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--ink)}
 
-/* HERO — cream block, giant headline */
-.hero{background:radial-gradient(130% 100% at 50% 0,#fff6e6,var(--cream) 55%,var(--cream2));padding:68px 20px 62px;border-bottom:3px solid var(--ink)}
-.hero .diya{filter:drop-shadow(0 4px 10px rgba(255,106,31,.5))}
-.hero .deva-top{color:var(--red);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
-.hero h1{font-size:clamp(54px,16vw,118px);background:none;-webkit-text-fill-color:currentColor;color:var(--red);text-shadow:4px 4px 0 var(--mustard)}
-.hero .yr{color:var(--teal-deep);-webkit-text-fill-color:var(--teal-deep);font-family:var(--display)}
-.hero .tag{color:var(--ink);font-weight:600}
-.hero .note{color:var(--ink2)}
-.cd .u{background:var(--ink);border:0;border-radius:14px;box-shadow:4px 4px 0 var(--mustard-deep)}
-.cd .n{color:var(--mustard);font-family:var(--display)}
-.cd .l{color:#f3e7cf}
+/* HERO — deep red block, giant headline */
+.hero{background:linear-gradient(180deg,#d01733,var(--red) 55%,var(--red-deep));padding:68px 20px 62px;border-bottom:3px solid var(--ink)}
+.hero .diya{filter:drop-shadow(0 4px 12px rgba(255,170,60,.7))}
+.hero .deva-top{color:var(--mustard);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.hero h1{font-size:clamp(54px,16vw,118px);background:none;-webkit-text-fill-color:currentColor;color:#fff;text-shadow:4px 4px 0 var(--mustard)}
+.hero .yr{color:var(--mustard);-webkit-text-fill-color:var(--mustard);font-family:var(--display)}
+.hero .tag{color:#fff;font-weight:600}
+.hero .note{color:#ffe1cf}
+.cd .u{background:#fff;border:2px solid var(--ink);border-radius:14px;box-shadow:4px 4px 0 var(--mustard-deep)}
+.cd .n{color:var(--red);font-family:var(--display)}
+.cd .l{color:var(--ink2)}
+.hero .btn-gold{background:var(--mustard);color:var(--ink)}
+.hero .btn-ghost{background:#fff;color:var(--ink)}
 
 /* experience strip (cream band, circular colour chips) */
 .strip{background:var(--cream);border-top:3px solid var(--ink);border-bottom:3px solid var(--ink)}
@@ -361,35 +364,35 @@ header{background:var(--cream);border-bottom:3px solid var(--ink)}
 .xp .it b{color:var(--ink);font-weight:600;margin-top:10px}
 .strip p{color:var(--ink2)}
 
-/* PACKAGES — deep red full-bleed band, bold mustard/teal cards */
-#packages{background:var(--red);border-top:3px solid var(--ink);border-bottom:3px solid var(--ink);padding:62px 0}
-#packages .eyebrow{color:var(--mustard)}
-#packages .sec-h h2{color:#fff;font-size:clamp(36px,9vw,66px)}
-#packages .sec-h p{color:#ffe1cf}
-#packages .note-line{color:#ffd9c6}
+/* PACKAGES — mustard full-bleed band, bold teal/pink cards */
+#packages{background:var(--mustard);border-top:3px solid var(--ink);border-bottom:3px solid var(--ink);padding:62px 0}
+#packages .eyebrow{color:var(--red)}
+#packages .sec-h h2{color:var(--ink);font-size:clamp(36px,9vw,66px)}
+#packages .sec-h p{color:var(--ink2)}
+#packages .note-line{color:var(--ink2)}
 .cats{max-width:760px}
-.cat{background:var(--mustard);border:3px solid var(--ink);border-radius:22px;box-shadow:8px 8px 0 var(--ink);padding-top:26px;overflow:hidden}
+.cat{background:var(--teal);border:3px solid var(--ink);border-radius:22px;box-shadow:8px 8px 0 var(--ink);padding-top:26px;overflow:hidden}
 .cat::after,.cat::before{display:none}
 .cat:hover{transform:translate(-2px,-2px);border-color:var(--ink);box-shadow:10px 10px 0 var(--ink)}
-.cat--girls{background:var(--teal)}
+.cat--girls{background:var(--pink)}
 .cat--girls:hover{border-color:var(--ink);box-shadow:10px 10px 0 var(--ink)}
-.cat-ic{color:var(--ink);background:#fff;border:2px solid var(--ink)}
-.cat--girls .cat-ic{color:var(--teal-deep);background:#fff}
-.cat h3{color:var(--ink);font-family:var(--display);text-transform:uppercase}
+.cat-ic{color:var(--teal-deep);background:#fff;border:2px solid var(--ink)}
+.cat--girls .cat-ic{color:var(--pink);background:#fff}
+.cat h3{color:#fff;font-family:var(--display);text-transform:uppercase}
 .cat--girls h3{color:#fff}
-.cat-sub{color:var(--ink2)}
-.cat--girls .cat-sub{color:#e6fffb}
-.cat-pill{background:var(--red);color:#fff;border:2px solid var(--ink);font-weight:700}
-.cat-foot{border-top:2px solid rgba(43,18,6,.25)}
-.cat--girls .cat-foot{border-top-color:rgba(255,255,255,.35)}
-.cat-from{color:var(--ink)}
+.cat-sub{color:#e9fff9}
+.cat--girls .cat-sub{color:#ffe4ef}
+.cat-pill{background:#fff;color:var(--red);border:2px solid var(--ink);font-weight:700}
+.cat-foot{border-top:2px solid rgba(255,255,255,.35)}
+.cat--girls .cat-foot{border-top-color:rgba(255,255,255,.4)}
+.cat-from{color:#fff}
 .cat--girls .cat-from{color:#fff}
-.cat-from small{color:var(--ink2)}
-.cat--girls .cat-from small{color:#d8fff8}
-.cat-opts2{color:var(--red);font-weight:700}
+.cat-from small{color:#d8fff8}
+.cat--girls .cat-from small{color:#ffdbe8}
+.cat-opts2{color:#fff;font-weight:700}
 .cat--girls .cat-opts2{color:#fff}
-.cat-go{color:#fff;background:var(--red);border:2px solid var(--ink);box-shadow:none}
-.cat--girls .cat-go{color:var(--teal-deep);background:#fff;border:2px solid var(--ink)}
+.cat-go{color:var(--teal-deep);background:#fff;border:2px solid var(--ink);box-shadow:none}
+.cat--girls .cat-go{color:var(--pink);background:#fff;border:2px solid var(--ink)}
 
 /* cream sections + bold headings */
 .sec{background:var(--cream)}
@@ -399,7 +402,7 @@ header{background:var(--cream);border-bottom:3px solid var(--ink)}
 .note-line{color:var(--ink2)}
 
 /* BOAT ONLY — mustard band with a bold card */
-#boatonly{background:var(--mustard);border-top:3px solid var(--ink);border-bottom:3px solid var(--ink);padding:54px 0!important}
+#boatonly{background:var(--teal);border-top:3px solid var(--ink);border-bottom:3px solid var(--ink);padding:54px 0!important}
 .boat-card{background:#fff;border:3px solid var(--ink);border-radius:24px;box-shadow:8px 8px 0 var(--ink);max-width:620px}
 .boat-card::before{display:none}
 .boat-card-ic{color:#fff;background:var(--teal);border:2px solid var(--ink);box-shadow:none}
@@ -445,7 +448,7 @@ header{background:var(--cream);border-bottom:3px solid var(--ink)}
 
 /* footer — deep red band */
 footer{background:var(--red-deep);border-top:3px solid var(--ink)}
-footer .fb{color:#fff;font-family:var(--display);text-transform:uppercase}
+footer .fb{color:#fff;font-family:"Poppins",sans-serif;text-transform:none;font-weight:600}
 footer small{color:#ffd9c6} footer a.lk{color:var(--mustard)}
 
 @media (max-width:560px){
