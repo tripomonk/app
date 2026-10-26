@@ -779,6 +779,7 @@ function hasRequested(n){return !!followReqs()[n];}
 function canSeePerson(n){return !isPrivatePerson(n)||n===myName()||n==='You'||isFollowing(n);}
 /* the follow button: public -> follow/unfollow; private -> request/requested/following */
 function followAction(n){
+  if(!isLoggedIn()){toast('Sign in to follow trekkers');requireLogin('community');return;}
   logEvent('follow',{name:n});
   if(isPrivatePerson(n)&&!isFollowing(n)){
     const req=followReqs();
@@ -797,6 +798,7 @@ async function syncFollowReq(n){
 }
 function followBtnLabel(n){return isFollowing(n)?'Following':(hasRequested(n)?'Requested':(isPrivatePerson(n)?'Request':'Follow'));}
 function toggleFollow(n){
+  if(!isLoggedIn()){toast('Sign in to follow trekkers');requireLogin('community');return;}
   const wasFollowing=!!followState[n];
   /* optimistic: flip the button now, reconcile with the server after */
   followState[n]=!wasFollowing;saveFollows();
