@@ -4113,6 +4113,11 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
     #community.view{padding-inline:max(24px, calc((100% - 1180px)/2))}
     /* login / boot / flows hide the nav → let content use the whole width (no rails) */
     .screen:has(.nav.hide) .view{left:0;right:0}
+    /* home quick-access tiles (Destinations / Rent Gear / Permits / Activities): small,
+       left-aligned tiles on desktop instead of 4 stretched full-width squares */
+    .quick{grid-template-columns:repeat(4,minmax(0,116px));justify-content:start;gap:12px;max-width:520px}
+    .quick .qa{padding:12px 6px;border-radius:13px;font-size:12.5px}
+    .quick .qa .qi{width:32px;height:32px;border-radius:10px}
 
     /* --- right rail: "Trekkers to follow" + quick links, fills the empty right side --- */
     .deskrail{display:block;position:absolute;top:0;right:0;bottom:0;width:312px;overflow-y:auto;
