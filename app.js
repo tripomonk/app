@@ -1572,8 +1572,38 @@ function getSavedPhoto(){try{return localStorage.getItem('tmk_uphoto')||'';}catc
 function setAvKeepCam(el,txt){const cam=el.querySelector('.pav-cam');el.textContent=txt;if(cam)el.appendChild(cam);}
 function editAvatarTap(){if(!isLoggedIn()){go('login');return;}openPhotoChoice();}
 /* chooser: pick an avatar OR upload from gallery (instead of opening the gallery directly) */
-function openPhotoChoice(){const s=document.getElementById('photoChoiceSheet');if(s)s.classList.add('show');}
-function closePhotoChoice(){const s=document.getElementById('photoChoiceSheet');if(s)s.classList.remove('show');}
+let _pcEsc=null,_pcScroll=null,_pcHideT=null;
+/* Anchor the change-photo popover to the avatar and scale it in from there. Positioned below
+   the avatar, flips above when there isn't room; the caret (--cx) points back at the trigger. */
+function openPhotoChoice(){
+  const ov=document.getElementById('photoChoicePop');if(!ov)return;
+  const card=document.getElementById('photoChoicePopCard'),anchor=document.getElementById('profileAv');
+  clearTimeout(_pcHideT);
+  ov.style.display='block';card.classList.remove('up');
+  const vw=innerWidth,vh=innerHeight,m=12,cw=card.offsetWidth,ch=card.offsetHeight;
+  let cx=vw/2,top=76,left=vw/2-cw/2;
+  if(anchor){
+    const r=anchor.getBoundingClientRect();
+    cx=r.left+r.width/2;
+    left=Math.max(m,Math.min(cx-cw/2,vw-cw-m));
+    top=r.bottom+12;
+    if(top+ch>vh-m){top=r.top-ch-12;card.classList.add('up');}   /* no room below -> flip above */
+  }
+  card.style.left=Math.round(left)+'px';card.style.top=Math.round(top)+'px';
+  card.style.setProperty('--cx',Math.round(cx-left)+'px');
+  requestAnimationFrame(()=>ov.classList.add('show'));
+  _pcEsc=e=>{if(e.key==='Escape')closePhotoChoice();};
+  _pcScroll=()=>closePhotoChoice();
+  document.addEventListener('keydown',_pcEsc);
+  window.addEventListener('scroll',_pcScroll,true);
+}
+function closePhotoChoice(){
+  const ov=document.getElementById('photoChoicePop');if(!ov)return;
+  ov.classList.remove('show');
+  if(_pcEsc){document.removeEventListener('keydown',_pcEsc);_pcEsc=null;}
+  if(_pcScroll){window.removeEventListener('scroll',_pcScroll,true);_pcScroll=null;}
+  clearTimeout(_pcHideT);_pcHideT=setTimeout(()=>{ov.style.display='none';},200);
+}
 function setAvatarEl(el,name,photo){
   if(!el)return;
   const letter=(String(name||'E').trim()[0]||'E').toUpperCase();
