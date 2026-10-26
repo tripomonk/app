@@ -5742,5 +5742,43 @@ if('serviceWorker' in navigator){
   setTimeout(hideBoot,2200);              /* fail-safe cap */
 })();
 </script>
+<script>
+/* Blank-screen self-heal. The boot splash auto-hides on a hard cap even if the app never
+   rendered (a stale/broken service-worker cache or a one-off init failure on some systems
+   leaves a dark blank). A few seconds after load, if the page is still effectively empty
+   AND we're online, unregister the SW, wipe its caches and reload ONCE to fetch a fresh
+   build. Guarded by sessionStorage so it can never loop; skipped offline (the SW serves
+   the cached shell there). A healthy home screen has plenty of text, so this never fires
+   on a normal load. */
+(function(){
+  var FLAG='tmk_selfheal';
+  function tried(){try{return sessionStorage.getItem(FLAG)==='1';}catch(e){return true;}}
+  function isBlank(){
+    if(document.getElementById('boot'))return true;           /* boot never cleared = stuck */
+    var t='';try{t=(document.body&&document.body.innerText||'').trim();}catch(e){}
+    return t.length<30;
+  }
+  function heal(){
+    try{sessionStorage.setItem(FLAG,'1');}catch(e){}
+    var reloaded=false, go=function(){if(reloaded)return;reloaded=true;try{location.reload();}catch(e){}};
+    try{
+      var jobs=[];
+      if('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations)
+        jobs.push(navigator.serviceWorker.getRegistrations().then(function(rs){return Promise.all(rs.map(function(r){return r.unregister();}));}).catch(function(){}));
+      if(window.caches && caches.keys)
+        jobs.push(caches.keys().then(function(ks){return Promise.all(ks.map(function(k){return caches.delete(k);}));}).catch(function(){}));
+      Promise.all(jobs).then(go,go);
+      setTimeout(go,1500);                                     /* safety: reload even if the clears hang */
+    }catch(e){go();}
+  }
+  function check(){
+    if(tried())return;
+    if(navigator.onLine===false)return;                       /* offline: a reload won't help */
+    if(isBlank())heal();
+  }
+  if(document.readyState==='complete')setTimeout(check,7000);
+  else window.addEventListener('load',function(){setTimeout(check,7000);});
+})();
+</script>
 </body>
 </html>
