@@ -434,6 +434,10 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
 
   .greet{font-size:13px;color:var(--muted);margin:2px 0 2px}
   .htitle{font-size:24px;font-weight:600;line-height:1.2;margin:0 0 16px;letter-spacing:-.3px}
+  /* Apple-style display tracking: large text reads too loose, so tighten headings; body stays near 0.
+     Base rule — any heading that sets its own letter-spacing still wins. */
+  h1{letter-spacing:-.018em}
+  h2{letter-spacing:-.012em}
   .htitle span{color:var(--accent2)}
 
   .search{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:13px 15px;color:var(--muted);cursor:pointer;margin-bottom:16px}
@@ -523,7 +527,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   /* bottom nav, floating pill with raised centre button */
   .nav{position:absolute;left:calc(16px + var(--safe-left));right:calc(16px + var(--safe-right));bottom:calc(var(--safe-bottom) + 12px);z-index:50;display:flex;justify-content:space-around;align-items:center;
     padding:10px 8px;border-radius:24px;background:rgba(12,24,42,.86);backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%);
-    border:1px solid rgba(255,255,255,.12);box-shadow:0 16px 40px -12px rgba(0,0,0,.6)}
+    border:1px solid rgba(255,255,255,.1);border-top-color:rgba(255,255,255,.3);box-shadow:0 16px 40px -12px rgba(0,0,0,.6)}
   .nav.hide{display:none}
   /* section-header links ("See all →"), grow tap area to 44px without changing layout height */
   .blk h2 a{display:inline-flex;align-items:center;padding:13px 4px;margin:-13px -4px;white-space:nowrap}
@@ -1492,7 +1496,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
      (e.g. tapping "Video link" inside the post composer opens askCode over it) */
   #modal{z-index:400}
   @keyframes mfade{from{opacity:0}to{opacity:1}}
-  .modal-card{width:100%;max-width:330px;background:rgba(22,38,62,.82);backdrop-filter:blur(24px) saturate(150%);-webkit-backdrop-filter:blur(24px) saturate(150%);border:1px solid rgba(255,255,255,.18);border-radius:22px;padding:22px;box-shadow:0 30px 70px rgba(0,0,0,.55);animation:mpop .28s cubic-bezier(.3,1.5,.5,1)}
+  .modal-card{width:100%;max-width:330px;background:rgba(22,38,62,.82);backdrop-filter:blur(24px) saturate(150%);-webkit-backdrop-filter:blur(24px) saturate(150%);border:1px solid rgba(255,255,255,.18);border-radius:22px;padding:22px;box-shadow:0 30px 70px rgba(0,0,0,.55);animation:mpop .3s cubic-bezier(.32,.72,0,1)}
   @keyframes mpop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
   .modal-card h3{margin:0 0 4px;font-size:18px}
   .modal-card p{margin:0 0 12px;font-size:12.5px;color:var(--muted);line-height:1.5}
@@ -3406,10 +3410,12 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   .sheet-wrap{position:fixed;inset:0;z-index:400;background:rgba(4,10,20,.55);display:none;align-items:flex-end;justify-content:center;opacity:0;transition:opacity .3s ease, display .3s allow-discrete}
   .sheet-wrap.show{display:flex;opacity:1}
   @starting-style{.sheet-wrap.show{opacity:0}}
-  .sheet{width:100%;max-width:520px;background:var(--card,#101d30);border-radius:22px 22px 0 0;border:1px solid var(--stroke);border-bottom:0;padding:10px 12px calc(12px + var(--safe-bottom));transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);will-change:transform;overscroll-behavior:contain}
+  .sheet{width:100%;max-width:520px;background:rgba(14,26,44,.72);-webkit-backdrop-filter:blur(26px) saturate(150%);backdrop-filter:blur(26px) saturate(150%);border-radius:22px 22px 0 0;border:1px solid var(--stroke);border-top-color:rgba(255,255,255,.22);border-bottom:0;padding:10px 12px calc(12px + var(--safe-bottom));transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);will-change:transform;overscroll-behavior:contain}
+  html.light .sheet{background:rgba(255,255,255,.78);border-top-color:rgba(255,255,255,.9)}
   .sheet-wrap.show .sheet{transform:translateY(0)}
   @starting-style{.sheet-wrap.show .sheet{transform:translateY(100%)}}
   .sheet.dragging{transition:none}          /* 1:1 finger tracking while dragging */
+  .sheet.spring{transition-timing-function:cubic-bezier(.2,1.08,.3,1)}  /* gentle spring settle on snap-back */
   .sheet::before{content:"";display:block;width:36px;height:4px;border-radius:999px;background:var(--stroke,rgba(255,255,255,.22));margin:2px auto 8px;opacity:.75}  /* grab handle affordance */
   @media(prefers-reduced-motion:reduce){.sheet{transition-duration:140ms}.sheet-wrap{transition-duration:140ms}}
   .sheet-title{text-align:center;color:var(--muted);font-size:12.5px;font-weight:600;padding:8px 6px 6px}
@@ -3432,7 +3438,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   /* Change-photo chooser: an origin-aware popover anchored to the avatar (scales from the trigger,
      not up from the bottom). Caret points at the avatar; flips above when there's no room below. */
   .pc-pop-ov{position:fixed;inset:0;z-index:420;display:none;background:rgba(4,10,20,.28)}
-  .pc-pop{position:absolute;width:266px;max-width:calc(100vw - 24px);display:flex;flex-direction:column;gap:6px;background:#14233a;border:1px solid var(--stroke);border-radius:18px;padding:8px;box-shadow:0 20px 54px -14px rgba(0,0,0,.65);transform-origin:top center;transform:scale(.92);opacity:0;transition:transform .16s cubic-bezier(.23,1,.32,1),opacity .16s cubic-bezier(.23,1,.32,1)}
+  .pc-pop{position:absolute;width:266px;max-width:calc(100vw - 24px);display:flex;flex-direction:column;gap:6px;background:#14233a;border:1px solid var(--stroke);border-top-color:rgba(255,255,255,.18);border-radius:18px;padding:8px;box-shadow:0 20px 54px -14px rgba(0,0,0,.65);transform-origin:top center;transform:scale(.92);opacity:0;transition:transform .16s cubic-bezier(.23,1,.32,1),opacity .16s cubic-bezier(.23,1,.32,1)}
   html.light .pc-pop{background:#fff}          /* opaque so content behind never bleeds through */
   .pc-pop-ov.show .pc-pop{transform:scale(1);opacity:1}
   .pc-pop.up{transform-origin:bottom center}

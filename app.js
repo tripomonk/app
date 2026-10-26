@@ -7154,8 +7154,13 @@ function actionSheet(title,items){return new Promise(res=>{
     cleanup();
     if(!wasEngaged)return;                     /* a tap, not a drag -> let the click through */
     s.classList.remove('dragging');
-    s.style.transform='';                      /* dismiss: animate down + its own cancel; else spring back */
-    if(dist>THRESH||vel>VEL){try{w.click();}catch(_e){w.classList.remove('show');}}
+    if(dist>THRESH||vel>VEL){                   /* dismiss: slide down + run the sheet's own cancel */
+      s.style.transform='';
+      try{w.click();}catch(_e){w.classList.remove('show');}
+    }else{                                      /* the drag carried momentum -> spring back home */
+      s.classList.add('spring');s.style.transform='';
+      setTimeout(()=>s.classList.remove('spring'),420);
+    }
     /* swallow the residual real click that a drag leaves behind, so a sheet option isn't
        triggered on release. Added AFTER our own w.click() above so it can't eat that one. */
     const swallow=ev=>{ev.stopPropagation();ev.preventDefault();};
