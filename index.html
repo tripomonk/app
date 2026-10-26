@@ -3410,8 +3410,8 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   .sheet-wrap{position:fixed;inset:0;z-index:400;background:rgba(4,10,20,.55);display:none;align-items:flex-end;justify-content:center;opacity:0;transition:opacity .3s ease, display .3s allow-discrete}
   .sheet-wrap.show{display:flex;opacity:1}
   @starting-style{.sheet-wrap.show{opacity:0}}
-  .sheet{width:100%;max-width:520px;background:rgba(14,26,44,.72);-webkit-backdrop-filter:blur(26px) saturate(150%);backdrop-filter:blur(26px) saturate(150%);border-radius:22px 22px 0 0;border:1px solid var(--stroke);border-top-color:rgba(255,255,255,.22);border-bottom:0;padding:10px 12px calc(12px + var(--safe-bottom));transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);will-change:transform;overscroll-behavior:contain}
-  html.light .sheet{background:rgba(255,255,255,.78);border-top-color:rgba(255,255,255,.9)}
+  .sheet{width:100%;max-width:520px;background:rgba(14,26,44,.72);-webkit-backdrop-filter:blur(26px) saturate(150%);backdrop-filter:blur(26px) saturate(150%);border-radius:22px 22px 0 0;border:1px solid var(--stroke);border-top-color:rgba(255,255,255,.22);border-bottom:0;padding:10px 12px calc(12px + var(--safe-bottom));transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);will-change:transform;overscroll-behavior:contain;box-shadow:0 -14px 44px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.16)}
+  html.light .sheet{background:rgba(255,255,255,.78);border-top-color:rgba(255,255,255,.9);box-shadow:0 -14px 44px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.7)}
   .sheet-wrap.show .sheet{transform:translateY(0)}
   @starting-style{.sheet-wrap.show .sheet{transform:translateY(100%)}}
   .sheet.dragging{transition:none}          /* 1:1 finger tracking while dragging */
@@ -3438,8 +3438,8 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   /* Change-photo chooser: an origin-aware popover anchored to the avatar (scales from the trigger,
      not up from the bottom). Caret points at the avatar; flips above when there's no room below. */
   .pc-pop-ov{position:fixed;inset:0;z-index:420;display:none;background:rgba(4,10,20,.28)}
-  .pc-pop{position:absolute;width:266px;max-width:calc(100vw - 24px);display:flex;flex-direction:column;gap:6px;background:#14233a;border:1px solid var(--stroke);border-top-color:rgba(255,255,255,.18);border-radius:18px;padding:8px;box-shadow:0 20px 54px -14px rgba(0,0,0,.65);transform-origin:top center;transform:scale(.92);opacity:0;transition:transform .16s cubic-bezier(.23,1,.32,1),opacity .16s cubic-bezier(.23,1,.32,1)}
-  html.light .pc-pop{background:#fff}          /* opaque so content behind never bleeds through */
+  .pc-pop{position:absolute;width:266px;max-width:calc(100vw - 24px);display:flex;flex-direction:column;gap:6px;background:rgba(20,33,52,.72);-webkit-backdrop-filter:blur(28px) saturate(160%);backdrop-filter:blur(28px) saturate(160%);border:1px solid var(--stroke);border-top-color:rgba(255,255,255,.22);border-radius:18px;padding:8px;box-shadow:0 20px 54px -14px rgba(0,0,0,.65),inset 0 1px 0 rgba(255,255,255,.14);transform-origin:top center;transform:scale(.92);opacity:0;transition:transform .16s cubic-bezier(.23,1,.32,1),opacity .16s cubic-bezier(.23,1,.32,1)}
+  html.light .pc-pop{background:rgba(255,255,255,.74);border-top-color:rgba(255,255,255,.9)}   /* light glass */
   .pc-pop-ov.show .pc-pop{transform:scale(1);opacity:1}
   .pc-pop.up{transform-origin:bottom center}
   .pc-pop::before{content:"";position:absolute;top:-6px;left:calc(var(--cx,50%) - 6px);width:12px;height:12px;background:inherit;border-left:1px solid var(--stroke);border-top:1px solid var(--stroke);transform:rotate(45deg)}

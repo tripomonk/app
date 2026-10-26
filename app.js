@@ -7095,16 +7095,24 @@ function actionSheet(title,items){return new Promise(res=>{
   c.onclick=()=>done(null);wrap.onclick=e=>{if(e.target===wrap)done(null);};
 });}
 
-/* ---- Bottom-sheet drag-to-dismiss ----
-   Flick or drag a .sheet down to close it. On release past a distance OR with enough
-   downward velocity it dismisses, otherwise it springs back. Dismiss reuses the sheet's
-   OWN backdrop-cancel (every overlay wires wrap.onclick=e=>{if(e.target===wrap)close()}),
-   so promise-based sheets (actionSheet/confirm) still resolve and clean up. Modals (.modal)
-   are untouched: they stay centered. Direct manipulation, so it stays under reduced-motion. */
+/* ---- Bottom-sheet drag-to-dismiss, iOS-style (velocity handoff + momentum projection) ----
+   Drag a .sheet 1:1, then on release a JS spring takes over continuing at the finger's EXACT
+   velocity (no seam). The release decision uses Apple's momentum projection: we project where
+   the throw would land and dismiss if that passes ~30% of the sheet, so a quick flick dismisses
+   from a tiny drag while a slow short drag springs back. Fully interruptible: grabbing a
+   mid-flight sheet cancels the spring and continues from its current position. Dismiss reuses
+   each sheet's own backdrop-cancel (wrap.click()), so promise-based sheets still resolve. */
 (function(){
   if(typeof window==='undefined'||!('PointerEvent'in window))return;
-  const THRESH=90, VEL=0.5;                 /* px to dismiss; px/ms flick velocity to dismiss */
-  let sheet=null,wrap=null,startY=0,startX=0,startT=0,y=0,active=false,engaged=false,pid=-1;
+  const DISMISS_FRAC=0.3;                    /* dismiss when the projected rest point passes this fraction of the height */
+  let sheet=null,wrap=null,startY=0,startX=0,y=0,baseY=0,active=false,engaged=false,pid=-1;
+  let samples=[];                            /* recent {t,y} for release velocity */
+  let anim=null;                             /* running spring, so a re-grab can interrupt it */
+
+  function curY(el){
+    const m=/translateY\(([-0-9.]+)px\)/.exec(el.style.transform||'');
+    return m?parseFloat(m[1]):0;
+  }
   function atTop(target){                    /* don't hijack a scrolled list inside the sheet */
     let el=target;
     while(el&&el!==sheet){
@@ -7113,12 +7121,29 @@ function actionSheet(title,items){return new Promise(res=>{
     }
     return true;
   }
+  /* Apple momentum projection (exponential decay). vel in px/ms -> projected travel in px. */
+  function project(velPxMs,decel){decel=decel||0.995;return velPxMs*1000/1000*decel/(1-decel);}
+  /* spring animator (semi-implicit Euler) with initial velocity; returns {cancel} */
+  function spring(from,to,vel,resp,damp,onUpdate,onDone){
+    const w0=2*Math.PI/resp;let x=from,v=vel,last=performance.now(),raf,stopped=false;
+    function step(now){
+      if(stopped)return;
+      let dt=(now-last)/1000;last=now;if(dt>0.064)dt=0.064;
+      const a=-w0*w0*(x-to)-2*damp*w0*v;
+      v+=a*dt;x+=v*dt;
+      onUpdate(x);
+      if(Math.abs(x-to)<0.5&&Math.abs(v)<24){onUpdate(to);onDone&&onDone();return;}
+      raf=requestAnimationFrame(step);
+    }
+    raf=requestAnimationFrame(step);
+    return {cancel(){stopped=true;cancelAnimationFrame(raf);}};
+  }
   function cleanup(){
     document.removeEventListener('pointermove',move,{passive:false});
     document.removeEventListener('pointerup',up,true);
     document.removeEventListener('pointercancel',up,true);
     if(sheet){try{sheet.releasePointerCapture(pid);}catch(e){}}
-    active=false;engaged=false;sheet=null;wrap=null;pid=-1;
+    active=false;engaged=false;sheet=null;wrap=null;pid=-1;samples=[];
   }
   function down(e){
     if(active)return;
@@ -7128,8 +7153,13 @@ function actionSheet(title,items){return new Promise(res=>{
     const w=s.closest('.sheet-wrap.show');
     if(!w)return;
     if(!atTop(e.target))return;
-    sheet=s;wrap=w;startY=e.clientY;startX=e.clientX;startT=performance.now();
-    y=0;active=true;engaged=false;pid=e.pointerId;
+    if(anim){anim.cancel();anim=null;}         /* interrupt a running spring; grab it where it is */
+    try{w.style.opacity='';w.style.transition='';}catch(_e){}   /* restore a backdrop that was fading out */
+    sheet=s;wrap=w;startY=e.clientY;startX=e.clientX;
+    baseY=curY(s);y=baseY;pid=e.pointerId;
+    active=true;engaged=(baseY>0.5);           /* grabbed a mid-flight sheet -> already dragging */
+    if(engaged){s.classList.add('dragging');try{s.setPointerCapture(pid);}catch(_e2){}}
+    samples=[{t:performance.now(),y:y}];
     document.addEventListener('pointermove',move,{passive:false});
     document.addEventListener('pointerup',up,true);
     document.addEventListener('pointercancel',up,true);
@@ -7145,27 +7175,39 @@ function actionSheet(title,items){return new Promise(res=>{
       sheet.classList.add('dragging');
     }
     e.preventDefault();
-    y=dy>0?dy:dy*0.25;                        /* resistance on upward overdrag */
-    sheet.style.transform='translateY('+Math.max(y,0)+'px)';
+    let ny=baseY+dy;if(ny<0)ny*=0.25;          /* rubber-band on upward overdrag */
+    y=ny;sheet.style.transform='translateY('+Math.max(y,0)+'px)';
+    samples.push({t:performance.now(),y:y});while(samples.length>6)samples.shift();
+  }
+  function releaseVel(){                        /* px/ms over the last ~90ms of samples */
+    if(samples.length<2)return 0;
+    const now=performance.now(),last=samples[samples.length-1];let old=last;
+    for(let i=samples.length-1;i>=0;i--){if(now-samples[i].t>90)break;old=samples[i];}
+    const dt=last.t-old.t;return dt>0?(last.y-old.y)/dt:0;
   }
   function up(){
     if(!active)return;
-    const wasEngaged=engaged,dist=y,dt=performance.now()-startT||1,vel=dist/dt,w=wrap,s=sheet;
+    const wasEngaged=engaged,s=sheet,w=wrap,fromY=Math.max(y,0),vel=releaseVel();
     cleanup();
-    if(!wasEngaged)return;                     /* a tap, not a drag -> let the click through */
-    s.classList.remove('dragging');
-    if(dist>THRESH||vel>VEL){                   /* dismiss: slide down + run the sheet's own cancel */
-      s.style.transform='';
-      try{w.click();}catch(_e){w.classList.remove('show');}
-    }else{                                      /* the drag carried momentum -> spring back home */
-      s.classList.add('spring');s.style.transform='';
-      setTimeout(()=>s.classList.remove('spring'),420);
-    }
-    /* swallow the residual real click that a drag leaves behind, so a sheet option isn't
-       triggered on release. Added AFTER our own w.click() above so it can't eat that one. */
-    const swallow=ev=>{ev.stopPropagation();ev.preventDefault();};
-    document.addEventListener('click',swallow,{capture:true,once:true});   /* eats only the immediate trailing click */
+    if(!wasEngaged)return;                      /* a tap, not a drag -> let the click through */
+    const swallow=ev=>{ev.stopPropagation();ev.preventDefault();};   /* eat the trailing drag-click */
+    document.addEventListener('click',swallow,{capture:true,once:true});
     setTimeout(()=>document.removeEventListener('click',swallow,true),80);
+    const h=s.getBoundingClientRect().height||s.offsetHeight||420;
+    const projected=fromY+project(vel);         /* where the throw would land */
+    if(projected>h*DISMISS_FRAC){
+      try{w.style.transition='opacity .3s ease';w.style.opacity='0';}catch(_e){}   /* fade backdrop as it flies out */
+      anim=spring(fromY,h,vel*1000,0.26,1.0,function(x){s.style.transform='translateY('+x+'px)';},function(){
+        anim=null;
+        try{w.click();}catch(_e2){w.classList.remove('show');}
+        s.classList.remove('dragging');s.style.transform='';
+        try{w.style.transition='';w.style.opacity='';}catch(_e3){}
+      });
+    }else{                                      /* spring home, continuing at the finger's velocity */
+      anim=spring(fromY,0,vel*1000,0.34,0.9,function(x){s.style.transform='translateY('+Math.max(x,0)+'px)';},function(){
+        anim=null;s.classList.remove('dragging');s.style.transform='';
+      });
+    }
   }
   document.addEventListener('pointerdown',down,{passive:true});
 })();
