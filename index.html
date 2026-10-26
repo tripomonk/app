@@ -865,7 +865,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   /* sticky bottom CTA */
   .cta{position:sticky;bottom:0;z-index:40;margin:14px -18px calc(var(--safe-bottom)*-1 - 16px);padding:14px 18px calc(var(--safe-bottom) + 16px);background:var(--bg);border-top:1px solid var(--stroke);box-shadow:0 -10px 24px rgba(6,16,28,.55)}
   .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:0;font-weight:600;font-size:15px;padding:16px;border-radius:16px;cursor:pointer}
-  .btn:active{transform:scale(.99)}
+  .btn:active{transform:scale(.97)}
   .btn.sm{width:auto;padding:11px 24px;font-size:13.5px;border-radius:12px}
   .btn.ghost{background:rgba(255,255,255,.07);border:1px solid var(--stroke2);color:var(--text)}
 
@@ -1441,7 +1441,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   .tkg .k{font-size:10px;color:var(--muted)}.tkg .v{font-size:13px;font-weight:600;margin-top:2px}
   .success{text-align:center;padding-top:40px}
   .checkmark{width:90px;height:90px;border-radius:50%;background:rgba(47,107,255,.16);border:2px solid var(--accent);display:grid;place-items:center;margin:0 auto 18px;color:var(--accent2);animation:pop .5s cubic-bezier(.3,1.6,.5,1)}
-  @keyframes pop{0%{transform:scale(0)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+  @keyframes pop{0%{transform:scale(.4);opacity:0}60%{transform:scale(1.15);opacity:1}100%{transform:scale(1);opacity:1}}
   /* ===== motion layer ===== */
   @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
   @keyframes fadeDown{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}
@@ -1822,7 +1822,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   .toast{position:fixed;left:50%;bottom:calc(var(--safe-bottom) + 88px);transform:translateX(-50%) translateY(12px);
     z-index:400;max-width:88%;padding:11px 16px;border-radius:12px;background:rgba(18,28,44,.94);color:#fff;
     font-size:13px;font-weight:600;line-height:1.4;text-align:center;box-shadow:0 12px 34px rgba(0,0,0,.4);
-    border:1px solid rgba(255,255,255,.14);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;
+    border:1px solid rgba(255,255,255,.14);opacity:0;pointer-events:none;transition:opacity .2s cubic-bezier(.23,1,.32,1),transform .2s cubic-bezier(.23,1,.32,1);
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   /* --- onboarding: trek-vibe preferences --- */
@@ -3402,7 +3402,7 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   .msg-badge.show{display:block;animation:livedot 1.6s ease-in-out infinite}
   .sheet-wrap{position:fixed;inset:0;z-index:400;background:rgba(4,10,20,.55);display:none;align-items:flex-end;justify-content:center}
   .sheet-wrap.show{display:flex}
-  .sheet{width:100%;max-width:520px;background:var(--card,#101d30);border-radius:22px 22px 0 0;border:1px solid var(--stroke);border-bottom:0;padding:10px 12px calc(12px + var(--safe-bottom));animation:sheetUp .18s ease}
+  .sheet{width:100%;max-width:520px;background:var(--card,#101d30);border-radius:22px 22px 0 0;border:1px solid var(--stroke);border-bottom:0;padding:10px 12px calc(12px + var(--safe-bottom));animation:sheetUp .2s cubic-bezier(.32,.72,0,1)}
   @keyframes sheetUp{from{transform:translateY(20px);opacity:.6}to{transform:translateY(0);opacity:1}}
   .sheet-title{text-align:center;color:var(--muted);font-size:12.5px;font-weight:600;padding:8px 6px 6px}
   .sheet-opts{display:flex;flex-direction:column;gap:2px}
