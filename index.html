@@ -3400,10 +3400,18 @@ window.fbTrack=function(ev,params){try{if(window.fbq&&window.tmkCookies&&window.
   .notif-badge.show{display:block;animation:livedot 1.6s ease-in-out infinite}
   .msg-badge{position:absolute;top:7px;right:7px;min-width:9px;height:9px;border-radius:9px;background:#ff3b5c;border:2px solid var(--bg,#0b1626);display:none;pointer-events:none}
   .msg-badge.show{display:block;animation:livedot 1.6s ease-in-out infinite}
-  .sheet-wrap{position:fixed;inset:0;z-index:400;background:rgba(4,10,20,.55);display:none;align-items:flex-end;justify-content:center}
-  .sheet-wrap.show{display:flex}
-  .sheet{width:100%;max-width:520px;background:var(--card,#101d30);border-radius:22px 22px 0 0;border:1px solid var(--stroke);border-bottom:0;padding:10px 12px calc(12px + var(--safe-bottom));animation:sheetUp .2s cubic-bezier(.32,.72,0,1)}
-  @keyframes sheetUp{from{transform:translateY(20px);opacity:.6}to{transform:translateY(0);opacity:1}}
+  /* Bottom sheets: interruptible transitions (not keyframes) so a fast open/close or a
+     drag retargets smoothly. Backdrop fades; the panel slides up from its own height and
+     back down on close (display:allow-discrete keeps it mounted through the exit). */
+  .sheet-wrap{position:fixed;inset:0;z-index:400;background:rgba(4,10,20,.55);display:none;align-items:flex-end;justify-content:center;opacity:0;transition:opacity .3s ease, display .3s allow-discrete}
+  .sheet-wrap.show{display:flex;opacity:1}
+  @starting-style{.sheet-wrap.show{opacity:0}}
+  .sheet{width:100%;max-width:520px;background:var(--card,#101d30);border-radius:22px 22px 0 0;border:1px solid var(--stroke);border-bottom:0;padding:10px 12px calc(12px + var(--safe-bottom));transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);will-change:transform;overscroll-behavior:contain}
+  .sheet-wrap.show .sheet{transform:translateY(0)}
+  @starting-style{.sheet-wrap.show .sheet{transform:translateY(100%)}}
+  .sheet.dragging{transition:none}          /* 1:1 finger tracking while dragging */
+  .sheet::before{content:"";display:block;width:36px;height:4px;border-radius:999px;background:var(--stroke,rgba(255,255,255,.22));margin:2px auto 8px;opacity:.75}  /* grab handle affordance */
+  @media(prefers-reduced-motion:reduce){.sheet{transition-duration:140ms}.sheet-wrap{transition-duration:140ms}}
   .sheet-title{text-align:center;color:var(--muted);font-size:12.5px;font-weight:600;padding:8px 6px 6px}
   .sheet-opts{display:flex;flex-direction:column;gap:2px}
   .sheet-opt{all:unset;box-sizing:border-box;display:block;text-align:center;padding:15px;border-radius:14px;color:var(--text);font-size:15px;font-weight:600;cursor:pointer}

@@ -7065,6 +7065,76 @@ function actionSheet(title,items){return new Promise(res=>{
   c.onclick=()=>done(null);wrap.onclick=e=>{if(e.target===wrap)done(null);};
 });}
 
+/* ---- Bottom-sheet drag-to-dismiss ----
+   Flick or drag a .sheet down to close it. On release past a distance OR with enough
+   downward velocity it dismisses, otherwise it springs back. Dismiss reuses the sheet's
+   OWN backdrop-cancel (every overlay wires wrap.onclick=e=>{if(e.target===wrap)close()}),
+   so promise-based sheets (actionSheet/confirm) still resolve and clean up. Modals (.modal)
+   are untouched: they stay centered. Direct manipulation, so it stays under reduced-motion. */
+(function(){
+  if(typeof window==='undefined'||!('PointerEvent'in window))return;
+  const THRESH=90, VEL=0.5;                 /* px to dismiss; px/ms flick velocity to dismiss */
+  let sheet=null,wrap=null,startY=0,startX=0,startT=0,y=0,active=false,engaged=false,pid=-1;
+  function atTop(target){                    /* don't hijack a scrolled list inside the sheet */
+    let el=target;
+    while(el&&el!==sheet){
+      if(el.scrollHeight-el.clientHeight>2&&el.scrollTop>0)return false;
+      el=el.parentElement;
+    }
+    return true;
+  }
+  function cleanup(){
+    document.removeEventListener('pointermove',move,{passive:false});
+    document.removeEventListener('pointerup',up,true);
+    document.removeEventListener('pointercancel',up,true);
+    if(sheet){try{sheet.releasePointerCapture(pid);}catch(e){}}
+    active=false;engaged=false;sheet=null;wrap=null;pid=-1;
+  }
+  function down(e){
+    if(active)return;
+    if(e.pointerType==='mouse'&&e.button!==0)return;
+    const s=e.target.closest&&e.target.closest('.sheet');
+    if(!s)return;
+    const w=s.closest('.sheet-wrap.show');
+    if(!w)return;
+    if(!atTop(e.target))return;
+    sheet=s;wrap=w;startY=e.clientY;startX=e.clientX;startT=performance.now();
+    y=0;active=true;engaged=false;pid=e.pointerId;
+    document.addEventListener('pointermove',move,{passive:false});
+    document.addEventListener('pointerup',up,true);
+    document.addEventListener('pointercancel',up,true);
+  }
+  function move(e){
+    if(!active)return;
+    const dy=e.clientY-startY,dx=e.clientX-startX;
+    if(!engaged){
+      if(Math.abs(dy)<6)return;
+      if(dy<=0||Math.abs(dy)<Math.abs(dx)){cleanup();return;}   /* not a downward drag */
+      engaged=true;
+      try{sheet.setPointerCapture(pid);}catch(_e){}
+      sheet.classList.add('dragging');
+    }
+    e.preventDefault();
+    y=dy>0?dy:dy*0.25;                        /* resistance on upward overdrag */
+    sheet.style.transform='translateY('+Math.max(y,0)+'px)';
+  }
+  function up(){
+    if(!active)return;
+    const wasEngaged=engaged,dist=y,dt=performance.now()-startT||1,vel=dist/dt,w=wrap,s=sheet;
+    cleanup();
+    if(!wasEngaged)return;                     /* a tap, not a drag -> let the click through */
+    s.classList.remove('dragging');
+    s.style.transform='';                      /* dismiss: animate down + its own cancel; else spring back */
+    if(dist>THRESH||vel>VEL){try{w.click();}catch(_e){w.classList.remove('show');}}
+    /* swallow the residual real click that a drag leaves behind, so a sheet option isn't
+       triggered on release. Added AFTER our own w.click() above so it can't eat that one. */
+    const swallow=ev=>{ev.stopPropagation();ev.preventDefault();};
+    document.addEventListener('click',swallow,{capture:true,once:true});   /* eats only the immediate trailing click */
+    setTimeout(()=>document.removeEventListener('click',swallow,true),80);
+  }
+  document.addEventListener('pointerdown',down,{passive:true});
+})();
+
 /* ---------- real cross-user messaging (Supabase `messages` table + realtime) ----
    The localStorage cache above stays as the instant + offline copy; the DB is the
    source of truth so two different phones see the same thread. 'Tripomonk Team' is
