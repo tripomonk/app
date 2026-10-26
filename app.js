@@ -436,6 +436,15 @@ async function loadTreks(fresh){ if(!sbOn) return;
       if(swrFresh(TREKS_KEY,TREKS_TTL)) return;
     }
   }
+  /* brand-new visitor with no local cache: paint from the static catalogue on the CDN first,
+     so the screen fills instantly even when the DB is slow under a traffic spike. This file is
+     served by the GitHub Pages CDN (scales to any number of visitors, zero backend load). The
+     DB revalidation below still runs and corrects anything stale. */
+  if(!fresh&&!painted){
+    try{const sr=await fetch('treks.json',{cache:'default'});
+      if(sr.ok){const srows=await sr.json();
+        if(Array.isArray(srows)&&srows.length){painted=JSON.stringify(srows);applyTrekRows(srows);swrSet(TREKS_KEY,srows);}}}catch(e){}
+  }
   try{let r=await fetch(SB.SUPABASE_URL+'/rest/v1/treks?select=*&order=sort.asc',{headers:sbHeaders(),cache:'no-store'});
     /* table may not have a `sort` column, retry ordering by id */
     if(!r.ok) r=await fetch(SB.SUPABASE_URL+'/rest/v1/treks?select=*&order=id.asc',{headers:sbHeaders(),cache:'no-store'});
