@@ -416,6 +416,11 @@ function applyTrekRows(rows){
    Now: paint the last known rows from localStorage immediately (no network), then
    revalidate in the background and only repaint if the payload actually changed. */
 const TREKS_KEY='treks';
+/* How long a cached catalogue is trusted before we revalidate against the DB. The catalogue
+   changes rarely, so serving it from cache for a few minutes spares the backend from a fresh
+   218KB select=* on every single load, which is what melts under a traffic spike (100+
+   simultaneous visitors). Admin writes pass fresh=true and bustTreksCache() still refresh now. */
+const TREKS_TTL=180000;
 function bustTreksCache(){try{localStorage.removeItem('tmk_swr_'+TREKS_KEY);}catch(e){}}
 /* fresh=true is used right after an ADMIN WRITE: it skips the paint-from-cache step, so
    the just-saved change can't be reverted by an older localStorage copy, and it always
@@ -427,6 +432,8 @@ async function loadTreks(fresh){ if(!sbOn) return;
     const cached=swrGet(TREKS_KEY);
     if(cached&&Array.isArray(cached.data)&&cached.data.length){
       try{painted=JSON.stringify(cached.data);applyTrekRows(cached.data);}catch(e){}
+      /* cache still fresh: paint it and skip the backend hit (spike relief) */
+      if(swrFresh(TREKS_KEY,TREKS_TTL)) return;
     }
   }
   try{let r=await fetch(SB.SUPABASE_URL+'/rest/v1/treks?select=*&order=sort.asc',{headers:sbHeaders(),cache:'no-store'});
