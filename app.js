@@ -11475,7 +11475,7 @@ async function loadMyGuide(){
     if(!_myGuide){try{const sb=getSupaClient();if(sb){const rr=await sb.functions.invoke('guide',{body:{action:'me'}});if(rr&&rr.data&&rr.data.ok&&rr.data.guide){const gid=rr.data.guide.id;_myGuide=(guides||[]).find(g=>String(g.id)===String(gid))||rr.data.guide;if(rr.data.guide.day_rate!==undefined)_myGuide.day_rate=rr.data.guide.day_rate;}}}catch(e){}}
     /* day_rate is private (SQL-guide-rate-private.sql), the public guide list never has it,
        so a guide gets ONLY their own rate from the guide edge function */
-    else if(_myGuide.day_rate===undefined){try{const sb=getSupaClient();const rr=sb&&await sb.functions.invoke('guide',{body:{action:'me'}});if(rr&&rr.data&&rr.data.ok&&rr.data.guide&&String(rr.data.guide.id)===String(_myGuide.id))_myGuide.day_rate=rr.data.guide.day_rate??null;}catch(e){}}
+    else if(_myGuide.day_rate===undefined){try{const sb=getSupaClient();const rr=sb&&await sb.functions.invoke('guide',{body:{action:'me'}});if(rr&&rr.data&&rr.data.ok&&rr.data.guide&&String(rr.data.guide.id)===String(_myGuide.id))_myGuide.day_rate=(rr.data.guide.day_rate!=null?rr.data.guide.day_rate:null);}catch(e){}}
   }catch(e){_myGuide=null;}
   return _myGuide;
 }

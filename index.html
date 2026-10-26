@@ -5764,41 +5764,55 @@ if('serviceWorker' in navigator){
 })();
 </script>
 <script>
-/* Blank-screen self-heal. The boot splash auto-hides on a hard cap even if the app never
-   rendered (a stale/broken service-worker cache or a one-off init failure on some systems
-   leaves a dark blank). A few seconds after load, if the page is still effectively empty
-   AND we're online, unregister the SW, wipe its caches and reload ONCE to fetch a fresh
-   build. Guarded by sessionStorage so it can never loop; skipped offline (the SW serves
-   the cached shell there). A healthy home screen has plenty of text, so this never fires
-   on a normal load. */
+/* Blank-screen self-heal, staged. A stale/broken service-worker cache, or a one-off boot
+   error, can leave a dark blank after the splash auto-hides. We detect "still empty after
+   load" and recover without ever looping or leaving the user stranded:
+     stage 1: unregister the SW + wipe its caches, then reload (fixes a stale/mismatched cache)
+     stage 2: show a visible panel with Reload + "Clear data & reload", so the user is never
+              stuck on a blank and can recover a corrupt local state themselves
+   A healthy screen has plenty of text, so this never fires on a normal load; the stage counter
+   resets the moment the app renders. Skipped offline (the SW serves the cached shell there). */
 (function(){
-  var FLAG='tmk_selfheal';
-  function tried(){try{return sessionStorage.getItem(FLAG)==='1';}catch(e){return true;}}
+  var KEY='tmk_heal_stage';
+  function stage(){try{return parseInt(sessionStorage.getItem(KEY)||'0',10)||0;}catch(e){return 9;}}
+  function setStage(n){try{sessionStorage.setItem(KEY,String(n));}catch(e){}}
   function isBlank(){
     if(document.getElementById('boot'))return true;           /* boot never cleared = stuck */
     var t='';try{t=(document.body&&document.body.innerText||'').trim();}catch(e){}
     return t.length<30;
   }
+  function clearCaches(){
+    var jobs=[];
+    try{if('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations)jobs.push(navigator.serviceWorker.getRegistrations().then(function(rs){return Promise.all(rs.map(function(r){return r.unregister();}));}).catch(function(){}));}catch(e){}
+    try{if(window.caches && caches.keys)jobs.push(caches.keys().then(function(ks){return Promise.all(ks.map(function(k){return caches.delete(k);}));}).catch(function(){}));}catch(e){}
+    return Promise.all(jobs).catch(function(){});
+  }
+  function reload(){try{location.reload();}catch(e){}}
+  function panel(){
+    if(document.getElementById('tmkHealPanel'))return;
+    var d=document.createElement('div');d.id='tmkHealPanel';
+    d.setAttribute('style','position:fixed;inset:0;z-index:99999;background:#0a1626;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px;font-family:system-ui,-apple-system,sans-serif');
+    d.innerHTML='<div style="font-size:19px;font-weight:700">Couldn’t load the app</div><div style="font-size:14px;opacity:.75;max-width:300px;line-height:1.5">A saved copy may be out of date. Reload to get the latest version.</div>';
+    var r=document.createElement('button');r.textContent='Reload';
+    r.setAttribute('style','padding:13px 26px;border:0;border-radius:14px;background:#2f6bff;color:#fff;font-size:15px;font-weight:700;cursor:pointer');
+    r.onclick=function(){clearCaches().then(reload);setTimeout(reload,1200);};
+    var c=document.createElement('button');c.textContent='Clear data & reload';
+    c.setAttribute('style','padding:10px 20px;border:0;border-radius:12px;background:transparent;color:#9fb4d6;font-size:13px;cursor:pointer;text-decoration:underline');
+    c.onclick=function(){try{localStorage.clear();sessionStorage.clear();}catch(e){}clearCaches().then(reload);setTimeout(reload,1200);};
+    d.appendChild(r);d.appendChild(c);
+    try{document.body.appendChild(d);}catch(e){}
+  }
   function heal(){
-    try{sessionStorage.setItem(FLAG,'1');}catch(e){}
-    var reloaded=false, go=function(){if(reloaded)return;reloaded=true;try{location.reload();}catch(e){}};
-    try{
-      var jobs=[];
-      if('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations)
-        jobs.push(navigator.serviceWorker.getRegistrations().then(function(rs){return Promise.all(rs.map(function(r){return r.unregister();}));}).catch(function(){}));
-      if(window.caches && caches.keys)
-        jobs.push(caches.keys().then(function(ks){return Promise.all(ks.map(function(k){return caches.delete(k);}));}).catch(function(){}));
-      Promise.all(jobs).then(go,go);
-      setTimeout(go,1500);                                     /* safety: reload even if the clears hang */
-    }catch(e){go();}
+    if(navigator.onLine===false)return;                       /* offline: a reload won't help */
+    if(stage()<1){setStage(1);clearCaches().then(reload);setTimeout(reload,1500);}
+    else{panel();}                                            /* cache clear + reload already failed -> let the user act */
   }
   function check(){
-    if(tried())return;
-    if(navigator.onLine===false)return;                       /* offline: a reload won't help */
-    if(isBlank())heal();
+    if(!isBlank()){setStage(0);return;}                       /* app rendered fine -> clear any prior heal state */
+    heal();
   }
-  if(document.readyState==='complete')setTimeout(check,7000);
-  else window.addEventListener('load',function(){setTimeout(check,7000);});
+  if(document.readyState==='complete')setTimeout(check,6500);
+  else window.addEventListener('load',function(){setTimeout(check,6500);});
 })();
 </script>
 </body>
