@@ -4609,11 +4609,29 @@ async function renderMyTravel(){
   hydrate(cb);
 }
 /* ---- Create ---- */
-let _tcc={trek:'',region:'',img:'',date:null,endDate:null,vis:'community',min:4,max:15,invite:{},_batches:[]};
+let _tcc={trek:'',region:'',img:'',date:null,endDate:null,vis:'community',min:4,max:15,invite:{},_batches:[],custom:false};
 let _ccFollowers=null;
+let _ccMapsOk=false,_ccPlaceSuggs=[],_ccTok=null;
+function tmkMapsKey(){try{return (window.TMK_CONFIG&&window.TMK_CONFIG.GOOGLE_MAPS_KEY)||'';}catch(e){return '';}}
+/* load Google Maps JS (Places) once, only when the user opens the custom-location search.
+   rejects when no key / offline → the UI falls back to plain text entry. */
+function loadMaps(){
+  if(window._tmkMapsP)return window._tmkMapsP;
+  const key=tmkMapsKey();
+  if(!key){window._tmkMapsP=Promise.reject(new Error('no_maps_key'));return window._tmkMapsP;}
+  window._tmkMapsP=new Promise((res,rej)=>{
+    if(window.google&&window.google.maps){res();return;}
+    const s=document.createElement('script');
+    s.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(key)+'&v=weekly&loading=async&libraries=places';
+    s.async=true;s.onload=()=>res();s.onerror=()=>rej(new Error('maps_load_failed'));
+    document.head.appendChild(s);
+  });
+  return window._tmkMapsP;
+}
 function openCircleCreate(trekName){
   if(typeof isLoggedIn==='function'&&!isLoggedIn()){_loginReturn='community';go('login');return;}
-  _tcc={trek:'',region:'',img:'',date:null,endDate:null,vis:'community',min:4,max:15,invite:{},_batches:[]};
+  _tcc={trek:'',region:'',img:'',date:null,endDate:null,vis:'community',min:4,max:15,invite:{},_batches:[],custom:false};
+  _ccMapsOk=false;_ccPlaceSuggs=[];_ccTok=null;
   _ccFollowers=null;
   go('circleCreate');renderCCBody();loadMyFollowers();
   if(trekName)setTimeout(()=>ccPickTrek(trekName),60);
@@ -4631,7 +4649,13 @@ function renderCCBody(){
   b.innerHTML=
     '<div class="cc-sec"><label>1 · Choose a trek</label>'
       +'<div class="cc-search"><span class="msr" style="color:var(--muted)">search</span><input id="ccTrekSearch" placeholder="Search treks…" oninput="renderCCTrekPicks(this.value)"/></div>'
-      +'<div class="cc-pick" id="ccTrekPicks"></div></div>'
+      +'<div class="cc-pick" id="ccTrekPicks"></div>'
+      +'<div style="margin-top:12px"><span class="tap" id="ccCustomPlaceChip" onclick="ccToggleCustomPlace()"><span class="msr" style="font-size:15px;vertical-align:-3px">add_location_alt</span> Not listed? Host at a custom location</span></div>'
+      +'<div id="ccCustomPlace" hidden style="margin-top:10px">'
+        +'<div class="cc-search"><span class="msr" style="color:var(--muted)">location_on</span><input id="ccPlaceSearch" placeholder="Search any place, trail or peak…" autocomplete="off" oninput="ccPlaceSearchInput(this.value)"/></div>'
+        +'<div id="ccPlaceSugg"></div>'
+        +'<div id="ccPlaceManual" style="display:none;margin-top:8px"><label style="font-size:11px;color:var(--muted)">Nearby region / state</label><div class="cc-search" style="margin-top:4px"><span class="msr" style="color:var(--muted)">map</span><input id="ccPlaceRegion" placeholder="e.g. Uttarakhand" oninput="ccCustomManualSet()"/></div></div>'
+      +'</div></div>'
     +'<div class="cc-sec" id="ccDateSec" style="display:none"><label>2 · Choose a date</label><div class="cc-pick" id="ccDatePicks"></div></div>'
     +'<div class="cc-sec"><label>3 · Who can join?</label><div class="cc-pick">'
       +'<span class="tap sel" id="ccVisC" onclick="ccSetVis(\'community\')">Open to community</span>'
@@ -4655,7 +4679,10 @@ function renderCCTrekPicks(q){
 }
 function ccPickTrek(n){
   const t=(typeof treks!=='undefined'?treks:[]).find(x=>x.n===n);if(!t)return;
-  _tcc.trek=n;_tcc.region=t.region||'';_tcc.img=t.img||t.photo||'';_tcc.date=null;_tcc.endDate=null;
+  _tcc.trek=n;_tcc.region=t.region||'';_tcc.img=t.img||t.photo||'';_tcc.date=null;_tcc.endDate=null;_tcc.custom=false;
+  /* picking a listed trek cancels the custom-location path */
+  const blk=document.getElementById('ccCustomPlace');if(blk)blk.hidden=true;
+  const cch=document.getElementById('ccCustomPlaceChip');if(cch)cch.classList.remove('sel');
   const si=document.getElementById('ccTrekSearch');renderCCTrekPicks(si?si.value:'');
   const sec=document.getElementById('ccDateSec'),dp=document.getElementById('ccDatePicks');
   if(sec)sec.style.display='';
@@ -4670,6 +4697,80 @@ function ccPickTrek(n){
   h+='<div id="ccCustomRow" class="cc-custom" hidden><label>Start date<input type="text" inputmode="numeric" maxlength="10" id="ccCustomStart" placeholder="DD/MM/YYYY" oninput="ccDateMask(this)"></label><label>End date<input type="text" inputmode="numeric" maxlength="10" id="ccCustomEnd" placeholder="DD/MM/YYYY" oninput="ccDateMask(this)"></label></div>';
   dp.innerHTML=h;
   if(!_tcc._batches.length)ccCustomToggle();   /* no company dates → open the custom picker right away */
+}
+/* ---- custom (off-catalogue) location, fetched from Google Maps ---- */
+async function ccToggleCustomPlace(){
+  const blk=document.getElementById('ccCustomPlace'),chip=document.getElementById('ccCustomPlaceChip');
+  if(blk)blk.hidden=!blk.hidden;
+  const openNow=blk&&!blk.hidden;
+  if(chip)chip.classList.toggle('sel',!!openNow);
+  if(!openNow)return;                                  /* just closed */
+  /* opening the custom path: drop any listed-trek selection */
+  _tcc.trek='';_tcc.custom=true;_tcc.region='';_tcc.img='';_tcc.date=null;_tcc.endDate=null;_ccPlaceSuggs=[];_ccTok=null;
+  renderCCTrekPicks((document.getElementById('ccTrekSearch')||{}).value||'');
+  const sec=document.getElementById('ccDateSec');if(sec)sec.style.display='none';
+  const sugg=document.getElementById('ccPlaceSugg');if(sugg)sugg.innerHTML='';
+  try{await loadMaps();_ccMapsOk=true;}catch(e){_ccMapsOk=false;}   /* no key / offline → manual entry */
+  const sw=document.getElementById('ccPlaceSearch'),man=document.getElementById('ccPlaceManual');
+  if(sw){sw.value='';sw.placeholder=_ccMapsOk?'Search any place, trail or peak…':'Type the location name…';try{sw.focus();}catch(e){}}
+  if(man)man.style.display=_ccMapsOk?'none':'';
+}
+async function ccPlaceSearchInput(v){
+  v=(v||'').trim();
+  if(!_ccMapsOk){                                      /* manual: the text itself is the location name */
+    _tcc.trek=v.slice(0,80);_tcc.custom=true;
+    if(v)ccShowCustomDates();else{const sec=document.getElementById('ccDateSec');if(sec)sec.style.display='none';}
+    return;
+  }
+  const box=document.getElementById('ccPlaceSugg');
+  if(v.length<3){if(box)box.innerHTML='';return;}
+  try{
+    const {AutocompleteSuggestion,AutocompleteSessionToken}=await google.maps.importLibrary('places');
+    if(!_ccTok)_ccTok=new AutocompleteSessionToken();
+    const res=await AutocompleteSuggestion.fetchAutocompleteSuggestions({input:v,sessionToken:_ccTok,includedRegionCodes:['in','np']});
+    _ccPlaceSuggs=((res&&res.suggestions)||[]).filter(s=>s.placePrediction).slice(0,6);
+    ccRenderPlaceSugg();
+  }catch(e){                                           /* API failed → switch to manual, keep what they typed */
+    _ccMapsOk=false;const man=document.getElementById('ccPlaceManual');if(man)man.style.display='';
+    _tcc.trek=v.slice(0,80);_tcc.custom=true;if(v)ccShowCustomDates();
+  }
+}
+function ccRenderPlaceSugg(){
+  const box=document.getElementById('ccPlaceSugg');if(!box)return;
+  box.innerHTML=(_ccPlaceSuggs||[]).map((s,i)=>{
+    const p=s.placePrediction;
+    const main=(p.mainText&&p.mainText.text)||(p.text&&p.text.text)||'Place';
+    const sub=(p.secondaryText&&p.secondaryText.text)||'';
+    return '<div onclick="ccPickPlace('+i+')" style="display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:12px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid var(--line,rgba(255,255,255,.08));margin-top:6px">'
+      +'<span class="msr" style="color:var(--muted);font-size:20px">location_on</span>'
+      +'<div style="min-width:0"><b style="display:block;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(main)+'</b>'+(sub?'<small style="color:var(--muted);font-size:11.5px">'+esc(sub)+'</small>':'')+'</div></div>';
+  }).join('');
+}
+async function ccPickPlace(i){
+  const s=(_ccPlaceSuggs||[])[i];if(!s||!s.placePrediction)return;
+  try{
+    const place=s.placePrediction.toPlace();
+    await place.fetchFields({fields:['displayName','formattedAddress']});
+    const name=String(place.displayName||s.placePrediction.text.text||'').trim();
+    const addr=String(place.formattedAddress||'').trim();
+    _tcc.trek=name.slice(0,80);_tcc.custom=true;_tcc.img='';
+    const parts=addr.split(',').map(x=>x.trim()).filter(Boolean);
+    _tcc.region=(parts.slice(-3,-1).join(', ')||parts.slice(-2).join(', ')||addr).slice(0,60);
+    const sw=document.getElementById('ccPlaceSearch');if(sw)sw.value=_tcc.trek;
+    const box=document.getElementById('ccPlaceSugg');
+    if(box)box.innerHTML='<div style="display:flex;align-items:center;gap:8px;padding:11px 12px;border-radius:12px;background:rgba(47,107,255,.14);border:1px solid rgba(47,107,255,.4);margin-top:6px"><span class="msr" style="color:var(--accent,#2f6bff);font-size:20px">check_circle</span><div><b style="font-size:13.5px">'+esc(_tcc.trek)+'</b>'+(_tcc.region?'<small style="color:var(--muted);display:block;font-size:11.5px">'+esc(_tcc.region)+'</small>':'')+'</div></div>';
+    _ccTok=null;                                       /* session token is single-use per pick */
+    ccShowCustomDates();
+  }catch(e){note('Could not load that place, type the location name instead.','Maps');}
+}
+function ccCustomManualSet(){const r=(document.getElementById('ccPlaceRegion')||{}).value||'';_tcc.region=r.trim().slice(0,60);}
+/* custom location has no company departures → go straight to the own-date picker */
+function ccShowCustomDates(){
+  const sec=document.getElementById('ccDateSec'),dp=document.getElementById('ccDatePicks');
+  _tcc._batches=[];
+  if(sec)sec.style.display='';
+  if(dp)dp.innerHTML='<div style="font-size:12px;color:var(--muted);width:100%;margin-bottom:4px">Custom location — pick your own trip dates. Your circle gathers people, and we help set it up.</div>'
+    +'<div id="ccCustomRow" class="cc-custom"><label>Start date<input type="text" inputmode="numeric" maxlength="10" id="ccCustomStart" placeholder="DD/MM/YYYY" oninput="ccDateMask(this)"></label><label>End date<input type="text" inputmode="numeric" maxlength="10" id="ccCustomEnd" placeholder="DD/MM/YYYY" oninput="ccDateMask(this)"></label></div>';
 }
 function ccBatchDate(b){
   let start=typeof b==='string'?b:(b&&(b.start||b.date||b.from)||'');let end=(b&&(b.end||b.to))||'';
@@ -4715,7 +4816,7 @@ function renderCCInvite(){
 }
 function ccToggleInvite(id){if(_tcc.invite[id])delete _tcc.invite[id];else _tcc.invite[id]=((_ccFollowers||[]).find(f=>f.id===id)||{}).name||'Trekker';renderCCInvite();}
 async function submitCircle(){
-  if(!_tcc.trek){note('Pick a trek first.','Choose a trek');return;}
+  if(!_tcc.trek){note('Pick a trek, or add a custom location.','Choose a place');return;}
   if(!_tcc.date){note('Choose a date for the trip, a company departure or your own.','Add a date');return;}
   if(!_tcc.endDate){note('Add an end date for the trip.','End date needed');return;}
   if(_tcc.endDate<_tcc.date){note('The end date can’t be before the start date.','Check your dates');return;}

@@ -14,6 +14,14 @@ window.TMK_CONFIG = {
   SUPABASE_ANON_KEY: "sb_publishable_nC4q3VEA4nfWQaZeBSoZsQ__e5OC-X2",
   RAZORPAY_KEY_ID: "rzp_test_T4fTTBNhnhcF6R",  // test key — swap for live key when ready
 
+  /* Google Maps JS API key (Places API enabled), used ONLY for the
+     "host at a custom location" search when creating a Trip Circle.
+     Restrict the key by HTTP referrer to app.tripomonk.com in the
+     Google Cloud console — it is a browser key, safe to expose when
+     referrer-restricted. Leave BLANK to fall back to plain text entry
+     (hosting a custom spot still works, just without autocomplete). */
+  GOOGLE_MAPS_KEY: "",
+
   /* Native app store links. Leave blank while there is no native app —
      the install bar then uses the browser's own PWA install prompt.
      Fill either one in and that platform's bar links to the store instead. */
